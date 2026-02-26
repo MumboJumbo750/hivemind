@@ -1,0 +1,716 @@
+# Datenmodell
+
+← [Index](../../masterplan.md)
+
+Alle Tabellen werden in Phase 1 erstellt (auch wenn viele Spalten erst später befüllt werden). Keine späteren Migrations-Überraschungen.
+
+---
+
+## Tabellen-Übersicht
+
+```text
+-- Federation (zuerst — keine Dependencies außer sich selbst)
+nodes
+node_identity
+
+-- Core
+users
+app_settings               → users
+projects
+project_members            → users, projects
+epics                      → projects, users, nodes (origin_node_id)
+tasks                      → epics, users, nodes (assigned_node_id), (self-ref für Subtasks)
+skills                     → projects, users, nodes (origin_node_id)
+skill_versions             → skills, users
+skill_parents              → skills (child → parent, Composition)
+skill_change_proposals     → skills, users             (nach skills — FK auf skills.id)
+guard_change_proposals     → guards, users             (nach task_guards — FK auf guards.id)
+docs                       → epics, users
+context_boundaries         → tasks, users
+wiki_articles              → users, nodes (origin_node_id)
+wiki_versions              → wiki_articles, users
+code_nodes                 → projects, users
+code_edges                 → projects, code_nodes
+node_bug_reports           → code_nodes
+epic_node_links            → epics, code_nodes
+task_node_links            → tasks, code_nodes
+mcp_invocations            → users
+sync_outbox                (target_node_id → nodes optional)
+sync_dead_letter           → sync_outbox, users
+decision_requests          → tasks, epics, users
+decision_records           → epics, decision_requests, users
+epic_restructure_proposals → epics, users
+guards                     → projects, skills, users
+task_guards                → tasks, guards, users
+notifications              → users
+```
+
+> `task_skill_pins` existiert **nicht** als eigene Tabelle. Skills werden via `tasks.pinned_skills JSONB` versioniert gepinnt (siehe JSONB-Schemas unten).
+
+---
+
+## Schema
+
+```sql
+-- gen_random_uuid() ist in PostgreSQL 13+ built-in — keine Extension nötig
+-- Nur pgvector wird als Extension benötigt
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- ─────────────────────────────────────────────
+-- FEDERATION: Nodes & Identität
+-- ─────────────────────────────────────────────
+
+-- Alle bekannten Peer-Nodes (auch der eigene Node kann hier stehen)
+CREATE TABLE nodes (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  node_name   TEXT NOT NULL,        -- "alex-hivemind", "ben-hivemind"
+  node_url    TEXT NOT NULL,        -- "http://192.168.1.10:8000"
+  public_key  TEXT,                 -- Ed25519 Public Key (PEM) — NULL bis Key-Exchange
+  status      TEXT NOT NULL DEFAULT 'active', -- active|inactive|blocked
+  last_seen   TIMESTAMPTZ,          -- letzter erfolgreicher /federation/ping
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- Identität dieser Node (genau 1 Zeile)
+-- Wird beim ersten Start auto-generiert wenn noch nicht vorhanden
+CREATE TABLE node_identity (
+  node_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  node_name   TEXT NOT NULL,
+  private_key TEXT NOT NULL,  -- Ed25519 Private Key (PEM, at-rest verschlüsselt via HIVEMIND_KEY_PASSPHRASE)
+  public_key  TEXT NOT NULL,  -- Ed25519 Public Key (PEM)
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────
+-- CORE: Users & Projects
+-- ─────────────────────────────────────────────
+
+CREATE TABLE users (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username      TEXT NOT NULL UNIQUE,
+  email         TEXT UNIQUE,
+  password_hash TEXT,           -- bcrypt/argon2; NULL für service-Accounts (API-Key-Auth)
+  role          TEXT NOT NULL DEFAULT 'developer', -- developer|admin|service|kartograph
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────
+-- SYSTEM-KONFIGURATION (nach users — FK auf users.id)
+-- ─────────────────────────────────────────────
+
+CREATE TABLE app_settings (
+  key        TEXT PRIMARY KEY,   -- z.B. "hivemind_mode", "routing_threshold"
+  value      TEXT NOT NULL,
+  version    INT NOT NULL DEFAULT 0,
+  updated_by UUID REFERENCES users(id),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Bootstrap-Eintrag (wird in Phase 1-Migration gesetzt):
+-- INSERT INTO app_settings (key, value) VALUES ('hivemind_mode', 'solo');
+
+CREATE TABLE projects (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name        TEXT NOT NULL,
+  slug        TEXT NOT NULL UNIQUE,
+  description TEXT,
+  created_by  UUID NOT NULL REFERENCES users(id),
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE project_members (
+  project_id  UUID NOT NULL REFERENCES projects(id),
+  user_id     UUID NOT NULL REFERENCES users(id),
+  role        TEXT NOT NULL DEFAULT 'developer', -- developer|admin|service|kartograph
+  PRIMARY KEY (project_id, user_id)
+);
+
+-- ─────────────────────────────────────────────
+-- EPICS & TASKS
+-- ─────────────────────────────────────────────
+
+CREATE TABLE epics (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id      UUID REFERENCES projects(id), -- NULL erlaubt für federated
+  external_id     TEXT UNIQUE,
+  title           TEXT NOT NULL,
+  description     TEXT,
+  owner_id        UUID REFERENCES users(id),    -- NULL erlaubt für federated
+  backup_owner_id UUID REFERENCES users(id),
+  state           TEXT NOT NULL DEFAULT 'incoming',
+  priority        TEXT,
+  sla_due_at      TIMESTAMPTZ,
+  dod_framework   JSONB,
+  embedding       vector(768),   -- nomic-embed-text (Ollama, default); bei Wechsel auf OpenAI → ALTER auf 1536
+  version         INT NOT NULL DEFAULT 0,
+  -- Federation
+  origin_node_id  UUID REFERENCES nodes(id), -- NULL = lokal erstellt; gesetzt = von Peer empfangen
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now(),
+  CHECK (origin_node_id IS NOT NULL OR project_id IS NOT NULL),
+  CHECK (origin_node_id IS NOT NULL OR owner_id IS NOT NULL)
+);
+
+CREATE SEQUENCE task_key_seq;
+
+CREATE TABLE tasks (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_key           TEXT NOT NULL UNIQUE,
+  -- task_key wird in der Applikationsschicht generiert:
+  -- task_key = f"TASK-{nextval('task_key_seq')}" (Python, vor INSERT)
+  -- PostgreSQL DEFAULT unterstützt keine String-Konkatenation mit nextval().
+  epic_id            UUID NOT NULL REFERENCES epics(id),
+  parent_task_id     UUID REFERENCES tasks(id),
+  title              TEXT NOT NULL,
+  description        TEXT,
+  state              TEXT NOT NULL DEFAULT 'incoming',
+  -- state: incoming|scoped|ready|in_progress|in_review|done|qa_failed|blocked|escalated|cancelled
+  version            INT NOT NULL DEFAULT 0,
+  definition_of_done JSONB,
+  quality_gate       JSONB,
+  assigned_to        UUID REFERENCES users(id),
+  assigned_node_id   UUID REFERENCES nodes(id), -- NULL = lokal; gesetzt = Sub-Task liegt bei Peer-Node
+  pinned_skills      JSONB DEFAULT '[]', -- [{"skill_id": "uuid", "version": 2}]
+  result             TEXT,               -- Worker-Ergebnis via submit_result
+  artifacts          JSONB DEFAULT '[]', -- [{"type": "file", "path": "...", "description": "..."}]
+  qa_failed_count    INT NOT NULL DEFAULT 0, -- Zähler für qa_failed-Transitionen; >= 3 → escalated
+  review_comment     TEXT,               -- Owner-Kommentar bei qa_failed
+  external_id        TEXT UNIQUE,
+  created_at         TIMESTAMPTZ DEFAULT now(),
+  updated_at         TIMESTAMPTZ DEFAULT now()
+);
+
+-- task_key bleibt API-stabil und immutable (TASK-88 darf nicht umbenannt werden)
+CREATE OR REPLACE FUNCTION prevent_task_key_update()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.task_key IS DISTINCT FROM OLD.task_key THEN
+    RAISE EXCEPTION 'task_key is immutable';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_tasks_task_key_immutable
+BEFORE UPDATE ON tasks
+FOR EACH ROW
+WHEN (OLD.task_key IS DISTINCT FROM NEW.task_key)
+EXECUTE FUNCTION prevent_task_key_update();
+
+-- ─────────────────────────────────────────────
+-- SKILLS
+-- ─────────────────────────────────────────────
+
+CREATE TABLE skills (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id     UUID REFERENCES projects(id), -- NULL = global oder federated
+  title          TEXT NOT NULL,
+  content        TEXT NOT NULL,
+  service_scope  TEXT[] NOT NULL DEFAULT '{}',
+  stack          TEXT[] NOT NULL DEFAULT '{}',
+  version_range  JSONB,
+  owner_id       UUID REFERENCES users(id),     -- NULL erlaubt für federated
+  confidence     NUMERIC(3,2) DEFAULT 0.5,
+  source_epics   TEXT[] DEFAULT '{}',
+  lifecycle         TEXT NOT NULL DEFAULT 'draft', -- draft|pending_merge|active|rejected|deprecated
+  version           INT NOT NULL DEFAULT 1,
+  embedding         vector(768),   -- nomic-embed-text (Ollama, default)
+  -- Federation
+  origin_node_id    UUID REFERENCES nodes(id), -- NULL = lokal; gesetzt = von Peer empfangen
+  federation_scope  TEXT NOT NULL DEFAULT 'local', -- local|federated (federated = wird an Peers gepusht)
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  updated_at        TIMESTAMPTZ DEFAULT now(),
+  CHECK (origin_node_id IS NOT NULL OR owner_id IS NOT NULL)
+);
+
+CREATE TABLE skill_versions (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  skill_id        UUID NOT NULL REFERENCES skills(id),
+  version         INT NOT NULL,
+  content         TEXT NOT NULL,          -- vollständig assemblierter Inhalt (Parents aufgelöst)
+  parent_versions JSONB DEFAULT '[]',     -- [{"skill_id": "uuid", "version": 3}] — Snapshot der Parent-Versionen
+  changed_by      UUID NOT NULL REFERENCES users(id),
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(skill_id, version)               -- verhindert doppelte Versionen; Task-Pinning eindeutig
+);
+
+-- Skill Composition: Parent-Child-Beziehungen (extends)
+CREATE TABLE skill_parents (
+  child_id   UUID NOT NULL REFERENCES skills(id),
+  parent_id  UUID NOT NULL REFERENCES skills(id),
+  order_idx  INT NOT NULL DEFAULT 0,  -- Merge-Reihenfolge bei mehreren Parents
+  PRIMARY KEY (child_id, parent_id),
+  CHECK (child_id != parent_id)       -- kein Self-Reference
+);
+
+-- ─────────────────────────────────────────────
+-- SKILL CHANGE PROPOSALS
+-- ─────────────────────────────────────────────
+
+-- Für propose_skill_change: diff + rationale werden hier gespeichert
+-- Ein Skill kann mehrere offene Change-Proposals haben (aber nur einen aktiven Lifecycle-State)
+-- Hinweis: guard_change_proposals steht nach guards (FK-Abhängigkeit)
+CREATE TABLE skill_change_proposals (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  skill_id     UUID NOT NULL REFERENCES skills(id),
+  proposed_by  UUID NOT NULL REFERENCES users(id),
+  diff         TEXT NOT NULL,      -- Unified diff oder Volltext-Vorschlag (Markdown)
+  rationale    TEXT NOT NULL,      -- Begründung des Gaertners
+  state        TEXT NOT NULL DEFAULT 'open', -- open|accepted|rejected
+  reviewed_by  UUID REFERENCES users(id),
+  reviewed_at  TIMESTAMPTZ,
+  review_note  TEXT,               -- Admin-Begründung bei Ablehnung
+  version      INT NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────
+-- DOCS & CONTEXT
+-- ─────────────────────────────────────────────
+
+-- Docs sind immer Epic-gebunden (kein eigenständiger project_id).
+-- Projektweites Wissen ohne Epic-Bezug gehört ins Wiki (→ wiki_articles).
+-- epic_id ist nullable für den Sonderfall von Entwurfs-Docs die noch keinem Epic zugeordnet sind.
+CREATE TABLE docs (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title       TEXT NOT NULL,
+  content     TEXT NOT NULL,
+  epic_id     UUID REFERENCES epics(id),
+  embedding   vector(768),   -- nomic-embed-text (Ollama, default)
+  version     INT NOT NULL DEFAULT 0,
+  updated_by  UUID REFERENCES users(id),
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE context_boundaries (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id          UUID NOT NULL UNIQUE REFERENCES tasks(id),
+  allowed_skills   UUID[] DEFAULT '{}',
+  allowed_docs     UUID[] DEFAULT '{}',
+  external_access  TEXT[] DEFAULT '{}',  -- z.B. ["sentry"] für externe Services
+  max_token_budget INT DEFAULT 8000,
+  version          INT NOT NULL DEFAULT 0,
+  set_by           UUID NOT NULL REFERENCES users(id),
+  created_at       TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────
+-- WIKI
+-- ─────────────────────────────────────────────
+
+CREATE TABLE wiki_articles (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title         TEXT NOT NULL,
+  slug          TEXT NOT NULL UNIQUE,
+  content       TEXT NOT NULL,
+  tags          TEXT[] NOT NULL DEFAULT '{}',
+  linked_epics  UUID[] DEFAULT '{}',
+  linked_skills UUID[] DEFAULT '{}',
+  author_id         UUID REFERENCES users(id),    -- NULL erlaubt für federated
+  embedding         vector(768),   -- nomic-embed-text (Ollama, default)
+  version           INT NOT NULL DEFAULT 1,
+  -- Federation
+  origin_node_id    UUID REFERENCES nodes(id), -- NULL = lokal; gesetzt = von Peer empfangen
+  federation_scope  TEXT NOT NULL DEFAULT 'local', -- local|federated
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  updated_at        TIMESTAMPTZ DEFAULT now(),
+  CHECK (origin_node_id IS NOT NULL OR author_id IS NOT NULL)
+);
+
+CREATE TABLE wiki_versions (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  article_id  UUID NOT NULL REFERENCES wiki_articles(id),
+  version     INT NOT NULL,
+  content     TEXT NOT NULL,
+  changed_by  UUID NOT NULL REFERENCES users(id),
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(article_id, version)              -- verhindert doppelte Versionen (analog zu skill_versions)
+);
+
+-- ─────────────────────────────────────────────
+-- NEXUS GRID (Code-Kartographie)
+-- ─────────────────────────────────────────────
+
+CREATE TABLE code_nodes (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id  UUID REFERENCES projects(id),   -- NULL erlaubt für federated
+  path        TEXT NOT NULL,
+  node_type   TEXT NOT NULL, -- file|module|package|service
+  label       TEXT NOT NULL,
+  explored_at TIMESTAMPTZ,   -- NULL = Fog of War
+  explored_by UUID REFERENCES users(id),
+  embedding   vector(768),   -- nomic-embed-text (Ollama, default)
+  metadata    JSONB,
+  -- Federation
+  origin_node_id   UUID REFERENCES nodes(id), -- NULL = lokal entdeckt; gesetzt = von Peer empfangen
+  federation_scope TEXT NOT NULL DEFAULT 'federated', -- Kartograph-Discoveries sind default federated
+  exploring_node_id UUID REFERENCES nodes(id), -- temporär: welche Node erkundet gerade diese Area? NULL nach Abschluss
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(project_id, path),
+  CHECK (origin_node_id IS NOT NULL OR project_id IS NOT NULL)
+);
+
+CREATE TABLE code_edges (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id     UUID REFERENCES projects(id), -- Quell-Projekt; NULL erlaubt für federated
+  source_id      UUID NOT NULL REFERENCES code_nodes(id),
+  target_id      UUID NOT NULL REFERENCES code_nodes(id), -- kann in anderem Projekt liegen (cross-project Edge)
+  edge_type      TEXT NOT NULL, -- import|call|dependency|extends
+  -- Federation
+  origin_node_id UUID REFERENCES nodes(id), -- NULL = lokal; gesetzt = von Peer empfangen
+  created_at     TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(source_id, target_id, edge_type), -- ohne project_id: cross-project Edges eindeutig über source+target+type
+  CHECK (origin_node_id IS NOT NULL OR project_id IS NOT NULL)
+);
+-- Cross-project Edge (Monorepo-Beispiel): Frontend-Code importiert UI-Controls aus anderem Projekt
+--   project_id = frontend-project-uuid   (Quell-Projekt)
+--   source_id  = code_node "src/Button.tsx" (in frontend-project)
+--   target_id  = code_node "src/ui/Button.vue" (in ui-controls-project)
+--   edge_type  = 'import'
+
+CREATE TABLE node_bug_reports (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  node_id    UUID NOT NULL REFERENCES code_nodes(id),
+  sentry_id  TEXT,
+  severity   TEXT,
+  count      INT NOT NULL DEFAULT 1,
+  last_seen  TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE epic_node_links (
+  epic_id UUID NOT NULL REFERENCES epics(id),
+  node_id UUID NOT NULL REFERENCES code_nodes(id),
+  PRIMARY KEY (epic_id, node_id)
+);
+
+CREATE TABLE task_node_links (
+  task_id UUID NOT NULL REFERENCES tasks(id),
+  node_id UUID NOT NULL REFERENCES code_nodes(id),
+  PRIMARY KEY (task_id, node_id)
+);
+
+-- ─────────────────────────────────────────────
+-- AUDIT & MCP
+-- ─────────────────────────────────────────────
+
+CREATE TABLE mcp_invocations (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id      UUID NOT NULL,
+  idempotency_key UUID UNIQUE,
+  actor_id        UUID NOT NULL REFERENCES users(id),
+  actor_role      TEXT NOT NULL, -- developer|admin|service|kartograph
+  tool_name       TEXT NOT NULL,
+  epic_id         UUID,
+  target_id       TEXT,
+  input_payload   JSONB,
+  output_payload  JSONB,
+  status          TEXT NOT NULL,
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────
+-- SYNC: Outbox & Dead Letter Queue
+-- ─────────────────────────────────────────────
+
+CREATE TABLE sync_outbox (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  dedup_key     TEXT UNIQUE,          -- Idempotenz je externes Ereignis (z.B. "youtrack:event:1718036400:ISSUE-42")
+  direction     TEXT NOT NULL DEFAULT 'inbound', -- inbound|outbound|peer_outbound|peer_inbound
+  system        TEXT NOT NULL,        -- "youtrack" | "sentry" | "federation"
+  target_node_id UUID REFERENCES nodes(id), -- gesetzt bei direction='peer_outbound': welcher Peer ist Ziel?
+  entity_type   TEXT NOT NULL,
+  entity_id     TEXT NOT NULL,
+  payload       JSONB NOT NULL,
+  attempts      INT NOT NULL DEFAULT 0,
+  next_retry_at TIMESTAMPTZ,
+  state         TEXT NOT NULL DEFAULT 'pending', -- pending|processing|done|dead
+  routing_state TEXT DEFAULT 'unrouted',         -- unrouted|routed|ignored — für Triage-Anzeige
+  -- unrouted: wartet auf manuelle Entscheidung in Triage Station
+  -- routed:   wurde einem Epic zugewiesen (manuell oder auto)
+  -- ignored:  Admin hat bewusst entschieden, Event nicht zu routen (kein Epic-Bezug); bleibt lesbar für Audit
+  created_at    TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE sync_dead_letter (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  outbox_id   UUID NOT NULL REFERENCES sync_outbox(id),
+  system      TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id   TEXT NOT NULL,
+  payload     JSONB NOT NULL,
+  error       TEXT,
+  failed_at   TIMESTAMPTZ DEFAULT now(),
+  requeued_by UUID REFERENCES users(id),
+  requeued_at TIMESTAMPTZ
+);
+
+-- ─────────────────────────────────────────────
+-- DECISIONS
+-- ─────────────────────────────────────────────
+
+CREATE TABLE decision_requests (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id         UUID NOT NULL REFERENCES tasks(id),
+  epic_id         UUID NOT NULL REFERENCES epics(id),
+  owner_id        UUID NOT NULL REFERENCES users(id),
+  backup_owner_id UUID REFERENCES users(id),
+  state           TEXT NOT NULL DEFAULT 'open', -- open|resolved|expired
+  sla_due_at      TIMESTAMPTZ NOT NULL,
+  version         INT NOT NULL DEFAULT 0,
+  resolved_by     UUID REFERENCES users(id),
+  resolved_at     TIMESTAMPTZ,
+  payload         JSONB NOT NULL
+  -- payload: { blocker, options: [{id, description, tradeoffs}] }
+);
+
+CREATE TABLE decision_records (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  epic_id             UUID NOT NULL REFERENCES epics(id),
+  decision_request_id UUID REFERENCES decision_requests(id),
+  decision            TEXT NOT NULL,
+  rationale           TEXT,
+  decided_by          UUID NOT NULL REFERENCES users(id),
+  created_at          TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────
+-- EPIC RESTRUCTURE PROPOSALS (Kartograph)
+-- ─────────────────────────────────────────────
+
+CREATE TABLE epic_restructure_proposals (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  epic_id     UUID NOT NULL REFERENCES epics(id),
+  proposed_by UUID NOT NULL REFERENCES users(id),  -- immer Kartograph-Service-User
+  rationale   TEXT NOT NULL,
+  proposal    TEXT NOT NULL,          -- Freitext-Vorschlag des Kartographen (Markdown)
+  state       TEXT NOT NULL DEFAULT 'open', -- open|accepted|rejected
+  version     INT NOT NULL DEFAULT 0,
+  -- Admin: accept_epic_restructure → accepted; reject_epic_restructure → rejected
+  reviewed_by UUID REFERENCES users(id),
+  reviewed_at TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────
+-- GUARDS (Executable Validierungsregeln)
+-- ─────────────────────────────────────────────
+
+CREATE TABLE guards (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id  UUID REFERENCES projects(id),  -- NULL = global
+  skill_id    UUID REFERENCES skills(id),     -- NULL = nicht skill-spezifisch
+  title       TEXT NOT NULL,
+  description TEXT,
+  type        TEXT NOT NULL DEFAULT 'executable', -- executable|declarative|manual
+  command     TEXT,          -- für executable: "pytest --cov-fail-under=80"
+  condition   TEXT,          -- für declarative: maschinenlesbare Bedingung
+  scope       TEXT[] DEFAULT '{}',  -- ["backend", "frontend"] — leer = alle
+  lifecycle   TEXT NOT NULL DEFAULT 'draft', -- draft|pending_merge|active|rejected|deprecated
+  skippable   BOOLEAN NOT NULL DEFAULT true, -- false = Worker kann nur passed/failed melden, kein skip
+  version     INT NOT NULL DEFAULT 0,
+  created_by  UUID NOT NULL REFERENCES users(id),
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE task_guards (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id    UUID NOT NULL REFERENCES tasks(id),
+  guard_id   UUID NOT NULL REFERENCES guards(id),
+  status     TEXT NOT NULL DEFAULT 'pending', -- pending|passed|failed|skipped
+  result     TEXT,                             -- Output des executable Guards
+  checked_at TIMESTAMPTZ,
+  checked_by UUID REFERENCES users(id),        -- NULL = automatisch
+  UNIQUE(task_id, guard_id)
+);
+
+-- ─────────────────────────────────────────────
+-- GUARD CHANGE PROPOSALS
+-- ─────────────────────────────────────────────
+
+-- Steht nach guards (FK-Abhängigkeit auf guards.id)
+-- Für propose_guard_change: diff + rationale werden hier gespeichert
+CREATE TABLE guard_change_proposals (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  guard_id     UUID NOT NULL REFERENCES guards(id),
+  proposed_by  UUID NOT NULL REFERENCES users(id),
+  diff         TEXT NOT NULL,      -- Unified diff oder Volltext-Vorschlag (Markdown)
+  rationale    TEXT NOT NULL,      -- Begründung des Kartographen
+  state        TEXT NOT NULL DEFAULT 'open', -- open|accepted|rejected
+  reviewed_by  UUID REFERENCES users(id),
+  reviewed_at  TIMESTAMPTZ,
+  review_note  TEXT,               -- Admin-Begründung bei Ablehnung
+  version      INT NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────
+-- NOTIFICATIONS (In-App, kein externer Service)
+-- ─────────────────────────────────────────────
+
+CREATE TABLE notifications (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID NOT NULL REFERENCES users(id),
+  type       TEXT NOT NULL,
+  -- Typen (kanonisch, übereinstimmend mit phase-6.md Routing-Matrix):
+  --   sla_warning                 — SLA-Deadline nähert sich (4h vor Fälligkeit) → Owner
+  --   sla_breach                  — SLA überschritten → Backup-Owner
+  --   decision_request            — Worker hat Decision Request erstellt → Owner
+  --   decision_escalated_backup   — 48h ohne Auflösung → Backup-Owner
+  --   decision_escalated_admin    — 72h ohne Auflösung → alle Admins
+  --   escalation                  — Task nach 3x qa_failed eskaliert → Owner + Admins
+  --   skill_proposal              — Gaertner hat Skill-Proposal eingereicht → alle Admins
+  --   skill_merged                — Skill wurde gemergt → Skill-Proposer + Admins
+  --   task_done                   — Task wurde auf done gesetzt → Assignee + Owner
+  --   dead_letter                 — Sync in DLQ gelandet → alle Admins
+  --   guard_failed                — Guard fehlgeschlagen → Assigned-Worker + Owner
+  --   task_assigned               — Task einem User zugewiesen → neuer Assignee
+  --   review_requested            — Task geht in in_review → Owner
+  --   task_delegated              — Task wurde an Peer-Node delegiert → Epic-Owner (Phase F)
+  --   peer_offline                — Peer mit delegierten Tasks nicht erreichbar → alle Admins (Phase F)
+  --   guard_proposal              — Neuer Guard-Proposal eingereicht → alle Admins
+  --   restructure_proposal        — Kartograph schlägt Epic-Restructure vor → alle Admins
+  --   peer_task_done              — Peer hat delegierten Task abgeschlossen → Epic-Owner (Phase F)
+  --   peer_online                 — Peer-Node ist wieder erreichbar → alle User (Phase F)
+  --   federated_skill             — Neuer Skill von Peer-Node verfügbar → alle User (Phase F)
+  --   discovery_session           — Peer erkundet Codebase-Area → alle User (Phase F)
+  --   restructure_rejected        — Epic-Restructure-Proposal wurde abgelehnt → Kartograph/Proposer
+  title      TEXT NOT NULL,
+  body       TEXT,
+  link       TEXT,           -- Deep-Link z.B. /epics/uuid
+  read       BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+---
+
+## Indexes
+
+Performance-kritische Indexes (werden in der initialen Migration angelegt):
+
+```sql
+-- Tasks: häufige State-Queries
+CREATE INDEX idx_tasks_state       ON tasks(state);
+CREATE INDEX idx_tasks_epic_id     ON tasks(epic_id);
+CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
+
+-- Epics: SLA-Cron + Routing
+CREATE INDEX idx_epics_state      ON epics(state);
+CREATE INDEX idx_epics_project_id ON epics(project_id);
+CREATE INDEX idx_epics_owner_id   ON epics(owner_id);
+
+-- Skills: Bibliothekar-Suche
+CREATE INDEX idx_skills_lifecycle ON skills(lifecycle);
+CREATE INDEX idx_skills_project_id ON skills(project_id);
+
+-- pgvector: HNSW-Index für Cosine-Similarity (ab Phase 3 befüllt)
+CREATE INDEX idx_epics_embedding        ON epics    USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX idx_skills_embedding       ON skills   USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX idx_wiki_articles_embedding ON wiki_articles USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX idx_docs_embedding         ON docs         USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX idx_code_nodes_embedding   ON code_nodes USING hnsw (embedding vector_cosine_ops);
+
+-- Sync: Outbox-Queue-Processing
+CREATE INDEX idx_sync_outbox_state         ON sync_outbox(state);
+CREATE INDEX idx_sync_outbox_routing_state ON sync_outbox(routing_state);
+CREATE INDEX idx_sync_outbox_next_retry    ON sync_outbox(next_retry_at) WHERE state = 'pending';
+CREATE INDEX idx_sync_outbox_direction_state ON sync_outbox(direction, state);
+
+-- Notifications: Ungelesene Notifications per User
+CREATE INDEX idx_notifications_user_unread ON notifications(user_id) WHERE read = false;
+
+-- Skill/Guard Change Proposals: Admin-Review-Queue
+CREATE INDEX idx_skill_change_proposals_state    ON skill_change_proposals(state);
+CREATE INDEX idx_skill_change_proposals_skill_id ON skill_change_proposals(skill_id);
+CREATE INDEX idx_guard_change_proposals_state    ON guard_change_proposals(state);
+CREATE INDEX idx_guard_change_proposals_guard_id ON guard_change_proposals(guard_id);
+
+-- Guards: Scope-basierte Abfragen
+CREATE INDEX idx_guards_lifecycle  ON guards(lifecycle);
+CREATE INDEX idx_guards_project_id ON guards(project_id);
+
+-- Audit: Filtering
+CREATE INDEX idx_mcp_invocations_actor_id  ON mcp_invocations(actor_id);
+CREATE INDEX idx_mcp_invocations_tool_name ON mcp_invocations(tool_name);
+CREATE INDEX idx_mcp_invocations_epic_id   ON mcp_invocations(epic_id);
+CREATE INDEX idx_mcp_invocations_created   ON mcp_invocations(created_at DESC);
+
+-- Decision Requests: SLA-Cron + Triage-Abfragen
+CREATE INDEX idx_decision_requests_task_id ON decision_requests(task_id);
+CREATE INDEX idx_decision_requests_state   ON decision_requests(state);
+CREATE INDEX idx_decision_requests_sla_due ON decision_requests(sla_due_at);
+
+-- Federation: Peer-Routing und Origin-Tracking
+CREATE INDEX idx_epics_origin_node_id         ON epics(origin_node_id) WHERE origin_node_id IS NOT NULL;
+CREATE INDEX idx_tasks_assigned_node_id       ON tasks(assigned_node_id) WHERE assigned_node_id IS NOT NULL;
+CREATE INDEX idx_skills_origin_node_id        ON skills(origin_node_id) WHERE origin_node_id IS NOT NULL;
+CREATE INDEX idx_skills_federation_scope      ON skills(federation_scope);
+CREATE INDEX idx_wiki_articles_origin_node_id ON wiki_articles(origin_node_id) WHERE origin_node_id IS NOT NULL;
+CREATE INDEX idx_sync_outbox_target_node_id      ON sync_outbox(target_node_id) WHERE target_node_id IS NOT NULL;
+CREATE INDEX idx_nodes_status                    ON nodes(status);
+CREATE INDEX idx_code_nodes_origin_node_id       ON code_nodes(origin_node_id) WHERE origin_node_id IS NOT NULL;
+CREATE INDEX idx_code_nodes_exploring_node_id    ON code_nodes(exploring_node_id) WHERE exploring_node_id IS NOT NULL;
+CREATE INDEX idx_code_edges_project_id           ON code_edges(project_id);
+CREATE INDEX idx_code_edges_target_id            ON code_edges(target_id); -- cross-project: "wer hängt von diesem Node ab?"
+CREATE INDEX idx_code_edges_origin_node_id       ON code_edges(origin_node_id) WHERE origin_node_id IS NOT NULL;
+```
+
+> HNSW-Indexes für pgvector sind beim ersten `CREATE INDEX` leer und werden mit den Embeddings befüllt. In Phase 1–2 noch nicht genutzt, aber Schema ist bereit.
+
+> **Embedding-Dimension (768):** Basiert auf dem Default-Provider `nomic-embed-text` (Ollama). Bei Wechsel auf OpenAI `text-embedding-3-small` (1536 Dims) müssen die Embedding-Spalten per `ALTER TABLE ... ALTER COLUMN embedding TYPE vector(1536)` angepasst und alle Embeddings neu berechnet werden. Kein Datenverlust — Embeddings werden ohnehin vom Provider-Switch-Job neu erzeugt (→ [bibliothekar.md](../agents/bibliothekar.md)).
+
+> **HNSW-Skalierung:** Bei > 10.000 Nodes kann ein Re-Indexing-Job mehrere Minuten dauern. HNSW-Indexes unterstützen `CREATE INDEX CONCURRENTLY` — Re-Indexing im Live-Betrieb ohne Downtime möglich. Ab > 100.000 Embeddings sollte `ef_construction` und `m` angepasst werden (Default: `ef_construction=64, m=16`). Monitoring via `pg_stat_user_indexes`.
+
+---
+
+## JSONB-Schemas
+
+**definition_of_done:**
+
+```json
+{
+  "criteria": [
+    { "id": "c1", "description": "Unit tests >= 80% Coverage", "required": true },
+    { "id": "c2", "description": "API-Dokumentation aktualisiert", "required": false }
+  ],
+  "checklist_mode": "all_required"
+}
+```
+
+**pinned_skills (auf tasks):**
+
+```json
+[
+  { "skill_id": "uuid", "version": 2 },
+  { "skill_id": "uuid", "version": 1 }
+]
+```
+
+> **Designentscheidung — kein FK für pinned_skills:** `pinned_skills` ist JSONB statt einer separaten Join-Tabelle. Das ermöglicht Versions-Snapshots ohne DB-Constraint-Komplexität. Da `skill_versions` immutable (append-only) ist, ist Referential Integrity de-facto gegeben. Konsistenz wird auf Applikationsebene sichergestellt: `skill_id` muss existieren und die Version muss zum Pinning-Zeitpunkt `active` gewesen sein.
+
+---
+
+## Designentscheidung: UUID-FK intern, task_key API-stabil
+
+MCP-Tools und Prompts verwenden weiterhin `task_key` (z.B. `"TASK-88"`).  
+Intern löst das Backend den Key einmal auf `tasks.id` (UUID) auf und arbeitet danach nur mit UUID-FKs.
+
+| Entscheidung | Wirkung |
+| --- | --- |
+| `context_boundaries.task_id` und `decision_requests.task_id` als UUID-FK | Keine Orphan-Einträge, referentielle Integrität durch DB |
+| `task_key` bleibt API-Identifier | Keine Änderung für MCP-Clients/Prompts |
+| `task_key` ist immutable (DB-Trigger) | Stabile externe Referenzen, kein späteres Renaming-Risiko |
+
+> Die zusätzliche Key→UUID-Auflösung ist ein einfacher, indexierter Lookup auf `tasks.task_key` und steht im Verhältnis zum Integritätsgewinn.
+
+---
+
+## Audit-Retention
+
+- **Volle Payload (input + output):** 90 Tage (`AUDIT_RETENTION_DAYS`)
+- **Summary (actor, tool, timestamp, status, epic_id):** 1 Jahr
+- **Keine Löschung** — nach Ablauf wird `input_payload`/`output_payload` auf `null` gesetzt, Record bleibt
+- Täglicher Archivierungs-Job im Backend

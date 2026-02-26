@@ -1,0 +1,90 @@
+# Phase 8 — Volle Autonomie
+
+← [Phasen-Übersicht](./overview.md) | [Index](../../masterplan.md)
+
+**Ziel:** AI-Client konsumiert Prompts direkt via API-Key. GitLab MCP Consumer. 3D Nexus Grid. Kein Architekturbruch.
+
+**AI-Integration:** API-Keys für Claude/OpenAI. Hivemind schickt Prompts direkt an AI-API. MCP-Calls laufen weiterhin identisch.
+
+**Voraussetzung:** Alle Kriterien aus [Definition of Ready](./overview.md#definition-of-ready-für-phase-8-autonomous-mode) erfüllt.
+
+---
+
+## Deliverables
+
+### Backend
+- [ ] AI-Provider-Service: sendet generierte Prompts direkt an Claude/OpenAI API
+  - Provider-Abstraktion: `anthropic`, `openai`, `ollama` (lokal)
+  - Gleicher Prompt wie bisher — kein Unterschied für MCP-Tools
+  - Rate-Limiting + Retry bei API-Fehlern
+- [ ] GitLab MCP Consumer: GitLab als Datenquelle (MRs, Pipelines, Issues)
+- [ ] Bibliothekar als echter Backend-Service (pgvector-Similarity, kein Prompt mehr)
+- [ ] Nexus Grid 3D Backend: Graphdaten-Aggregation optimiert für große Codebases
+- [ ] Auto-Escalation: System eskaliert autonom nach SLA-Regeln ohne manuelle Trigger
+
+### Frontend
+- [ ] AI-Provider-Config in Settings:
+  - Provider-Auswahl (Manuell / Claude / OpenAI)
+  - API-Key-Eingabe (verschlüsselt gespeichert)
+  - Modell-Auswahl
+  - Test-Button
+- [ ] Prompt Station: Auto-Modus
+  - Kein Prompt-Card mehr sichtbar
+  - Stattdessen: Monitoring-Ansicht (aktive Agenten, Token-Verbrauch, Status)
+  - "Manuell eingreifen"-Button jederzeit verfügbar
+- [ ] Nexus Grid 3D (WebGL / Three.js):
+  - Toggle-Button: [2D] ↔ [3D]
+  - Fly-Through-Navigation
+  - Fog of War in 3D erhalten
+- [ ] KPI-Dashboard (vollständig): alle 6 KPIs mit historischen Graphen
+
+---
+
+## Auto-Modus Ablauf
+
+```
+Phase 1-7 (Manuell):
+  Prompt Station → User kopiert → AI-Client → MCP
+
+Phase 8 (Auto-Modus):
+  Hivemind → generiert Prompt → sendet an Claude API
+  Claude API → ruft MCP-Tools auf → schreibt Ergebnis
+  Hivemind → Review-Gate weiterhin aktiv (Owner reviewed)
+  User → sieht Monitoring, greift nur bei Bedarf ein
+```
+
+**Kein Architekturbruch:** Gleicher Prompt, gleiche MCP-Calls, gleiche Validierung. Nur der manuelle Copy-Paste-Schritt entfällt.
+
+---
+
+## Acceptance Criteria
+
+### Definition of Ready (alle müssen erfüllt sein vor Phase 8 Start)
+- [ ] RBAC und Audit für alle Writes produktiv (Phase 2 ✓)
+- [ ] Idempotenz und Optimistic Locking für alle mutierenden Domain-Writes (Phase 2 ✓)
+- [ ] Review-Gate verhindert direkte `done`-Transitions (Phase 2 ✓)
+- [ ] Eskalations-SLA mit Backup-Owner und Admin-Fallback (Phase 6 ✓)
+- [ ] KPI-Baselines über 2 Wochen stabil (Phase 7 Messung ✓)
+
+### Phase 8 Specific
+- [ ] API-Key wird sicher gespeichert (nicht im Plaintext in DB)
+- [ ] AI-Provider sendet Prompt und empfängt MCP-Calls korrekt
+- [ ] Review-Gate auch im Auto-Modus aktiv (kein direktes `done`)
+- [ ] "Manuell eingreifen"-Button schaltet zurück auf manuelle Prompt Station
+- [ ] Nexus Grid 3D lädt und navigierbar für Codebases > 1000 Nodes
+- [ ] GitLab Issues werden als neue Epics/Tasks ingestiert
+
+---
+
+## Abhängigkeiten
+
+- Alle Phasen 1–7 abgeschlossen und KPI-stabil
+
+---
+
+## Post-Phase-8: Evaluierungspunkte
+
+- Redis für Outbox wenn Volumen > 10k Events/Tag
+- Multi-Instanz-Setup (mehrere Teams auf einer Plattform)
+- Nexus Grid: Diff-Ansicht (welche Nodes haben sich seit letztem Kartograph-Run verändert)
+- Skill-Empfehlungs-System: AI schlägt proaktiv Skills vor ohne Gaertner-Run
