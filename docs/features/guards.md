@@ -74,7 +74,7 @@ In Phase 1–7 sind Guard-Ergebnisse **self-reported** — das Backend verifizie
 
 | Sicherheitsaspekt | Anforderung |
 | --- | --- |
-| **Allowlist** | Nur Commands aus einer konfigurierten Allowlist dürfen ausgeführt werden (`HIVEMIND_GUARD_ALLOWLIST`). Default: `pytest`, `ruff`, `eslint`, `npm run *`, `make *`. Freie Shell-Commands (`rm`, `curl`, `wget`, etc.) sind geblockt. |
+| **Allowlist** | Nur Commands aus einer konfigurierten Allowlist dürfen ausgeführt werden (`HIVEMIND_GUARD_ALLOWLIST`). Default: `pytest`, `ruff`, `eslint`, `npm run *`, `make *`. Freie Shell-Commands (`rm`, `curl`, `wget`, etc.) sind geblockt. → Details siehe [Guard-Allowlist-Spezifikation](#guard-allowlist-spezifikation) |
 | **Timeout** | Jeder Guard-Command läuft maximal `HIVEMIND_GUARD_TIMEOUT` Sekunden (default: 120s). Bei Timeout → automatisch `failed`. |
 | **Working Directory** | Ausführung immer im Projekt-Root (konfigurierbar). Kein `cd` außerhalb des Roots. |
 | **Resource Limits** | CPU + Memory via cgroup (konfigurierbar, default: 1 CPU, 512 MB). |
@@ -86,15 +86,121 @@ Guards werden **im selben Docker-Container** ausgeführt, in dem das Projekt-Rep
 
 | Aspekt | Umsetzung |
 | --- | --- |
-| **Prozess-Isolation** | `subprocess.run()` mit `shell=False`, eigenem `cwd` und Timeout |
+| **Prozess-Isolation** | `asyncio.to_thread(subprocess.run, ...)` — **niemals** `subprocess.run()` direkt im async Context (würde den Event Loop blockieren und alle anderen Requests einfrieren) |
 | **Filesystem** | Read-only-Mount des Projekt-Repos (`HIVEMIND_PROJECT_ROOT`); Guard-Writes nur in `/tmp/hivemind-guard-<uuid>/` |
 | **Netzwerk** | Kein Netzwerk-Zugriff für Guard-Prozesse (via `--network=none` bei Container-Start oder `seccomp`-Profil) |
-| **Parallelität** | Maximal `HIVEMIND_GUARD_PARALLEL` Guards gleichzeitig (Default: 2) — verhindert Resource-Starvation |
+| **Parallelität** | Maximal `HIVEMIND_GUARD_PARALLEL` Guards gleichzeitig (Default: 2) via `asyncio.Semaphore` — verhindert Resource-Starvation ohne den Event Loop zu blockieren |
 | **Cleanup** | `/tmp/hivemind-guard-<uuid>/` wird nach Execution gelöscht (auch bei Timeout/Crash) |
+
+**Implementierungsregel — async Guard Executor:**
+
+```python
+# FALSCH — blockiert den gesamten FastAPI Event Loop für die Dauer des Commands:
+result = subprocess.run(["pytest", "--cov-fail-under=80"], capture_output=True, timeout=120)
+
+# RICHTIG — subprocess läuft im Thread Pool, Event Loop bleibt frei:
+semaphore = asyncio.Semaphore(HIVEMIND_GUARD_PARALLEL)  # z.B. 2
+
+async def execute_guard(command: list[str], cwd: str) -> GuardResult:
+    async with semaphore:
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                command,
+                capture_output=True,
+                timeout=HIVEMIND_GUARD_TIMEOUT,  # Default: 120s
+                cwd=cwd,
+                shell=False,
+            )
+            return GuardResult(
+                exit_code=result.returncode,
+                stdout=result.stdout.decode(errors="replace")[:4096],  # Output-Cap
+                stderr=result.stderr.decode(errors="replace")[:1024],
+                status="passed" if result.returncode == 0 else "failed",
+            )
+        except subprocess.TimeoutExpired:
+            return GuardResult(status="failed", stdout="", stderr="TIMEOUT", exit_code=-1)
+```
+
+Diese Implementierungsregel ist **obligatorisch** für Phase 8. Jede synchrone `subprocess.run()`-Verwendung ohne `asyncio.to_thread()` ist ein Performance-Bug.
 
 > **Evaluierung für Phase 9+:** Bei Bedarf (z.B. untrusted Guard-Commands von Peers) kann auf Container-per-Guard gewechselt werden (Docker-in-Docker oder Sidecar-Pattern). Phase 8 priorisiert Einfachheit.
 
 > In Phase 1–7 liegt die Execution-Verantwortung beim Worker. Das Backend speichert nur das Ergebnis. Keine automatische Command-Ausführung durch Hivemind.
+
+---
+
+## Guard-Allowlist-Spezifikation
+
+Die Allowlist definiert welche Commands das Backend in Phase 8 (System-Executed) ausführen darf. Alles was nicht explizit matcht, wird blockiert.
+
+### Format
+
+Allowlist-Einträge sind **Glob-Patterns** (Python `fnmatch`-Semantik):
+
+| Pattern | Matcht | Matcht NICHT |
+| --- | --- | --- |
+| `pytest` | `pytest` (exakt) | `pytest-cov`, `python -m pytest` |
+| `pytest*` | `pytest`, `pytest-cov`, `pytest --cov` | `python -m pytest` |
+| `npm run *` | `npm run lint`, `npm run test` | `npm install`, `npm start` |
+| `make *` | `make lint`, `make test` | `make` (ohne Argument) |
+| `ruff *` | `ruff check .`, `ruff format --check` | `ruff` (ohne Argument) |
+| `python -m pytest*` | `python -m pytest`, `python -m pytest --cov` | `pytest` |
+
+### Matching-Algorithmus
+
+```text
+1. Guard-Command wird als Array übergeben (kein Shell-String):
+   command = ["pytest", "--cov-fail-under=80"]
+
+2. Rekonstruierter Befehl: " ".join(command) → "pytest --cov-fail-under=80"
+
+3. Gegen jedes Allowlist-Pattern: fnmatch.fnmatch(joined_command, pattern)
+   → Erster Match = erlaubt
+
+4. Kein Pattern matcht → BLOCKIERT
+```
+
+### Fail-Verhalten bei Blockierung
+
+| Feld | Wert |
+| --- | --- |
+| HTTP Status | `403 Forbidden` |
+| `error_code` | `GUARD_COMMAND_BLOCKED` |
+| `detail` | `"Command '{command}' is not on the guard execution allowlist"` |
+| Guard-Status | `failed` (wird in `task_guards` geschrieben) |
+| `result`-Text | `"BLOCKED: Command not on allowlist"` |
+| Triage-Item | **Nein** — kein automatisches Triage-Item. Admin kann Allowlist erweitern. |
+
+### Konfiguration
+
+**Env-Variable:** `HIVEMIND_GUARD_ALLOWLIST` (komma-separierte Glob-Patterns)
+
+```text
+HIVEMIND_GUARD_ALLOWLIST=pytest*,ruff *,eslint*,npm run *,make *,cargo test*,go test*
+```
+
+**Default-Wert** (wenn nicht gesetzt):
+
+```text
+pytest*,ruff *,eslint*,npm run *,make *
+```
+
+**Persistierung:** Die Allowlist wird zusätzlich in `app_settings` gespeichert (Key: `guard_execution_allowlist`, Value: `TEXT[]` Array). Die Env-Variable hat Vorrang — wenn gesetzt, überschreibt sie den DB-Wert. Über die REST-API (`PUT /api/settings/guard_execution_allowlist`) kann ein Admin die Liste ohne Restart ändern (wird in `app_settings` geschrieben; wirkt sofort wenn keine Env-Variable gesetzt ist).
+
+### Audit
+
+Jede Allowlist-Prüfung (erlaubt oder blockiert) wird in `mcp_invocations` geloggt:
+
+```json
+{
+  "tool_name": "guard_execute",
+  "input_payload": { "command": ["pytest", "--cov"], "guard_id": "..." },
+  "output_payload": { "allowlist_match": "pytest*", "allowed": true }
+}
+```
+
+Bei Blockierung: `"allowed": false, "allowlist_match": null`.
 
 ---
 

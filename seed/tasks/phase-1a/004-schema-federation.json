@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-1A-004",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "DB-Schema: Federation-Tabellen (nodes, node_identity)",
+  "description": "Alembic-Migration für nodes + node_identity Tabellen. Zuerst erstellen — keine Dependencies außer sich selbst.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "nodes-Tabelle mit allen Spalten laut data-model.md existiert",
+      "node_identity-Tabelle mit singleton_guard existiert",
+      "FK von node_identity.node_id auf nodes.id korrekt",
+      "Status-CHECK-Constraint auf nodes.status vorhanden",
+      "Migration ist reversibel (downgrade funktioniert)"
+    ]
+  },
+  "tags": ["backend", "database", "federation", "schema"],
+  "subtasks": [],
+  "pinned_skills": ["alembic-migration"],
+  "linked_wiki": ["federation-konzept"],
+  "source_doc": "docs/architecture/data-model.md",
+  "estimated_complexity": "small",
+  "depends_on": ["TASK-1A-003"]
+}

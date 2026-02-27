@@ -27,6 +27,7 @@
 - [ ] Epic Auto-Transition: `scoped → in_progress` atomar in `update_task_state`; `in_progress → done` atomar in `approve_review` und `cancel_task` (siehe [State Machine](../architecture/state-machine.md#epic-auto-transition--backend-implementierung))
 - [ ] Outbox-Tabelle und DLQ-Tabelle (noch kein Consumer)
 - [ ] Audit-Tabelle `mcp_invocations` (noch kein Audit-Writer)
+- [ ] Memory-Ledger-Schema: `memory_sessions`, `memory_summaries`, `memory_entries`, `memory_facts` Tabellen + Indexes (→ [Memory Ledger](../features/memory-ledger.md)); noch kein Embedding, noch keine Kompaktierung — nur Schema und `save_memory` als MCP-Write-Tool verfügbar
 - [ ] Backup-Cron: `pg_dump --format=custom` via APScheduler-Job (täglich 02:00 UTC), konfigurierbar via `HIVEMIND_BACKUP_CRON` + `HIVEMIND_BACKUP_DIR` (Default: `/backups`). Retention: 7 tägliche + 4 wöchentliche Backups (→ [Backup-Strategie](../architecture/overview.md#data-export--backup))
 
 ### Acceptance Criteria Phase 1a
@@ -111,6 +112,8 @@ Alle Tabellen werden in Phase 1 erstellt — auch die die erst in späteren Phas
 - `ai_provider_configs` (Per-Agent-Role Provider-Routing; befüllt ab Phase 8)
 - `review_recommendations` (AI-Review-Empfehlungen; befüllt ab Phase 8)
 - `conductor_dispatches` (Agent-Dispatch-Audit-Trail; befüllt ab Phase 8)
+- `memory_sessions`, `memory_summaries`, `memory_entries`, `memory_facts` (Memory Ledger; Schema ab Phase 1, `save_memory` ab Phase 1, Embeddings ab Phase 3, Kompaktierung ab Phase 4; → [Memory Ledger](../features/memory-ledger.md))
+- `exp_events` (EXP-Audit-Trail; Schema ab Phase 1, befüllt ab Phase 5; → [Gamification](../features/gamification.md))
 
 → Vollständiges Schema: [data-model.md](../architecture/data-model.md)
 
@@ -230,29 +233,39 @@ Das Gamification-System (EXP, Levels, Badges) wird in Phase 1 als Schema angeleg
 
 ### EXP-Formel
 
+> **Kanonische Referenz:** Die vollständige EXP-Vergabe-Tabelle steht in [gamification.md](../features/gamification.md#exp-vergabe--vollständige-tabelle). Die folgende Tabelle ist ein Auszug der wichtigsten Events.
+
 | Ereignis | EXP | Trigger |
 | --- | --- | --- |
-| Task auf `done` (approve_review) | +100 | Assigned Worker erhält EXP |
-| Task auf `done` ohne `qa_failed` (First-Try) | +50 Bonus | Zusätzlich zum Basis-EXP |
-| Skill-Proposal gemergt (`merge_skill`) | +75 | Skill-Proposer erhält EXP |
-| Decision Record erstellt | +25 | Record-Ersteller erhält EXP |
-| Wiki-Artikel erstellt | +50 | Artikel-Autor erhält EXP |
-| Guard-Proposal gemergt (`merge_guard`) | +50 | Guard-Proposer erhält EXP |
-| Epic komplett (`done`, alle nicht-`cancelled` Tasks auf `done`) | +200 | Epic-Owner erhält EXP — Definition "komplett": `tasks WHERE epic_id=X AND state NOT IN ('cancelled')` müssen alle `state='done'` sein; rein `cancelled`-Tasks zählen nicht als Blocker |
-| Eskalation gelöst (`resolve_escalation`) | +30 | Lösender Admin erhält EXP |
+| Task auf `done` (approve_review) | +50 | Assigned Worker erhält EXP |
+| Task auf `done` ohne `qa_failed` (Clean Run) | +20 Bonus | Zusätzlich zum Basis-EXP |
+| Task auf `done` mit SLA eingehalten | +10 Bonus | `task.done_at <= task.sla_due_at` |
+| Review als Owner durchgeführt | +15 | `approve_review` oder `reject_review` |
+| Skill-Proposal gemergt (`merge_skill`) | +30 | Skill-Proposer erhält EXP |
+| Skill-Change-Proposal akzeptiert | +20 | `accept_skill_change` |
+| Decision Record erstellt | +10 | Record-Ersteller erhält EXP |
+| Wiki-Artikel erstellt | +15 | Artikel-Autor erhält EXP |
+| Code-Node exploriert | +2 | Kartograph erstellt neuen `code_node` |
+| Discovery Session abgeschlossen | +10 | `end_discovery_session` (mind. 5 Nodes) |
+| Epic Proposal akzeptiert | +25 | `accept_epic_proposal` |
+| Delegierten Task als Peer erfüllt | +60 | Task `done` auf Peer-Node (Mercenary-Bonus) |
 
 ### Level-Schwellwerte (Seed-Daten in `level_thresholds`)
 
-| Level | Titel (Game Mode) | Titel (Pro Mode) | EXP kumuliert |
-| --- | --- | --- | --- |
-| 1 | Recruit | Junior | 0 |
-| 2 | Operative | Associate | 200 |
-| 3 | Specialist | Mid-Level | 500 |
-| 4 | Lieutenant | Senior | 1 000 |
-| 5 | Commander | Lead | 2 000 |
-| 6 | Captain | Staff | 4 000 |
-| 7 | Admiral | Principal | 7 000 |
-| 8 | Overlord | Distinguished | 12 000 |
+> **Kanonische Referenz:** [gamification.md — Level-System](../features/gamification.md#level-system)
+
+| Level | Titel | EXP kumuliert |
+| --- | --- | --- |
+| 1 | Rookie Kommandant | 0 |
+| 2 | Einsatz-Kommandant | 100 |
+| 3 | Veteran | 250 |
+| 4 | Elite-Kommandant | 500 |
+| 5 | Meister-Kommandant | 1 000 |
+| 6 | Gilden-Ältester | 2 000 |
+| 7 | Legenden-Kommandant | 4 000 |
+| 8 | Hivemind-Architekt | 8 000 |
+| 9 | Sovereign | 15 000 |
+| 10 | Grand Sovereign | 30 000 |
 
 ### Badge-Katalog (Seed-Daten in `badge_definitions`)
 
@@ -276,9 +289,11 @@ EXP- und Badge-Prüfung läuft als synchroner Post-Commit-Hook im Backend:
 ```python
 # Nach approve_review:
 async def on_task_done(task, actor_id):
-    await add_exp(actor_id=task.assigned_to, amount=100, reason="task_done")
+    await add_exp(actor_id=task.assigned_to, amount=50, reason="task_done")
     if task.qa_failed_count == 0:
-        await add_exp(actor_id=task.assigned_to, amount=50, reason="first_try_bonus")
+        await add_exp(actor_id=task.assigned_to, amount=20, reason="clean_run_bonus")
+    if task.sla_due_at and task.done_at <= task.sla_due_at:
+        await add_exp(actor_id=task.assigned_to, amount=10, reason="sla_bonus")
     await check_badges(actor_id=task.assigned_to)
     await check_level_up(actor_id=task.assigned_to)
 ```

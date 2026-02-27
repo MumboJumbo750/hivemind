@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-1A-013",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "Backup-Cron: pg_dump via APScheduler",
+  "description": "Täglicher pg_dump --format=custom via APScheduler-Job. Konfigurierbar via HIVEMIND_BACKUP_CRON + HIVEMIND_BACKUP_DIR. Retention: 7 tägliche + 4 wöchentliche Backups.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "APScheduler als Dependency installiert und konfiguriert",
+      "Backup-Job läuft täglich (Default: 02:00 UTC)",
+      "pg_dump --format=custom erstellt Backup in HIVEMIND_BACKUP_DIR",
+      "Retention-Policy: 7 tägliche + 4 wöchentliche Backups",
+      "Alte Backups werden automatisch gelöscht",
+      "Backup-Cron und Backup-Dir via Env-Vars konfigurierbar"
+    ]
+  },
+  "tags": ["backend", "infrastructure", "backup"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/architecture/disaster-recovery.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-1A-003"]
+}

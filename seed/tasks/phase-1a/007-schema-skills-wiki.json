@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-1A-007",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "DB-Schema: Skills, Docs, Wiki, Guards",
+  "description": "Alembic-Migration für skills, skill_versions, skill_parents, skill_change_proposals, docs, context_boundaries, wiki_categories, wiki_articles, wiki_versions, guards, task_guards, guard_change_proposals.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Alle Tabellen laut data-model.md existieren",
+      "skill_versions hat UNIQUE(skill_id, version) Constraint",
+      "wiki_articles.slug ist UNIQUE",
+      "Guards mit Lifecycle-CHECK-Constraint",
+      "Context Boundaries mit FK auf tasks",
+      "vector(768) Spalten als nullable für spätere Embeddings"
+    ]
+  },
+  "tags": ["backend", "database", "schema", "skills", "wiki"],
+  "subtasks": [],
+  "pinned_skills": ["alembic-migration"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/architecture/data-model.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-1A-006"]
+}

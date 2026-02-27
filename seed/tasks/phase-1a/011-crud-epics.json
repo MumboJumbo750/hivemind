@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-1A-011",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "CRUD-Endpoints: Epics",
+  "description": "REST-Endpoints für Epics: POST /api/projects/{slug}/epics, GET /api/projects/{slug}/epics, GET /api/epics/{epic_key}, PATCH /api/epics/{epic_key}. Inline-Scoping: PATCH mit priority + sla_deadline + definition_of_done → state: scoped.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "POST erstellt Epic mit state=incoming (201)",
+      "GET listet Epics eines Projekts mit State-Filter",
+      "GET /api/epics/{epic_key} liefert Epic-Details",
+      "PATCH mit Scoping-Feldern setzt state auf scoped",
+      "Pydantic-Schemas vorhanden",
+      "Integration-Tests inkl. State-Validierung"
+    ]
+  },
+  "tags": ["backend", "api", "crud", "epics"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "api-test"],
+  "linked_wiki": ["state-machine-guide"],
+  "source_doc": "docs/phases/phase-1.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-1A-006", "TASK-1A-010"]
+}

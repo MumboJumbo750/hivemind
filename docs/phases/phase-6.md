@@ -13,8 +13,8 @@
 ### Backend
 
 - [ ] SLA-Cron-Job: prüft Deadlines, triggert Notifications
-  - Laufintervall: **stündlich** (konfigurierbar via `HIVEMIND_SLA_CRON_INTERVAL`, Default: `0 * * * *`)
-  - **Edge-Case:** Cron läuft stündlich, prüft `sla_due_at - NOW() <= 4h`. Bei Cron-Lauf 03:59 und Deadline 04:01 kommt die Warnung erst beim nächsten Lauf (04:59) — potentiell zu spät. **Mitigation:** Cron-Intervall auf `*/15 * * * *` setzen für zeitkritische Teams. Notifications sind idempotent (kein Duplikat bei mehrfachem Cron-Lauf).
+  - Laufintervall: **stündlich** (konfigurierbar via `HIVEMIND_SLA_CRON_INTERVAL`, Default: `3600` Sekunden)
+  - **Edge-Case:** Cron läuft stündlich, prüft `sla_due_at - NOW() <= 4h`. Bei Cron-Lauf 03:59 und Deadline 04:01 kommt die Warnung erst beim nächsten Lauf (04:59) — potentiell zu spät. **Mitigation:** `HIVEMIND_SLA_CRON_INTERVAL` auf `900` (15 Minuten) setzen für zeitkritische Teams. Notifications sind idempotent (kein Duplikat bei mehrfachem Cron-Lauf).
   - 4h vor SLA → Notification an Owner
   - SLA überschritten → Notification an Backup-Owner (bei `backup_owner_id = NULL` → direkt Admins)
   - 24h nach SLA → Admin-Fallback-Notification (Epic weiterhin priorisiert in Triage)

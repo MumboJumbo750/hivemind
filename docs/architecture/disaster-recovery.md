@@ -39,9 +39,9 @@ services:
       POSTGRES_DB: "${POSTGRES_DB}"
       POSTGRES_USER: "${POSTGRES_USER}"
       BACKUP_DIR: "/backups"
-      RETENTION_DAILY: "7"
-      RETENTION_WEEKLY: "4"
-      RETENTION_MONTHLY: "3"
+      HIVEMIND_BACKUP_RETENTION_DAILY: "7"
+      HIVEMIND_BACKUP_RETENTION_WEEKLY: "4"
+      HIVEMIND_BACKUP_RETENTION_MONTHLY: "3"
     volumes:
       - ./backups:/backups
       - ./scripts/backup.sh:/backup.sh:ro

@@ -1,0 +1,12 @@
+{
+  "external_id": "EPIC-PHASE-5",
+  "title": "Phase 5 — Worker & Gaertner Writes, Wiki, Nexus Grid 2D",
+  "description": "Vollständiger Worker-Flow, Gaertner-Wissenskonsolidierung, Kartograph-Write-Tools, Wiki-UI, Nexus Grid 2D, Guard-Enforcement, Gamification.",
+  "state": "scoped",
+  "priority": "high",
+  "sla_deadline": null,
+  "definition_of_done": "submit_result + propose_skill + create_wiki_article funktionieren, Wiki-UI durchsuchbar, Nexus Grid zeigt Code-Graphen, Guards blockieren in_review bei Failure, EXP-System aktiv.",
+  "tags": ["backend", "frontend", "mcp", "wiki", "nexus-grid", "gamification", "phase-5"],
+  "depends_on": ["EPIC-PHASE-4"],
+  "source_doc": "docs/phases/phase-5.md"
+}

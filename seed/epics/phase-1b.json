@@ -1,0 +1,12 @@
+{
+  "external_id": "EPIC-PHASE-1B",
+  "title": "Phase 1b — Design & Prompt Station",
+  "description": "Vue 3 Scaffold, Token-basiertes Design System, Layout Shell, Prompt Station mit Inline-Review und Inline-Scoping. Erstes nutzbares UI.",
+  "state": "scoped",
+  "priority": "critical",
+  "sla_deadline": null,
+  "definition_of_done": "Design System mit 3 Themes rendert korrekt, Layout Shell vollständig, Prompt Station zeigt Inline-Review und Inline-Scoping, Routing zu allen Views angelegt.",
+  "tags": ["frontend", "ui", "design-system", "phase-1"],
+  "depends_on": ["EPIC-PHASE-1A"],
+  "source_doc": "docs/phases/phase-1.md#phase-1b"
+}

@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-1A-006",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "DB-Schema: Epics + Tasks + State Machine Columns",
+  "description": "Alembic-Migration für epics (inkl. origin_node_id, qa_failed_count, state-Constraints) und tasks (inkl. assigned_node_id, result, artifacts, review_comment, pinned_skills JSONB).",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "epics-Tabelle mit allen Spalten laut data-model.md existiert",
+      "tasks-Tabelle mit allen Spalten inkl. self-ref für Subtasks existiert",
+      "State-CHECK-Constraints auf epics.state und tasks.state vorhanden",
+      "FK auf projects, users, nodes korrekt",
+      "Indexes auf häufig gefilterte Spalten (state, epic_id, assigned_to)"
+    ]
+  },
+  "tags": ["backend", "database", "domain", "schema"],
+  "subtasks": [],
+  "pinned_skills": ["alembic-migration"],
+  "linked_wiki": ["state-machine-guide"],
+  "source_doc": "docs/architecture/data-model.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-1A-005"]
+}

@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-1A-002",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "FastAPI Projekt-Skeleton",
+  "description": "FastAPI-Anwendung mit App-Factory-Pattern, CORS-Middleware, Health-Endpoint, Projektstruktur (app/, routers/, services/, schemas/, db/).",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "GET /health antwortet mit {\"status\": \"ok\"}",
+      "CORS-Middleware mit konfigurierbarem HIVEMIND_CORS_ORIGINS aktiv",
+      "Projektstruktur: app/main.py, app/routers/, app/services/, app/schemas/, app/db/",
+      "requirements.txt oder pyproject.toml mit allen Dependencies",
+      "Dockerfile für Backend existiert"
+    ]
+  },
+  "tags": ["backend", "fastapi", "setup"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint"],
+  "linked_wiki": ["system-architektur", "tech-stack"],
+  "source_doc": "docs/phases/phase-1.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-1A-001"]
+}

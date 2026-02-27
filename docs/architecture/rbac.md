@@ -12,6 +12,7 @@
 | `admin` | Globales Schreiben, Triagieren, Mergen |
 | `service` | Technische Integrationen (Webhook-Ingest, CI/CD) mit minimalen Scopes — nur Reads, keine Writes |
 | `kartograph` | Globales Lesen ohne Kontextfilter, Schreiben von Wiki + Docs |
+| `reviewer` | AI-Review-Agent (Phase 8); kann Review-Empfehlungen abgeben, aber **keinen Task-State direkt ändern**. Kein Zugriff auf Admin-Tools, kein Write außer `submit_review_recommendation`. |
 
 > **`service` Rolle — Zweck:** Die `service`-Rolle ist für automatisierte technische Integrationen vorgesehen, z.B. YouTrack-Webhook-Ingest, Sentry-Webhook-Ingest oder CI/CD-Pipelines die Task-Status prüfen. Service-Accounts haben nur minimale Leserechte (`get_epic`, `get_task`) und **keine Schreibrechte**. Der Webhook-Ingest-Endpoint selbst ist ein interner Backend-Prozess (kein MCP-Call) — der `service`-Actor wird nur für Audit-Purposes als Actor im `mcp_invocations`-Log geführt. Service-Accounts authentifizieren sich via API-Key (kein Passwort/JWT).
 
@@ -36,50 +37,51 @@ Rollen können **pro Projekt überschrieben** werden (via `project_members.role`
 
 ## Berechtigungsmatrix
 
-| Permission | developer | admin | service | kartograph |
-| --- | --- | --- | --- | --- |
-| `read_own_epic` | ✓ | ✓ | ✓ | ✓ |
-| `read_any_epic` | — | ✓ | — | ✓ |
-| `read_any_wiki` | ✓ | ✓ | — | ✓ |
-| `read_any_skill` | ✓ | ✓ | — | ✓ |
-| `read_any_doc` | ✓ | ✓ | — | ✓ |
-| `context_boundary_filter` | aktiv | aktiv | aktiv | **deaktiviert** |
-| `write_tasks` | eigene Epics | alle | — | — |
-| `assign_task` | eigene Epics | alle | — | — |
-| `write_wiki` | — | ✓ | — | ✓ |
-| `write_epic_docs` | — | ✓ | — | ✓ |
-| `propose_skill` | ✓ | ✓ | — | — |
-| `fork_federated_skill` | ✓ | ✓ | — | — |
-| `propose_skill_change` | ✓ | ✓ | — | — |
-| `create_skill_change_proposal` | ✓ | ✓ | — | — |
-| `submit_skill_proposal` | ✓ | ✓ | — | — |
-| `merge_skills` | — | ✓ | — | — |
-| `reject_skill` | — | ✓ | — | — |
-| `accept_skill_change` | — | ✓ | — | — |
-| `reject_skill_change` | — | ✓ | — | — |
-| `reject_guard` | — | ✓ | — | — |
-| `manage_epic_restructure` | — | ✓ | — | — |
-| `propose_guard` | ✓ | ✓ | — | ✓ |
-| `propose_guard_change` | ✓ | ✓ | — | ✓ |
-| `submit_guard_proposal` | ✓ | ✓ | — | ✓ |
-| `merge_guard` | — | ✓ | — | — |
-| `accept_guard_change` | — | ✓ | — | — |
-| `reject_guard_change` | — | ✓ | — | — |
-| `route_event` | — | ✓ | — | — |
-| `ignore_event` | — | ✓ | — | — |
-| `requeue_dead_letter` | — | ✓ | — | — |
-| `discard_dead_letter` | — | ✓ | — | — |
-| `resolve_escalation` | — | ✓ | — | — |
-| `assign_bug` | — | ✓ | — | — |
-| `reassign_owner` | — | ✓ | — | — |
-| `resolve_decision_request` | Owner-Epics | ✓ | — | — |
-| `cancel_task` | — | ✓ | — | — |
-| `triage` | — | ✓ | — | — |
-| `read_audit_log` | — | ✓ | — | — |
-| `propose_epic_restructure` | — | — | — | ✓ |
-| `execute_tasks` | ✓ | ✓ | — | — |
-| `list_peers` | ✓ | ✓ | — | ✓ |
-| `manage_discovery_sessions` | — | ✓ | — | ✓ |
+| Permission | developer | admin | service | kartograph | reviewer |
+| --- | --- | --- | --- | --- | --- |
+| `read_own_epic` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `read_any_epic` | — | ✓ | — | ✓ | ✓ |
+| `read_any_wiki` | ✓ | ✓ | — | ✓ | ✓ |
+| `read_any_skill` | ✓ | ✓ | — | ✓ | ✓ |
+| `read_any_doc` | ✓ | ✓ | — | ✓ | ✓ |
+| `context_boundary_filter` | aktiv | aktiv | aktiv | **deaktiviert** | aktiv |
+| `write_tasks` | eigene Epics | alle | — | — | — |
+| `assign_task` | eigene Epics | alle | — | — | — |
+| `write_wiki` | — | ✓ | — | ✓ | — |
+| `write_epic_docs` | — | ✓ | — | ✓ | — |
+| `propose_skill` | ✓ | ✓ | — | — | — |
+| `fork_federated_skill` | ✓ | ✓ | — | — | — |
+| `propose_skill_change` | ✓ | ✓ | — | — | — |
+| `create_skill_change_proposal` | ✓ | ✓ | — | — | — |
+| `submit_skill_proposal` | ✓ | ✓ | — | — | — |
+| `merge_skills` | — | ✓ | — | — | — |
+| `reject_skill` | — | ✓ | — | — | — |
+| `accept_skill_change` | — | ✓ | — | — | — |
+| `reject_skill_change` | — | ✓ | — | — | — |
+| `reject_guard` | — | ✓ | — | — | — |
+| `manage_epic_restructure` | — | ✓ | — | — | — |
+| `propose_guard` | ✓ | ✓ | — | ✓ | — |
+| `propose_guard_change` | ✓ | ✓ | — | ✓ | — |
+| `submit_guard_proposal` | ✓ | ✓ | — | ✓ | — |
+| `merge_guard` | — | ✓ | — | — | — |
+| `accept_guard_change` | — | ✓ | — | — | — |
+| `reject_guard_change` | — | ✓ | — | — | — |
+| `route_event` | — | ✓ | — | — | — |
+| `ignore_event` | — | ✓ | — | — | — |
+| `requeue_dead_letter` | — | ✓ | — | — | — |
+| `discard_dead_letter` | — | ✓ | — | — | — |
+| `resolve_escalation` | — | ✓ | — | — | — |
+| `assign_bug` | — | ✓ | — | — | — |
+| `reassign_owner` | — | ✓ | — | — | — |
+| `resolve_decision_request` | Owner-Epics | ✓ | — | — | — |
+| `cancel_task` | — | ✓ | — | — | — |
+| `triage` | — | ✓ | — | — | — |
+| `read_audit_log` | — | ✓ | — | — | — |
+| `propose_epic_restructure` | — | — | — | ✓ | — |
+| `execute_tasks` | ✓ | ✓ | — | — | — |
+| `list_peers` | ✓ | ✓ | — | ✓ | — |
+| `manage_discovery_sessions` | — | ✓ | — | ✓ | — |
+| `submit_review_recommendation` | — | — | — | — | ✓ |
 
 ---
 

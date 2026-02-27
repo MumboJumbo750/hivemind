@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-1A-003",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "Alembic Setup + pgvector Extension",
+  "description": "Alembic-Konfiguration, erste Migration mit pgvector-Extension-Aktivierung, SQLAlchemy async Engine Setup, DB-Connection-Pool.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "alembic init erfolgreich, alembic.ini konfiguriert",
+      "Erste Migration aktiviert pgvector: CREATE EXTENSION IF NOT EXISTS vector",
+      "alembic upgrade head läuft ohne Fehler",
+      "SQLAlchemy async Engine mit asyncpg konfiguriert",
+      "DB-Session-Dependency für FastAPI (get_db) vorhanden"
+    ]
+  },
+  "tags": ["backend", "database", "alembic", "setup"],
+  "subtasks": [],
+  "pinned_skills": ["alembic-migration"],
+  "linked_wiki": ["tech-stack"],
+  "source_doc": "docs/phases/phase-1.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-1A-002"]
+}

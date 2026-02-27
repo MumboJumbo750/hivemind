@@ -942,3 +942,295 @@ Im Skill Lab erscheint bei federierten Skills ein Origin-Badge:
 │                                                                   │
 └───────────────────────────────────────────────────────────────────┘
 ```
+
+### Leaderboard (Gilde-Unterbereich, Phase F)
+
+```text
+┌─ GILDE: RANGLISTE ────────────────────────────────────────────────┐
+│  [ÜBERSICHT]  [RANGLISTE ●]  [GILDENWISSEN]                      │
+├───────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  DIESE WOCHE                                          [ZEITRAUM ▾]│
+│                                                                   │
+│  #1  ◈ alex-hivemind      Lvl 6  ████████████░  2340 EXP  [≡]   │
+│      🥇 Fog Clearer · 🥈 Centurion                                │
+│                                                                   │
+│  #2  ◈ ben-hivemind       Lvl 5  ██████████░░  1180 EXP  [≡]    │
+│      🥇 Master Architect · 🥈 Guild Contributor                   │
+│                                                                   │
+│  #3  ◈ clara-hivemind     Lvl 4  ████████░░░░   720 EXP  [≡]    │
+│      🥇 Fog Clearer · 🥉 SLA Savior                               │
+│                                                                   │
+│  ─── DEINE STATS ─────────────────────────────────────────────── │
+│  Quests erledigt: 42  ·  Skills erstellt: 8  ·  Reviews: 31     │
+│  Nodes erkundet: 120  ·  Clean Runs: 34/42 (81%)                │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+> Das Leaderboard ist nur sichtbar wenn Federation aktiv ist (≥ 2 Nodes). Im Solo-Modus wird statt der Rangliste ein persönlicher Stats-Überblick im Profil angezeigt.
+
+---
+
+## Profil (Phase 2)
+
+**🎮 Game Mode:** KOMMANDANTENPROFIL | **💼 Pro Mode:** PROFIL
+
+**Zweck:** Persönliche Zentrale des Users — Avatar, Level, Badges, Statistiken und persönliche Einstellungen (Theme, Tone). Erreichbar über Klick auf den Username/Avatar in der System Bar.
+
+**Zugangspunkte:**
+- System Bar: Klick auf Username/Avatar → Dropdown: `[PROFIL ▶]` `[EINSTELLUNGEN ▶]` `[ABMELDEN]`
+- Gilde-View: Klick auf eigenen Node oder Peer-Node → öffnet Profil-Detail (Peer: read-only)
+
+```text
+┌─ KOMMANDANTENPROFIL ──────────────────────────────────────────────┐
+│                                                                   │
+│  ─── IDENTITÄT ───────────────────────────────────────────────── │
+│                                                                   │
+│  ┌────────┐                                                       │
+│  │        │  Max Mustermann (@max)                                │
+│  │ AVATAR │  max@team.dev                                         │
+│  │        │  Frontend-Architekt und Schwarm-Kommandant            │
+│  └────────┘  [AVATAR ÄNDERN]  [PROFIL BEARBEITEN ✎]              │
+│              Rolle: admin · Projekte: 3                           │
+│                                                                   │
+│  ─── LEVEL & FORTSCHRITT ─────────────────────────────────────── │
+│                                                                   │
+│  ★ Lvl 5 — MEISTER-KOMMANDANT                                    │
+│  ████████████████░░░░░░░░  700 / 1000 EXP bis Lvl 6              │
+│                                                                   │
+│  +50 EXP letzte Quest · +20 Clean Run Bonus · +10 SLA Bonus      │
+│                                                                   │
+│  ─── TROPHÄENSCHRANK ─────────────────────────────────────────── │
+│                                                                   │
+│  🥇 Erster Strike            Ersten Task abschließen              │
+│  🥇 Fog Clearer              200 Code-Nodes erkundet              │
+│  🥈 Centurion                100 Tasks abgeschlossen              │
+│  🥈 Gilden-Schreiber         20 Wiki-Artikel erstellt             │
+│  🥉 Erster Richter           Ersten Task reviewed                 │
+│  ░░ Makellose Serie          5 Tasks ohne qa_failed  [LOCKED]     │
+│  ░░ Söldner                  Ersten Peer-Task erfüllt [LOCKED]    │
+│                                          [ALLE BADGES ANZEIGEN ▾] │
+│                                                                   │
+│  ─── STATISTIKEN ─────────────────────────────────────────────── │
+│                                                                   │
+│  Quests erledigt:  42       Clean Runs:    34/42 (81%)            │
+│  Reviews:          31       Skills erstellt:  8                   │
+│  Wiki-Artikel:     15       Code-Nodes:    120                    │
+│  Avg. Review-Zeit: 18 Min.  Avg. Task-Zeit:  4.2 Std.            │
+│                                                                   │
+│  ─── PERSÖNLICHE EINSTELLUNGEN ───────────────────────────────── │
+│                                                                   │
+│  THEME                                                            │
+│  ● space-neon   ○ industrial-amber   ○ operator-mono              │
+│                                                                   │
+│  INTERFACE-TONE                                                   │
+│  🎮 ● Game Mode   💼 ○ Pro Mode                                   │
+│                                                                   │
+│  BENACHRICHTIGUNGEN                                               │
+│  ☑ SLA-Warnungen     ☑ Review-Anfragen    ☑ Skill-Proposals      │
+│  ☑ Eskalationen      ☐ Peer-Events (FYI)  ☐ EXP-Notifications    │
+│                                                                   │
+│  [ÄNDERUNGEN SPEICHERN]                                           │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+### Avatar-Upload
+
+```text
+┌─ AVATAR ÄNDERN ───────────────────────────────────────────────────┐
+│                                                                   │
+│  ┌──────────────┐        Upload (max 2 MB, WebP/PNG/JPG)        │
+│  │              │        [DATEI AUSWÄHLEN]                       │
+│  │   VORSCHAU   │                                                │
+│  │              │        Oder: Initialen-Avatar verwenden         │
+│  └──────────────┘        [AUTO-GENERIEREN ▶]                     │
+│                                                                   │
+│  AVATAR-RAHMEN  (freigeschaltet durch Level-Ups)                 │
+│  ○ Kein Rahmen         [verfügbar]                               │
+│  ● Silber-Rahmen       [Lvl 5 — freigeschaltet ✓]               │
+│  ○ Gold-Rahmen         [Lvl 8 — 🔒 gesperrt]                    │
+│  ○ Holo-Rahmen         [Lvl 10 — 🔒 gesperrt]                   │
+│                                                                   │
+│  [ABBRECHEN]                              [SPEICHERN ✓]          │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+**Technisch:**
+- Upload via `POST /api/users/me/avatar` (multipart/form-data, max 2 MB, WebP/PNG/JPG)
+- Backend konvertiert zu WebP (max 256x256px), speichert in `HIVEMIND_UPLOAD_DIR/avatars/<uuid>.webp`
+- Avatar-Rahmen werden aus `level_thresholds.unlocks` abgeleitet — nur freigeschaltete Rahmen auswählbar
+- Initialen-Avatar: generiert serverseitig aus `display_name` oder `username` (deterministisches Farb-Hashing)
+- Profil-Daten: `PATCH /api/users/me` mit `display_name`, `bio`, `preferred_theme`, `preferred_tone`, `avatar_frame`
+
+### Peer-Profil (read-only, Phase F)
+
+Klick auf einen Peer in der Gilde-View öffnet ein read-only Profil-Panel:
+
+```text
+┌─ PEER-PROFIL: ben-hivemind ───────────────────────────────────────┐
+│                                                                   │
+│  ┌────────┐  ben-hivemind                                         │
+│  │ AVATAR │  "Backend-Spezialist, JWT-Enthusiast"                 │
+│  │ [GOLD] │  ● online · zuletzt vor 3 Min.                       │
+│  └────────┘  Level 7 — Legenden-Kommandant                       │
+│              ████████████████████░░░  3200 / 4000 EXP             │
+│                                                                   │
+│  BADGES: 🥇 Master Architect · 🥈 Guild Contributor · 🥉 Söldner │
+│                                                                   │
+│  BEITRÄGE ZUR GILDE:                                              │
+│  ⚔ Skills geteilt: 4    🗺 Nodes beigetragen: 80                 │
+│  Delegierte Quests erledigt: 6                                    │
+│                                                                   │
+│  AKTIVE QUEST: TASK-42 "JWT Refresh Token"                        │
+│  [QUEST ANSEHEN ▶]                                                │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+### Einstellungs-Hierarchie: Per-User vs. Global
+
+| Einstellung | Per-User (`users`-Tabelle) | Global (`app_settings`) | Verhalten |
+| --- | --- | --- | --- |
+| Theme | `preferred_theme` | `app_settings['default_theme']` | User-Pref überschreibt Global; neuer User erbt Global |
+| Tone | `preferred_tone` | `app_settings['default_tone']` | User-Pref überschreibt Global; neuer User erbt Global |
+| Notification-Filter | `users.notification_preferences` (JSONB) | — | Rein per-User; Default: alle aktiv |
+| Solo/Team-Modus | — | `app_settings['hivemind_mode']` | Rein global (betrifft alle User) |
+| MCP-Transport | — | `app_settings` | Rein global |
+| AI-Provider | — | `ai_provider_configs` | Rein global (Admin) |
+
+> **Design-Entscheidung:** Theme und Tone sind bewusst per-User — in einem Team-Setup möchte ein Entwickler vielleicht `operator-mono` (fokussiert) nutzen während ein anderer `space-neon` (verspielt) bevorzugt. Die globale Einstellung in Settings → SYSTEM wird damit zum **Default für neue User** degradiert.
+
+---
+
+## Memory Ledger Browser (Phase 5)
+
+**🎮 Game Mode:** AGENTEN-GEDÄCHTNIS | **💼 Pro Mode:** MEMORY LEDGER
+
+**Zweck:** Einsicht in das Arbeitsgedächtnis der Agenten — was haben sie beobachtet, welche Fakten extrahiert, welche offenen Fragen existieren? Der Memory Ledger Browser macht das sonst unsichtbare Agent-Wissen für Menschen zugänglich.
+
+**Verfügbar ab:** Phase 5 (Memory Ledger Backend ab Phase 3, UI ab Phase 5)
+
+**Zugang:** Erreichbar als kollabierbare Sektion im Context Panel (rechts), oder als eigene Ansicht via Spotlight (Ctrl+K → "Memory").
+
+```text
+┌─ MEMORY LEDGER ───────────────────────────────────────────────────┐
+│  [SCOPE: Projekt ▾]  [AGENT: Alle ▾]  [EBENE: Alle ▾]  [SUCHEN] │
+├───────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ─── OFFENE FRAGEN (3) ──────────────────────────────────────── │
+│  ❓ Warum ist OAuth-Flow auskommentiert? (auth/oauth.py)          │
+│     Quelle: ◬ Kartograph · Session 3 · 2026-03-10                │
+│     [IN WIKI SUCHEN]  [EINTRAG ANZEIGEN ▾]                       │
+│                                                                   │
+│  ❓ Refresh-Token-Handling fehlt komplett — Design-Entscheidung?  │
+│     Quelle: ◬ Kartograph · Session 3 · 2026-03-10                │
+│                                                                   │
+│  ❓ Ist die Redis-Anbindung für Sessions noch geplant?            │
+│     Quelle: ◎ Architekt · Session 1 · 2026-03-09                 │
+│                                                                   │
+│  ─── ZUSAMMENFASSUNGEN (L2) ─────────────────────────────────── │
+│                                                                   │
+│  📋 Auth-Subsystem (Session 3)               ◬ Kartograph         │
+│     "JWT-basiert (RS256, python-jose), FastAPI-Middleware-Pattern. │
+│      OAuth2 existiert aber deaktiviert. Config via Env-Vars."     │
+│     Fakten: 7 · Quellen: 4 Observations · Graduiert: ✗           │
+│     [DETAILS ▾]  [QUELL-EINTRÄGE ▾]                              │
+│                                                                   │
+│  📋 Worker-Subsystem (Session 5)             ◬ Kartograph         │
+│     "Celery-basiert, Redis broker. 3 Task-Typen: sync, async,    │
+│      scheduled. Dead-letter-Queue vorhanden."                     │
+│     Fakten: 12 · Quellen: 8 Observations · Graduiert: ✓ → Wiki   │
+│     [WIKI-ARTIKEL ANZEIGEN ▶]                                     │
+│                                                                   │
+│  ─── FAKTEN (L1) ────────────────────────────────────────────── │
+│                                                                   │
+│  auth/jwt         algorithm     RS256                             │
+│  auth/jwt         library       python-jose                       │
+│  auth/jwt         class         JWTValidator                      │
+│  auth/middleware   pattern       FastAPI Depends() Middleware      │
+│  auth/oauth       status        auskommentiert, TODO              │
+│  auth/config      secret_src    ENV:JWT_SECRET                    │
+│  auth/config      expiry        1h                                │
+│  ...                                          [ALLE FAKTEN (47)] │
+│                                                                   │
+│  ─── SKILL-CANDIDATES ────────────────────────────────────────── │
+│  💡 "Repo nutzt überall Repository-Pattern: Service-Layer +       │
+│      Depends(). Könnte ein Skill werden."                         │
+│     Von: ◬ Kartograph · Tags: pattern, skill-candidate, fastapi  │
+│     Status: ● unverarbeitet                                       │
+│     [→ AN GAERTNER WEITERLEITEN]                                  │
+│                                                                   │
+│  💡 "Bei OAuth: Token-Refresh muss vor Request-Retry stehen"     │
+│     Von: ◆ Worker · Tags: pattern, skill-candidate, oauth        │
+│     Status: ✓ verarbeitet → Skill "OAuth Refresh Pattern" v1     │
+│                                                                   │
+│  ─── ABDECKUNGS-STATUS ───────────────────────────────────────── │
+│  Observations gesamt: 84                                          │
+│  Durch Summaries abgedeckt: 71 (85%)                              │
+│  Unbedeckt: 13  [UNBEDECKTE ANZEIGEN ▾]                          │
+│  Graduiert zu Wiki/Skill: 4 Summaries                             │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+### Memory im Context Panel (kompakte Ansicht)
+
+Wenn ein Task oder Epic selektiert ist, zeigt das Context Panel einen Memory-Abschnitt:
+
+```text
+┌─ CONTEXT PANEL: TASK-88 ─────────────────────────────────────────┐
+│  ...                                                              │
+│  ─── AGENTEN-GEDÄCHTNIS ──────────────────────────────────────── │
+│  📋 1 Summary · 7 Fakten · 1 offene Frage                        │
+│  Letzte Aktivität: ◬ Kartograph · vor 2 Std.                     │
+│  [MEMORY LEDGER ÖFFNEN ▶]                                        │
+│  ...                                                              │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+### Memory-Integrity-Warnung
+
+Wenn unbedeckte Observations einen kritischen Anteil erreichen (> 30%), zeigt die Prompt Station einen Hinweis:
+
+```text
+⚠ MEMORY-WARNUNG: 13 Beobachtungen noch nicht verdichtet (15%).
+  Empfehlung: Kartograph-Follow-up für Kompaktierung.
+  [KOMPAKTIERUNG ANFORDERN ▶]
+```
+
+---
+
+## Conductor Dashboard (Phase 8)
+
+**Zweck:** Monitoring des automatisierten Agent-Dispatchings — welche Agenten laufen, welche sind gescheitert, wie ausgelastet sind die AI-Provider? Eingebettet als Unterbereich in Settings → Tab "KI".
+
+```text
+┌─ SETTINGS: KI — CONDUCTOR STATUS ──────────────────────────────┐
+│                                                                 │
+│  CONDUCTOR: ● AKTIV                          [PAUSIEREN ⏸]      │
+│  Dispatches heute: 47   ·   Fehler: 2   ·   Ø Latenz: 3.2s    │
+│                                                                 │
+│  ─── AKTIVE DISPATCHES ─────────────────────────────────────── │
+│  ◆ Worker    TASK-92  → Ollama llama3.3       seit 45s  [⟳]    │
+│  ⊕ Gaertner  TASK-88  → Anthropic claude      seit 12s  [⟳]    │
+│  ◬ Kartograph (idle)                                            │
+│                                                                 │
+│  ─── PROVIDER-AUSLASTUNG ───────────────────────────────────── │
+│  Ollama     ████████░░  8/10 RPM   gpu1: ✓  gpu2: ✓  gpu3: ⚠  │
+│  Anthropic  ██░░░░░░░░  2/10 RPM                                │
+│  Google     ░░░░░░░░░░  0/5 RPM    (idle)                      │
+│                                                                 │
+│  ─── LETZTE DISPATCHES ─────────────────────────────────────── │
+│  14:32  ◆ Worker    TASK-91  ✓ completed  3.1s  Ollama          │
+│  14:30  ⊕ Gaertner  TASK-87  ✓ completed  8.4s  Anthropic      │
+│  14:28  ◬ Kartograph         ✗ failed     —     Google          │
+│         → Error: 429 Rate Limit Exceeded (retry in 12s)         │
+│  14:15  ◈ Reviewer  TASK-90  ✓ completed  5.2s  Anthropic      │
+│         → Confidence: 0.94 → auto-approved (Grace: 15 Min.)    │
+│                                                                 │
+│  [VOLLSTÄNDIGES DISPATCH-LOG → AUDIT-TAB ▶]                    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```

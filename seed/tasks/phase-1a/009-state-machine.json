@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-1A-009",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "Task State Machine als Backend-Logik",
+  "description": "State-Machine-Service implementieren: erlaubte Transitionen validieren, Vorbedingungen prüfen (assigned_to, result), Review-Gate erzwingen, Epic-Auto-Transitions atomar.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "ALLOWED_TRANSITIONS Dictionary definiert alle gültigen Übergänge",
+      "in_progress → done wird mit 422 abgelehnt (Review-Gate)",
+      "scoped → ready erfordert assigned_to",
+      "Epic-Auto-Transition scoped → in_progress bei erstem Task in_progress",
+      "Epic-Auto-Transition in_progress → done wenn alle Tasks done/cancelled",
+      "Unit-Tests für alle valid + invalid Transitionen"
+    ]
+  },
+  "tags": ["backend", "state-machine", "core"],
+  "subtasks": [],
+  "pinned_skills": ["state-machine-transition", "api-test"],
+  "linked_wiki": ["state-machine-guide"],
+  "source_doc": "docs/architecture/state-machine.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-1A-006"]
+}

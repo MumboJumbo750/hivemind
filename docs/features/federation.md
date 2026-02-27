@@ -83,6 +83,21 @@ Ein Schlüsseltausch ist notwendig wenn der Private Key kompromittiert wurde, de
      die mit dem alten Key signiert wurden (Peers noch nicht aktualisiert)
    → Nach Ablauf: alter Key wird verworfen
 
+   Verhalten ausstehender sync_outbox-Einträge während Grace-Period:
+   a) Noch nicht gesendete peer_outbound-Einträge:
+      → Werden mit dem NEUEN Key signiert (Outbox-Consumer nutzt immer aktuellen Key)
+      → Peers die noch den alten Public Key haben → HTTP 401
+      → Retry mit Exponential Backoff bis Peer den neuen Key akzeptiert
+   b) Eingehende Nachrichten (peer_inbound) von Peers die noch nicht aktualisiert haben:
+      → Signatur wird gegen BOTH Keys geprüft (aktueller + previous_public_key)
+      → Match mit altem Key = akzeptiert + Log-Warnung "peer still using pre-rotation key"
+   c) Nach Grace-Period-Ablauf:
+      → previous_public_key auf node_identity wird auf NULL gesetzt
+      → Eingehende Nachrichten mit alter Signatur → HTTP 401
+      → sync_outbox-Einträge die nach max_retries (Default: 5) immer noch 401 erhalten
+        → state: 'dead_letter' + sync_dead_letter-Eintrag
+        → Triage-Item: "Peer [name] hat neuen Key nicht akzeptiert — manueller Key-Exchange nötig"
+
 4. Revocation (sofortiger Entzug ohne Rotation):
    → hivemind federation revoke-key --peer <node_id>
    → nodes.public_key für diesen Peer → NULL
@@ -105,7 +120,11 @@ Wenn ein Private Key kompromittiert wurde, muss sofort gehandelt werden. Die reg
 ```text
 1. SOFORT: Alle Peers revoken den kompromittierten Public Key
    → Admin auf JEDEM Peer: hivemind federation revoke-key --peer <kompromittierte_node_id>
-   → Alternativ Broadcast: POST /federation/emergency-revoke (signed by kompromittierte Node, NOT)
+   → Alternativ auf jedem Peer: POST /api/federation/emergency-revoke { "node_id": "<uuid>", "reason": "..." }
+     (Admin-Only, kein Broadcast — muss auf jedem Peer-Node einzeln ausgeführt werden)
+     → Setzt nodes.public_key des kompromittierten Peers sofort auf NULL
+     → Alle weiteren Nachrichten dieses Peers: HTTP 401
+     → Erzeugt Audit-Eintrag
    → Sicherste Variante: Manuell-koordinierte Revocation (Telefon/Chat)
 
 2. Kompromittierter Node: Komplettes Key-Reset
@@ -406,6 +425,20 @@ Ben öffnet seinen AI-Client, kopiert den Prompt → Worker bekommt exaktes Arse
 
 UI-Hinweis: Der Button `[ÜBERNEHMEN]` in Gilde/Arsenal ruft `hivemind/fork_federated_skill` auf.
 
+### Federated Skill Confidence — Wessen Confidence wird aktualisiert?
+
+Skills haben einen `confidence`-Score der mit jeder erfolgreichen/fehlgeschlagenen Task-Verwendung steigt/sinkt. Bei Federation stellt sich die Frage: wenn Peer Ben einen Skill von Origin Alex nutzt und der Task scheitert — wessen Confidence wird angepasst?
+
+**Regeln:**
+
+| Regel | Beschreibung |
+| --- | --- |
+| **Origin-Only-Update** | `skills.confidence` wird **ausschließlich** auf dem Origin-Node aktualisiert. Peers haben Read-only-Kopien — kein lokaler Confidence-Write. |
+| **Confidence-Delta-Event** | Wenn ein Peer einen federierten Skill in einem Task nutzt und der Task `done` oder `qa_failed` wird, sendet der Peer ein `confidence_delta`-Event an den Origin-Node: `POST /federation/skill/confidence_delta { skill_id, delta: +0.02 | -0.05, task_key, outcome: 'success' | 'failure' }` |
+| **Origin verarbeitet** | Der Origin-Node wendet das Delta auf `skills.confidence` an (selbe Logik wie lokale Updates). Origin kann das Delta ablehnen wenn die Quelle nicht vertrauenswürdig ist (z.B. blockierter Peer). |
+| **Kein Rück-Sync** | Der aktualisierte `confidence`-Wert wird beim nächsten regulären Skill-Push (`/federation/skill/publish`) an alle Peers verteilt — kein dedizierter Confidence-Sync-Endpoint. |
+| **Lokale Forks** | Für geforkte Skills (`fork_federated_skill`) gilt: der Fork ist ein eigenständiger lokaler Skill. Confidence-Updates bleiben auf dem Fork-Node — kein Delta-Event an den Origin des Originals. |
+
 ---
 
 ## Offline-Verhalten & Konflikt-Strategie
@@ -455,6 +488,18 @@ Szenario: Ben (Peer) und Alex (Origin) ändern TASK-2 fast gleichzeitig
 | **State-Sync bei Reconnect** | Nach Netzwerk-Partition holt sich der Peer via `GET /federation/sync?since=<last_seen>` alle verpassten Updates |
 | **Triage bei unlösbarem Konflikt** | Falls ein `409` nach 3 automatischen Retries nicht auflösbar ist → `sync_dead_letter` + Triage-Item |
 
+### Epic-Level State Conflicts (Tiebreaker-Protokoll)
+
+Die obigen Regeln gelten für **Task-State-Transitions**. Epic-Level-State-Änderungen erfordern ein erweitertes Tiebreaker-Protokoll, da mehrere Peers Epic-Metadaten (z.B. Status, Priorität) gleichzeitig vorschlagen könnten:
+
+| Regel | Beschreibung |
+| --- | --- |
+| **Origin-Authority (strikt)** | Nur der Origin-Node (`epics.origin_node_id`) darf Epic-State direkt ändern. Peers können Epic-Änderungen **vorschlagen** via `POST /federation/epic/propose_update`, aber nicht direkt schreiben. |
+| **Optimistic Locking auf Epic** | Jede Epic-Änderung (auch lokal auf Origin) nutzt `epics.version`. Peers senden `expected_version` — Mismatch → 409. |
+| **Peer-Vorschlag-Flow** | Peer schickt `{ epic_key, proposed_changes, expected_version, rationale }` → Origin-Node erzeugt Triage-Item → Admin entscheidet. Kein Auto-Apply für Epic-Level-Änderungen von Peers. |
+| **Gleichzeitige Peer-Vorschläge** | Wenn 2+ Peers gleichzeitig Vorschläge senden: alle werden als separate Triage-Items angelegt. Admin entscheidet Reihenfolge. Kein FIFO-Automatismus — bewusst manuell. |
+| **Epic-Status-Progression** | `draft → active → completed → archived` — Peers dürfen nur `completed` vorschlagen (wenn alle delegierten Tasks `done`). Origin-Node prüft ob tatsächlich alle Tasks done sind bevor Status wechselt. |
+
 ### Peer-Entfernung / Offboarding
 
 Wenn ein Peer via `[ENTFERNEN]` oder `[BLOCKIEREN]` aus der Gilde entfernt wird, muss ein definierter Cleanup-Prozess greifen:
@@ -477,16 +522,24 @@ Wenn ein Peer via `[ENTFERNEN]` oder `[BLOCKIEREN]` aus der Gilde entfernt wird,
 ```text
 1. Alle Schritte von [BLOCKIEREN] +
 2. nodes-Eintrag → status: 'removed' (nicht gelöscht — Audit-Trail)
-3. Federated Skills/Wiki von diesem Peer:
+3. Orphan-Task-Handling (Tasks mit assigned_node_id = entfernter Peer):
+   → Alle Tasks mit assigned_node_id = removed_node_id UND state NOT IN ('done', 'cancelled'):
+     a) tasks.assigned_node_id → NULL
+     b) tasks.assigned_to → NULL
+     c) tasks.state → 'blocked'
+     d) Pro Task ein Triage-Item:
+        "TASK-X war auf [entfernter Peer] zugewiesen — Reassignment oder Abbruch erforderlich"
+   → Tasks die bereits 'done' sind: assigned_node_id bleibt (Provenance / Audit-Trail)
+4. Federated Skills/Wiki von diesem Peer:
    → Admin-Dialog: "3 Skills und 2 Wiki-Artikel von [Peer]. Behalten (ohne Updates) oder löschen?"
    → Bei 'Behalten': federation_scope → 'local', origin_node_id bleibt (für Provenance), kein Sync mehr
    → Bei 'Löschen': Soft-Delete (restore innerhalb 30 Tage möglich)
-4. Code-Nodes mit origin_node_id = entfernter Peer: bleiben in der Karte (Fog of War nicht zurücksetzen)
-5. sync_dead_letter-Einträge für diesen Peer: archiviert, nicht re-queueable
+5. Code-Nodes mit origin_node_id = entfernter Peer: bleiben in der Karte (Fog of War nicht zurücksetzen)
+6. sync_dead_letter-Einträge für diesen Peer: archiviert, nicht re-queueable
 ```
 
 > **Wiederaufnahme:** Ein blockierter Peer kann über `[ENTSPERREN]` wieder aktiviert werden → Full-Sync. Ein entfernter Peer muss komplett neu hinzugefügt werden (neuer Key-Exchange).
-> **Schema-Referenz Offboarding:** `nodes.status` unterstützt die Werte `active|inactive|blocked|removed` (→ [data-model.md](../architecture/data-model.md)). `sync_outbox.state` unterstützt `cancelled` für abgebrochene Outbound-Einträge und `quarantined` für verdächtige Einträge nach Key-Kompromittierung. Soft-Delete für Skills/Wiki nutzt `skills.deleted_at` bzw. `wiki_articles.deleted_at` (TIMESTAMPTZ) — Einträge mit `deleted_at IS NOT NULL` sind logisch gelöscht, bleiben aber für Audit lesbar und sind innerhalb von 30 Tagen wiederherstellbar.
+> **Schema-Referenz Offboarding:** `nodes.status` unterstützt die Werte `active|inactive|blocked|removed|pending_confirmation` (→ [data-model.md](../architecture/data-model.md)). `sync_outbox.state` unterstützt `cancelled` für abgebrochene Outbound-Einträge und `quarantined` für verdächtige Einträge nach Key-Kompromittierung. Soft-Delete für Skills/Wiki nutzt `skills.deleted_at` bzw. `wiki_articles.deleted_at` (TIMESTAMPTZ) — Einträge mit `deleted_at IS NOT NULL` sind logisch gelöscht, bleiben aber für Audit lesbar und sind innerhalb von 30 Tagen wiederherstellbar.
 
 ---
 

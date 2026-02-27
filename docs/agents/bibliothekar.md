@@ -238,6 +238,32 @@ Die Prompt Station zeigt für manuelle Rollen weiterhin den kopierbaren Prompt. 
 | **Cloud-Mix** | Kartograph=Gemini, Stratege=Claude, Worker=Ollama lokal |
 | **Einfach-Modus** | Keine `ai_provider_configs`-Einträge → Fallback auf globalen `app_settings.ai_provider` (wie bisheriges Design) |
 | **Schrittweise Migration** | Erst Worker automatisieren (niedrigstes Risiko), dann schrittweise andere Rollen hinzufügen |
+| **Worker-Endpoint-Pool** | Worker → `ollama` mit `endpoints` JSONB-Array (3 GPU-Server), `pool_strategy: 'weighted'` — Conductor verteilt Tasks per Round-Robin/Weight auf die Endpoints; ideal für parallele Subtask-Bearbeitung |
+
+### Worker-Endpoint-Pool (optional)
+
+Statt eines einzelnen `endpoint` kann eine Agent-Rolle (typischerweise Worker) ein **Array von Endpoints** konfigurieren. Der Conductor verteilt Dispatches über den Pool:
+
+```text
+┌─────────────┬───────────┬──────────┬──────────────────────────────────────────────┬───────────────┐
+│ agent_role   │ provider  │ model    │ endpoints                                    │ pool_strategy │
+├─────────────┼───────────┼──────────┼──────────────────────────────────────────────┼───────────────┤
+│ worker       │ ollama    │ llama3.3 │ [{gpu1:11434, w:1}, {gpu2:11434, w:1},       │ round_robin   │
+│              │           │          │  {gpu3:11434, w:2}]                          │               │
+└─────────────┴───────────┴──────────┴──────────────────────────────────────────────┴───────────────┘
+```
+
+**Pool-Strategien:**
+
+| Strategie | Verhalten |
+| --- | --- |
+| `round_robin` | Zyklisch über alle healthy Endpoints (Default) |
+| `weighted` | Höheres `weight` = mehr Dispatches (z.B. stärkere GPU → weight 2) |
+| `least_busy` | Endpoint mit wenigsten aktiven `conductor_dispatches` (status=dispatched) |
+
+**Subtask-Parallelisierung:** Wenn der Architekt einen Task in Subtasks zerlegt hat (`parent_task_id` gesetzt), kann der Conductor mehrere Subtasks **gleichzeitig** an verschiedene Pool-Endpoints dispatchen — begrenzt durch `HIVEMIND_CONDUCTOR_PARALLEL`. Nach Abschluss aller Subtasks erzeugt der Conductor automatisch einen Merge-Prompt (`prompt_type: 'merge_subtasks'`) für den Parent-Task.
+
+**Wann sinnvoll:** Mehrere Consumer-GPUs (RTX 3060/4060) mit Ollama, Tasks die der Architekt gut in unabhängige Subtasks zerlegt hat (z.B. Endpoint A + Endpoint B + Tests). Nicht sinnvoll für stark abhängige Subtasks oder Cloud-Provider (die haben eigenes Load-Balancing).
 
 ### Token-Count-Kalibrierung per Provider
 

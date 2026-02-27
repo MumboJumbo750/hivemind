@@ -11,7 +11,7 @@
 1. **Progressive Disclosure** — Kontext nur task-genau laden, kein Context-Bloat
 2. **BYOAI → Autonomy** — Heute manuell, morgen autonom. Gleiche Endpoints, gleicher Datenvertrag
 3. **Prompt Station** — System sagt wann welcher Agent dran ist + liefert den Prompt
-4. **Keine autonome AI-Ausführung in Phase 1–7** — AI wird manuell genutzt (Prompts im AI-Client), keine autonomen Agenten-Writes
+4. **Keine autonome AI-Ausführung in Phase 1–7** — AI wird manuell genutzt (Prompts im AI-Client kopieren/einfügen), keine autonomen Agenten-Writes. **Hinweis:** Ab Phase 3 übernimmt der Bibliothekar das Context-Assembly automatisch (pgvector-Similarity, kein manueller Wizard-of-Oz-Prompt mehr) — nur die AI-Ausführung bleibt manuell.
 5. **Review-Gate immer aktiv** — Auch im Solo-Modus kein direktes `done`
 6. **Sci-Fi Game HUD** — Modern, dunkel, gamelike — Commander eines Agenten-Schwarms
 7. **Sovereign Nodes** — Jeder Entwickler ist sein eigener Host; Federation verbindet Peers im VPN
@@ -99,12 +99,34 @@
 
 ---
 
+## Seed-Strategie — Dogfooding
+
+> Hivemind bootstrapped sich selbst: Das Projekt wird dateibasiert im `seed/`-Ordner als sein eigener erster Anwendungsfall modelliert — bevor die Datenbank existiert.
+
+| Dokument | Inhalt |
+| --- | --- |
+| [Seed-Strategie](docs/seed-strategy.md) | Dogfooding-Konzept, Ordnerstruktur, Datei-Formate, Import-Prozess |
+
+**Agenten-Rollen im Seed-Prozess:**
+
+| Agent | Aufgabe | Output |
+| --- | --- | --- |
+| Kartograph | Masterplan → Wiki-Artikel, Epic-Docs | `seed/wiki/`, `seed/docs/` |
+| Gärtner | Architektur-Docs → wiederverwendbare Skills | `seed/skills/` |
+| Architekt | Phasen → Epics → Tasks + Subtasks mit DoD | `seed/epics/`, `seed/tasks/` |
+| Bibliothekar | Konsistenz-Review, Verknüpfungen | Referenzen in allen Dateien |
+
+**Nutzen:** Klare Arbeitspakete ab Tag 1, Seed-Daten für DB-Import in Phase 1a, Showcase-Projekt für neue User, Validierung des Phasenplans durch Dekomposition.
+
+---
+
 ## Aktueller Stand
 
 - **Masterplan:** vollständig — aufgeteilt in 37 thematische Dokumente
 - **Alle offenen Fragen:** beantwortet
 - **Gap-Analyse:** durchgeführt — 77 Findings identifiziert und behoben (52 aus früheren Analysen + 25 aus vierter Analyse: 4 neue Docs, 7 bestehende Docs aktualisiert, Widersprüche aufgelöst)
-- **Nächster Schritt:** [Phase 1](docs/phases/phase-1.md) — Umsetzung beginnen
+- **Seed-Strategie:** definiert — Phasen werden als Epics/Tasks im `seed/`-Ordner modelliert (→ [Seed-Strategie](docs/seed-strategy.md))
+- **Nächster Schritt:** Seed-Daten erstellen (Kartograph → Gärtner → Architekt), dann [Phase 1](docs/phases/phase-1.md) umsetzen
 
 ---
 

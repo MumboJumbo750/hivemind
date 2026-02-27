@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-1A-010",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "CRUD-Endpoints: Projekte",
+  "description": "REST-Endpoints für Projekte: POST /api/projects, GET /api/projects, GET /api/projects/{slug}, PATCH /api/projects/{slug}. Ohne Auth (Phase 1).",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "POST /api/projects erstellt Projekt (201)",
+      "GET /api/projects listet alle Projekte",
+      "GET /api/projects/{slug} liefert einzelnes Projekt",
+      "PATCH /api/projects/{slug} aktualisiert Projekt",
+      "Pydantic-Schemas: ProjectCreate, ProjectResponse, ProjectList",
+      "Integration-Tests für alle Endpoints"
+    ]
+  },
+  "tags": ["backend", "api", "crud", "projects"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-1.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-1A-005"]
+}

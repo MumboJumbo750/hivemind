@@ -1,0 +1,12 @@
+{
+  "external_id": "EPIC-PHASE-F",
+  "title": "Phase F — Federation",
+  "description": "Sovereign Nodes, Peer Discovery, Skill/Wiki Publishing, Epic-Share, Task-Delegation. Jeder Entwickler betreibt seine eigene Hivemind-Instanz.",
+  "state": "scoped",
+  "priority": "medium",
+  "sla_deadline": null,
+  "definition_of_done": "Zwei Nodes können sich gegenseitig pingen, Skills/Wiki publishen, Epics teilen und Tasks delegieren. Ed25519-Signaturprüfung aktiv.",
+  "tags": ["backend", "frontend", "federation", "p2p", "phase-f"],
+  "depends_on": ["EPIC-PHASE-2"],
+  "source_doc": "docs/phases/phase-f.md"
+}

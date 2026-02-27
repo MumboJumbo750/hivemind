@@ -246,7 +246,14 @@ hivemind/update_doc           { "id": "uuid", "content": "...", "expected_versio
 ```text
 hivemind/create_epic_doc          { "epic_id": "EPIC-12", "title": "...", "content": "..." }
 hivemind/link_wiki_to_epic        { "article_id": "uuid", "epic_id": "EPIC-12" }
-hivemind/propose_epic_restructure { "epic_id": "EPIC-12", "rationale": "...", "proposal": "..." }
+hivemind/propose_epic_restructure { "restructure_type": "split|merge|task_move",
+                                    "payload": { ... },         -- Typ-spezifisch: Split/Merge/Task-Move-Spec
+                                    -- Split:     { "source_epic_id": "EPIC-5", "resulting_epics": [...] }
+                                    -- Merge:     { "source_epic_ids": ["EPIC-8", "EPIC-9"], "resulting_epic": {...} }
+                                    -- Task-Move: { "moves": [{ "task_id": "TASK-15", "from_epic_id": "EPIC-5", "to_epic_id": "EPIC-6" }] }
+                                    "rationale": "string",
+                                    "code_node_refs": ["uuid", "..."] }
+                                    -- → Vollständige Payload-Specs: docs/features/epic-restructure.md#proposal-typen
 hivemind/propose_guard            { "title": "...", "type": "executable", "command": "...",
                                     "scope": [...], "project_id": "uuid|null",
                                     "skill_id": "uuid|null" }
@@ -425,9 +432,16 @@ hivemind/accept_guard_change      { "proposal_id": "uuid" }     -- guard_change_
                                                                  -- wendet diff an → aktualisiert guard
 hivemind/reject_guard_change      { "proposal_id": "uuid",      -- guard_change_proposals: open → rejected
                                     "reason": "..." }
-hivemind/accept_epic_restructure  { "proposal_id": "uuid" }    -- state: open → accepted
-hivemind/reject_epic_restructure  { "proposal_id": "uuid",     -- state: open → rejected
+hivemind/accept_epic_restructure  { "proposal_id": "uuid" }    -- state: proposed → accepted
+hivemind/reject_epic_restructure  { "proposal_id": "uuid",     -- state: proposed → rejected
                                     "reason": "..." }
+hivemind/apply_epic_restructure   { "proposal_id": "uuid" }    -- state: accepted → applied
+                                    -- Führt die Restrukturierung atomar aus (Split/Merge/Task-Move)
+                                    -- Validiert: alle betroffenen Tasks in verschiebbarem State
+                                    -- Bei blockierenden Tasks (in_progress/in_review): HTTP 422 mit blocking_tasks-Liste
+                                    -- Erzeugt neue Epics (Split), verschiebt Tasks, cancelt Source-Epics (Merge)
+                                    -- Erfordert: admin oder manage_epic-Berechtigung
+                                    -- → Vollständiger Apply-Flow: docs/features/epic-restructure.md#apply-flow--end-to-end
 hivemind/accept_epic_proposal     { "proposal_id": "uuid" }    -- epic_proposals: proposed → accepted
                                     -- Erstellt Epic (state: incoming) mit Daten aus Proposal
                                     -- Setzt epic_proposals.resulting_epic_id auf das neue Epic

@@ -119,6 +119,59 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 | Governance Config | Settings → Tab "Governance" | Pro Entscheidungstyp: manual/assisted/auto; Confidence-Threshold + Grace-Period bei auto; Autonomie-Spektrum-Visualisierung; Safeguard-Anzeige | 8 |
 | AI-Review-Empfehlung | Command Deck → Review Panel | Reviewer-Agent Confidence-Badge + Checklist + 1-Click Bestätigung (assisted) / Grace-Period-Countdown (auto) | 8 |
 
+## Profil & Personalisierung
+
+| Funktion | View | UI-Element | Phase |
+| --- | --- | --- | --- |
+| Profil-Zugang | System Bar → UserDropdown | Klick auf UserAvatar → Dropdown: [PROFIL] [EINSTELLUNGEN] [ABMELDEN] | 2 |
+| Profil anzeigen | Profil | Username, Display-Name, E-Mail, Bio, Rolle, Projekt-Zugehörigkeiten | 2 |
+| Display-Name ändern | Profil | Inline-Edit-Feld für `display_name` (wird statt `username` im UI angezeigt wenn gesetzt) | 2 |
+| Bio bearbeiten | Profil | Freitext-Feld (max 280 Zeichen) | 2 |
+| Avatar hochladen | Profil → AvatarUploadModal | Upload (max 2 MB, WebP/PNG/JPG) + Vorschau + serverseitige Konvertierung zu WebP 256x256 | 2 |
+| Initialen-Avatar | Profil | Auto-generierter Avatar aus Display-Name/Username (deterministisches Farb-Hashing) als Fallback | 2 |
+| Avatar-Rahmen auswählen | Profil → AvatarUploadModal | Freigeschaltete Rahmen (silver/gold/holo) aus Gamification wählbar; gesperrte mit Lock-Icon | 2 (Rahmen-Freischaltung ab Phase 5) |
+| Per-User Theme | Profil → PreferencesPanel | Theme-Switch (space-neon/industrial-amber/operator-mono) — überschreibt globalen Default für diesen User | 2 |
+| Per-User Tone | Profil → PreferencesPanel | 🎮 Game Mode / 💼 Pro Mode Toggle — überschreibt globalen Default für diesen User | 2 |
+| Notification-Präferenzen | Profil → PreferencesPanel | Checkbox-Gruppen: SLA-Warnungen, Review-Anfragen, Skill-Proposals, Eskalationen, Peer-Events, EXP-Notifications | 2 |
+| Peer-Profil (read-only) | Gilde → PeerProfilePanel | Avatar, Level, Badges, Gilde-Beiträge, aktive Quest | F |
+
+## Gamification & Progression
+
+| Funktion | View | UI-Element | Phase |
+| --- | --- | --- | --- |
+| EXP-Anzeige (kompakt) | Status Bar | ExpBar (compact): `[EXP: ████████░░░ Lvl. 5 Commander]` | 2 |
+| EXP-Anzeige (detailliert) | Profil | ExpBar: exp_total, Level, EXP bis nächstes Level, letzter Delta | 2 |
+| EXP-Award-Feedback | Prompt Station | `+50 EXP (Clean Run: +20) (SLA: +10)` nach Task-Done | 5 |
+| Level-Up-Animation | Global (Layout-Overlay) | LevelUpToast: Glow + Partikel-Effekt, neuer Rang-Titel, Unlock-Info | 5 |
+| Trophäenschrank | Profil → TrophyCabinet | Badge-Grid mit Kategorien (Quest, Wissen, Exploration, Federation, Governance); gesperrte Badges als ░░ mit Unlock-Bedingung | 5 |
+| Badge-Anzeige (kompakt) | Gilde | Inline-Badge-Reihe pro Peer (🥇 🥈 🥉) | F |
+| Leaderboard | Gilde → Tab "Rangliste" | Sortierte Peer-Liste nach EXP + Level + Badges; Zeitraum-Filter (Woche/Monat/Gesamt) | F |
+| Persönliche Statistiken | Profil → StatsPanel | Quests erledigt, Clean Runs, Reviews, Skills erstellt, Wiki-Artikel, Code-Nodes, Avg. Zeiten | 5 |
+
+## Memory Ledger (Agenten-Gedächtnis)
+
+| Funktion | View | UI-Element | Phase |
+| --- | --- | --- | --- |
+| Memory-Kontext im Context Panel | Command Deck → Context Panel | MemoryContextBadge: Summary-Count, Fakten-Count, offene Fragen, letzter Agent | 5 |
+| Memory Ledger Browser | Memory Ledger (eigene View) | Scope-Filter, Agent-Filter, Ebenen-Filter (L0/L1/L2), Suchfeld | 5 |
+| Offene Fragen anzeigen | Memory Ledger | OpenQuestionsPanel: priorisierte Liste aus L2-Summaries mit Quell-Agent und Session | 5 |
+| L2-Summaries browsen | Memory Ledger | SummaryCard: Zusammenfassung, Fakten-Count, Coverage, Graduation-Status, Quell-Entries | 5 |
+| L1-Fakten browsen | Memory Ledger | FactTable: Entity/Key/Value kompakt, filterbar nach Entity oder Agent | 5 |
+| Skill-Candidates anzeigen | Memory Ledger | SkillCandidateCard: Tag `skill-candidate`, Verarbeitungsstatus, Link zu resultierendem Skill | 5 |
+| Abdeckungs-Status | Memory Ledger | CoverageStatus: % Observations durch Summaries abgedeckt, Trend-Anzeige | 5 |
+| Memory-Integrity-Warnung | Prompt Station | Warnbanner wenn >30% Observations unbedeckt; [KOMPAKTIERUNG ANFORDERN] Button | 5 |
+| Memory via Spotlight suchen | Global (Ctrl+K) | Spotlight erweitert um Memory-Entries und Fakten (Scope: Memory) | 5 |
+
+## Conductor Monitoring (Phase 8)
+
+| Funktion | View | UI-Element | Phase |
+| --- | --- | --- | --- |
+| Conductor-Status | Settings → Tab "KI" → ConductorStatus | Aktiv/Pausiert-Badge + [PAUSIEREN/FORTSETZEN] Button | 8 |
+| Aktive Dispatches | Settings → ConductorStatus | Live-Liste laufender Agent-Dispatches (Agent, Task/Epic, Provider, Laufzeit) | 8 |
+| Provider-Auslastung | Settings → ConductorStatus | RPM-Balken pro Provider + Endpoint-Health-Status (✓ / ⚠ / ✗) | 8 |
+| Dispatch-History | Settings → ConductorStatus | Letzte Dispatches mit Status (completed/failed/vetoed), Latenz, Provider | 8 |
+| Dispatch-Fehler-Detail | Settings → ConductorStatus | Klappbares Error-Detail bei failed-Dispatches (Error-Message, Retry-Status) | 8 |
+
 ## Gilde / Federation (Phase F)
 
 | Funktion | View | UI-Element | Phase |
@@ -145,17 +198,24 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 
 ```text
 Phase 1: Prompt Station + Settings (MCP, Projekt, Solo/Team-Modus, Theme, Interface-Tone)
-         System Bar (Node-Name, Project-Switcher, MCP-Status)
+         System Bar (Node-Name, Project-Switcher, MCP-Status, UserAvatar)
          + Prompt Queue mit "Warum jetzt?"-Badges
 
 Phase 2: + Command Deck (Epics, Tasks, Review, Scoping, SLA)
+         + Profil (Avatar, Display-Name, Bio, Theme/Tone per-User, Notification-Präferenzen)
+         + Avatar-Upload + Initialen-Avatar-Fallback
+         + System Bar: UserAvatar klickbar → Profil-Dropdown
+         + Status Bar: ExpBar (compact) + Level-Anzeige
          + Notification Tray
          + Settings -> Projekt-Mitgliederverwaltung
          + Review-Struktur: Hard Gates vs Owner Judgment
-         + Focus Mode (Prompt-Fokus)
+         + Focus Mode (Prompt-Fkus)
          + Spotlight-Suche Ctrl+K (Tasks + Epics)
 
 Phase F: + Gilde / Federation (Peer-Uebersicht, Gildenwissen, Node-Identitaet)
+         + Leaderboard (Rangliste in Gilde-View)
+         + Peer-Profile (read-only)
+         + Badge-Anzeige pro Peer (kompakt)
            Verfuegbar sofort nach Phase 2:
              Gilde-View, Settings Federation-Tab, System Bar Gilde-Status
            Progressiv verfuegbar (Features werden sichtbar sobald abhaengige Phase implementiert):
@@ -176,11 +236,18 @@ Phase 4: + Arsenal (Browse Skills + Guards, Proposals, Merge)
 
 Phase 5: + Wiki (lesen, suchen, verlinken, Admin: bearbeiten/anlegen)
          + Nexus Grid 2D (Weltkarte)
+         + Memory Ledger Browser (Agenten-Gedächtnis durchsuchbar)
+         + Memory-Kontext im Context Panel
+         + Trophäenschrank / Badge-Grid im Profil
+         + EXP-Award-Feedback in Prompt Station
+         + Level-Up-Animation (globaler Overlay)
+         + Persönliche Statistiken im Profil
          + Arsenal: Versions-History, Change-Proposals, Composition-View
          + Triage: Skill Change, Guard Change, Epic Restructure Proposals
          + Command Deck: Decision Records
          + Review: Guard-Provenance (`source`, `checked_at`)
          + Focus Mode (Map-Fokus)
+         + Spotlight erweitert um Memory-Entries
 
 Phase 6: + Decision Requests + Eskalations-UI
          + Notification Tray als Action Queue (`ACTION NOW`, `SOON`, `FYI`)
@@ -190,6 +257,7 @@ Phase 7: + Dead Letter Queue + Bug Heatmap + Sync-Status
 Phase 8: + 3D Nexus Grid (Weltkarte in WebGL) + Auto-Modus (API Keys, Settings -> KI)
          + Settings -> Governance (Autonomie-Spektrum, pro-Typ manual/assisted/auto)
          + AI-Review-Panel (Reviewer-Empfehlung, Grace Period, 1-Click)
+         + Conductor Dashboard (aktive Dispatches, Provider-Auslastung, Fehlerlog)
 ```
 
 ---
@@ -200,11 +268,14 @@ Phase 8: + 3D Nexus Grid (Weltkarte in WebGL) + Auto-Modus (API Keys, Settings -
 
 | Store | Inhalt | Scope |
 | --- | --- | --- |
-| `useAuthStore` | Access-Token (in-memory), User-Profil (id, role, memberships) | Global, persistent über Navigation |
+| `useAuthStore` | Access-Token (in-memory), User-Profil (id, role, display_name, avatar_url, avatar_frame, preferred_theme, preferred_tone, memberships) | Global, persistent über Navigation |
 | `useProjectStore` | Aktives Projekt, Projekt-Liste | Global |
 | `usePromptStationStore` | Aktueller State (idle/agent_required/...), aktive Queue, Polling-Interval | Global |
 | `useNotificationStore` | Ungelesene Notifications, Badge-Count | Global |
-| `useSettingsStore` | App-Settings (notification_mode, theme, hivemind_mode, current_phase) | Global, gecacht |
+| `useSettingsStore` | App-Settings (notification_mode, default_theme, default_tone, hivemind_mode, current_phase) | Global, gecacht |
+| `useProfileStore` | User-Profil-Daten, EXP, Level, Badges, Statistiken, Präferenzen | Global, lazy-loaded |
+| `useGamificationStore` | Level-Thresholds, Badge-Definitionen, aktuelle EXP-Deltas (für Toast-Anzeige) | Global, SSE-subscribed (`level_up`, `badge_awarded`) |
+| `useMemoryLedgerStore` | Memory-Entries, Summaries, Facts, Filter-State, Coverage-Daten | View-scoped (reset bei Nav-Wechsel) |
 | `useCommandDeckStore` | Gefilterte Epics/Tasks, aktiver Filter-State | View-scoped (reset bei Nav-Wechsel) |
 | `useTriageStore` | Triage-Items, aktiver Tab (unrouted/proposals/escalated/dead-letter) | View-scoped |
 

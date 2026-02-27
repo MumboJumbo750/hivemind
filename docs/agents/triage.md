@@ -118,7 +118,7 @@ Für jedes [UNROUTED]-Item:
 
 ```text
 -- Lesen
-hivemind/get_triage              { "state": "unrouted|escalated|dead|all" }
+hivemind/get_triage              { "state": "unrouted|escalated|dead|quarantined|all" }
 
 -- UNROUTED Routing
 hivemind/route_event             { "outbox_id": "uuid", "epic_id": "EPIC-12",
@@ -139,6 +139,14 @@ hivemind/discard_dead_letter     { "id": "uuid" }
                                    --   sync_outbox.state bleibt 'dead' (kein Requeue möglich)
                                    --   sync_dead_letter: discarded_by + discarded_at wird gesetzt
                                    --   Audit-Trail bleibt erhalten (kein physisches Löschen)
+
+-- Quarantined (Federation Key-Kompromittierung, → federation.md#key-kompromittierung--notfallprozedur)
+hivemind/approve_quarantined     { "outbox_id": "uuid" }
+                                   -- sync_outbox.state: quarantined → pending (wird normal verarbeitet)
+                                   -- Admin hat Eintrag manuell geprüft und für vertrauenswürdig befunden
+hivemind/discard_quarantined     { "outbox_id": "uuid", "reason": "..." }
+                                   -- sync_outbox.state: quarantined → cancelled
+                                   -- Eintrag wird nicht verarbeitet; Audit-Trail bleibt erhalten
 
 -- Skill/Guard Proposals (neue Entitäten)
 hivemind/merge_skill             { "skill_id": "uuid" }

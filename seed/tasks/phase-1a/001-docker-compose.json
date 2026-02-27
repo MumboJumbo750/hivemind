@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-1A-001",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "Docker Compose Stack aufsetzen",
+  "description": "PostgreSQL 16 + pgvector, FastAPI + Uvicorn, Vue 3 + Vite als Docker Compose Services konfigurieren. Health-Checks, Volume-Mounts, Netzwerk, .env-Template.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "docker compose up startet alle 3 Services ohne Fehler",
+      "PostgreSQL mit pgvector-Extension erreichbar auf Port 5432",
+      "FastAPI Health-Endpoint antwortet auf Port 8000",
+      "Vue Dev-Server erreichbar auf Port 5173",
+      "Hot-Reload funktioniert für Backend und Frontend",
+      ".env.example mit allen konfigurierbaren Variablen vorhanden"
+    ]
+  },
+  "tags": ["docker", "infrastructure", "setup"],
+  "subtasks": [],
+  "pinned_skills": ["docker-service"],
+  "linked_wiki": ["system-architektur", "tech-stack"],
+  "source_doc": "docs/phases/phase-1.md",
+  "estimated_complexity": "medium"
+}

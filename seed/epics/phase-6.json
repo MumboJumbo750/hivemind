@@ -1,0 +1,12 @@
+{
+  "external_id": "EPIC-PHASE-6",
+  "title": "Phase 6 — Eskalation & Triage",
+  "description": "SLA-Automation, Eskalations-Flow, Decision Requests, Backup-Owner, Admin-Fallback, Notification-Service.",
+  "state": "scoped",
+  "priority": "medium",
+  "sla_deadline": null,
+  "definition_of_done": "SLA-Cron triggert Warnungen, Decision Requests mit 72h-SLA, 3x qa_failed → escalated, Notification-Service schreibt in DB, Notification Tray zeigt alle Typen.",
+  "tags": ["backend", "frontend", "sla", "escalation", "notifications", "phase-6"],
+  "depends_on": ["EPIC-PHASE-5"],
+  "source_doc": "docs/phases/phase-6.md"
+}

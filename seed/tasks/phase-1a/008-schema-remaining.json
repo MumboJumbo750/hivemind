@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-1A-008",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "DB-Schema: Nexus Grid, Sync, Audit, Memory, Gamification, Rest",
+  "description": "Alembic-Migration für alle verbleibenden Tabellen: code_nodes, code_edges, node_bug_reports, epic_node_links, task_node_links, mcp_invocations, idempotency_keys, sync_outbox, sync_dead_letter, decision_requests, decision_records, epic_restructure_proposals, epic_proposals, notifications, prompt_history, memory_sessions, memory_summaries, memory_entries, memory_facts, level_thresholds, badge_definitions, user_achievements, exp_events, ai_provider_configs, review_recommendations, conductor_dispatches, discovery_sessions.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Alle Tabellen aus data-model.md existieren in der Datenbank",
+      "Alle FKs, Constraints und Indexes korrekt",
+      "sync_outbox hat dedup_key + target_node_id",
+      "Gamification-Seed-Daten: level_thresholds + badge_definitions befüllt",
+      "Memory-Ledger-Schema komplett (4 Tabellen + Indexes)",
+      "alembic upgrade head läuft fehlerfrei durch"
+    ]
+  },
+  "tags": ["backend", "database", "schema"],
+  "subtasks": [],
+  "pinned_skills": ["alembic-migration"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/architecture/data-model.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-1A-007"]
+}

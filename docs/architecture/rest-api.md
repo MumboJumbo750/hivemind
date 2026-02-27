@@ -95,7 +95,7 @@ Vier Auth-Pfade koexistieren. Die Middleware entscheidet anhand von Endpoint-Pfa
 | --- | --- | --- | --- |
 | **Bearer JWT** | Alle `/api/*`-Endpoints (außer Auth + `/health`) | `Authorization: Bearer <token>` | Menschliche User (developer, admin, kartograph) |
 | **API-Key** | Alle `/api/*`-Endpoints (außer Auth + `/health`) | `X-API-Key: <key>` | Service-Accounts (`role = 'service'`). Kein Login-Flow, kein Refresh-Token. |
-| **Solo Auto-Login** | Alle `/api/*`-Endpoints | Kein Header nötig; Backend erkennt Solo-Modus + `password_hash IS NULL` → impliziter System-User | Solo-Modus ohne Passwort. **Constraint:** Wenn `HIVEMIND_FEDERATION_ENABLED=true` und `hivemind_mode='solo'` **und** kein Passwort gesetzt, loggt das Backend beim Start eine Warnung: `"WARN: Solo+Federation ohne Passwort — Federation-Endpoints sind ungeschützt. Passwort setzen empfohlen."` Federation-Endpoints (`/federation/*`) bleiben erreichbar, da sie eigene Ed25519-Signaturprüfung haben. |
+| **Solo Auto-Login** | Alle `/api/*`-Endpoints | Kein Header nötig; Backend erkennt Solo-Modus + `password_hash IS NULL` → impliziter System-User | Solo-Modus ohne Passwort. **Hard-Block bei Federation:** Wenn `HIVEMIND_FEDERATION_ENABLED=true` und `hivemind_mode='solo'` **und** kein Passwort gesetzt, **verweigert das Backend den Start** mit Fehler: `"FATAL: Solo+Federation ohne Passwort ist nicht erlaubt. Entweder Passwort setzen (hivemind set-password) oder Federation deaktivieren."` **Begründung:** Im Solo-Modus ohne Passwort sind alle `/api/*`-Endpoints ohne Header nutzbar. Sobald die Instanz nicht strikt lokal bleibt (Federation = Netzwerk-Erreichbarkeit), ist das ein Sicherheitsrisiko. Federation-Endpoints (`/federation/*`) haben zwar eigene Ed25519-Signaturprüfung, aber die `/api/*`-Endpoints wären ungeschützt. |
 | **Ed25519-Signatur** | Alle `/federation/*`-Endpoints | `X-Hivemind-Signature` Header (Ed25519 über Body-Hash) | Peer-Nodes. Kein JWT/API-Key nötig. Unbekannte oder ungültige Signatur → HTTP 401. |
 
 **Reihenfolge der Middleware-Prüfung (pro Request):**
@@ -147,6 +147,24 @@ PATCH  /api/tasks/:task_key/state             → State-Transition (mit Validier
 POST   /api/tasks/:task_key/review            → Review: approve oder reject
 GET    /api/epics/:epic_key/decisions         → Decision Records des Epics
 GET    /api/epics/:epic_key/restructure-proposals → Restructure-Proposals
+```
+
+### Epic Restructure
+
+```text
+GET    /api/epic-restructure                  → Alle Proposals mit Filter (state: proposed|accepted|applied|rejected)
+POST   /api/epic-restructure                  → Neuen Proposal erstellen (kartograph + admin)
+                                                Body: { "restructure_type": "split|merge|task_move",
+                                                        "payload": { ... }, "rationale": "...",
+                                                        "code_node_refs": ["uuid"] }
+GET    /api/epic-restructure/:key             → Einzelner Proposal + Diff-Preview (im accepted-State)
+POST   /api/epic-restructure/:key/accept      → Proposal akzeptieren (admin, → accepted)
+POST   /api/epic-restructure/:key/reject      → Proposal ablehnen (admin, → rejected)
+                                                Body: { "reason": "..." }
+POST   /api/epic-restructure/:key/apply       → Restructure ausführen (admin, → applied)
+                                                → 200 bei Erfolg (neue Epic-Keys + verschobene Tasks im Response)
+                                                → 422 wenn blockierende Tasks vorhanden (blocking_tasks-Liste)
+                                                → Vollständiger Apply-Flow: docs/features/epic-restructure.md
 ```
 
 ### Skills & Guards
@@ -205,12 +223,15 @@ GET    /api/search                            → Übergreifende Suche
 ### Triage
 
 ```text
-GET    /api/triage                            → Triage-Items mit Filter (state: unrouted|escalated|dead|all)
+GET    /api/triage                            → Triage-Items mit Filter (state: unrouted|escalated|dead|quarantined|all)
 GET    /api/triage/proposals                  → Offene Proposals (skill, guard, change, restructure)
 POST   /api/triage/:id/route                  → Event einem Epic zuweisen
 POST   /api/triage/:id/ignore                 → Event ignorieren
 POST   /api/triage/dead-letters/:id/requeue   → Dead Letter requeuen
 POST   /api/triage/dead-letters/:id/discard   → Dead Letter verwerfen (endgültig, Audit-Trail bleibt)
+POST   /api/triage/quarantined/:id/approve    → Quarantined-Eintrag freigeben (→ state: pending, wird normal verarbeitet)
+POST   /api/triage/quarantined/:id/discard    → Quarantined-Eintrag verwerfen (→ state: cancelled, Audit-Trail bleibt)
+                                                Body (optional): { "reason": "..." }
 POST   /api/triage/bugs/:id/assign            → Bug manuell einem Epic zuweisen (ab Phase 7, admin)
                                                 Body: { "epic_id": "<uuid>" }
                                                 → Intern: hivemind/assign_bug; setzt routing_state=routed
@@ -403,6 +424,17 @@ Alle SSE-Streams unter `/events/`. Subscriptions erfordern Authentifizierung —
 | Notifications | `/events/notifications?token=<stream_token>` | Neue Notifications, SLA-Alerts |
 | Tasks | `/events/tasks?project_id=<uuid>&token=<stream_token>` | State-Transitions, Guard-Updates |
 | Triage | `/events/triage?token=<stream_token>` | Neue Unrouted-Items, Proposals |
+
+### Polling-Fallback-Endpoint
+
+Wird nach 3 fehlgeschlagenen SSE-Reconnects aktiviert (→ [architecture/overview.md — SSE-Fallback](overview.md#realtime-sse--polling-fallback)):
+
+```text
+GET /api/events/poll?channel=tasks&since=<last_event_id>&project_id=<uuid>
+→ 200 { "events": [...], "last_id": 4220 }
+→ Auth: Bearer JWT (reguläre Auth, kein Stream-Token)
+→ Polling-Intervall: 30 Sekunden (HIVEMIND_POLL_FALLBACK_INTERVAL)
+```
 
 ### Event-Format
 

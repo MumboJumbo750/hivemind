@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-1A-005",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "DB-Schema: Core-Tabellen (users, app_settings, projects, project_members)",
+  "description": "Alembic-Migration für die Core-Tabellen: users (mit Gamification-Feldern), app_settings (mit Bootstrap-Eintrag hivemind_mode=solo), projects, project_members.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "users-Tabelle mit allen Spalten laut data-model.md (inkl. exp_points, avatar_frame, preferred_theme, preferred_tone)",
+      "app_settings-Tabelle mit Solo-Modus Bootstrap-Eintrag",
+      "projects-Tabelle existiert",
+      "project_members-Tabelle mit Unique-Constraint (user_id, project_id)",
+      "Alle CHECK-Constraints vorhanden (valid_preferred_theme, valid_preferred_tone)",
+      "Migration ist reversibel"
+    ]
+  },
+  "tags": ["backend", "database", "core", "schema"],
+  "subtasks": [],
+  "pinned_skills": ["alembic-migration"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/architecture/data-model.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-1A-004"]
+}

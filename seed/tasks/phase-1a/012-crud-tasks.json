@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-1A-012",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "CRUD-Endpoints: Tasks + State Transitions",
+  "description": "REST-Endpoints für Tasks: POST, GET (list + detail), PATCH (update + state transition). State-Machine-Integration: PATCH /api/tasks/{task_key}/state validiert Transition. Review-Endpoints: approve_review, reject_review.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "POST erstellt Task mit state=incoming",
+      "GET listet Tasks eines Epics mit State-Filter",
+      "PATCH /api/tasks/{task_key}/state validiert State-Transition",
+      "POST /api/tasks/{task_key}/approve → in_review → done",
+      "POST /api/tasks/{task_key}/reject → in_review → qa_failed",
+      "Review-Gate: in_progress → done wird 422",
+      "Epic-Auto-Transitions werden korrekt ausgelöst",
+      "Integration-Tests für alle Transitions"
+    ]
+  },
+  "tags": ["backend", "api", "crud", "tasks", "state-machine"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "state-machine-transition", "api-test"],
+  "linked_wiki": ["state-machine-guide"],
+  "source_doc": "docs/phases/phase-1.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-1A-009", "TASK-1A-011"]
+}

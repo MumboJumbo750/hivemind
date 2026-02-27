@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-1A-014",
+  "epic_ref": "EPIC-PHASE-1A",
+  "title": "Seed-Import: CLI-Command oder Data-Migration",
+  "description": "CLI-Command oder Alembic Data-Migration die den seed/-Ordner liest und die DB mit dem Hivemind-Projekt als erstem Projekt befüllt. Parst JSON (epics, tasks) und Markdown mit Frontmatter (wiki, skills).",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "seed/-Ordner wird vollständig importiert",
+      "project.json → projects-Tabelle",
+      "epics/*.json → epics-Tabelle",
+      "tasks/**/*.json → tasks-Tabelle (mit Epic-FK aufgelöst)",
+      "wiki/*.md → wiki_articles-Tabelle (Frontmatter geparsed)",
+      "skills/*.md → skills-Tabelle (Frontmatter geparsed)",
+      "Import ist idempotent (external_id/slug als Dedup-Key)",
+      "Fehlermeldung bei ungültigen Referenzen"
+    ]
+  },
+  "tags": ["backend", "tooling", "seed", "import"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/seed-strategy.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-1A-008"]
+}

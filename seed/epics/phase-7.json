@@ -1,0 +1,12 @@
+{
+  "external_id": "EPIC-PHASE-7",
+  "title": "Phase 7 — Externe Integration Hardening",
+  "description": "YouTrack/Sentry-Sync robust, Outbox-Consumer, DLQ-UI, pgvector-Routing, Bug Heatmap, KPI-Dashboard.",
+  "state": "scoped",
+  "priority": "medium",
+  "sla_deadline": null,
+  "definition_of_done": "Outbox-Consumer mit Exponential Backoff verarbeitet Events, DLQ-Requeue funktioniert, pgvector-Routing bei Confidence >= 0.85 auto-assigned, Bug Heatmap im Nexus Grid, KPI-Dashboard zeigt 6 Kern-KPIs.",
+  "tags": ["backend", "frontend", "integration", "sync", "kpi", "phase-7"],
+  "depends_on": ["EPIC-PHASE-6"],
+  "source_doc": "docs/phases/phase-7.md"
+}

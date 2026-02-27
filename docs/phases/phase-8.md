@@ -62,10 +62,20 @@
   - Gespeichert in `app_settings.governance` (JSON)
   - Auto-Bedingungen + Safeguards pro Typ (z.B. Review: nie auto-reject, immer Grace Period)
   - `review_recommendations` Tabelle für AI-Review-Audit-Trail
+- [ ] **Worker-Endpoint-Pool** (optional): Mehrere Self-Hosted-Endpoints für eine Agent-Rolle (→ [data-model.md — ai_provider_configs](../architecture/data-model.md))
+  - `endpoints` JSONB-Array in `ai_provider_configs` statt Single-`endpoint`: `[{"url": "http://gpu1:11434", "weight": 1}, ...]`
+  - Pool-Strategien: `round_robin` (Default), `weighted` (nach GPU-Stärke), `least_busy` (wenigste aktive Dispatches)
+  - Conductor dispatcht parallele Worker-Tasks an verschiedene Endpoints — ein Subtask pro Endpoint gleichzeitig möglich
+  - RPM-Limit gilt **pro Endpoint** im Pool (nicht aggregiert) — ermöglicht höheren Gesamt-Throughput
+  - Health-Check: Conductor prüft Endpoint-Verfügbarkeit per Ping vor Dispatch; unhealthy Endpoints werden temporär übersprungen (60s Cooldown)
+  - **Subtask-Aggregation:** Wenn alle Subtasks eines Parent-Tasks `done` sind, erzeugt der Conductor automatisch einen Merge-Prompt für den Parent-Task. Kein neuer Agent — der Architekt-Prompt-Typ `merge_subtasks` assembliert die Ergebnisse. Der Parent-Task geht danach auf `in_review`.
+  - **Kein Pflicht-Feature:** Funktioniert nur mit `ollama`/`custom`-Providern (Self-Hosted). Cloud-Provider haben eigenes Load-Balancing.
+  - **Monitoring:** Prompt Station zeigt Pool-Status pro Endpoint (healthy/unhealthy, aktive Dispatches, avg Response Time)
 
 ### Frontend
 - [ ] AI-Provider-Config in Settings:
-  - Per-Agent-Rolle: Provider-Auswahl, Modell, Endpoint, API-Key, Token-Budget, RPM-Limit
+  - Per-Agent-Rolle: Provider-Auswahl, Modell, Endpoint (Single oder Pool), API-Key, Token-Budget, RPM-Limit
+  - Endpoint-Pool-Editor: Endpoints hinzufügen/entfernen, Weight pro Endpoint, Pool-Strategie wählen
   - Global-Fallback: Ein Default-Provider für nicht einzeln konfigurierte Rollen
   - Hybrid-Modus: Einzelne Rollen manuell (BYOAI), andere automatisiert
   - Test-Button pro Rolle (Ping + Token-Count-Validierung)
@@ -184,3 +194,4 @@ In Phase 1–7 verwendet Hivemind `tiktoken cl100k_base` als universelle Approxi
 - Multi-Instanz-Setup (mehrere Teams auf einer Plattform)
 - Nexus Grid: Diff-Ansicht (welche Nodes haben sich seit letztem Kartograph-Run verändert)
 - Skill-Empfehlungs-System: AI schlägt proaktiv Skills vor ohne Gaertner-Run
+- Worker-Pool Auto-Scaling: Endpoints dynamisch hinzufügen/entfernen basierend auf Queue-Tiefe

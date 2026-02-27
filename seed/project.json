@@ -1,0 +1,7 @@
+{
+  "name": "Hivemind",
+  "slug": "hivemind",
+  "description": "Ein hybrides Entwickler-Hivemind mit Progressive Disclosure. Startet als manuelles BYOAI-System und skaliert ohne Architekturbruch auf autonome MCP-Agenten. Hivemind ist selbst ein MCP-Server: der Chat liest und schreibt Kontext direkt.",
+  "tags": ["meta", "dogfooding", "fullstack"],
+  "created_by": "admin"
+}

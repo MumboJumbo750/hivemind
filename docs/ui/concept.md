@@ -105,6 +105,7 @@ Mono:      "JetBrains Mono"  (Code, IDs, Prompts)
 ```text
 ┌──────────────────────────────────────────────────────────────────┐
 │  SYSTEM BAR  [◈ alex-hivemind]  [PROJECT ▾]  [SOLO]  [● MCP]   │
+│                                              [🔔 3] [AVATAR]│
 ├────────────┬─────────────────────────────────┬───────────────────┤
 │            │                                 │                   │
 │  NAV       │   MAIN CANVAS                   │  CONTEXT PANEL    │
@@ -114,15 +115,33 @@ Mono:      "JetBrains Mono"  (Code, IDs, Prompts)
 │  ○ QUESTS  │   · Command Deck (Standard)     │  Detail-Ansicht   │
 │  ○ TRIAGE  │   · Nexus Grid / Weltkarte      │  des selektierten │
 │  ○ ARSENAL │   · Triage Station              │  Elements         │
-│  ○ WIKI    │   · Arsenal / Skill Lab         │                   │
-│  ○ KARTE   │   · Wiki                        │                   │
-│  ○ GILDE   │   · Gilde / Federation          │                   │
+│  ○ WIKI    │   · Arsenal / Skill Lab         │  — oder —         │
+│  ○ KARTE   │   · Wiki                        │  Memory-Kontext   │
+│  ○ GILDE   │   · Gilde / Federation          │  (ab Phase 5)     │
+│  ○ MEMORY  │   · Memory Ledger               │                   │
 │  ○ CONFIG  │   · Settings                    │                   │
 │            │                                 │                   │
 ├────────────┴─────────────────────────────────┴───────────────────┤
 │  STATUS BAR  [MCP ✓]  [3 Tasks aktiv]  [⚠ SLA: EPIC-12 in 4h]  │
 │              [EXP: ████████░░░░░░░░░░░ Lvl. 5 Commander]         │
 └──────────────────────────────────────────────────────────────────┘
+```
+
+**System Bar — UserAvatar-Dropdown:**
+
+Der UserAvatar in der rechten Ecke der System Bar ist klickbar und öffnet ein Dropdown-Menü:
+
+```text
+[AVATAR] ▾
+┌──────────────────────────┐
+│  Max Mustermann         │
+│  @max · admin             │
+│  Lvl 5 ███████░░░         │
+├──────────────────────────┤
+│  [▶ PROFIL]              │
+│  [⚙ EINSTELLUNGEN]       │
+│  [⭢ ABMELDEN]            │
+└──────────────────────────┘
 ```
 
 ### System Bar — Phase F Erweiterung
@@ -190,6 +209,7 @@ Phase 1 (frischer Install):
   ○ ARSENAL / SKILL LAB        ← gesperrt (🔒 Phase 4)
   ○ WIKI                       ← gesperrt (🔒 Phase 5)
   ○ WELTKARTE / NEXUS GRID     ← gesperrt (🔒 Phase 5)
+  ○ MEMORY / MEMORY LEDGER     ← gesperrt (🔒 Phase 5)
   ○ GILDE / FEDERATION         ← gesperrt (🔒 Phase F)
   ○ CONFIG / SETTINGS          ← aktiv
 
@@ -200,8 +220,10 @@ Phase 2:
   ○ ARSENAL / SKILL LAB        ← gesperrt (🔒 Phase 4)
   ○ WIKI                       ← gesperrt (🔒 Phase 5)
   ○ WELTKARTE / NEXUS GRID     ← gesperrt (🔒 Phase 5)
+  ○ MEMORY / MEMORY LEDGER     ← gesperrt (🔒 Phase 5)
   ○ GILDE / FEDERATION         ← gesperrt (🔒 Phase F)
   ○ CONFIG / SETTINGS          ← aktiv
+  + PROFIL erreichbar via System Bar UserAvatar-Dropdown
 
 Phase F (nach Phase 2):
   ... alle Phase-2-Items +
@@ -209,7 +231,7 @@ Phase F (nach Phase 2):
 
 Phase 5:
   ◈ STATION   ● QUESTS   ● TRIAGE   ● ARSENAL   ● WIKI
-  ● WELTKARTE   ● GILDE (wenn Phase F)   ● CONFIG
+  ● WELTKARTE   ● MEMORY   ● GILDE (wenn Phase F)   ● CONFIG
 ```
 
 **Leer-State-Verhalten:** Wenn ein Item freigeschaltet wurde aber noch keine Daten vorhanden sind, zeigt die View einen **lehrreichen Leer-State** (kein leeres Panel):
@@ -232,11 +254,13 @@ Phase 5:
 | --- | --- | --- | --- | --- |
 | **Prompt Station** | BEFEHLSSTATION | PROMPT STATION | Agent-Queue, aktiver Prompt | 1 |
 | **Command Deck** | QUESTS | COMMAND DECK | Epics + Tasks, State Machine, SLA | 2 |
+| **Profil** | KOMMANDANTENPROFIL | PROFIL | Avatar, Level, Badges, Statt, persönliche Einstellungen | 2 |
 | **Triage Station** | TRIAGE | TRIAGE | Unrouted Events, Proposals, Dead Letters | 3 |
 | **Arsenal** | ARSENAL | SKILL LAB | Skills + Guards browsen, Proposals | 4 |
 | **Wiki** | WIKI | WIKI | Wissensartikel lesen und navigieren | 5 |
 | **Nexus Grid** | WELTKARTE | NEXUS GRID | Code-Graph, Fog of War, Bug-Heatmap | 5 |
-| **Gilde** | GILDE | FEDERATION | Peer-Übersicht, Shared Epics, Gildenwissen | F |
+| **Memory Ledger** | AGENTEN-GEDÄCHTNIS | MEMORY LEDGER | Agent-Arbeitsspeicher browsen, offene Fragen, Skill-Candidates | 5 |
+| **Gilde** | GILDE | FEDERATION | Peer-Übersicht, Shared Epics, Gildenwissen, Leaderboard | F |
 | **Settings** | CONFIG | SETTINGS | MCP-Config, AI-Provider, Solo/Team, Themes | 1 |
 
 ---
@@ -339,9 +363,11 @@ Das Interaction-Profil ändert keine Daten, keine Rechte und keine Workflow-Logi
 | Nexus Grid | Weltkarte | Nexus Grid / Code-Graph |
 | Kartograph-Agent | Scout | Kartograph |
 | Prompt Station | Befehlsstation | Prompt Station |
+| Profil | KOMMANDANTENPROFIL | PROFIL |
 | Peer-Node zuweisen | Quest delegieren | Task zuweisen |
 | Skill aus Peer-Node | Gildenwissen | Federated Skill |
 | Federated Discovery | Karte erkunden | Code-Discovery |
+| Memory Ledger | Agenten-Gedächtnis | Memory Ledger |
 
 ### Leer-States & Notifications
 

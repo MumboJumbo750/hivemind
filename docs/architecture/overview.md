@@ -212,7 +212,7 @@ data: {"task_key":"TASK-88","old_state":"in_progress","new_state":"in_review",..
 - Client sendet `Last-Event-ID` Header beim Reconnect (Browser-nativ bei SSE)
 - Backend liefert alle Events seit dieser ID nach (aus einem Ring-Buffer der letzten 1000 Events pro Kanal)
 - Falls `Last-Event-ID` nicht mehr im Buffer (zu viele Events verpasst): Server sendet `event: full_sync` — Client lädt State komplett neu via REST
-- Ring-Buffer-Größe konfigurierbar: `HIVEMIND_SSE_BUFFER_SIZE` (Default: 1000)
+- Ring-Buffer-Größe konfigurierbar: `HIVEMIND_SSE_RING_BUFFER_SIZE` (Default: 1000)
 
 **Polling-Fallback-Endpoint (explizit):**
 
@@ -287,7 +287,7 @@ Hivemind läuft als souveräne, selbst-gehostete Instanz. Export und Backup sind
 | **PostgreSQL** | `pg_dump --format=custom` via Cron-Job im Docker-Container | Täglich 02:00 UTC (Default) | `HIVEMIND_BACKUP_CRON`, `HIVEMIND_BACKUP_DIR` |
 | **Uploads / Attachments** | Dateisystem-Snapshot des `volumes/uploads`-Verzeichnisses | Zusammen mit DB-Backup | Selbes Backup-Dir |
 | **Ed25519 Keys** | Exportiert via `hivemind export-keys` CLI-Befehl; **nicht** im regulären Backup enthalten (Separation of Secrets) | Manuell bei Setup + nach Key-Rotation | Passwort-geschützter Export |
-| **Retention** | Letzte N Backups behalten, ältere löschen | Default: 7 tägliche + 4 wöchentliche | `HIVEMIND_BACKUP_RETENTION_DAILY`, `_WEEKLY` |
+| **Retention** | Letzte N Backups behalten, ältere löschen | Default: 7 tägliche + 4 wöchentliche + 3 monatliche | `HIVEMIND_BACKUP_RETENTION_DAILY`, `_WEEKLY`, `_MONTHLY` |
 
 ### Daten-Export (User-facing)
 
@@ -332,7 +332,7 @@ Alle API-Endpoints sind rate-limited. Die Limits gelten pro Actor (identifiziert
 | **SSE-Streams** (`/events/*`) | 5 gleichzeitige Verbindungen | pro User | 429 bei 6. Verbindung |
 
 **Phase 8 (Autonomy) Erweiterung:**
-- AI-Provider-Calls werden via separatem Token-Bucket limitiert: Per-Agent-Rolle konfigurierbar über `ai_provider_configs.rpm_limit`; Global-Fallback via `HIVEMIND_AI_RPM` (Default: 10) um Provider-Rate-Limits nicht zu triggern.
+- AI-Provider-Calls werden via separatem Token-Bucket limitiert: Per-Agent-Rolle konfigurierbar über `ai_provider_configs.rpm_limit`; Global-Fallback via `HIVEMIND_AI_RPM_LIMIT` (Default: 10) um Provider-Rate-Limits nicht zu triggern.
 - Federation Peer-to-Peer: Zusätzliches per-Peer Throttling via `HIVEMIND_FEDERATION_PEER_RPM` (Default: 30/min) gegen Abuse durch kompromittierte Peers.
 
 **Implementation:** Middleware-basiert im FastAPI-Service. Phase 1–7: **In-Memory Token Bucket** (Python `dict` mit TTL-basiertem Cleanup, ausreichend für Single-Instance — kein Redis im Stack). Rate-Limit-State geht bei Prozess-Neustart verloren (akzeptabel). Ab Phase 8 bei Multi-Worker Setup: Redis-basierter Distributed Rate Limiter evaluieren.
@@ -369,7 +369,7 @@ scheduler.start()
 | `backup_db` | 24 h | 1 | `pg_dump` (via Docker exec oder subprocess) | `HIVEMIND_BACKUP_CRON` (Cron-Expression) |
 | `idempotency_cleanup` | 1 h | 2 | Abgelaufene Idempotency-Keys löschen (TTL-basiert) | — |
 | `peer_status_check` | 5 min | F | Offline-Peers erkennen, Triage-Items erzeugen | `HIVEMIND_FEDERATION_OFFLINE_THRESHOLD` |
-| `embedding_queue` | 10 sec | 3 | Ausstehende Embedding-Berechnungen via Ollama | `HIVEMIND_EMBEDDING_BATCH_SIZE` (default: 10) |
+| `embedding_queue` | 10 sec | 3 | Ausstehende Embedding-Berechnungen via Ollama | `HIVEMIND_EMBEDDING_BATCH_SIZE` (default: 50) |
 
 ### Phase 8: Prozess-Separation & Leader Election
 

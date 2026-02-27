@@ -139,6 +139,94 @@ Tasks werden von einem bestehenden Epic in ein anderes verschoben (kein neues Ep
 
 > **`in_progress`/`in_review`-Blocker:** Wenn ein Restructure-Proposal Tasks in `in_progress` oder `in_review` enthält, kann er zwar `accepted` werden (Preview sichtbar), aber `apply_epic_restructure` gibt HTTP 422 zurück bis alle blockierenden Tasks in einem verschiebbaren State sind. Die UI zeigt: "Warte auf 2 Tasks" mit Links zu TASK-11 und TASK-12.
 
+---
+
+## Apply-Flow — End-to-End
+
+`apply_epic_restructure` führt die tatsächliche Restrukturierung in **einer einzigen Datenbank-Transaktion** durch. Je nach `restructure_type` unterscheidet sich der Ablauf:
+
+### Apply: Epic Split
+
+```text
+1. Validierung:
+   - Proposal.state == 'accepted'
+   - Source-Epic existiert und ist in incoming|scoped|in_progress
+   - Alle referenzierten Tasks sind in verschiebbarem State (incoming|scoped|ready|blocked)
+   - Kein Task in in_progress|in_review|escalated|done|cancelled → HTTP 422
+
+2. Ausführung (atomar):
+   a) Für jedes resulting_epic in payload.resulting_epics:
+      → INSERT neues Epic (state übernommen vom Source-Epic; owner = Source-Epic owner)
+      → epic_key via Sequence generieren (EPIC-N+1, EPIC-N+2, ...)
+   b) Für jeden Task in resulting_epics[].task_ids:
+      → UPDATE tasks SET epic_id = <neues_epic_id>
+      → task_node_links, decision_requests.epic_id migrieren
+   c) Source-Epic:
+      → Wenn ALLE Tasks verschoben → Source-Epic state → 'cancelled', Begründung: "Split via RESTRUCTURE-X"
+      → Wenn Restliche Tasks bleiben → Source-Epic bleibt unverändert
+   d) epic_restructure_proposals.state → 'applied', applied_at = NOW()
+
+3. Side-Effects:
+   → Notification 'restructure_applied' an Epic-Owner + alle betroffenen Task-Assignees
+   → Audit-Eintrag in mcp_invocations
+   → Falls Federation: sync_outbox-Einträge für neue Epics (wenn Tasks auf Peers delegiert)
+```
+
+### Apply: Epic Merge
+
+```text
+1. Validierung:
+   - Proposal.state == 'accepted'
+   - Alle Source-Epics existieren und sind nicht cancelled|done
+   - Alle Tasks in allen Source-Epics sind in verschiebbarem State
+   - Kein Task in in_progress|in_review|escalated → HTTP 422
+
+2. Ausführung (atomar):
+   a) INSERT neues Merge-Epic:
+      → Title + Description aus payload.resulting_epic
+      → State: 'in_progress' wenn ein Source-Epic in_progress war, sonst 'scoped'
+      → Owner: Owner des ersten Source-Epics (oder explizit in Payload)
+   b) Für jeden Task in allen Source-Epics:
+      → UPDATE tasks SET epic_id = <merge_epic_id>
+      → task_node_links, decision_requests.epic_id migrieren
+   c) Alle Source-Epics → state: 'cancelled', Begründung: "Merged into [EPIC-X] via RESTRUCTURE-X"
+   d) epic_node_links: Vereinigung aller Source-Epic-Links auf das neue Epic
+   e) epic_restructure_proposals.state → 'applied', applied_at = NOW()
+
+3. Side-Effects: (identisch mit Split)
+```
+
+### Apply: Task Move
+
+```text
+1. Validierung:
+   - Proposal.state == 'accepted'
+   - Für jeden Move in payload.moves:
+     → Source-Epic und Target-Epic existieren und sind nicht cancelled|done
+     → Task ist in verschiebbarem State (incoming|scoped|ready|blocked)
+     → Task gehört aktuell zu from_epic_id
+
+2. Ausführung (atomar):
+   a) Für jeden Move:
+      → UPDATE tasks SET epic_id = <to_epic_id> WHERE id = <task_id>
+      → Falls Task blocked: zugehöriger decision_request.epic_id migrieren
+   b) epic_restructure_proposals.state → 'applied', applied_at = NOW()
+
+3. Side-Effects:
+   → Notification an Task-Assignees: "TASK-X verschoben von EPIC-A nach EPIC-B"
+   → Falls Federation + Task.assigned_node_id: sync_outbox-Eintrag für Peer
+```
+
+### Fehlerbehandlung
+
+| Fehler | HTTP | Verhalten |
+| --- | --- | --- |
+| Proposal nicht `accepted` | 409 | "Proposal must be in state 'accepted'" |
+| Blockierende Tasks vorhanden | 422 | `{ "blocking_tasks": ["TASK-11", "TASK-12"], "states": ["in_progress", "in_review"] }` |
+| Source-Epic nicht gefunden | 404 | Standard |
+| Source-Epic done/cancelled | 422 | "Cannot restructure terminal-state epic" |
+| DB-Constraint-Verletzung | 500 | Rollback der gesamten Transaktion; Proposal bleibt `accepted` |
+
 ### Epic-State-Constraints bei Merge/Split
 
 - **Split:** Source-Epic muss in `incoming`, `scoped` oder `in_progress` sein. Kein Split von `done`-Epics.

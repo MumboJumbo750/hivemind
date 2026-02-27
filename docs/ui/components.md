@@ -128,24 +128,59 @@ src/components/domain/
   FilterBar.vue           Horizontale Tab/Chip-Leiste mit optionalen Counts
                           Props: tabs (Array<{key, label, count?}>), modelValue
                           Nutzt: HivemindTabs
+
+  UserAvatar.vue          Benutzer-Avatar mit optionalem Level-Rahmen
+                          Props: user ({ username, display_name?, avatar_url?, avatar_frame?, level? }),
+                                 size (xs|sm|md|lg), showFrame (Boolean), showLevel (Boolean)
+                          Initialen-Avatar als Fallback wenn avatar_url == null (deterministisches Farb-Hashing)
+                          Rahmen-Glow-Effekt bei freigeschalteten Frames (silver|gold|holo)
+                          Nutzt: HivemindBadge (für Level-Pill)
+
+  ExpBar.vue              EXP-Balken mit Level-Anzeige und optionaler Delta-Animation
+                          Props: expTotal (Number), level (Number), nextLevelExp (Number),
+                                 delta (Number, optional — letzte EXP-Vergabe für +Nnn Animation),
+                                 compact (Boolean — für Status Bar)
+                          Nutzt: HivemindProgress
+
+  BadgeGrid.vue           Badge/Achievement-Sammlung als Grid oder kompakte Reihe
+                          Props: badges (UserBadge[]), mode (grid|inline),
+                                 showLocked (Boolean — gesperrte Badges als ░░ zeigen)
+                          Badge-Objekt: { badge_key, title, description, category, awarded_at?, icon }
+                          Nutzt: HivemindBadge, HivemindCard
+
+  MemoryContextBadge.vue  Kompakter Memory-Status für Context Panel
+                          Props: summaryCount (Number), factCount (Number),
+                                 openQuestions (Number), lastAgent (String)
+                          Emits: open-ledger
+                          Nutzt: HivemindBadge, AgentBadge
+
+  LevelUpToast.vue        Level-Up-Notification als Overlay-Toast
+                          Props: newLevel (Number), title (String), unlocks (String|null)
+                          Auto-dismiss nach 5s, "Juice"-Animation: Glow + Partikel-Effekt
+                          Nutzt: HivemindBadge
 ```
 
 ### Reuse-Matrix
 
-| Komponente | Prompt Station | Command Deck | Triage | Skill Lab | Wiki | Settings | Status Bar |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| `HivemindViewer` | ✓ | ✓ | — | ✓ | ✓ | — | — |
-| `HivemindEditor` | ✓ | — | — | ✓ | ✓ | — | — |
-| `StateBadge` | ✓ | ✓ | ✓ | — | — | — | — |
-| `LifecycleBadge` | — | — | ✓ | ✓ | — | — | — |
-| `AgentBadge` | ✓ | ✓ | ✓ | ✓ | — | ✓ | — |
-| `SlaTimer` | — | ✓ | ✓ | — | — | — | ✓ |
-| `TokenBudget` | ✓ | ✓ | — | — | — | — | — |
-| `ConfidenceBar` | — | — | — | ✓ | — | — | — |
-| `GuardList` | ✓ | ✓ | — | ✓ | — | — | — |
-| `ProposalCard` | — | — | ✓ | ✓ | — | — | — |
-| `CompositionChain` | ✓ | — | — | ✓ | — | — | — |
-| `FilterBar` | — | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| Komponente | Prompt Station | Command Deck | Triage | Skill Lab | Wiki | Settings | Status Bar | Profil | Memory Ledger | Gilde |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `HivemindViewer` | ✓ | ✓ | — | ✓ | ✓ | — | — | — | ✓ | — |
+| `HivemindEditor` | ✓ | — | — | ✓ | ✓ | — | — | — | — | — |
+| `StateBadge` | ✓ | ✓ | ✓ | — | — | — | — | — | — | — |
+| `LifecycleBadge` | — | — | ✓ | ✓ | — | — | — | — | — | — |
+| `AgentBadge` | ✓ | ✓ | ✓ | ✓ | — | ✓ | — | — | ✓ | — |
+| `SlaTimer` | — | ✓ | ✓ | — | — | — | ✓ | — | — | — |
+| `TokenBudget` | ✓ | ✓ | — | — | — | — | — | — | — | — |
+| `ConfidenceBar` | — | — | — | ✓ | — | — | — | — | — | — |
+| `GuardList` | ✓ | ✓ | — | ✓ | — | — | — | — | — | — |
+| `ProposalCard` | — | — | ✓ | ✓ | — | — | — | — | — | — |
+| `CompositionChain` | ✓ | — | — | ✓ | — | — | — | — | — | — |
+| `FilterBar` | — | ✓ | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | ✓ |
+| `UserAvatar` | — | ✓ | — | — | — | ✓ | — | ✓ | — | ✓ |
+| `ExpBar` | ✓ | — | — | — | — | — | ✓ | ✓ | — | ✓ |
+| `BadgeGrid` | — | — | — | — | — | — | — | ✓ | — | ✓ |
+| `MemoryContextBadge` | — | ✓ | — | — | — | — | — | — | ✓ | — |
+| `LevelUpToast` | — | — | — | — | — | — | — | — | — | — |
 
 ---
 
@@ -205,19 +240,39 @@ src/views/
 
   settings/
     Settings.vue              Root + Tabs (FilterBar)
-    SystemTab.vue             Modus, MCP-Transport, Theme
+    SystemTab.vue             Modus, MCP-Transport, Default-Theme, Default-Tone
     ProjectTab.vue            Mitglieder-Liste, Rollen-Dropdowns
     AuditTab.vue              Audit-Log-Tabelle + Payload-Preview
     AiTab.vue                 Per-Agent-Rolle: Provider, Modell, Key, Budget (Phase 8)
+    ConductorStatus.vue       Conductor-Monitoring: aktive Dispatches, Provider-Auslastung, Fehlerlog (Phase 8)
     GovernanceTab.vue         Pro Entscheidungstyp: manual/assisted/auto, Threshold, Grace Period (Phase 8)
 
+  profile/
+    ProfileView.vue           Root-Komponente des Profils
+    AvatarUploadModal.vue     Avatar-Upload + Rahmen-Auswahl (Drag&Drop, Vorschau, Crop)
+    TrophyCabinet.vue         Trophäenschrank: Badge-Grid mit Locked-State + Kategorie-Filter
+    StatsPanel.vue            Persönliche Statistiken (Quests, Reviews, Clean Runs, etc.)
+    PreferencesPanel.vue      Persönliche Einstellungen (Theme, Tone, Notification-Filter)
+    PeerProfilePanel.vue      Read-only Profil eines Peers (Phase F)
+
+  memory-ledger/
+    MemoryLedger.vue          Root-Komponente (Scope-Filter, Agent-Filter, Ebenen-Filter)
+    OpenQuestionsPanel.vue    Offene Fragen aus L2-Summaries (priorisiert)
+    SummaryCard.vue           L2-Summary-Card mit Fakten-Count, Coverage, Graduation-Status
+    FactTable.vue             L1-Facts als kompakte Tabelle (Entity, Key, Value)
+    SkillCandidateCard.vue    skill-candidate-Entries mit Verarbeitungs-Status
+    CoverageStatus.vue        Abdeckungs-Übersicht (% der Observations durch Summaries abgedeckt)
+    MemoryIntegrityBanner.vue Warnbanner bei >30% unbedeckten Observations
+
   layout/
-    SystemBar.vue             Immer sichtbar — Projekt, Modus, MCP-Status, 🔔
+    SystemBar.vue             Immer sichtbar — Projekt, Modus, MCP-Status, 🔔, UserAvatar (klickbar → Profil-Dropdown)
     NavSidebar.vue            Navigation + Progressive Reveal (lock per Phase)
-    ContextPanel.vue          Rechtes Panel — Prompt Station oder Detail
-    StatusBar.vue             Immer sichtbar — MCP ✓, Tasks aktiv, SLA-Warnung
+    ContextPanel.vue          Rechtes Panel — Prompt Station oder Detail oder Memory-Kontext
+    StatusBar.vue             Immer sichtbar — MCP ✓, Tasks aktiv, SLA-Warnung, ExpBar (compact)
     NotificationTray.vue      Aufklappbares Panel aus SystemBar (🔔)
     NotificationItem.vue      Einzelne Notification (Typ-Icon, Text, Ziel-Link)
+    UserDropdown.vue          Dropdown bei Klick auf UserAvatar in SystemBar: [PROFIL] [EINSTELLUNGEN] [ABMELDEN]
+    LevelUpOverlay.vue        Globaler Overlay für Level-Up-Events (rendert LevelUpToast bei SSE level_up)
 ```
 
 ---

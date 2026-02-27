@@ -125,6 +125,61 @@ class Conductor:
                 # AI reviewed → auto-approve wenn confidence > threshold
 ```
 
+### Dispatch-Parallelität & Backpressure
+
+Nicht alle Dispatches sind gleichwertig. Der Conductor unterscheidet zwischen **unabhängigen** (parallel) und **abhängigen** (sequenziell) Dispatches:
+
+```python
+# UNABHÄNGIGE Dispatches: parallel — kein gemeinsamer State, kein Output-Dependency
+async def on_multiple_tasks_ready(task_ids: list[str]):
+    await asyncio.gather(*[
+        self.dispatch_agent("worker", task_id=tid)
+        for tid in task_ids
+    ])
+    # Alle Worker starten gleichzeitig — IO-bound (AI-API-Calls), kein Event-Loop-Block
+
+# ABHÄNGIGE Dispatches: sequenziell — Output A ist Input B
+async def on_task_scoped(task_id: str):
+    context = await self.dispatch_agent("bibliothekar", task_id=task_id)
+    # Bibliothekar MUSS fertig sein bevor Worker startet
+    await self.dispatch_agent("worker", task_id=task_id, context=context)
+
+# SERIELL durch Geschäftsregel: Epic-Scoping vor Architekt-Dekomposition
+async def on_epic_incoming(epic_id: str):
+    await self.auto_scope_epic(epic_id)          # atomic: scoped
+    await self.dispatch_agent("architekt", epic_id=epic_id)  # danach
+```
+
+**Parallelitäts-Grenze:** `HIVEMIND_CONDUCTOR_PARALLEL = 3` (Default) begrenzt die Gesamtzahl gleichzeitiger Dispatches via `asyncio.Semaphore`. Überschreitung → Queue im Conductor. Nicht: Thread-Blocking, sondern: await auf freien Slot.
+
+**RPM-Limit als primäre Backpressure:**
+
+Der natürliche Throttle-Mechanismus sind die `rpm_limit`-Felder in `ai_provider_configs`:
+
+```text
+ai_provider_configs:
+  worker:     rpm_limit = 10  (Ollama lokal → 10 Req/Min max)
+  kartograph: rpm_limit = 5   (Gemini API → Rate-Limit-freundlich)
+  gaertner:   rpm_limit = 10  (Claude → Default)
+
+Conductor-Verhalten bei RPM-Überschreitung:
+  → Token Bucket pro Agent-Rolle (nicht pro Dispatch)
+  → Bei voller Bucket: await asyncio.sleep(backoff) — KEIN Fehler
+  → Backoff: 60s / rpm_limit (z.B. bei 10 RPM: 6s zwischen Requests)
+  → Keine externe Queue nötig — asyncio.sleep() hält Event Loop frei
+```
+
+**Warum keine externe Message Queue:**
+
+Für Single-Node-Betrieb (Docker Compose, ein Backend-Prozess) ist asyncio ausreichend:
+
+| Bedarf | Unsere Lösung | Externe Queue nötig wenn... |
+| --- | --- | --- |
+| At-least-once Delivery | `sync_outbox` + Retry (Outbox IS die Queue) | Mehrere Backend-Prozesse |
+| Task-Priorität | `asyncio.PriorityQueue` im Conductor | >10k Dispatches/Sekunde |
+| Guard-Execution | `asyncio.to_thread()` + `asyncio.Semaphore` | Guards > 5 Min (dann Sidecar) |
+| AI-API-Calls | `httpx.AsyncClient` (non-blocking by design) | Nie nötig |
+
 ### Conductor-Garantien
 
 | Garantie | Mechanismus |

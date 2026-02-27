@@ -25,6 +25,7 @@ badge_definitions
 projects
 project_members            → users, projects
 user_achievements          → users, badge_definitions
+exp_events                 → users
 epics                      → projects, users, nodes (origin_node_id)
 tasks                      → epics, users, nodes (assigned_node_id), (self-ref für Subtasks)
 skills                     → projects, users, nodes (origin_node_id)
@@ -39,6 +40,7 @@ wiki_articles              → wiki_categories, users, nodes (origin_node_id)
 wiki_versions              → wiki_articles, users
 code_nodes                 → projects, users
 code_edges                 → projects, code_nodes
+discovery_sessions         → projects, nodes, users
 node_bug_reports           → code_nodes
 epic_node_links            → epics, code_nodes
 task_node_links            → tasks, code_nodes
@@ -56,6 +58,10 @@ task_guards                → tasks, guards, users
 review_recommendations     → tasks, users
 conductor_dispatches       (standalone, Audit-Trail)
 notifications              → users
+memory_sessions            → users
+memory_summaries           → users, memory_sessions
+memory_entries             → users, memory_sessions, memory_summaries
+memory_facts               → memory_entries
 ```
 
 > `task_skill_pins` existiert **nicht** als eigene Tabelle. Skills werden via `tasks.pinned_skills JSONB` versioniert gepinnt (siehe JSONB-Schemas unten).
@@ -79,11 +85,13 @@ CREATE TABLE nodes (
   node_name   TEXT NOT NULL,        -- "alex-hivemind", "ben-hivemind"
   node_url    TEXT NOT NULL UNIQUE,  -- "http://192.168.1.10:8000" — eindeutig pro Node
   public_key  TEXT UNIQUE,           -- Ed25519 Public Key (PEM) — NULL bis Key-Exchange; eindeutig wenn gesetzt
-  status      TEXT NOT NULL DEFAULT 'active', -- active|inactive|blocked|removed
-  -- active:   Peer ist verbunden und funktional
-  -- inactive: Peer ist nicht erreichbar (automatisch via Heartbeat)
-  -- blocked:  Admin hat Peer blockiert (reversibel, kein Sync)
-  -- removed:  Admin hat Peer endgültig entfernt (irreversibel, Audit-Trail bleibt)
+  status      TEXT NOT NULL DEFAULT 'active', -- active|inactive|blocked|removed|pending_confirmation
+  -- active:               Peer ist verbunden und funktional
+  -- inactive:             Peer ist nicht erreichbar (automatisch via Heartbeat)
+  -- blocked:              Admin hat Peer blockiert (reversibel, kein Sync)
+  -- removed:              Admin hat Peer endgültig entfernt (irreversibel, Audit-Trail bleibt)
+  -- pending_confirmation: Peer via mDNS entdeckt, aber noch nicht vom Admin bestätigt
+  --                       (Public Key fehlt noch, keine Federation-Kommunikation möglich)
   last_seen   TIMESTAMPTZ,          -- letzter erfolgreicher /federation/ping
   deleted_at  TIMESTAMPTZ,          -- Soft-Delete: gesetzt bei Entfernung, Peer bleibt für Audit sichtbar
   created_at  TIMESTAMPTZ DEFAULT now()
@@ -99,6 +107,12 @@ CREATE TABLE node_identity (
   node_name   TEXT NOT NULL,
   private_key TEXT NOT NULL,  -- Ed25519 Private Key (PEM, at-rest verschlüsselt via HIVEMIND_KEY_PASSPHRASE)
   public_key  TEXT NOT NULL,  -- Ed25519 Public Key (PEM)
+  previous_public_key TEXT,   -- Vorheriger Public Key nach Key-Rotation; wird während Grace-Period
+                              -- (HIVEMIND_KEY_ROTATION_GRACE_SECONDS) für eingehende Signaturprüfung
+                              -- akzeptiert. NULL = keine Rotation aktiv. Wird nach Grace-Period-Ablauf
+                              -- automatisch auf NULL gesetzt.
+  key_rotated_at TIMESTAMPTZ, -- Zeitpunkt der letzten Key-Rotation; NULL = nie rotiert.
+                              -- Grace-Period-Ende = key_rotated_at + HIVEMIND_KEY_ROTATION_GRACE_SECONDS
   created_at  TIMESTAMPTZ DEFAULT now()
 );
 
@@ -109,12 +123,20 @@ CREATE TABLE node_identity (
 CREATE TABLE users (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username      TEXT NOT NULL UNIQUE,
+  display_name  TEXT,           -- Frei wählbarer Anzeigename (≠ username); im UI statt username gezeigt wenn gesetzt
   email         TEXT UNIQUE,
   password_hash TEXT,           -- argon2; NULL für service-Accounts (API-Key-Auth) und Solo-Modus ohne Login
   api_key_hash  TEXT UNIQUE,    -- SHA-256 Hash des API-Keys; nur für role='service'; NULL für alle anderen
   role          TEXT NOT NULL DEFAULT 'developer', -- developer|admin|service|kartograph
+  avatar_url    TEXT,           -- Relativer Pfad zum hochgeladenen Avatar-Bild (z.B. "/uploads/avatars/<uuid>.webp"); NULL → generierter Initialen-Avatar
+  avatar_frame  TEXT,           -- Kosmetischer Avatar-Rahmen freigeschaltet via Gamification (z.B. "silver-frame", "gold-frame", "holo-frame"); NULL → kein Rahmen
+  bio           TEXT,           -- Kurze Selbstbeschreibung (max 280 Zeichen); sichtbar im Profil und in der Gilde
+  preferred_theme TEXT DEFAULT 'space-neon', -- User-eigene Theme-Präferenz (space-neon|industrial-amber|operator-mono); überschreibt app_settings Theme für diesen User
+  preferred_tone  TEXT DEFAULT 'game',      -- User-eigene Tone-Präferenz (game|pro); überschreibt app_settings Tone für diesen User
   exp_points    INT NOT NULL DEFAULT 0,            -- Gamification Progression
-  created_at    TIMESTAMPTZ DEFAULT now()
+  created_at    TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT valid_preferred_theme CHECK (preferred_theme IN ('space-neon', 'industrial-amber', 'operator-mono')),
+  CONSTRAINT valid_preferred_tone CHECK (preferred_tone IN ('game', 'pro'))
 );
 
 -- ─────────────────────────────────────────────
@@ -188,18 +210,24 @@ CREATE TABLE ai_provider_configs (
   provider          TEXT NOT NULL,           -- anthropic|openai|google|ollama|custom
   model             TEXT NOT NULL,           -- z.B. claude-sonnet-4, gpt-4o, gemini-2.5-pro, llama3.3
   endpoint          TEXT,                    -- Custom-Endpoint-URL (Pflicht bei ollama/custom; NULL → Standard-Endpoint)
+  endpoints         JSONB,                   -- Optional: Endpoint-Pool für Load-Balancing (→ Worker-Endpoint-Pool)
+  -- endpoints-Schema: [{"url": "http://gpu1:11434", "weight": 1}, {"url": "http://gpu2:11434", "weight": 2}]
+  -- Wenn gesetzt: überschreibt `endpoint` (Single); Conductor routet per `pool_strategy`
+  -- Wenn NULL: Single-Endpoint-Modus via `endpoint` (Default)
+  pool_strategy     TEXT DEFAULT 'round_robin', -- round_robin|weighted|least_busy (nur relevant wenn endpoints gesetzt)
   api_key_encrypted TEXT,                    -- AES-256-GCM verschlüsselt (selbes System wie app_settings.ai_api_key_encrypted; NULL bei Ollama)
   api_key_nonce     TEXT,                    -- AES-GCM Nonce
   token_budget      INT NOT NULL DEFAULT 8000, -- Token-Budget für diese Rolle (überschreibt app_settings.token_budget_default)
-  rpm_limit         INT NOT NULL DEFAULT 10,   -- Max Requests/Minute für diese Rolle
+  rpm_limit         INT NOT NULL DEFAULT 10,   -- Max Requests/Minute für diese Rolle (pro Endpoint bei Pool)
   enabled           BOOLEAN NOT NULL DEFAULT true, -- Deaktiviert → BYOAI-Fallback für diese Rolle
   updated_by        UUID REFERENCES users(id),
   updated_at        TIMESTAMPTZ DEFAULT now(),
   CONSTRAINT valid_agent_role CHECK (agent_role IN ('kartograph', 'stratege', 'architekt', 'worker', 'gaertner', 'triage', 'reviewer')),
   CONSTRAINT valid_provider CHECK (provider IN ('anthropic', 'openai', 'google', 'ollama', 'custom')),
   CONSTRAINT endpoint_required_for_local CHECK (
-    (provider NOT IN ('ollama', 'custom')) OR (endpoint IS NOT NULL)
-  )
+    (provider NOT IN ('ollama', 'custom')) OR (endpoint IS NOT NULL OR endpoints IS NOT NULL)
+  ),
+  CONSTRAINT valid_pool_strategy CHECK (pool_strategy IN ('round_robin', 'weighted', 'least_busy'))
 );
 
 -- Beispiel-Konfiguration (Mixed Cloud + Self-Hosted):
@@ -210,6 +238,12 @@ CREATE TABLE ai_provider_configs (
 --   ('worker',     'ollama',    'llama3.3',          'http://gpu-server:11434',    8000,   30),
 --   ('gaertner',   'anthropic', 'claude-sonnet-4',   NULL,                         100000, 10),
 --   ('triage',     'ollama',    'llama3.3',          'http://gpu-server:11434',    8000,   30);
+
+-- Beispiel-Konfiguration (Worker-Endpoint-Pool — parallele Self-Hosted Worker):
+-- INSERT INTO ai_provider_configs (agent_role, provider, model, endpoints, pool_strategy, token_budget, rpm_limit) VALUES
+--   ('worker', 'ollama', 'llama3.3',
+--    '[{"url": "http://gpu1:11434", "weight": 1}, {"url": "http://gpu2:11434", "weight": 1}, {"url": "http://gpu3:11434", "weight": 2}]'::jsonb,
+--    'weighted', 8000, 30);
 
 -- ─────────────────────────────────────────────
 -- REVIEW RECOMMENDATIONS: AI-Review-Empfehlungen (Phase 8)
@@ -288,36 +322,43 @@ CREATE TABLE project_members (
 
 -- Level-Schwellen-Konfiguration (Commander Ranks)
 -- Wird beim Bootstrap mit Default-Werten gefüllt; Admin kann anpassen.
+-- Kanonische Referenz: docs/features/gamification.md#level-system
 CREATE TABLE level_thresholds (
   level        INT PRIMARY KEY,            -- 1, 2, 3, ...
   exp_required INT NOT NULL,               -- Kumulative EXP für dieses Level
-  rank_name    TEXT NOT NULL,              -- z.B. "Recruit", "Operative", "Commander", "Strategist", "Grandmaster"
+  rank_name    TEXT NOT NULL,              -- z.B. "Rookie Kommandant", "Grand Sovereign"
   unlocks      TEXT                         -- Kosmetische Freischaltung (z.B. "theme:operator-mono", "avatar:gold-frame")
 );
--- Bootstrap-Daten:
+-- Bootstrap-Daten (10 Levels, identisch mit gamification.md):
 -- INSERT INTO level_thresholds VALUES
---   (1,     0, 'Recruit',    NULL),
---   (2,   100, 'Operative',  NULL),
---   (3,   300, 'Specialist', NULL),
---   (4,   600, 'Commander',  NULL),
---   (5,  1000, 'Strategist', 'avatar:silver-frame'),
---   (6,  1500, 'Veteran',    NULL),
---   (7,  2200, 'Elite',      'theme:operator-mono'),
---   (8,  3000, 'Mastermind', 'avatar:gold-frame'),
---   (9,  4000, 'Legend',     NULL),
---   (10, 5000, 'Grandmaster','avatar:holo-frame');
+--   (1,      0, 'Rookie Kommandant',    NULL),
+--   (2,    100, 'Einsatz-Kommandant',   NULL),
+--   (3,    250, 'Veteran',              NULL),
+--   (4,    500, 'Elite-Kommandant',     NULL),
+--   (5,   1000, 'Meister-Kommandant',   'avatar:silver-frame'),
+--   (6,   2000, 'Gilden-Ältester',      NULL),
+--   (7,   4000, 'Legenden-Kommandant',  'theme:operator-mono'),
+--   (8,   8000, 'Hivemind-Architekt',   'avatar:gold-frame'),
+--   (9,  15000, 'Sovereign',            NULL),
+--   (10, 30000, 'Grand Sovereign',      'avatar:holo-frame');
 
--- EXP-Vergabe-Regeln (kanonisch):
--- | Event                          | EXP  | Bedingung                        |
--- |--------------------------------|------|----------------------------------|
--- | Task → done                    |  50  | Basis                            |
--- | Task → done (HIGH Priority)    | +25  | Bonus                            |
--- | Task → done (Eskalation gelöst)|+100  | resolve_escalation vorher        |
--- | Skill gemergt                  |  30  | merge_skill                      |
--- | Wiki-Artikel erstellt          |  20  | create_wiki_article              |
--- | Decision Request gelöst <24h   |  15  | resolve_decision_request         |
--- | 500 Code-Nodes kartiert        | 200  | Achievement-Trigger              |
--- Formel: user.exp_points += event_exp; Level = MAX(level) WHERE exp_required <= user.exp_points
+-- EXP-Vergabe-Regeln (kanonische Referenz: gamification.md#exp-vergabe--vollständige-tabelle):
+-- | Event                                     | EXP  | Bedingung                        |
+-- |---------------------------------------------|------|----------------------------------|
+-- | Task → done                                |  50  | Basis                            |
+-- | Task → done ohne qa_failed (Clean Run)     | +20  | Bonus                            |
+-- | Task → done mit SLA eingehalten            | +10  | Bonus                            |
+-- | Review als Owner durchgeführt              |  15  | approve_review oder reject_review|
+-- | Skill gemergt                               |  30  | merge_skill                      |
+-- | Skill-Change-Proposal akzeptiert            |  20  | accept_skill_change              |
+-- | Wiki-Artikel erstellt                       |  15  | create_wiki_article              |
+-- | Wiki-Artikel aktualisiert                   |   5  | update_wiki_article (max 1x/Tag) |
+-- | Code-Node exploriert                        |   2  | Kartograph erstellt code_node    |
+-- | Discovery Session abgeschlossen             |  10  | end_discovery_session            |
+-- | Epic Proposal akzeptiert                    |  25  | accept_epic_proposal             |
+-- | Delegierten Task als Peer erfüllt          |  60  | Mercenary-Bonus                  |
+-- | Decision Record erstellt                    |  10  | create_decision_record           |
+-- Formel: user_achievements.exp_total += event_exp; Level = get_level(exp_total) (s. gamification.md)
 
 -- Badge-Definitionen-Katalog (formale Definition aller Achievements)
 CREATE TABLE badge_definitions (
@@ -347,6 +388,19 @@ CREATE TABLE user_achievements (
   earned_at   TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_id, badge_id)
 );
+
+-- EXP-Event-Log (Audit-Trail für alle EXP-Vergaben)
+-- Kanonische Referenz: gamification.md#datenmodell
+CREATE TABLE exp_events (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id),
+  event_type  TEXT NOT NULL,          -- 'task_done', 'skill_merged', 'clean_run_bonus', etc.
+  entity_id   UUID,                   -- Task-ID, Skill-ID etc. (Anti-Spam-Dedup)
+  exp_awarded INTEGER NOT NULL,
+  reason      TEXT,                   -- Freitext für Sonderfälle
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_exp_events_user ON exp_events (user_id, created_at DESC);
 
 -- ─────────────────────────────────────────────
 -- EPICS & TASKS
@@ -664,6 +718,27 @@ CREATE TABLE code_edges (
 --   target_id  = code_node "src/ui/Button.vue" (in ui-controls-project)
 --   edge_type  = 'import'
 
+-- Discovery Sessions — Anti-Doppelarbeit bei Federation
+-- Wenn ein Kartograph eine Codebase-Area exploriert, wird eine Session angelegt.
+-- Peers sehen aktive Sessions und können eine andere Area wählen.
+-- Referenziert von code_nodes.exploring_node_id (temporär während aktiver Session).
+CREATE TABLE discovery_sessions (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id        UUID REFERENCES projects(id),  -- NULL = project-übergreifend
+  area              TEXT NOT NULL,                  -- z.B. "frontend/", "auth/", "worker/"
+  description       TEXT,                           -- optionale Beschreibung was erkundet wird
+  exploring_node_id UUID NOT NULL REFERENCES nodes(id), -- welche Node erkundet
+  exploring_user_id UUID NOT NULL REFERENCES users(id), -- welcher User (Kartograph) die Session gestartet hat
+  status            TEXT NOT NULL DEFAULT 'active', -- active|completed|cancelled
+  started_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ended_at          TIMESTAMPTZ,                   -- NULL solange aktiv
+  -- Federation
+  origin_node_id    UUID REFERENCES nodes(id),      -- NULL = lokal gestartet
+  federation_scope  TEXT NOT NULL DEFAULT 'federated', -- Discovery Sessions sind immer federated (wie code_nodes)
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX idx_discovery_sessions_active ON discovery_sessions(exploring_node_id) WHERE status = 'active';
+
 CREATE TABLE node_bug_reports (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   node_id    UUID NOT NULL REFERENCES code_nodes(id),
@@ -700,7 +775,8 @@ CREATE TABLE prompt_history (
   prompt_type  TEXT NOT NULL,  -- get_prompt type: kartograph|stratege|architekt|bibliothekar|worker|gaertner|triage|review
   prompt_text   TEXT NOT NULL,  -- Vollständig assemblierter Prompt-Text
   override_text TEXT,           -- Vom User angepasster Prompt-Text (gesetzt via POST /api/prompts/:id/override); NULL = kein Override aktiv; überschreibt prompt_text für diesen Queue-Eintrag
-  token_count   INT,            -- Token-Count des assemblierten Prompts
+  token_count   INT,            -- Token-Count des assemblierten Prompts (vor Minifizierung)
+  token_count_minified INT,     -- Token-Count nach QMD-Minifizierung; NULL wenn HIVEMIND_PROMPT_MINIFY=false
   generated_by  UUID REFERENCES users(id), -- User der den Prompt angefordert hat
   created_at    TIMESTAMPTZ DEFAULT now()
 );
@@ -861,12 +937,15 @@ CREATE TABLE epic_restructure_proposals (
   proposed_by UUID NOT NULL REFERENCES users(id),  -- immer ein User mit kartograph-Rolle (nicht service-Rolle)
   rationale   TEXT NOT NULL,
   proposal    TEXT NOT NULL,          -- Freitext-Vorschlag des Kartographen (Markdown)
-  state       TEXT NOT NULL DEFAULT 'open', -- open|accepted|rejected
+  state       TEXT NOT NULL DEFAULT 'proposed', -- proposed|accepted|applied|rejected
   version     INT NOT NULL DEFAULT 0,
-  -- Admin: accept_epic_restructure → accepted; reject_epic_restructure → rejected
+  -- Admin: accept_epic_restructure → accepted; reject_epic_restructure → rejected; apply_epic_restructure → applied
   reviewed_by UUID REFERENCES users(id),
   reviewed_at TIMESTAMPTZ,
-  created_at  TIMESTAMPTZ DEFAULT now()
+  applied_at  TIMESTAMPTZ,            -- Zeitpunkt der tatsächlichen Ausführung (accepted → applied)
+  origin_node_id UUID REFERENCES nodes(id), -- Federation: Welcher Node hat den Vorschlag erstellt
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT valid_restructure_state CHECK (state IN ('proposed', 'accepted', 'applied', 'rejected'))
 );
 
 -- ─────────────────────────────────────────────
@@ -976,6 +1055,82 @@ CREATE TABLE notifications (
 -- Der Retention-Cron läuft täglich (zusammen mit dem Audit-Retention-Cron).
 -- DELETE FROM notifications WHERE (read = true AND created_at < now() - interval 'NOTIFICATION_RETENTION_DAYS days')
 --    OR (read = false AND created_at < now() - interval 'NOTIFICATION_UNREAD_RETENTION_DAYS days');
+
+-- ─────────────────────────────────────────────
+-- MEMORY LEDGER (Agent-Gedächtnis)
+-- ─────────────────────────────────────────────
+
+-- Kanonische Referenz: docs/features/memory-ledger.md
+-- Schema ab Phase 1; save_memory ab Phase 1; Embeddings ab Phase 3; Kompaktierung ab Phase 4; Autonom ab Phase 8.
+
+-- Sessions: Gruppiert L0-Entries einer Arbeitssitzung
+CREATE TABLE memory_sessions (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_id        UUID NOT NULL REFERENCES users(id),
+  agent_role      TEXT NOT NULL,              -- 'kartograph', 'stratege', 'worker', etc.
+  scope           TEXT NOT NULL,              -- 'global', 'project', 'epic', 'task'
+  scope_id        UUID,                       -- project/epic/task ID (NULL bei global)
+  started_at      TIMESTAMPTZ DEFAULT now(),
+  ended_at        TIMESTAMPTZ,                -- NULL = aktive Session
+  entry_count     INT NOT NULL DEFAULT 0,     -- Wird bei jedem save_memory inkrementiert
+  compacted       BOOLEAN NOT NULL DEFAULT false  -- true wenn Session kompaktiert wurde
+);
+
+-- L2: Verdichtete Zusammenfassungen (append-only, definiert vor memory_entries wegen FK)
+CREATE TABLE memory_summaries (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_id        UUID NOT NULL REFERENCES users(id),
+  agent_role      TEXT NOT NULL,
+  scope           TEXT NOT NULL,
+  scope_id        UUID,
+  session_id      UUID REFERENCES memory_sessions(id),
+  content         TEXT NOT NULL,              -- Markdown — die verdichtete Zusammenfassung
+  source_entry_ids UUID[] NOT NULL,           -- Welche L0-Entries abgedeckt
+  source_fact_ids  UUID[] NOT NULL DEFAULT '{}', -- Welche L1-Facts referenziert
+  source_count    INT NOT NULL,               -- Integrity: Anzahl Quell-Entries
+  open_questions  TEXT[] NOT NULL DEFAULT '{}', -- Noch ungeklärte Fragen
+  graduated       BOOLEAN NOT NULL DEFAULT false,
+  graduated_to    JSONB,                      -- { "type": "wiki", "id": "uuid" } bei Graduation
+  embedding       vector(768),
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+-- L0: Rohe Beobachtungen (append-only, NIEMALS UPDATE/DELETE)
+CREATE TABLE memory_entries (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_id        UUID NOT NULL REFERENCES users(id),
+  agent_role      TEXT NOT NULL,              -- 'kartograph', 'stratege', 'worker', etc.
+  scope           TEXT NOT NULL,              -- 'global', 'project', 'epic', 'task'
+  scope_id        UUID,                       -- project/epic/task ID (NULL bei global)
+  session_id      UUID NOT NULL REFERENCES memory_sessions(id),
+  content         TEXT NOT NULL,              -- Markdown — die rohe Beobachtung
+  tags            TEXT[] NOT NULL DEFAULT '{}',
+  embedding       vector(768),                -- pgvector (Phase 3+)
+  covered_by      UUID REFERENCES memory_summaries(id), -- NULL = nicht verdichtet
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+-- L1: Extrahierte Fakten (append-only, NIEMALS UPDATE/DELETE)
+CREATE TABLE memory_facts (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  entry_id        UUID NOT NULL REFERENCES memory_entries(id),
+  entity          TEXT NOT NULL,              -- z.B. "auth/jwt", "config/db"
+  key             TEXT NOT NULL,              -- z.B. "algorithm", "pattern"
+  value           TEXT NOT NULL,              -- z.B. "RS256", "Singleton"
+  confidence      FLOAT DEFAULT 1.0,         -- 0-1: Wie sicher ist dieser Fakt?
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+
+-- Memory Ledger Indexes
+CREATE INDEX idx_memory_entries_scope ON memory_entries(scope, scope_id, created_at DESC);
+CREATE INDEX idx_memory_summaries_scope ON memory_summaries(scope, scope_id, graduated, created_at DESC);
+CREATE INDEX idx_memory_sessions_scope ON memory_sessions(scope, scope_id, ended_at DESC);
+CREATE INDEX idx_memory_entries_uncovered ON memory_entries(scope, scope_id) WHERE covered_by IS NULL;
+CREATE INDEX idx_memory_facts_entity ON memory_facts(entity);
+CREATE INDEX idx_memory_facts_entry ON memory_facts(entry_id);
+-- pgvector-Similarity-Search (Phase 3+)
+CREATE INDEX idx_memory_entries_embedding ON memory_entries USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX idx_memory_summaries_embedding ON memory_summaries USING hnsw (embedding vector_cosine_ops);
 ```
 
 ---

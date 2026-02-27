@@ -132,6 +132,105 @@ Die kompakte Form ist für den User leichter zu überfliegen. Die Volltext-Form 
 
 ---
 
+## Prompt-Minifizierung (Markdown-Kompression)
+
+Prompts sind Markdown — und Markdown hat viel kosmetischen Whitespace (Leerzeilen zwischen Sektionen, Trailing Spaces, überflüssige Einrückung), der Token kostet aber für LLMs keinen semantischen Mehrwert bringt. Hivemind nutzt deshalb serverseitig **Markdown-Minifizierung** um den kopierbaren Prompt-Text zu komprimieren bevor er in die Zwischenablage oder an die AI-API geht.
+
+### Technik
+
+Das Backend verwendet [QMD](https://github.com/ajithraghavan/qmd) (Python-Paket `qmd`) als Minifier. QMD ist ein leichtgewichtiger Markdown-Minifier der:
+
+- Überflüssige Leerzeilen entfernt (max. 1 Leerzeile zwischen Blöcken)
+- Trailing Whitespace strippt
+- Konsistente Einrückung erzwingt
+- **Semantische Struktur erhält** (Headers, Listen, Code-Blöcke, Inline-Formatierung)
+
+### Wann wird minifiziert?
+
+| Schritt | Minifiziert? | Begründung |
+| --- | --- | --- |
+| Prompt-Anzeige in Prompt Station (kompakt) | Nein | Mensch liest → Lesbarkeit > Token-Sparsamkeit |
+| Prompt-Anzeige im Volltext-Modal | Nein | Mensch liest → Lesbarkeit |
+| **Kopieren in Zwischenablage** ([KOPIEREN] / [VOLLTEXT KOPIEREN]) | **Ja** | Geht an LLM → Tokens sparen |
+| **Phase 8: Direkte AI-API-Übergabe** | **Ja** | Geht an LLM → Tokens sparen |
+| `prompt_history.prompt_text` (DB-Persistierung) | Nein | Original-Text für Audit/Debugging |
+
+### Konfiguration
+
+```env
+HIVEMIND_PROMPT_MINIFY=true          # true | false — Default: true
+```
+
+Wenn `false`, wird der Prompt-Text 1:1 wie assembliert kopiert (kein Minifier-Schritt). Nützlich für Debugging oder wenn der User die volle Formatierung im AI-Client sehen will.
+
+### Beispiel
+
+**Vor Minifizierung (assembliert, 87 Tokens):**
+
+```markdown
+## Rolle: Worker
+
+Du arbeitest an TASK-88 im Rahmen von EPIC-12.
+
+### Dein Auftrag
+
+Implementiere den FastAPI Auth-Endpoint gemäß Spezifikation.
+
+### Einschränkungen
+
+- Nur die oben gelisteten Tools sind erlaubt
+- Kein Write außerhalb von TASK-88 und EPIC-12
+- Setze Status direkt auf in_review, nie auf done
+```
+
+**Nach Minifizierung (kopierbar, 74 Tokens → ~15 % gespart):**
+
+```markdown
+## Rolle: Worker
+Du arbeitest an TASK-88 im Rahmen von EPIC-12.
+### Dein Auftrag
+Implementiere den FastAPI Auth-Endpoint gemäß Spezifikation.
+### Einschränkungen
+- Nur die oben gelisteten Tools sind erlaubt
+- Kein Write außerhalb von TASK-88 und EPIC-12
+- Setze Status direkt auf in_review, nie auf done
+```
+
+Bei großen Prompts nahe am Token-Budget (8000) können das **800–1500 Tokens** Ersparnis sein — genug für einen zusätzlichen Skill-Block oder mehr Kontext.
+
+### Token-Zählung
+
+Die Prompt Station zeigt **zwei Zählungen** wenn Minifizierung aktiv ist:
+
+```text
+                     630 / 8000 Tokens (original)
+                     534 / 8000 Tokens (minifiziert, kopiert)  ↓ 15%
+```
+
+Der Token-Count im `prompt_history`-Eintrag bleibt der **Original-Count** (vor Minifizierung). Der minifizierte Count wird als `token_count_minified` zusätzlich gespeichert.
+
+### Backend-Integration
+
+Der Minifier wird als Utility-Funktion im Prompt-Service eingehängt:
+
+```python
+# app/services/prompt_minifier.py
+import qmd
+from app.core.config import settings
+
+def minify_prompt(text: str) -> str:
+    """Minifiziert Markdown-Prompt für LLM-Übergabe."""
+    if not settings.HIVEMIND_PROMPT_MINIFY:
+        return text
+    return qmd.minify(text)
+```
+
+Aufgerufen in zwei Stellen:
+1. **Clipboard-Endpoint** (`GET /api/prompts/:id/assembled?minify=true`) — Default wenn Minifizierung aktiv
+2. **Phase 8 AI-Dispatch** — immer vor API-Call
+
+---
+
 ## Prompt Station
 
 → Wie Prompts im UI angezeigt und verwaltet werden: [Prompt Station](../ui/prompt-station.md)
