@@ -158,6 +158,69 @@ Pflichtmetadaten pro Queue-Eintrag:
 
 ---
 
+## `human_action_required` — Ableitungslogik
+
+Der Backend-Endpoint `GET /api/prompt-station/status` berechnet den aktuellen State. Der `human_action_required`-State wird ausgelöst wenn **mindestens eine** der folgenden Bedingungen zutrifft (für den aktuellen User):
+
+```sql
+-- Priorisiert nach Dringlichkeit (erste Zeile gewinnt):
+
+-- P0: Tasks in_review wo User Epic-Owner oder assigned_to ist
+SELECT 'in_review_task' AS reason, t.id, t.task_key, t.title, e.sla_due_at
+FROM tasks t
+JOIN epics e ON t.epic_id = e.id
+WHERE t.state = 'in_review'
+  AND (e.owner_id = :current_user_id OR t.assigned_to = :current_user_id)
+  AND e.state NOT IN ('done', 'cancelled')
+
+-- P1: Offene Decision Requests (Owner oder Admin)
+UNION ALL
+SELECT 'decision_request' AS reason, dr.task_id, t.task_key, dr.question, dr.deadline_at
+FROM decision_requests dr
+JOIN tasks t ON dr.task_id = t.id
+JOIN epics e ON t.epic_id = e.id
+WHERE dr.status = 'open'
+  AND (e.owner_id = :current_user_id OR :is_admin = TRUE)
+
+-- P2: Epics incoming wo User Epic-Owner ist
+UNION ALL
+SELECT 'epic_incoming' AS reason, e.id, e.epic_key, e.title, NULL
+FROM epics e
+WHERE e.state = 'incoming'
+  AND e.owner_id = :current_user_id
+
+ORDER BY reason, sla_due_at NULLS LAST
+LIMIT 10;
+```
+
+**Payload an das Frontend:**
+
+```json
+{
+  "station_state": "human_action_required",
+  "actions": [
+    {
+      "type": "in_review_task",
+      "task_key": "TASK-88",
+      "title": "FastAPI Auth-Endpoint",
+      "deadline_at": "2026-03-10T18:00:00Z",
+      "link": "/command-deck?task=TASK-88&action=review"
+    },
+    {
+      "type": "epic_incoming",
+      "epic_key": "EPIC-13",
+      "title": "Dashboard",
+      "deadline_at": null,
+      "link": "/command-deck?epic=EPIC-13&action=scope"
+    }
+  ]
+}
+```
+
+Die Prompt Station zeigt die erste Aktion prominent ("Jetzt bist DU dran") und die restlichen als Stack darunter ("+ 1 weitere Aktion").
+
+---
+
 ## Menschliche Aktionen (kein AI-Prompt)
 
 Manche Schritte erfordern eine **menschliche Entscheidung** — kein AI-Prompt, sondern eine UI-Aktion:

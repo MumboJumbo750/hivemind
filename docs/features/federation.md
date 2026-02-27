@@ -64,6 +64,38 @@ keypair:    Ed25519 (Private Key at-rest via HIVEMIND_KEY_PASSPHRASE verschlüss
 
 **Key-Exchange:** Beim manuellen Hinzufügen eines Peers wird dessen Public Key eingetragen (`nodes.public_key`). Alle ausgehenden Nachrichten werden mit dem eigenen Private Key signiert. Empfänger verifizieren gegen den hinterlegten Public Key.
 
+### Key-Rotation & Revocation
+
+Ein Schlüsseltausch ist notwendig wenn der Private Key kompromittiert wurde, der Node migriert wird oder ein regelmäßiger Rotation-Zyklus gewünscht ist.
+
+```text
+1. Neues Ed25519-Keypair generieren:
+   → hivemind federation rotate-key
+
+2. Neuen Public Key an alle bekannten Peers übermitteln:
+   → Backend sendet POST /federation/ping (enthält neuen Public Key)
+   → Peers aktualisieren nodes.public_key für diesen Node
+
+3. Grace-Period (HIVEMIND_KEY_ROTATION_GRACE_SECONDS, Default: 3600):
+   → Während der Grace-Period akzeptiert der eigene Node noch Nachrichten
+     die mit dem alten Key signiert wurden (Peers noch nicht aktualisiert)
+   → Nach Ablauf: alter Key wird verworfen
+
+4. Revocation (sofortiger Entzug ohne Rotation):
+   → hivemind federation revoke-key --peer <node_id>
+   → nodes.public_key für diesen Peer → NULL
+   → Alle eingehenden Nachrichten von diesem Peer → HTTP 401 (Key unknown)
+   → Empfohlen bei Kompromittierung oder dauerhaftem Offboarding
+```
+
+| Kommando | Wirkung |
+| --- | --- |
+| `hivemind federation rotate-key` | Neues Keypair generieren + an alle Peers publishen |
+| `hivemind federation revoke-key --peer <id>` | Public Key eines Peers widerrufen (sofort, keine Grace-Period) |
+| `hivemind federation show-key` | Eigenen Public Key anzeigen (für manuellen Austausch) |
+
+> **Backup:** Der Private Key wird AES-256-GCM-verschlüsselt mit `HIVEMIND_KEY_PASSPHRASE` gespeichert. Vor einer Rotation sollte ein verschlüsseltes Backup des alten Keys angelegt werden (`hivemind federation export-key --encrypted`), damit Audit-Logs die alte Signatur noch verifizieren können.
+
 ---
 
 ## Peer Discovery
@@ -269,6 +301,8 @@ UI-Hinweis: Der Button `[ÜBERNEHMEN]` in Gilde/Arsenal ruft `hivemind/fork_fede
 | Netzwerk-Partition während Epic-Sharing | Origin-Node sieht Task als "pending sync" bis Peer wieder erreichbar |
 | Hive Station nicht erreichbar | Fallback auf letzten lokalen Peer-Stand (`nodes` + `peers.yaml`) |
 
+**Peer-Offline-Erkennung:** Der Heartbeat-Job sendet alle `HIVEMIND_FEDERATION_PING_INTERVAL` Sekunden (Default: 60s) ein POST `/federation/ping` an jeden Peer. Nach `HIVEMIND_FEDERATION_OFFLINE_THRESHOLD` verfehlten Heartbeats (Default: 3) wird `nodes.status → 'inactive'` gesetzt und eine Admin-Notification erzeugt. Der Peer-Status springt automatisch zurück auf `active` sobald ein Ping erfolgreich ist (kein manuelles Eingreifen nötig).
+
 **Philosophie:** Origin-Authority statt Distributed Consensus → keine CRDTs, keine Vector Clocks, keine komplexe Merge-Logik.
 
 ### Concurrent State Transitions bei Shared Epics
@@ -414,3 +448,5 @@ Bibliothekar sucht Skill via Embedding-Similarity:
 | `HIVEMIND_MDNS_ENABLED` | `false` | mDNS-Discovery aktivieren |
 | `HIVEMIND_FEDERATED_SEARCH` | `false` | Federated Semantic Search (ab Phase 3) |
 | `HIVEMIND_FEDERATION_PING_INTERVAL` | `60` | Heartbeat-Intervall in Sekunden |
+| `HIVEMIND_FEDERATION_OFFLINE_THRESHOLD` | `3` | Anzahl verfehlter Heartbeats bevor Peer als `inactive` markiert wird. Bei Ping-Intervall 60s entspricht `3` einem Timeout von ~3 Minuten. |
+| `HIVEMIND_KEY_ROTATION_GRACE_SECONDS` | `3600` | Sekunden in denen der alte Key nach Rotation noch akzeptiert wird (für nicht-aktualisierte Peers) |

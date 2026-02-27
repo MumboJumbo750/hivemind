@@ -251,8 +251,17 @@ CREATE TABLE epics (
   owner_id        UUID REFERENCES users(id),    -- NULL erlaubt für federated
   backup_owner_id UUID REFERENCES users(id),
   state           TEXT NOT NULL DEFAULT 'incoming',
-  priority        TEXT,
+  priority        TEXT DEFAULT 'medium',
+  -- priority-Werte (kanonisch): 'low' | 'medium' | 'high' | 'critical'
+  -- NULL ist nicht erlaubt (DEFAULT 'medium'); konfigurierbar via Epic-Scoping-Modal.
+  -- Validierung auf Applikationsebene; DB-Constraint als Sicherheitsnetz:
+  CONSTRAINT chk_epic_priority CHECK (priority IN ('low', 'medium', 'high', 'critical')),
   sla_due_at      TIMESTAMPTZ,
+  -- sla_due_at ist nullable. Verhalten bei NULL (kein SLA gesetzt):
+  --   - Kein SLA-Timer in der UI (Anzeige: "∞" oder "Kein SLA")
+  --   - SLA-Cron überspringt Epics mit sla_due_at IS NULL (kein Warning, keine Breach-Notification)
+  --   - Epic erscheint nicht in SLA-nahen Priorisierungen der Prompt Queue
+  --   - Empfehlung: SLA beim Scoping setzen; NULL als "unbefristet" interpretieren, nicht als Fehler
   dod_framework   JSONB,
   embedding       vector(768),   -- nomic-embed-text (Ollama, default); bei Wechsel auf OpenAI → ALTER auf 1536
   version         INT NOT NULL DEFAULT 0,
@@ -792,6 +801,9 @@ CREATE INDEX idx_epics_state      ON epics(state);
 CREATE INDEX idx_epics_project_id ON epics(project_id);
 CREATE INDEX idx_epics_owner_id   ON epics(owner_id);
 CREATE INDEX idx_epics_epic_key   ON epics(epic_key);
+-- Partial-Index für SLA-Cron: nur aktive Epics mit gesetztem SLA-Datum
+CREATE INDEX idx_epics_sla_due ON epics(sla_due_at)
+  WHERE state NOT IN ('done', 'cancelled') AND sla_due_at IS NOT NULL;
 
 -- Skills: Bibliothekar-Suche
 CREATE INDEX idx_skills_lifecycle ON skills(lifecycle);

@@ -127,8 +127,23 @@ async def create_item(body: ItemCreate, db: AsyncSession = Depends(get_db)):
 | `stack` | string[] | z.B. `["python", "fastapi"]` |
 | `version_range` | object | Gültige Versionen der Stack-Komponenten |
 | `owner_id` | uuid | Verantwortlicher User |
-| `confidence` | float 0–1 | Verlässlichkeit des Skills (empirisch) |
+| `confidence` | float 0–1 | Verlässlichkeit des Skills — Hybrid aus manuellem Initialwert und automatischer Feedback-Anpassung (→ siehe unten) |
 | `source_epics` | string[] | Aus welchen Epics der Skill destilliert wurde (`epics.external_id`, z.B. `EPIC-12`) |
+
+### Confidence — Hybrid-Logik
+
+Der `confidence`-Wert kombiniert manuellen Initialwert mit automatischer Feedback-Anpassung:
+
+| Ereignis | Delta | Begründung |
+| --- | --- | --- |
+| Skill initial erstellt | `0.5` (Default) | Neutral — noch kein empirischer Nachweis |
+| Task mit diesem Skill geht auf `done` | `+0.05` | Positives Signal: Skill hat geholfen |
+| Task mit diesem Skill geht auf `qa_failed` | `−0.10` | Stärkeres negatives Signal — Skill hat Fehler nicht verhindert |
+| Admin akzeptiert `accept_skill_change` | `+0.02` | Verbesserung am Skill → leichter Boost |
+
+**Berechnung:** Gewichteter gleitender Durchschnitt — ältere Events haben geringeres Gewicht. Confidence bleibt im Bereich `[0.0, 1.0]` (geclamped). Manuelles Überschreiben jederzeit möglich (Admin-Feld in Skill Lab).
+
+> Vollständige Formel und Schema: [data-model.md — Confidence](../architecture/data-model.md#confidence-score-berechnung)
 
 ---
 
@@ -242,6 +257,20 @@ Nicht sinnvoll:
   Alles in einen Skill packen (kein Stacking nötig)
   Mehr als 3 Ebenen (Zeichen dass der Skill zu komplex ist → aufsplitten)
 ```
+
+### Token-Budget-Implikation bei Composition
+
+Im Worst Case (3 Ebenen, 5 Parents pro Ebene) kann ein assemblierter Skill erhebliche Tokens belegen:
+
+```text
+Worst Case:    5 Parent-Skills × 3 Ebenen × ~300 Tokens/Skill = ~4500 Tokens
+               + eigener Inhalt (~300 Tokens)
+               = ~4800 Tokens für einen einzigen assemblierten Skill
+
+Typischer Fall: 1–2 Ebenen, 2–3 Parents = ~600–900 Tokens
+```
+
+**Empfehlung:** Bei Skill-Composition mit > 3 aktiven Skills im Loadout ist das Token-Budget im Token Radar kritisch zu beobachten. Bei Überschreitung sollte die Context Boundary `max_token_budget` erhöht oder flachere Composition gewählt werden.
 
 ---
 

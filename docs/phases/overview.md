@@ -10,7 +10,8 @@
 
 | Phase | Backend | UI | AI-Integration |
 | --- | --- | --- | --- |
-| [Phase 1](./phase-1.md) | Datenfundament, State Machine, Audit | Prompt Station + Settings Skeleton | Keins — alles manuell |
+| [Phase 1a](./phase-1.md#phase-1a--datenfundament-backend) | Datenfundament, State Machine, Docker Compose | — | Keins — alles manuell |
+| [Phase 1b](./phase-1.md#phase-1b--design--prompt-station-frontend) | — | Design System, Prompt Station + Inline-Review/Scoping | Keins — alles manuell |
 | [Phase 2](./phase-2.md) | Identity & RBAC | Command Deck, Login, Notifications | Keins — alles manuell |
 | [Phase F](./phase-f.md) | Federation Protocol, Peer Discovery, Epic-Sharing, Kartograph-Sync | Peer-Overview, Shared Map, Skill-Loadout | Keins — alles manuell |
 | [Phase 3](./phase-3.md) | MCP Read-Tools + Bibliothekar-Prompt | Triage Station, Token Radar | Ollama Container (Embeddings) |

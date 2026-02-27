@@ -55,6 +55,20 @@ Phase 8 (Auto-Modus):
 
 **Kein Architekturbruch:** Gleicher Prompt, gleiche MCP-Calls, gleiche Validierung. Nur der manuelle Copy-Paste-Schritt entfällt.
 
+### Token-Counting im Auto-Modus
+
+In Phase 1–7 verwendet Hivemind `tiktoken cl100k_base` als universelle Approximation (kompatibel mit GPT-4, Claude, den meisten LLMs). Im Auto-Modus ist der Provider bekannt — Phase 8 kann auf provider-spezifische Tokenizer wechseln:
+
+| Provider | Tokenizer | Genauigkeit |
+| --- | --- | --- |
+| `anthropic` (Claude) | `tiktoken cl100k_base` (Approximation, < 2% Abweichung) | Ausreichend für Budget-Planung |
+| `openai` (GPT-4/4o) | `tiktoken cl100k_base` (exakt) | Exakt |
+| `ollama` (lokal) | `tiktoken cl100k_base` (Approximation) | Ausreichend |
+
+**Phase-8-Verhalten:** Das Backend wählt den Tokenizer automatisch basierend auf `app_settings.ai_provider`. Für Anthropic wird `cl100k_base` beibehalten (Anthropic veröffentlicht keinen offiziellen öffentlichen Tokenizer; `cl100k_base` ist de-facto Standard). Eine Provider-spezifische Token-Count-Kalibrierung (Offset-Faktor pro Provider) kann via `HIVEMIND_TOKEN_COUNT_CALIBRATION` Env-Var eingestellt werden (JSON: `{"claude": 1.05, "gpt4": 1.0}`).
+
+> **Kein Breaking Change:** `tiktoken cl100k_base` bleibt der Default — Phase 8 ergänzt nur die Kalibrierungsoption. Token Radar und Budget-Warnungen funktionieren unverändert.
+
 ---
 
 ## Acceptance Criteria

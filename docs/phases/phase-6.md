@@ -25,7 +25,7 @@
   - `hivemind/resolve_decision_request` — Decision Request auflösen (Owner oder Admin; Admin immer erlaubt)
 - [ ] Admin-Writes:
   - `hivemind/reassign_epic_owner` — Owner wechseln
-  - `hivemind/assign_bug` — Bug zu Epic zuweisen
+  - _(hivemind/assign_bug gehört **nicht** in Phase 6 — Sentry-Bug-Daten stehen erst ab Phase 7 zur Verfügung. Manuelles Bug→Epic Routing ist ein Deliverable von Phase 7.)_
 - [ ] Eskalations-Logik: nach 3x `qa_failed` → Task auf `escalated`
 - [ ] Triage-Prompt-Generator für `[UNROUTED]`-Items
 - [ ] Notification-Service (in-DB, kein externer Service): schreibt in `notifications`-Tabelle

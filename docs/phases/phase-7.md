@@ -13,7 +13,7 @@
 ### Backend
 
 - [ ] Outbox-Consumer für `outbound` (YouTrack/Sentry): verarbeitet `sync_outbox` mit Exponential Backoff (`direction='outbound'`)
-  - **Kontext:** Seit Phase 3 schreibt der Webhook-Ingest `inbound`-Events in `sync_outbox`. Phase F hat bereits den `peer_outbound`-Consumer für Federation eingeführt. Phase 7 ergänzt den `outbound`-Consumer für Rücksync zu YouTrack/Sentry und aktiviert Routing für `inbound`-Events.
+  - **Kontext:** Seit Phase 3 schreibt der Webhook-Ingest `inbound`-Events in `sync_outbox`. **Falls Phase F vor Phase 7 abgeschlossen wurde:** der `peer_outbound`-Consumer für Federation existiert bereits — Phase 7 ergänzt nur den `outbound`-Consumer. **Falls Phase F noch nicht implementiert wurde:** Phase 7 implementiert beide Consumer zusammen (`outbound` + `peer_outbound`). Phase 7 aktiviert außerdem Routing für `inbound`-Events.
   - `next_retry_at = now() + 2^attempts * 60s`
   - Nach `attempts >= HIVEMIND_DLQ_MAX_ATTEMPTS (5)` → in `sync_dead_letter`
 - [ ] YouTrack-Sync: Status-Updates + Assignee rücksyncen
@@ -21,7 +21,7 @@
 - [ ] pgvector-Routing: Epic-Embeddings verwenden für Auto-Routing
   - Confidence >= 0.85 → auto-assign
   - Confidence < 0.85 → `[UNROUTED]`
-- [ ] Admin-Tool: `hivemind/assign_bug` (manuelles Bug→Epic Routing)
+- [ ] Admin-Tool: `hivemind/assign_bug` — manuelles Bug→Epic Routing (hier implementiert, **nicht** in Phase 6 — erst Phase 7 hat Sentry-Daten)
 - [ ] Audit-Retention-Cron: bereinigt alte `input_payload`/`output_payload`
 - [ ] DLQ-Requeue als MCP-Tool: `hivemind/requeue_dead_letter { "id": "uuid" }` (admin + triage permission)
 - [ ] Optionaler REST-Alias: `POST /api/triage/dead-letters/{id}/requeue` ruft intern denselben Requeue-Service auf

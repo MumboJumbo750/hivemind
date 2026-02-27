@@ -82,6 +82,26 @@ Rollen können **pro Projekt überschrieben** werden (via `project_members.role`
 
 ---
 
+## Kartograph-Rolle — Zuweisung in Phase 1–7 (BYOAI-Modus)
+
+In Phase 1–7 gibt es keinen autonomen Kartographen-Agent — der Mensch führt die MCP-Calls manuell in seinem AI-Client aus. Die `kartograph`-Rolle wird dabei einem **dedizierten Service-Account** zugewiesen (nicht dem persönlichen Developer-Account):
+
+```text
+Empfohlenes Setup:
+  1. Admin erstellt User "kartograph-bot" (kein echtes Login, kein Passwort)
+  2. users.role = 'kartograph'
+  3. API-Key generieren: hivemind admin create-api-key --user kartograph-bot
+  4. AI-Client (z.B. Claude Desktop) nutzt diesen API-Key für MCP-Verbindung
+     → Alle kartograph-MCP-Calls laufen unter diesem Account
+     → Audit-Log zeigt "kartograph-bot" als Actor — nachvollziehbar
+```
+
+**Warum nicht der Developer-Account?** Der Kartograph hat `context_boundary_filter: false` und globale Schreibrechte auf Wiki + Docs. Ein Developer-Account sollte diese Privilegien nicht erhalten — auch nicht temporär. Durch einen dedizierten Account bleibt der Audit-Trail klar und das Prinzip der minimalen Privilegien gewahrt.
+
+> **Phase 8:** In voller Autonomie hat der Kartograph-Agent einen eigenen Service-Account und API-Key als Teil der Docker-Compose-Konfiguration (automatisch bereitgestellt).
+
+---
+
 ## Kartograph — Sonderfall
 
 ```json
@@ -121,6 +141,7 @@ Rollen können **pro Projekt überschrieben** werden (via `project_members.role`
 **Konsequenz für Task-Zuweisung:** Ein Developer der via `assigned_to` zu einem Task zugeteilt wird, erhält damit automatisch Schreibrecht auf genau diesen Task — auch wenn er kein `project_member` des Projekts ist. Admins und Owners können Tasks epics-weit zuweisen.
 
 **Implizite Leserechte bei `assigned_to`:** Ein Developer mit `assigned_to` auf einem Task erhält automatisch Leserecht auf:
+
 - Den zugewiesenen Task (inkl. State, Description, Guards, Result)
 - Das zugehörige Epic (inkl. Title, Description, DoD, SLA)
 - Alle aktiven Skills und Docs die via Context Boundary des Tasks referenziert sind
@@ -142,6 +163,7 @@ Admin-only-Funktionen (Triage, Merge, Eskalation) können bei Urlaub, Krankheit 
 
 **1. Projekt-Admin-Delegation:**
 Projekt-Admins (`project_members.role = 'admin'`) erhalten erweiterte Rechte **innerhalb ihres Projekts**:
+
 - `resolve_decision_request` für alle Epics des Projekts
 - `cancel_task` für Tasks innerhalb des Projekts
 - `resolve_escalation` für eskalierte Tasks innerhalb des Projekts
@@ -152,6 +174,7 @@ Projekt-Admins (`project_members.role = 'admin'`) erhalten erweiterte Rechte **i
 
 **3. Auto-Delegation bei Inaktivität:**
 Wenn ein Epic-Owner > 72h inaktiv ist und offene `in_review`-Tasks oder Decision Requests existieren:
+
 - System erstellt Triage-Item: "Owner [X] inaktiv — [N] Tasks warten auf Review"
 - Backup-Owner (falls gesetzt auf Epic) erhält Owner-Rechte für offene Reviews
 - Wenn kein Backup-Owner: Projekt-Admins erhalten die Notification

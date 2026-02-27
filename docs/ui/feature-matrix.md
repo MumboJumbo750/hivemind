@@ -98,6 +98,8 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 
 | Funktion | View | UI-Element | Phase |
 | --- | --- | --- | --- |
+| Spotlight-Suche (Ctrl+K) | Global (Overlay) | Schnellsuche über Tasks + Epics (Phase 2), Skills + Guards (Phase 4), Wiki + Code-Nodes (Phase 5). Gruppierte Ergebnisse, RBAC-gefiltert, Fuzzy-Match | 2 |
+| Webhook-Konfiguration | Settings → Tab "System" | Webhook-Endpoint-Anzeige + Auth-Token + YouTrack/Sentry-Toggle + Event-Konfiguration + letzter Empfangsstatus | 3 |
 | MCP-Verbindungsstatus | System Bar | Status-Badge (● verbunden / ◌ getrennt) | 1 |
 | Projekt anlegen/wechseln | System Bar | Project-Switcher Dropdown | 1 |
 | Solo/Team-Modus | System Bar + Settings | Mode-Badge + Toggle in Settings | 1 |
@@ -148,6 +150,7 @@ Phase 2: + Command Deck (Epics, Tasks, Review, Scoping, SLA)
          + Settings -> Projekt-Mitgliederverwaltung
          + Review-Struktur: Hard Gates vs Owner Judgment
          + Focus Mode (Prompt-Fokus)
+         + Spotlight-Suche Ctrl+K (Tasks + Epics)
 
 Phase F: + Gilde / Federation (Peer-Uebersicht, Gildenwissen, Node-Identitaet)
          + Mercenary Loadout Screen in Prompt Station
@@ -157,6 +160,8 @@ Phase F: + Gilde / Federation (Peer-Uebersicht, Gildenwissen, Node-Identitaet)
 
 Phase 3: + Triage Station (Unrouted Events)
          + Prompt Station: Token Radar
+         + Settings -> Webhook-Konfiguration (YouTrack + Sentry)
+         + Spotlight: erweitert um Triage-relevante Suche
 
 Phase 4: + Arsenal (Browse Skills + Guards, Proposals, Merge)
          + Arsenal: Federated Skills `[von: peer-name]` read-only

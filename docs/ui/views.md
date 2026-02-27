@@ -437,6 +437,49 @@ Empfohlene Zuordnung:
 
 > **Tab-Sichtbarkeit:** FEDERATION-Tab ist nur sichtbar wenn `HIVEMIND_FEDERATION_ENABLED=true`. AUDIT-Tab ab Phase 4, KI-Tab ab Phase 8. SYSTEM und PROJEKT sind ab Phase 1 verfügbar.
 
+### Spotlight — Globale Suche (Ctrl+K / ⌘K)
+
+Globale Schnellsuche die aus jeder Ansicht erreichbar ist. Sucht über alle sichtbaren Entitäten.
+
+```text
+┌─ SPOTLIGHT ─────────────────────────────────────────────────────┐
+│  🔍 [JWT Token Validation...                               ] ✕  │
+├─────────────────────────────────────────────────────────────────┤
+│  TASKS (3)                                                      │
+│  ● TASK-89  JWT Token Validation          ● in_progress  EPIC-12│
+│  ○ TASK-92  JWT Refresh Token             ○ ready        EPIC-7 │
+│  ✓ TASK-71  JWT Payload Parsing           ✓ done         EPIC-4 │
+│                                                                 │
+│  SKILLS (1)                                                     │
+│  ⚔ JWT Patterns  v2  [◈ ben-hivemind]  0.87 confidence         │
+│                                                                 │
+│  WIKI (1)                                                       │
+│  📄 JWT-Authentifizierung in Hivemind  #backend #auth           │
+│                                                                 │
+│  CODE-NODES (2)                                                 │
+│  ◬ auth/security/jwt_handler.py         [◈ alex-hivemind]       │
+│  ◬ core/auth/token_utils.py             [◈ alex-hivemind]       │
+│                                                                 │
+│  [↑↓ navigieren]  [Enter: öffnen]  [Esc: schliessen]            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Suchverhalten:**
+
+| Kategorie | Ab Phase | Suchfelder |
+| --- | --- | --- |
+| Tasks + Epics | 2 | `title`, `description`, `external_id` (TASK-X / EPIC-X) |
+| Skills | 4 | `title`, `service_scope`, `stack` |
+| Wiki-Artikel | 5 | `title`, `content` (Volltext), Tags |
+| Code-Nodes | 5 | `path`, `summary` |
+
+- **Tastenkürzel:** `Ctrl+K` (Windows/Linux), `⌘K` (macOS)
+- **Ergebnisse** werden nach Kategorie gruppiert, max. 3 Einträge pro Kategorie — "Alle zeigen" expandiert die Gruppe
+- **RBAC:** Spotlight respektiert den Context Boundary Filter — `developer` sieht nur Entitäten in den eigenen Epics; `admin` und `kartograph` sehen alles
+- **Fuzzy-Match:** Client-seitige Fuzzy-Suche für schnelle Response; Backend-Fallback für Volltext-Wiki und Code-Nodes
+
+---
+
 ### Tab: SYSTEM (Phase 1)
 
 ```text
@@ -458,6 +501,40 @@ Empfohlene Zuordnung:
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+### Tab: SYSTEM — Webhook-Konfiguration (Phase 3 Erweiterung)
+
+Ab Phase 3 erscheint im SYSTEM-Tab ein Webhook-Bereich (nur sichtbar wenn `current_phase >= 3`):
+
+```text
+┌─ SETTINGS: SYSTEM — WEBHOOKS ───────────────────────────────────┐
+│                                                                 │
+│  WEBHOOK-ENDPOINTS                                              │
+│  ──────────────────────────────────────────────────────────     │
+│  Dein Webhook-Empfänger (für YouTrack / Sentry):                │
+│  https://192.168.1.10:8000/webhooks/ingest    [KOPIEREN]        │
+│  Auth-Token:  [whk_••••••••••••••••]  [REGENERIEREN]           │
+│                                                                 │
+│  YOUTRACK                                                       │
+│  ○ Deaktiviert  ● Aktiv                                         │
+│  Erwartete Events: [issue.created ▾] [issue.updated ▾]         │
+│  [+ EVENT HINZUFÜGEN]                                           │
+│                                                                 │
+│  SENTRY                                                         │
+│  ○ Deaktiviert  ● Aktiv                                         │
+│  Projekt-Slug: [hivemind-backend     ]                          │
+│  Erwartete Events: [issue.created ▾]                            │
+│                                                                 │
+│  LETZTER EMPFANG                                                │
+│  YouTrack:  vor 3 Min.  ✓  (ISSUE-42: NullPointerException)    │
+│  Sentry:    vor 2 Std.  ✓  (3 Events ingested)                 │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Hinweis:** Der `/webhooks/ingest`-Endpoint nimmt alle Events entgegen und schreibt sie als `direction='inbound'` in `sync_outbox`. Routing (Event → Epic) erfolgt manuell in der Triage Station.
+
+---
 
 ### Tab: PROJEKT — Mitgliederverwaltung (Phase 2)
 

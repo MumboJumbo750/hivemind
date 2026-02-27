@@ -27,6 +27,7 @@
   - `hivemind/search_wiki`
   - `hivemind/get_prompt` (Prompt-Generator-Endpunkt)
 - [ ] Prompt-Generator: generiert Bibliothekar-Prompt, Worker-Prompt, Kartograph-Prompt etc.
+  - **`prompt_history` Write-Zeitpunkt:** Jeder `get_prompt`-Call schreibt ab Phase 3 einen Eintrag in `prompt_history` (agent_type, prompt_type, prompt_text, token_count, generated_by). Das Backend-Schema existiert seit Phase 1. Die UI-Ansicht (kollabierbare History in der Prompt Station) wird erst in Phase 4 implementiert — aber das Backend schreibt schon ab Phase 3.
 - [ ] Prompt-Templates als Skills (globale, lifecycle-gemanagte Skills)
 - [ ] Ollama-Container in Docker Compose (nur Phase 3+)
 - [ ] Embedding-Service-Abstraktion (Provider-Switch ohne fachliche Datenmigration; mit Embedding-Spalten-ALTER + Recompute)
@@ -52,8 +53,28 @@ ollama:
     - "11434:11434"
   volumes:
     - ollama_data:/root/.ollama
-  # Modell beim Start laden: nomic-embed-text
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+    interval: 30s
+    timeout: 10s
+    retries: 5
+    start_period: 60s
+
+# Init-Container: lädt nomic-embed-text beim ersten Start
+ollama-init:
+  image: curlimages/curl:latest
+  depends_on:
+    ollama:
+      condition: service_healthy
+  restart: "no"
+  entrypoint: >
+    sh -c "curl -s http://ollama:11434/api/pull
+    -d '{\"name\": \"nomic-embed-text\"}' --max-time 600"
 ```
+
+> **Fallback bei Ollama-Fehler:** Wenn Ollama nicht erreichbar ist oder `nomic-embed-text` nicht geladen werden konnte, loggt das Backend eine Warnung und arbeitet ohne Embeddings weiter. Semantische Suche und pgvector-Routing sind dann deaktiviert — alle anderen Features bleiben funktional. Embedding-Berechnung wird automatisch nachgeholt sobald Ollama wieder erreichbar ist.
+>
+> **Known Limit — Single Ollama Instance:** Bei paralleler Nutzung durch mehrere Team-Mitglieder (Team-Modus) oder beim Kartograph-Bootstrap großer Repos (> 1000 Dateien) kann die sequenzielle Embedding-Berechnung zum Flaschenhals werden. Mitigation: `HIVEMIND_EMBEDDING_BATCH_SIZE` (Default: 50) erhöhen und Bootstrap außerhalb der Kernarbeitszeit durchführen. Horizontal Scaling wird ab Phase 8 evaluiert (→ [architecture/overview.md — Bekannte Skalierungsgrenzen](../architecture/overview.md#bekannte-skalierungsgrenzen)).
 
 ---
 
