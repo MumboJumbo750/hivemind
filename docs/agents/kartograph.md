@@ -33,12 +33,16 @@ Der Kartograph arbeitet nach dem **Fog-of-War-Prinzip**: maximale Zugangsberecht
     "write_wiki": true,
     "write_epic_docs": true,
     "propose_epic_restructure": true,
+    "propose_skill": true,
+    "propose_skill_change": true,
     "write_tasks": false,
     "execute_tasks": false,
     "merge_skills": false
   }
 }
 ```
+
+> **`propose_skill` für den Kartographen:** Der Kartograph ist der einzige Agent neben dem Gaertner mit direktem Skill-Proposal-Recht. Begründung: Er sieht als einziger das gesamte Repository und entdeckt Codebase-weite Coding-Patterns (z.B. "dieses Repo nutzt überall Repository-Pattern + Service-Layer") — das sind perfekte Skill-Kandidaten die ohne Umweg über den Gaertner formalisierbar sind. Analog zu `propose_guard` (das der Kartograph bereits hat): Guards beschreiben *was geprüft wird*, Skills beschreiben *wie gearbeitet wird* — beides entsteht durch Code-Analyse.
 
 ---
 
@@ -93,6 +97,23 @@ Kartograph analysiert src/auth/jwt.py
 
 ---
 
+## Infinite Context via Memory Ledger
+
+Der Kartograph ist der Hauptnutzer des Memory Ledgers (→ [Memory Ledger](../features/memory-ledger.md)). Da Codebase-Exploration typischerweise viele Sessions umfasst, persistiert der Kartograph sein Arbeitsgedächtnis strukturiert:
+
+```text
+Session 1:  Top-Level erkunden → 15 Beobachtungen → 40 Fakten → 3 Summaries
+Session 2:  Resume (Summaries + Fakten laden) → Weiß was kartiert ist → vertieft /workers/
+Session 5:  Auth-Summary graduiert zu Wiki → Memory-Footprint sinkt
+Session 10: Nur noch 2 aktive Summaries + 80 Fakten ≈ 1000 Tokens für 10 Sessions Wissen
+```
+
+**Kompaktierungspflicht:** Am Ende jeder Kartograph-Session **muss** der Agent seine Beobachtungen zu einer L2-Summary verdichten und offene Fragen explizit notieren. Das Follow-up-Prompt enthält automatisch den Memory-Kontext.
+
+→ Vollständiger Memory-Skill: [Agent Skills — Memory Skill](../features/agent-skills.md#memory-skill)
+
+---
+
 ## Solo-Modus
 
 Im Solo-Modus ist der Entwickler selbst der Kartograph. Fog-of-War-Mechanik bleibt erhalten — nicht als Zugangskontrolle, sondern als **Arbeitsdisziplin**:
@@ -112,10 +133,12 @@ Die Prompt Pipeline (→ [Prompt Pipeline](./prompt-pipeline.md)) unterstützt d
 | Wiki-Artikel | Systemwissen dokumentieren | `create_wiki_article`, `update_wiki_article` |
 | Epic-Docs | Epic-spezifische Dokumentation | `create_epic_doc` |
 | Code-Nodes | Nexus Grid befüllen (Fog of War lichten) | Automatisch via Backend bei Wiki/Doc-Write |
+| Skill-Proposals | Codebase-weite Coding-Patterns als Skills formalisieren | `propose_skill`, `submit_skill_proposal` |
+| Skill-Change-Proposals | Bestehende Skills erweitern basierend auf Code-Entdeckungen | `propose_skill_change` |
 | Guard-Proposals | Guards aus Repo-Dateien entdecken (`.eslintrc`, `pytest.ini`, `pyproject.toml`, CI-Configs) | `propose_guard`, `submit_guard_proposal` |
 | Guard-Change-Proposals | Bestehende Guards aktualisieren (z.B. Coverage-Schwelle ändern) | `propose_guard_change` |
 | Epic-Restructure-Proposals | Falsch geschnittene Epics vorschlagen umzustrukturieren | `propose_epic_restructure` |
-| Discovery Sessions | Codebase-Bereiche aktiv erkunden und an Peers broadcasten | `start_discovery_session`, `end_discovery_session` |
+| Discovery Sessions | Codebase-Bereiche aktiv erkunden und an Peers broadcasten | `hivemind/start_discovery_session`, `hivemind/end_discovery_session` |
 
 > **Guard-Discovery:** Der Kartograph analysiert Repo-Dateien (`.github/workflows/ci.yml`, `Makefile`, `package.json`, `pyproject.toml`, `.pre-commit-config.yaml`) und erstellt daraus Guard-Proposals. Vollständige Quellen-Tabelle: [→ guards.md — Kartograph-Discovery](../features/guards.md#kartograph-discovery)
 
@@ -123,9 +146,11 @@ Die Prompt Pipeline (→ [Prompt Pipeline](./prompt-pipeline.md)) unterstützt d
 
 ## Abgrenzung
 
-| | Kartograph | Architekt | Worker |
-| --- | --- | --- | --- |
-| Sichtweite | Fog of War, max. Berechtigung | Ein Epic (gesetzt) | Context Boundary (fix) |
-| Kontextfilter | Deaktiviert | Setzt ihn | Strikt begrenzt |
-| Output | Wiki, Docs, Restructure-Proposals | Tasks, Subtasks, Boundaries | Task-Ergebnisse |
-| Timing | Initial + nach Epic-Abschluss | Nach Kartograph | Während Sprint |
+| | Kartograph | Stratege | Architekt | Worker |
+| --- | --- | --- | --- | --- |
+| Sichtweite | Fog of War, max. Berechtigung | Breit (Hivemind-Daten, kein Code) | Ein Epic (gesetzt) | Context Boundary (fix) |
+| Kontextfilter | Deaktiviert | Deaktiviert | Setzt ihn | Strikt begrenzt |
+| Output | Wiki, Docs, Skill-Proposals, Restructure-Proposals | Epic-Proposals, Roadmap, Dependencies | Tasks, Subtasks, Boundaries | Task-Ergebnisse |
+| Timing | Initial + nach Epic-Abschluss | Vor Architekt; nach Kartograph/Plan | Nach Stratege/Scoping | Während Sprint |
+
+> **Abgrenzung Kartograph vs. Stratege:** Der Kartograph entdeckt *was da ist* (bottom-up: Code → Verständnis). Der Stratege entscheidet *was wir daraus machen* (top-down: Plan → Epics). Der Kartograph schlägt `propose_epic_restructure` vor wenn er beim Erkunden Fehlschnitte entdeckt. Der Stratege schlägt `propose_epic` vor wenn er aus einem Plan neue Arbeitspakete ableitet. Beide Proposals landen in der Triage Station.

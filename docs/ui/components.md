@@ -63,8 +63,14 @@ src/components/ui/
   HivemindBadge.vue       Generischer Badge/Chip (variant prop: info|warning|danger|success|muted)
   HivemindProgress.vue    Generischer Progress-Ring oder -Bar (value, max, animated)
   HivemindDiff.vue        Side-by-Side Diff-Darstellung (oldText, newText props)
+                          Library: diff-match-patch (entschieden — MIT, 0 Abhängigkeiten, bewährt)
+                          Props: oldText (String), newText (String), mode (split|unified)
   HivemindTimestamp.vue   Relative oder absolute Zeit (value: ISO-String, mode: relative|absolute)
   HivemindButton.vue      Reka Button-Wrapper (variant: primary|ghost|danger)
+  HivemindSkeleton.vue    Skeleton-Placeholder (variant: text|card|list-item|graph-node; animated Shimmer-Effekt)
+  HivemindLoadingOverlay.vue  Fullscreen-/Panel-Overlay mit Spinner (konfigurierbar: backdrop, message)
+  HivemindErrorState.vue  Einheitlicher Error-State (icon, title, detail, retry-Emit)
+                          Einsatz: Nexus Grid Load-Fehler, API-Timeout, Embedding-Fehler
   editor/
     tiptap-config.ts      Pflicht-Extensions (StarterKit, CodeBlockLowlight, Table, Markdown)
 ```
@@ -87,8 +93,8 @@ src/components/domain/
                           Nutzt: HivemindBadge
 
   AgentBadge.vue          Agent-Symbol + Name
-                          Props: agent (kartograph|architekt|worker|gaertner|triage|bibliothekar)
-                          Symbole: ◬ Kartograph, ◎ Architekt, ◆ Worker, ⊕ Gaertner, ⊘ Triage, ⊙ Bibliothekar
+                          Props: agent (kartograph|stratege|architekt|worker|gaertner|triage|bibliothekar)
+                          Symbole: ◬ Kartograph, ♜ Stratege, ◎ Architekt, ◆ Worker, ⊕ Gaertner, ⊘ Triage, ⊙ Bibliothekar
                           (siehe concept.md Ikonografie-Sektion)
 
   SlaTimer.vue            SLA-Countdown mit Farb-Transition (amber → rot)
@@ -163,6 +169,7 @@ src/views/
     TaskRow.vue               Task-Zeile mit StateBadge, Aktions-Buttons
     ScopingModal.vue          Epic Scoping (Owner, SLA, Priorität, DoD-Rahmen)
     ReviewPanel.vue           Task-Review (HivemindViewer, GuardList, DoD-Checklist)
+    AiReviewPanel.vue         AI-Review-Empfehlung (Confidence-Badge, Checklist, Grace-Period-Countdown) (Phase 8)
     ContextBoundaryPanel.vue  Read-only Boundary (Skills, Docs, TokenBudget)
     DecisionRecordsPanel.vue  Kollabierbare Decision-Record-Liste (HivemindViewer)
     DecisionRequestModal.vue  Modal mit Optionen + SlaTimer (Phase 6)
@@ -201,7 +208,8 @@ src/views/
     SystemTab.vue             Modus, MCP-Transport, Theme
     ProjectTab.vue            Mitglieder-Liste, Rollen-Dropdowns
     AuditTab.vue              Audit-Log-Tabelle + Payload-Preview
-    AiTab.vue                 API-Key, Provider, Token Budget (Phase 8)
+    AiTab.vue                 Per-Agent-Rolle: Provider, Modell, Key, Budget (Phase 8)
+    GovernanceTab.vue         Pro Entscheidungstyp: manual/assisted/auto, Threshold, Grace Period (Phase 8)
 
   layout/
     SystemBar.vue             Immer sichtbar — Projekt, Modus, MCP-Status, 🔔

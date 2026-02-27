@@ -106,6 +106,11 @@ Alle Tabellen werden in Phase 1 erstellt — auch die die erst in späteren Phas
 - `epic_restructure_proposals`
 - `level_thresholds`, `badge_definitions`, `user_achievements` (Gamification-Skeleton — Seed-Daten in Phase 1, EXP-Logik aktiv ab Phase 5; siehe [Gamification-Spezifikation](#gamification-spezifikation))
 - `prompt_history` (Schema ab Phase 1; befüllt ab Phase 3)
+- `wiki_categories` (Kategorie-Baum; befüllt ab Phase 5)
+- `epic_proposals` (Stratege-Workflow; befüllt ab Phase 4)
+- `ai_provider_configs` (Per-Agent-Role Provider-Routing; befüllt ab Phase 8)
+- `review_recommendations` (AI-Review-Empfehlungen; befüllt ab Phase 8)
+- `conductor_dispatches` (Agent-Dispatch-Audit-Trail; befüllt ab Phase 8)
 
 → Vollständiges Schema: [data-model.md](../architecture/data-model.md)
 
@@ -172,7 +177,9 @@ hivemind/
         ├── main.ts
         ├── App.vue
         |-- design/
-        |   |-- tokens.css
+        |   |-- tokens.css        ← Core Tokens (Primitive Basiswerte)
+        |   |-- semantic.css      ← Semantic Tokens (--color-bg, --color-accent etc.)
+        |   |-- components.css    ← Component Tokens (--button-primary-bg, --card-border etc.)
         |   `-- themes/
         |       |-- space-neon.css
         |       |-- industrial-amber.css
@@ -231,7 +238,7 @@ Das Gamification-System (EXP, Levels, Badges) wird in Phase 1 als Schema angeleg
 | Decision Record erstellt | +25 | Record-Ersteller erhält EXP |
 | Wiki-Artikel erstellt | +50 | Artikel-Autor erhält EXP |
 | Guard-Proposal gemergt (`merge_guard`) | +50 | Guard-Proposer erhält EXP |
-| Epic komplett (`done`, alle Tasks `done`) | +200 | Epic-Owner erhält EXP |
+| Epic komplett (`done`, alle nicht-`cancelled` Tasks auf `done`) | +200 | Epic-Owner erhält EXP — Definition "komplett": `tasks WHERE epic_id=X AND state NOT IN ('cancelled')` müssen alle `state='done'` sein; rein `cancelled`-Tasks zählen nicht als Blocker |
 | Eskalation gelöst (`resolve_escalation`) | +30 | Lösender Admin erhält EXP |
 
 ### Level-Schwellwerte (Seed-Daten in `level_thresholds`)
@@ -260,7 +267,7 @@ Das Gamification-System (EXP, Levels, Badges) wird in Phase 1 als Schema angeleg
 | `cartographer` | 50 Code-Nodes kartiert | Exploration |
 | `epic_closer` | 3 Epics komplett abgeschlossen | Meilenstein |
 | `mentor` | 10 Decision Records erstellt | Wissensarbeit |
-| `iron_will` | Task nach 3x `qa_failed` doch auf `done` | Ausdauer |
+| `iron_will` | Task nach 3x `qa_failed` doch auf `done` — **Ablauf:** Admin löst `escalated` via `resolve_escalation` auf, Worker setzt Task via `update_task_state` wieder auf `in_progress`, besteht Review ohne weiteres `qa_failed`. Badge-Trigger: `approve_review` bei Task mit `qa_failed_count >= 3` und vorheriger `escalated`-Phase. | Ausdauer |
 
 ### Trigger-Mapping (Backend)
 

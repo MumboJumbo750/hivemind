@@ -68,10 +68,13 @@ Alle visuellen Werte sind token-basiert. Keine Hex-Codes, keine festen Pixelwert
 ### Typographie
 
 ```text
-Headings:  "Space Grotesk" oder "Orbitron"  (sci-fi, klar lesbar)
-Body:      "Inter" oder "DM Sans"           (neutral, gut lesbar)
-Mono:      "JetBrains Mono"                 (Code, IDs, Prompts)
+Headings:  "Space Grotesk"   (entschieden — technisch-futuristisch, besser lesbar als Orbitron bei State-Badges/Labels)
+Body:      "Inter"           (entschieden — bestes Screen-Hinting auf Windows, bewährtester UI-Sans-Serif)
+Mono:      "JetBrains Mono"  (Code, IDs, Prompts)
 ```
+
+> **Font-Loading:** `@fontsource/space-grotesk` + `@fontsource/inter` als npm-Pakete — keine externe CDN-Abhängigkeit. Subset: `latin` + `latin-ext`.
+> **Orbitron/DM Sans verworfen:** Orbitron zu dekorativ für 10–14px UI-Dichte. DM Sans qualitativ gleichwertig zu Inter, aber Inter hat breitere Community-Tools-Unterstützung (Figma, Design-Token-Toolchain).
 
 ### Ikonografie & Symbole
 
@@ -89,6 +92,7 @@ Mono:      "JetBrains Mono"                 (Code, IDs, Prompts)
 ⊕  Gaertner-Agent
 ⊘  Triage-Agent (Routing)
 ⊙  Bibliothekar-Agent (Context Assembly)
+♜  Stratege-Agent (Planung)
 ⚔  Skill / Arsenal-Item
 ```
 
@@ -262,10 +266,10 @@ Ein UI fühlt sich nach "Spiel" an, wenn jede Interaktion befriedigendes, fast s
 - **SLA-Countdown:** Sichtbarer Timer der sich orange → rot färbt — Druck ohne Panik
 - **Fog of War:** Das Aufdecken durch den Kartographen passiert nicht instantan, sondern als sichtbare "Scan"-Welle (Radial Reveal) über das Grid (░ → ●)
 - **State-Transitions:** Task `in_progress` → `in_review` → `done` mit kurzem Pulse-Effekt; Epic `done` löst einen dezenten Glow-Effekt über der Epic-Card aus.
-- **Agent-Badges:** Jeder Agent hat ein eigenes Symbol (◆ Worker, ◎ Architekt, ◬ Kartograph, ⊕ Gaertner, ⊘ Triage, ⊙ Bibliothekar)
+- **Agent-Badges:** Jeder Agent hat ein eigenes Symbol (◆ Worker, ◎ Architekt, ◬ Kartograph, ♜ Stratege, ⊕ Gaertner, ⊘ Triage, ⊙ Bibliothekar)
 - **Token Radar:** Animierter Progress-Ring der zeigt wieviel Kontext geladen ist (Loadout-Gewicht)
 - **Skill Confidence Bar:** Visueller Indikator der Verlässlichkeit eines Skills im Arsenal
-- **Prompt Queue Fortschritt:** "3 von 5 Agenten-Aufgaben heute erledigt" — Game-Loop-Gefühl
+- **Prompt Queue Fortschritt:** "3 von 6 Agenten-Aufgaben heute erledigt" — Game-Loop-Gefühl
 - **Peer-Farben im Nexus Grid:** Jeder Peer hat eine eigene Akzentfarbe für seine Discoveries
 - **Discovery Session Pulse:** Aktive Kartograph-Sessions pulsieren auf der Weltkarte
 - **Skill Pinning (Loadout):** Physisches "Snap"-Feedback — wenn ein Skill im Arsenal in das Loadout gezogen wird, gibt es ein sattes, visuelles Einrasten mit einem kurzen Aufleuchten des Token-Budgets.

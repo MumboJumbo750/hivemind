@@ -87,9 +87,35 @@ Backend prüft: users WHERE api_key_hash = hash(<key>) AND role = 'service'
 
 ---
 
+## Security Policy — Auth-Abgrenzung
+
+Vier Auth-Pfade koexistieren. Die Middleware entscheidet anhand von Endpoint-Pfad und Header:
+
+| Auth-Pfad | Scope | Header / Mechanismus | Wer |
+| --- | --- | --- | --- |
+| **Bearer JWT** | Alle `/api/*`-Endpoints (außer Auth + `/health`) | `Authorization: Bearer <token>` | Menschliche User (developer, admin, kartograph) |
+| **API-Key** | Alle `/api/*`-Endpoints (außer Auth + `/health`) | `X-API-Key: <key>` | Service-Accounts (`role = 'service'`). Kein Login-Flow, kein Refresh-Token. |
+| **Solo Auto-Login** | Alle `/api/*`-Endpoints | Kein Header nötig; Backend erkennt Solo-Modus + `password_hash IS NULL` → impliziter System-User | Solo-Modus ohne Passwort. **Constraint:** Wenn `HIVEMIND_FEDERATION_ENABLED=true` und `hivemind_mode='solo'` **und** kein Passwort gesetzt, loggt das Backend beim Start eine Warnung: `"WARN: Solo+Federation ohne Passwort — Federation-Endpoints sind ungeschützt. Passwort setzen empfohlen."` Federation-Endpoints (`/federation/*`) bleiben erreichbar, da sie eigene Ed25519-Signaturprüfung haben. |
+| **Ed25519-Signatur** | Alle `/federation/*`-Endpoints | `X-Hivemind-Signature` Header (Ed25519 über Body-Hash) | Peer-Nodes. Kein JWT/API-Key nötig. Unbekannte oder ungültige Signatur → HTTP 401. |
+
+**Reihenfolge der Middleware-Prüfung (pro Request):**
+
+```text
+1. Pfad beginnt mit /federation/* → Ed25519-Signaturprüfung (kein JWT/API-Key nötig)
+2. Pfad ist /health oder /api/auth/* → kein Auth nötig
+3. Header X-API-Key vorhanden → API-Key-Auth (service-Rolle)
+4. Header Authorization: Bearer vorhanden → JWT-Auth
+5. Solo-Modus + password_hash IS NULL → Auto-Login mit System-User
+6. Nichts davon → HTTP 401
+```
+
+> **Regel:** Bearer und API-Key schließen sich gegenseitig aus — ein Request hat entweder `Authorization: Bearer` oder `X-API-Key`, nie beides. Bei beiden Headern gleichzeitig → HTTP 400.
+
+---
+
 ## REST Endpoint-Übersicht
 
-Alle Endpoints unter `/api/`. Jeder Request erfordert ein gültiges Access-Token im `Authorization: Bearer` Header (außer Auth-Endpoints und `/health`).
+Alle Endpoints unter `/api/`. Jeder Request erfordert ein gültiges Access-Token im `Authorization: Bearer` Header (außer Auth-Endpoints, `/health` und `/federation/*` — siehe Security Policy oben).
 
 ### Projects
 
@@ -114,6 +140,7 @@ GET    /api/epics/:epic_key                   → Epic-Detail (z.B. EPIC-12)
 PATCH  /api/epics/:epic_key                   → Epic bearbeiten (Owner, SLA, Priority, DoD)
 GET    /api/epics/:epic_key/tasks             → Tasks des Epics mit Filter
 POST   /api/epics/:epic_key/tasks             → Task anlegen
+POST   /api/epics/:epic_key/docs              → Epic-Doc anlegen (admin, ab Phase 3)
 GET    /api/tasks/:task_key                   → Task-Detail (z.B. TASK-88)
 PATCH  /api/tasks/:task_key                   → Task bearbeiten
 PATCH  /api/tasks/:task_key/state             → State-Transition (mit Validierung)
@@ -129,8 +156,15 @@ GET    /api/skills                            → Skills mit Filter (lifecycle, 
 GET    /api/skills/:id                        → Skill-Detail mit Composition-Chain
 GET    /api/skills/:id/versions               → Immutable Versionshistorie
 POST   /api/skills/:id/change-proposals       → Skill-Change-Proposal einreichen
+POST   /api/skills/:id/fork                   → Federierten Skill lokal forken (Phase F+)
+                                                Body: { "node_id": "<origin-peer-uuid>" }
+                                                → 201 { "skill_id": "<uuid>", "lifecycle": "draft", "extends": "<origin-id>" }
+                                                → Intern: erstellt lokalen Draft mit extends-Link auf Origin-Skill
+                                                → Selber Service wie MCP-Tool hivemind/fork_federated_skill
 GET    /api/guards                            → Guards mit Filter (scope, lifecycle, project_id)
 GET    /api/guards/:id                        → Guard-Detail
+POST   /api/guards                            → Guard anlegen (admin, ab Phase 3)
+PATCH  /api/guards/:id                        → Guard bearbeiten (admin, ab Phase 3)
 GET    /api/tasks/:task_key/guards            → Alle Guards für einen Task (global+project+skill+task)
 GET    /api/projects/:id/skills/export        → Skill-Export (JSON)
 ```
@@ -176,17 +210,46 @@ GET    /api/triage/proposals                  → Offene Proposals (skill, guard
 POST   /api/triage/:id/route                  → Event einem Epic zuweisen
 POST   /api/triage/:id/ignore                 → Event ignorieren
 POST   /api/triage/dead-letters/:id/requeue   → Dead Letter requeuen
+POST   /api/triage/dead-letters/:id/discard   → Dead Letter verwerfen (endgültig, Audit-Trail bleibt)
+POST   /api/triage/bugs/:id/assign            → Bug manuell einem Epic zuweisen (ab Phase 7, admin)
+                                                Body: { "epic_id": "<uuid>" }
+                                                → Intern: hivemind/assign_bug; setzt routing_state=routed
 ```
 
 ### Prompt Station
 
 ```text
+GET    /api/prompt-station/status              → Aktueller Prompt-Station-State (idle|agent_required|waiting_for_mcp|
+                                                completed|human_action_required|api_key_mode) + Actions-Array
+                                                → Berechnet aus Task/Epic/Decision-Request-Daten (→ prompt-station.md)
 GET    /api/prompt-queue                      → Aktuelle Queue mit Priorisierung
 GET    /api/prompt-queue/active               → Aktiver Prompt (oberster Queue-Eintrag)
 GET    /api/prompts/:id                       → Generierter Prompt (kompakt)
 GET    /api/prompts/:id/assembled             → Vollständig assemblierter Prompt-Text
+POST   /api/prompts/:id/override              → Angepassten Prompt-Text speichern (ab Phase 2)
+                                                Body: { "override_text": "..." }
+                                                → 200 { "prompt_id": "...", "override_active": true }
+                                                → Override ersetzt den assemblierten Text für diesen Queue-Eintrag.
+                                                  Beim nächsten Laden ohne Override wird der Text neu assembliert.
+                                                  Scoped auf den jeweiligen Queue-Eintrag; in prompt_history.override_text gespeichert.
 GET    /api/prompt-history                    → Prompt-Verlauf (limit, offset)
 ```
+
+### Webhooks
+
+```text
+GET    /api/webhooks                          → Liste konfigurierter Webhook-Quellen (YouTrack, Sentry, etc.)
+POST   /api/webhooks                          → Neue Webhook-Quelle anlegen (admin)
+                                                Body: { "source": "youtrack|sentry|custom", "name": "...",
+                                                        "enabled": true, "event_types": ["issue.*"] }
+                                                → 201 { "id": "...", "endpoint_url": "/webhooks/ingest/<token>", "auth_token": "..." }
+GET    /api/webhooks/:id                      → Webhook-Detail inkl. letztem Event-Timestamp
+PATCH  /api/webhooks/:id                      → Webhook bearbeiten (enabled toggle, event_types)
+DELETE /api/webhooks/:id                      → Webhook entfernen (admin)
+GET    /api/webhooks/:id/events               → Letzte 50 empfangene Events (limit, offset)
+```
+
+> **Ingest-Endpoint:** `POST /webhooks/ingest/<token>` (kein `/api/`-Prefix) ist der öffentliche Endpunkt für eingehende Webhooks. Keine Auth außer Token-Verifikation. Schreibt `direction='inbound'` in `sync_outbox`.
 
 ### Notifications
 
@@ -208,6 +271,29 @@ PATCH  /api/users/me                          → Profil bearbeiten
 GET    /api/users/me/achievements             → Eigene Achievements/Badges
 ```
 
+### Governance & Conductor (Phase 8)
+
+```text
+GET    /api/settings/governance               → Governance-Levels (7 Entscheidungstypen × 3 Stufen)
+                                                → { "review": { "level": "assisted", "confidence_threshold": 0.85, "grace_minutes": 15 }, ... }
+PATCH  /api/settings/governance               → Governance-Levels ändern (admin only)
+                                                → Body: { "<typ>": { "level": "manual|assisted|auto", ...Optionen } }
+GET    /api/tasks/:task_key/review-recommendation
+                                              → AI-Review-Empfehlung für einen Task (falls vorhanden)
+                                                → { "recommendation": "approve", "confidence": 0.92, "summary": "...", "checklist": [...], "concerns": [] }
+POST   /api/tasks/:task_key/review-recommendation/accept
+                                              → Owner bestätigt AI-Empfehlung (nur bei assisted)
+                                                → triggert approve_review oder reject_review je nach recommendation
+POST   /api/tasks/:task_key/review-recommendation/override
+                                              → Owner überschreibt AI-Empfehlung (bei assisted oder auto-Grace-Period)
+                                                → Body: { "action": "approve|reject", "comment": "..." }
+GET    /api/conductor/dispatches              → Letzte Conductor-Dispatches (admin, limit, offset)
+                                                → [{ "trigger_event": "task.state.in_review", "agent_role": "reviewer", "status": "completed", ... }]
+GET    /api/conductor/status                  → Conductor-Health (enabled, active_dispatches, cooldown_status)
+```
+
+> **Governance-Sicherheit:** `PATCH /api/settings/governance` erfordert `admin`-Rolle. Ungültige Level-Kombinationen (z.B. `auto` ohne `confidence_threshold`) werden serverseitig validiert und mit HTTP 422 abgelehnt.
+
 ### Federation
 
 ```text
@@ -219,6 +305,13 @@ POST   /api/federation/peers/:node_id/ping    → Manueller Ping
 GET    /api/federation/identity               → Eigene Node-Identität (Name, URL, Public Key)
 GET    /api/federation/shared-epics           → Shared Epics über Peer-Grenzen
 GET    /api/federation/guild-skills           → Federated Skills aller Peers
+POST   /api/federation/emergency-revoke       → Notfall-Revocation: setzt nodes.public_key eines Peers sofort auf NULL
+                                                Body: { "node_id": "<uuid>", "reason": "..." }
+                                                → 200 { "node_id": "...", "revoked_at": "..." }
+                                                → Keine Grace-Period — alle weiteren Nachrichten dieses Peers: HTTP 401
+                                                → Erzeugt Audit-Eintrag. Admin-Only.
+                                                → Muss auf JEDEM Peer-Node einzeln ausgeführt werden (kein Broadcast)
+                                                → Verwendung: Key-Kompromittierung (→ federation.md#key-kompromittierung--notfallprozedur)
 ```
 
 ### Nexus Grid
@@ -229,6 +322,8 @@ GET    /api/projects/:id/code-graph           → Code-Nodes + Edges für Cytosc
                                                 max_depth, include_fog (Boolean)
 GET    /api/projects/:id/code-graph/heatmap   → Bug-Heatmap-Daten (Knoten-Farbe nach Bug-Dichte)
 GET    /api/code-nodes/:id                    → Code-Node-Detail (Docs, Skills, Bugs, Tasks)
+POST   /api/code-nodes                        → Code-Node anlegen (kartograph + admin, ab Phase 3)
+PATCH  /api/code-nodes/:id                    → Code-Node bearbeiten (kartograph + admin, ab Phase 3)
 ```
 
 ### Health
@@ -352,6 +447,16 @@ data: {"task_key":"TASK-88","guard_id":"uuid","status":"passed","result":"All 42
 | `proposal_submitted` | `proposal_id`, `type` (skill/guard/change/restructure), `title`, `proposed_by` | Neue Proposal eingereicht |
 | `dead_letter` | `id`, `original_outbox_id`, `error`, `attempts` | Sync-Fehler in DLQ verschoben |
 
+**Kanal: `/events/conductor`** *(Phase 8)*
+
+| Event-Typ | Payload | Auslöser |
+| --- | --- | --- |
+| `agent_dispatched` | `dispatch_id`, `agent_role`, `prompt_type`, `trigger_event`, `provider` | Conductor dispatcht einen Agent |
+| `agent_completed` | `dispatch_id`, `agent_role`, `duration_ms`, `result_status` | Agent-Dispatch abgeschlossen |
+| `review_recommendation` | `task_key`, `recommendation`, `confidence`, `summary` | Reviewer gibt Empfehlung ab |
+| `auto_action_pending` | `task_key`, `action`, `grace_until`, `confidence` | Auto-Aktion wartet auf Grace Period |
+| `auto_action_executed` | `task_key`, `action`, `was_vetoed` | Auto-Aktion durchgeführt oder vetoed |
+
 **Heartbeat (alle Kanäle):**
 
 ```text
@@ -359,6 +464,43 @@ data: {"task_key":"TASK-88","guard_id":"uuid","status":"passed","result":"All 42
 ```
 
 Intervall: 15 Sekunden (konfigurierbar via `HIVEMIND_SSE_HEARTBEAT_INTERVAL`). Kein `event:`-Feld — reiner SSE-Kommentar.
+
+### SSE Reconnect & Ring-Buffer
+
+Wenn eine SSE-Verbindung unterbrochen wird, sendet der Browser automatisch einen Reconnect-Request mit dem Header `Last-Event-ID: <id>` des zuletzt empfangenen Events. Das Backend liefert dann alle verpassten Events nach:
+
+```text
+Ablauf:
+1. Client trennt die Verbindung (Netzwerk-Fehler, Tab wechsel)
+2. Browser reconnectet: GET /events/tasks?token=<new_stream_token>
+   Header: Last-Event-ID: 1172
+3. Backend sucht im Ring-Buffer alle Events mit id > 1172
+4. Liefert alle verpassten Events sequenziell, dann weiter im Live-Stream
+
+Ring-Buffer:
+  Größe:  1000 Events pro SSE-Kanal (konfigurierbar via HIVEMIND_SSE_RING_BUFFER_SIZE)
+  TTL:    Kein Zeit-Limit — nur größenbasierte Rotation (älteste raus wenn voll)
+  Typ:    In-Memory (pro Backend-Prozess) — bei Multi-Prozess-Deployment: Redis-Backed
+```
+
+**Ring-Buffer-Overflow:** Wenn der Client länger offline war als der Ring-Buffer speichert (> 1000 Events seit Last-Event-ID), kann das Backend die Lücke nicht füllen. In diesem Fall:
+
+```text
+event: full_sync
+data: {"reason": "ring_buffer_overflow", "last_known_id": 1172, "current_id": 2380}
+```
+
+**Client-Verhalten bei `full_sync`:**
+
+1. Frontend verwirft den lokalen UI-State (Tasks-Liste, Epic-Liste)
+2. Führt vollständigen REST-Reload durch:
+   - `GET /api/projects/:id/epics` (alle Epics)
+   - `GET /api/projects/:id/tasks?state=in_progress,in_review,blocked,escalated` (offene Tasks)
+   - `GET /api/prompt-station/status` (Queue-State)
+3. Nach erfolgreichem Reload: SSE-Stream normal weiterführen
+4. Badge in der UI: "Neu synchronisiert" (1 Sekunde sichtbar)
+
+> **Stream-Token bei Reconnect:** Da das Stream-Token single-use und 30s gültig ist, muss der Client vor jedem Reconnect-Versuch ein neues Stream-Token anfordern (`POST /api/auth/stream-token`). Das Browser-SSE-API übernimmt den Reconnect automatisch — der Client muss das Token-Refresh in den `EventSource`-Wrapper implementieren (kein nativer Browser-Support für Token-Refresh bei SSE).
 
 ---
 

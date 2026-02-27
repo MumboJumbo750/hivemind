@@ -16,6 +16,7 @@
   - `hivemind/submit_result` — Ergebnis + Artefakte an Task schreiben (State bleibt `in_progress`)
   - `hivemind/update_task_state` — State-Transitions; `→ in_review` prüft Guards + Result
   - `hivemind/create_decision_request` — Blocker eskalieren (atomar: erstellt offenen Decision Request + setzt Task `in_progress → blocked`)
+    > **Wichtig — Auflösungs-Gap Phase 5:** `hivemind/resolve_decision_request` wird erst in Phase 6 implementiert. In Phase 5 kann ein `blocked` Task nur durch **Admin-Direkt-Intervention** wieder freigegeben werden: `PATCH /api/tasks/:task_key/state { "state": "in_progress", "actor_role": "admin" }`. Dieser Workaround ist bis Phase 6 die einzige Möglichkeit, einen Decision Request manuell aufzulösen. Ab Phase 6 ist `resolve_decision_request` der kanonische Pfad.
   - `hivemind/report_guard_result` — Guard-Ergebnis melden (passed|failed|skipped)
 - [ ] Gaertner-Write-Tools:
   - `hivemind/propose_skill` — neuen Skill vorschlagen
@@ -34,7 +35,7 @@
   - `hivemind/submit_guard_proposal` — Guard-Proposal zur Admin-Review einreichen (`draft → pending_merge`)
 - [ ] Review-Write-Tools (Owner/Admin):
   - `hivemind/approve_review` — Task von `in_review` auf `done` setzen (Review-Gate bestanden)
-  - `hivemind/reject_review` — Task von `in_review` auf `qa_failed` setzen + Kommentar; `qa_failed_count >= 3` → automatisch `escalated`
+  - `hivemind/reject_review` — Task von `in_review` auf `qa_failed` setzen + Kommentar; Eskalation greift erst beim Worker-Re-entry-Versuch wenn `qa_failed_count >= 3` (→ state-machine.md)
 - [ ] Admin-Write-Tools (Erweiterung):
   - `hivemind/merge_guard` — Guard-Proposal aktivieren (`lifecycle → active`)
   - `hivemind/reject_guard` — Guard-Proposal ablehnen (`lifecycle → rejected`)
@@ -49,6 +50,9 @@
 - [ ] `code_nodes` schreiben: wenn Kartograph Wiki-Artikel erstellt → `explored_at` setzen
 - [ ] Wiki-Such-Backend: Volltextsuche + Tag-Filterung (pgvector ab Phase 3 verfügbar)
 - [ ] qa_failed-Flow: `reject_review` setzt Task auf `qa_failed` (persistenter State); Worker setzt via `update_task_state { "state": "in_progress" }` aktiv zurück nach Review-Kommentar-Lesen
+- [ ] **Notification-Types aktivieren** (werden ab Phase 6 an Notification-Service übergeben):
+  - `guard_proposal` — bei `submit_guard_proposal` → alle Admins
+  - `restructure_proposal` — bei `propose_epic_restructure` → alle Admins
 - [ ] **Gamification aktivieren** (→ [Phase 1 Gamification-Spezifikation](./phase-1.md#gamification-spezifikation)):
   - EXP-Trigger in `approve_review` (+100 EXP, +50 First-Try-Bonus), `merge_skill` (+75), `create_wiki_article` (+50), `merge_guard` (+50), `create_decision_record` (+25)
   - Badge-Check nach jedem EXP-Event (gegen `badge_definitions`)
@@ -87,7 +91,7 @@
 - [ ] `hivemind/create_decision_request` erstellt Decision Request mit `state = open` und setzt Task atomar `in_progress -> blocked`
 - [ ] `hivemind/approve_review` setzt Task auf `done` (nur aus `in_review`); Notification `task_done` ausgelöst
 - [ ] `hivemind/reject_review` setzt Task auf `qa_failed` + schreibt `review_comment`; `qa_failed_count` wird inkrementiert
-- [ ] `qa_failed_count >= 3` → Worker-Versuch `in_progress` zu setzen wird abgefangen → Task auf `escalated` (Worker re-entry Trigger)
+- [ ] `qa_failed_count >= 3` → Worker-Versuch `in_progress` zu setzen wird abgefangen → Task auf `escalated` (Worker re-entry Trigger, nicht bei reject_review)
 - [ ] Worker kann `qa_failed → in_progress` via `update_task_state { "state": "in_progress" }` setzen (erst nach Review-Kommentar lesen)
 - [ ] `hivemind/propose_skill` erstellt Skill mit `lifecycle = draft`
 - [ ] `hivemind/submit_skill_proposal` setzt `lifecycle = pending_merge`
@@ -103,6 +107,17 @@
 ## Abhängigkeiten
 
 - Phase 4 abgeschlossen (Planer-Writes, Skill Lab)
+
+## Scope-Risiko & Split-Empfehlung
+
+> **Achtung:** Phase 5 ist die umfangreichste Phase (Worker-Writes + Gaertner-Writes + Kartograph-Writes + Wiki + Nexus Grid 2D + Gamification). Bei Zeitdruck empfiehlt sich ein **5a / 5b Split:**
+
+| Sub-Phase | Inhalt | Blocker für Phase 6? |
+| --- | --- | --- |
+| **5a** | Worker-Write-Tools (`submit_result`, `update_task_state`, `report_guard_result`, `create_decision_request`), Review-Write-Tools, Guard-Provenance im Review | Ja — Phase 6 (Eskalation) setzt Worker-Writes voraus |
+| **5b** | Gaertner-Writes, Kartograph-Writes, Wiki, Nexus Grid 2D, Gamification-Aktivierung | Nein — kann nach Phase 6 nachgeholt werden |
+
+> Phase 5a liefert den vollständigen Worker-Flow (Task bearbeiten → Review → done). Phase 5b liefert Wissensdestillation und Visualisierung. Beide sind wertvolles, aber die Kausalabhängigkeit von Phase 6 liegt nur bei 5a.
 
 ## Öffnet folgende Phase
 

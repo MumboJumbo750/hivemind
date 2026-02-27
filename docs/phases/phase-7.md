@@ -19,8 +19,9 @@
 - [ ] YouTrack-Sync: Status-Updates + Assignee rücksyncen
 - [ ] Sentry-Sync: Bug-Reports aggregieren in `node_bug_reports`
 - [ ] pgvector-Routing: Epic-Embeddings verwenden für Auto-Routing
-  - Confidence >= 0.85 → auto-assign
-  - Confidence < 0.85 → `[UNROUTED]`
+  - Confidence >= Threshold → auto-assign (Default-Threshold: **0.85**, konfigurierbar via `app_settings.pgvector_routing_threshold` und Env-Override `HIVEMIND_ROUTING_THRESHOLD`)
+  - Confidence < Threshold → `[UNROUTED]`
+  - Admin kann Threshold zur Laufzeit ändern via `PATCH /api/settings/pgvector_routing_threshold` ohne Neustart
 - [ ] Admin-Tool: `hivemind/assign_bug` — manuelles Bug→Epic Routing (hier implementiert, **nicht** in Phase 6 — erst Phase 7 hat Sentry-Daten)
 - [ ] Audit-Retention-Cron: bereinigt alte `input_payload`/`output_payload`
 - [ ] DLQ-Requeue als MCP-Tool: `hivemind/requeue_dead_letter { "id": "uuid" }` (admin + triage permission)
@@ -38,7 +39,18 @@
   - Outbox-Queue-Größe
   - Letzte erfolgreiche Syncs
   - Fehlgeschlagene Syncs mit Details
-- [ ] KPI-Dashboard (erster Stand): Routing-Precision, SLA-Erfüllung
+- [ ] KPI-Dashboard (erster Stand): zeigt die 6 Kern-KPIs aus [overview.md](./overview.md#kpis-ab-phase-3-messen)
+  - Layout: 2×3 Grid mit KPI-Cards (Metric, Zielwert, aktueller Wert, Trend-Sparkline)
+  - **KPI-Cards:**
+    - Routing-Precision (Auto-Owner-Zuweisung) — Ziel: ≥85%
+    - Median Zeit bis `scoped` (Epic-Ingest) — Ziel: ≤4h
+    - Tasks ohne Reopen nach `done` — Ziel: ≥80%
+    - Decision Requests innerhalb SLA gelöst — Ziel: ≥95%
+    - Skill-Proposals mit Entscheidung in 72h — Ziel: ≥90%
+    - Unauthorized Write Attempts — Ziel: 0
+  - **Update-Frequenz:** Stündlich gecacht (selbe Granularität wie SLA-Cron)
+  - **Datenquelle:** Aggregate aus `mcp_invocations` + `tasks` + `decision_requests` + `sync_outbox`
+  - Phase 8 ergänzt historische Graphen (Zeitreihe über 7/30 Tage)
 - [ ] Performance-Budget fuer schwere Views dokumentiert und geprueft:
   - Nexus Grid (inkl. Bug-Heatmap)
   - Triage-Listen (inkl. Dead Letter)

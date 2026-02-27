@@ -1,10 +1,10 @@
-# Phase 4 — Planer-Writes (Architekt)
+# Phase 4 — Planer-Writes (Stratege & Architekt)
 
 ← [Phasen-Übersicht](./overview.md) | [Index](../../masterplan.md)
 
-**Ziel:** Architekt kann über MCP Epics zerlegen, Tasks anlegen, Context Boundaries setzen.
+**Ziel:** Stratege kann über MCP Epic-Proposals erstellen; Architekt kann Epics zerlegen, Tasks anlegen, Context Boundaries setzen.
 
-**AI-Integration:** Architekt-Prompt wird manuell in AI-Client eingefügt; AI ruft Planer-Write-Tools auf.
+**AI-Integration:** Strategie-Prompt und Architektur-Prompt werden manuell in AI-Client eingefügt; AI ruft Planer-Write-Tools auf.
 
 ---
 
@@ -13,13 +13,20 @@
 ### Backend
 
 - [ ] Planer-Write-Tools implementiert:
+  - `hivemind/propose_epic` — Epic-Proposal erstellen (Stratege)
+  - `hivemind/update_epic_proposal` — Proposal nachbessern (Stratege)
+  - `hivemind/accept_epic_proposal` — Proposal akzeptieren → Epic (incoming) (Triage/Admin)
+  - `hivemind/reject_epic_proposal` — Proposal ablehnen mit Begründung (Triage/Admin)
   - `hivemind/decompose_epic` — Epic → Tasks/Subtasks
   - `hivemind/create_task` — einzelnen Task anlegen
   - `hivemind/create_subtask` — Subtask mit Parent
   - `hivemind/link_skill` — Skill mit Task verknüpfen
   - `hivemind/set_context_boundary` — Context Boundary für Task setzen
   - `hivemind/assign_task` — Task einem User zuweisen (löst `task_assigned`-Notification aus)
+- [ ] Strategie-Prompt-Generator (`hivemind/get_prompt { "type": "stratege", "project_id": "uuid" }`) — für Stratege ist `project_id` der Pflicht-Parameter
 - [ ] Architektur-Prompt-Generator (`hivemind/get_prompt { "type": "architekt", "epic_id": "uuid" }`) — für Architekt ist `epic_id` der Pflicht-Parameter statt `task_id`
+- [ ] `epic_proposals`-Tabelle + CRUD-Endpoints
+- [ ] Triage Station: `[EPIC PROPOSAL]`-Kategorie mit Accept/Reject-UI
 - [ ] Skill Lab Backend: Skills CRUD, Lifecycle-Transitions
 - [ ] Proposer-Submit-Tool: `hivemind/submit_skill_proposal` (`draft → pending_merge`)
 - [ ] Admin-Write-Tools (Subset): `hivemind/merge_skill`, `hivemind/reject_skill`
@@ -43,6 +50,10 @@
 
 ## Acceptance Criteria
 
+- [ ] `hivemind/propose_epic` erstellt Epic-Proposal mit korrektem State (`proposed`)
+- [ ] `hivemind/accept_epic_proposal` erstellt Epic (state: `incoming`) und setzt `resulting_epic_id`
+- [ ] `hivemind/reject_epic_proposal` setzt `state = rejected` und sendet Notification an Proposer
+- [ ] Abhängige Proposals (`depends_on`) erhalten Warnung wenn referenziertes Proposal abgelehnt wird
 - [ ] `hivemind/decompose_epic` erstellt Tasks in korrekter Reihenfolge
 - [ ] Subtasks sind korrekt mit Parent verknüpft
 - [ ] `hivemind/set_context_boundary` wird in `context_boundaries` gespeichert

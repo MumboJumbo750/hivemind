@@ -44,7 +44,9 @@ CREATE TABLE sync_outbox (
   payload        JSONB NOT NULL,
   attempts       INT NOT NULL DEFAULT 0,
   next_retry_at  TIMESTAMPTZ,
-  state          TEXT NOT NULL DEFAULT 'pending', -- pending|processing|done|dead
+  state          TEXT NOT NULL DEFAULT 'pending', -- pending|processing|done|dead|cancelled|quarantined
+  -- cancelled:    Eintrag wurde manuell abgebrochen (Admin-Aktion)
+  -- quarantined:  Verdächtige Einträge nach Key-Kompromittierung (→ federation.md#key-kompromittierung--notfallprozedur)
   routing_state  TEXT DEFAULT 'unrouted',         -- unrouted|routed|ignored — für Triage-Anzeige
   -- unrouted: wartet auf manuelle Entscheidung in Triage Station
   -- routed:   wurde einem Epic zugewiesen (manuell oder auto-pgvector)
@@ -208,6 +210,7 @@ POST /federation/* empfangen
 | `task_update` | Task-State ändert sich auf einem Peer-Node | task_id, new_state, result, artifacts |
 | `code_discovery` | Kartograph erkundet neuen Code-Node | code_node + edges + origin |
 | `discovery_session` | Kartograph startet/beendet Exploration einer Area | area, node_name, type ('start'\|'end') |
+| `skill_change_proposal` | Gaertner reicht Skill-Change-Proposal ein (`submit_skill_proposal`) | proposal_id, skill_id, diff, rationale, proposed_by |
 | `peer_status` | Lokaler Ping-Cron erkennt Peer als `inactive` UND es gibt delegierte Tasks | peer_node_id, status='inactive', affected_task_ids |
 
 > `peer_status`-Einträge werden **lokal** vom Ping-Cron generiert (kein Push vom offline Peer), `direction = 'peer_inbound'`, `routing_state = 'unrouted'` → erscheinen in Triage Station als `[PEER OFFLINE]`. Nur erzeugt wenn `tasks.assigned_node_id = offline_peer.id` mit nicht-terminalem State existiert.

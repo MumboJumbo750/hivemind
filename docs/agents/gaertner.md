@@ -2,19 +2,20 @@
 
 ← [Agenten-Übersicht](./overview.md) | [Index](../../masterplan.md)
 
-Der Gaertner ist der **Wissenspfleger** des Systems. Nach Abschluss eines Tasks destilliert er das Gelernte in wiederverwendbare Skills, aktualisiert Docs und dokumentiert getroffene Entscheidungen.
+Der Gaertner ist der **Wissenspfleger** des Systems. Er destilliert Gelerntes in wiederverwendbare Skills, aktualisiert Docs und dokumentiert getroffene Entscheidungen. Dabei arbeitet er aus **zwei Quellen**: abgeschlossenen Tasks und Skill-Kandidaten die andere Agenten im Memory Ledger markiert haben.
 
-> Analogie: Ein Gärtner der nach der Ernte (Task done) die Samen (Skills) für die nächste Saison aufbereitet und das Wissen für die Nachwelt konserviert.
+> Analogie: Ein Gärtner der nach der Ernte (Task done) die Samen (Skills) für die nächste Saison aufbereitet — und zusätzlich die Fundstücke einsammelt, die Kartograph und Stratege als vielversprechende Keimlinge markiert haben.
 
 ---
 
 ## Kernaufgaben
 
 1. **Skill-Destillation** — Extrahiert wiederverwendbare Instruktionen aus abgeschlossenen Tasks
-2. **Skill-Change-Proposals** — Schlägt Verbesserungen an bestehenden Skills vor
-3. **Decision Records** — Dokumentiert getroffene Entscheidungen als ADRs (Architecture Decision Records)
-4. **Doc-Updates** — Aktualisiert Epic-Docs basierend auf Task-Ergebnissen
-5. **Skill-Proposal-Einreichung** — Reicht fertige Proposals zur Admin-Review ein
+2. **Skill-Candidate-Harvesting** — Konsumiert `skill-candidate`-markierte Memory Entries anderer Agenten und formalisiert sie zu Skill-Proposals
+3. **Skill-Change-Proposals** — Schlägt Verbesserungen an bestehenden Skills vor
+4. **Decision Records** — Dokumentiert getroffene Entscheidungen als ADRs (Architecture Decision Records)
+5. **Doc-Updates** — Aktualisiert Epic-Docs basierend auf Task-Ergebnissen
+6. **Skill-Proposal-Einreichung** — Reicht fertige Proposals zur Admin-Review ein
 
 ---
 
@@ -34,6 +35,8 @@ Der Gaertner arbeitet als `developer` oder `admin`:
 ---
 
 ## Typischer Workflow
+
+### Workflow A: Task-basierte Destillation (wie bisher)
 
 ```
 1. Task geht auf `done` (Owner hat im Review genehmigt)
@@ -60,7 +63,7 @@ Der Gaertner arbeitet als `developer` oder `admin`:
 
 5. AI dokumentiert Entscheidung:
    hivemind/create_decision_record {
-     "epic_id": "uuid",
+     "epic_id": "EPIC-12",
      "decision": "JWT statt Session-Auth für API-Endpoints",
      "rationale": "Stateless, bessere Skalierbarkeit, Team-Konsens"
    }
@@ -74,27 +77,74 @@ Der Gaertner arbeitet als `developer` oder `admin`:
    → Admin-Notification: "Neues Skill-Proposal wartet auf Review"
 ```
 
+### Workflow B: Skill-Candidate-Harvesting (NEU)
+
+Andere Agenten markieren Pattern-Beobachtungen im Memory Ledger mit dem Tag `skill-candidate` (→ [Memory Ledger — Skill-Candidate-Tagging](../features/memory-ledger.md#skill-candidate-tagging)). Der Gaertner konsumiert diese als zusätzliche Input-Quelle.
+
+```
+1. Gaertner-Prompt enthält ZUSÄTZLICH zum Task:
+   hivemind/search_memories { "query": "skill-candidate", "scope": "project", "level": "all" }
+   → Kartograph hat 3 Pattern-Beobachtungen mit tag "skill-candidate" markiert
+   → Stratege hat 1 Planungs-Pattern markiert
+   → Worker hat 1 Debugging-Pattern bei Multi-Session-Task markiert
+
+2. AI bewertet Skill-Kandidaten:
+   → Ist das Pattern wiederverwendbar? Nur task-spezifisch?
+   → Gibt es bereits einen ähnlichen Skill?
+   → Kann ich es aus dem Memory-Kontext formalisieren oder brauche ich mehr Detail?
+
+3a. Bei ausreichendem Kontext → direkt propose_skill:
+    hivemind/propose_skill {
+      "title": "Repository-Pattern mit Service-Layer",
+      "content": "...",
+      "service_scope": ["backend"],
+      "stack": ["python", "fastapi"]
+    }
+    → Rationale referenziert Quelle: "Basierend auf Kartograph Memory [uuid]"
+
+3b. Bei unzureichendem Kontext → Drill-Down:
+    hivemind/search_memories { "query": "repository pattern", "level": "L0" }
+    → Rohdaten des Kartographen laden für mehr Detail
+
+4. Nach Proposal: Memory-Entry als verarbeitet markieren:
+   hivemind/save_memory {
+     "content": "Skill-Candidate [uuid] verarbeitet → Skill-Proposal erstellt",
+     "tags": ["skill-candidate-processed"]
+   }
+```
+
+> **Warum nicht alle Agenten direkt Skills vorschlagen?** Skill-Proposals brauchen formale Qualität (Frontmatter, Guards, Handlungsorientierung). Der Gaertner ist darauf spezialisiert. Andere Agenten können unkompliziert Pattern flaggen (`skill-candidate`), ohne sich um das Skill-Format kümmern zu müssen. **Ausnahme: Der Kartograph** hat direktes `propose_skill`-Recht — er sieht das gesamte Repo und entdeckt Codebase-weite Patterns die sofort formalisierbar sind (→ [Kartograph](./kartograph.md)).
+
 ---
 
 ## Auslöser
 
-Der Gaertner wird in zwei Situationen aktiv:
+Der Gaertner wird in drei Situationen aktiv:
 
 | Auslöser | Kontext | Ziel |
 | --- | --- | --- |
 | **Task → `done`** | Einzelner abgeschlossener Task | Skills/Docs aus dem Task ableiten |
 | **Epic komplett** | Alle Tasks eines Epics `done` | Übergreifende Patterns destillieren, Epic-Doc finalisieren |
+| **Skill-Candidates vorhanden** | Memory Entries mit Tag `skill-candidate` im Scope | Von anderen Agenten markierte Patterns zu formalen Skills destillieren |
 
 ---
 
 ## MCP-Tools
 
 ```text
+-- Skill-Destillation
 hivemind/propose_skill          { "title": "...", "content": "...", "service_scope": [...] }
 hivemind/propose_skill_change   { "skill_id": "uuid", "diff": "...", "rationale": "..." }
 hivemind/submit_skill_proposal  { "skill_id": "uuid" }
-hivemind/create_decision_record { "epic_id": "uuid", "decision": "...", "rationale": "..." }
+
+-- Dokumentation
+hivemind/create_decision_record { "epic_id": "EPIC-12", "decision": "...", "rationale": "..." }
 hivemind/update_doc             { "id": "uuid", "content": "..." }
+
+-- Skill-Candidate-Harvesting (Memory Ledger)
+hivemind/search_memories        { "query": "skill-candidate", "scope": "project", "level": "all" }
+hivemind/get_memory_context     { "scope": "project", "scope_id": "uuid" }
+hivemind/save_memory            { "content": "...", "tags": ["skill-candidate-processed"] }
 ```
 
 ---
@@ -121,7 +171,19 @@ Im Solo-Modus ist der Entwickler selbst der Gaertner. Der Gaertner-Prompt erinne
 
 | | Gaertner | Kartograph | Worker |
 | --- | --- | --- | --- |
-| Timing | Nach Task-Abschluss | Initial + iterativ | Während Task |
-| Input | Abgeschlossener Task + Ergebnisse | Unbekanntes Repository | Ready Task + Context |
-| Output | Skill-Proposals, Decision Records, Doc-Updates | Wiki, Epic-Docs, System-Karte | Task-Ergebnis + Artefakte |
+| Timing | Nach Task-Abschluss + bei Skill-Candidates | Initial + iterativ | Während Task |
+| Input | Abgeschlossener Task + Ergebnisse + Skill-Candidates anderer Agenten | Unbekanntes Repository | Ready Task + Context |
+| Output | Skill-Proposals, Decision Records, Doc-Updates | Wiki, Epic-Docs, System-Karte, Skill-Proposals (direkt) | Task-Ergebnis + Artefakte |
+| Skill-Rechte | `propose_skill`, `propose_skill_change` (formale Destillation) | `propose_skill`, `propose_skill_change` (Codebase-Patterns) | Nur `skill-candidate`-Tagging via Memory |
 | Fokus | Konservieren & Destillieren | Entdecken & Kartieren | Ausführen & Liefern |
+
+### Skill-Proposal-Rechte — Wer darf was?
+
+| Fähigkeit | Gaertner | Kartograph | Alle anderen |
+| --- | --- | --- | --- |
+| `propose_skill` formal | ✓ | ✓ | — |
+| `propose_skill_change` | ✓ | ✓ | — |
+| `skill-candidate` taggen (Memory) | ✓ | ✓ | ✓ |
+| `submit_skill_proposal` | ✓ | ✓ | — |
+
+> **Warum nur Gaertner + Kartograph?** Skill-Proposals erfordern formale Qualität (Frontmatter, Guards, handlungsorientierter Body). Der Gaertner ist darauf spezialisiert (post-Task-Reflexion), der Kartograph sieht als einziger Agent das gesamte Repo und entdeckt Codebase-weite Patterns. Andere Agenten können Patterns low-cost über `skill-candidate`-Tags flaggen — der Gaertner formalisiert sie dann.

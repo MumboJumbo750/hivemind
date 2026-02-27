@@ -68,6 +68,7 @@ Rollen können **pro Projekt überschrieben** werden (via `project_members.role`
 | `route_event` | — | ✓ | — | — |
 | `ignore_event` | — | ✓ | — | — |
 | `requeue_dead_letter` | — | ✓ | — | — |
+| `discard_dead_letter` | — | ✓ | — | — |
 | `resolve_escalation` | — | ✓ | — | — |
 | `assign_bug` | — | ✓ | — | — |
 | `reassign_owner` | — | ✓ | — | — |
@@ -233,7 +234,7 @@ Wenn ein Epic-Owner > 72h inaktiv ist und offene `in_review`-Tasks oder Decision
 - Wenn kein Backup-Owner: Projekt-Admins erhalten die Notification
 
 **4. Triage-Permission delegierbar (Phase 7+):**
-`app_settings.triage_delegates` (UUID[]) — Liste von Usern die neben dem Admin Triage-Rechte erhalten (`route_event`, `ignore_event`, `requeue_dead_letter`). Weiterhin nur von `users.role = 'admin'` setzbar.
+`app_settings.triage_delegates` (UUID[]) — Liste von Usern die neben dem Admin Triage-Rechte erhalten (`route_event`, `ignore_event`, `requeue_dead_letter`, `discard_dead_letter`). Weiterhin nur von `users.role = 'admin'` setzbar.
 
 ---
 

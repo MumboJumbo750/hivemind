@@ -111,7 +111,7 @@ Der Prompt wird standardmäßig **kompakt** angezeigt — Skill- und Doc-Referen
 
 ### Vollständige Prioritätstabelle
 
-Die Queue-Priorisierung ist deterministisch. Innerhalb derselben Prioritätsstufe wird nach `deadline_at` (aufsteigend, früheste zuerst) sortiert; bei gleicher Deadline nach `created_at` (aufsteigend).
+Die Queue-Priorisierung ist deterministisch. Innerhalb derselben Prioritätsstufe wird nach `sla_due_at` (aufsteigend, früheste zuerst) sortiert; bei gleicher Deadline nach `created_at` (aufsteigend). Tasks ohne SLA (`sla_due_at = NULL`) erscheinen **nach** allen Tasks mit SLA innerhalb derselben Prioritätsstufe (`NULLS LAST` in SQL-Sortierung).
 
 | Priorität | Agent-Typ | Event-Typ | reason_code | Beispiel |
 | --- | --- | --- | --- | --- |
@@ -139,9 +139,10 @@ Jeder Queue-Eintrag zeigt ein kompaktes **Warum-Jetzt-Badge**. Dadurch ist die P
 | `NORMAL` | regulär eingeplante Aufgabe ohne Sonderdruck |
 
 Pflichtmetadaten pro Queue-Eintrag:
+
 - `reason_code` (z.B. `sla_critical`, `decision_open`, `escalated`)
 - `reason_detail` (kurzer Freitext, max. 80 Zeichen)
-- `deadline_at` (optional, wenn SLA/Decision relevant)
+- `sla_due_at` (optional, wenn SLA/Decision relevant)
 
 ---
 
@@ -151,7 +152,7 @@ Pflichtmetadaten pro Queue-Eintrag:
 | --- | --- | --- |
 | `idle` | "System in Ordnung — kein Agent erforderlich" | Nichts |
 | `agent_required` | Agent-Name + fertiger Prompt + Warum-Jetzt-Badge | Prompt kopieren und in AI-Client einfügen |
-| `waiting_for_mcp` | "Warte auf MCP-Rückmeldung..." + Spinner | Nichts — AI arbeitet |
+| `waiting_for_mcp` | "Warte auf MCP-Rückmeldung..." + Spinner (Timeout: `HIVEMIND_MCP_WAITING_TIMEOUT_SECONDS`, Default: 300s / 5 Min.) | Nichts — AI arbeitet; bei Timeout → State wechselt auf `agent_required` mit Badge `TIMEOUT` |
 | `completed` | Kurze Erfolgsbestätigung + nächster Schritt | Nächsten Prompt abarbeiten oder abwarten |
 | `human_action_required` | "Jetzt bist DU dran" + klare Deadline/Begründung (z.B. Review, Scoping, Decision) | Manuelle Aktion im Command Deck |
 | `api_key_mode` | Kein Prompt sichtbar — läuft automatisch | Monitoring |
@@ -175,11 +176,11 @@ WHERE t.state = 'in_review'
 
 -- P1: Offene Decision Requests (Owner oder Admin)
 UNION ALL
-SELECT 'decision_request' AS reason, dr.task_id, t.task_key, dr.question, dr.deadline_at
+SELECT 'decision_request' AS reason, dr.task_id, t.task_key, dr.payload->>'blocker', dr.sla_due_at
 FROM decision_requests dr
 JOIN tasks t ON dr.task_id = t.id
 JOIN epics e ON t.epic_id = e.id
-WHERE dr.status = 'open'
+WHERE dr.state = 'open'
   AND (e.owner_id = :current_user_id OR :is_admin = TRUE)
 
 -- P2: Epics incoming wo User Epic-Owner ist
@@ -189,7 +190,14 @@ FROM epics e
 WHERE e.state = 'incoming'
   AND e.owner_id = :current_user_id
 
-ORDER BY reason, sla_due_at NULLS LAST
+ORDER BY
+  CASE reason
+    WHEN 'in_review_task'   THEN 0   -- P0
+    WHEN 'decision_request' THEN 1   -- P1
+    WHEN 'epic_incoming'    THEN 2   -- P2
+    ELSE                         3
+  END,
+  sla_due_at NULLS LAST
 LIMIT 10;
 ```
 
@@ -203,14 +211,14 @@ LIMIT 10;
       "type": "in_review_task",
       "task_key": "TASK-88",
       "title": "FastAPI Auth-Endpoint",
-      "deadline_at": "2026-03-10T18:00:00Z",
+      "sla_due_at": "2026-03-10T18:00:00Z",
       "link": "/command-deck?task=TASK-88&action=review"
     },
     {
       "type": "epic_incoming",
       "epic_key": "EPIC-13",
       "title": "Dashboard",
-      "deadline_at": null,
+      "sla_due_at": null,
       "link": "/command-deck?epic=EPIC-13&action=scope"
     }
   ]
@@ -252,6 +260,38 @@ Die Prompt Station unterscheidet klar zwischen "AI-Prompt ausführen" und "Du mu
 | Task wird `done` | Gaertner | Gaertner-Prompt | — |
 | `[UNROUTED]`-Event | Triage | Triage-Prompt | — |
 | Decision Request offen | — | — | Owner entscheidet |
+
+---
+
+## Prompt Anpassen (ab Phase 2)
+
+Der `[◈ PROMPT ANPASSEN]`-Button öffnet einen Inline-Editor direkt in der Prompt Station. Der User kann den assemblierten Prompt-Text bearbeiten bevor er ihn kopiert.
+
+### Interaktionsmodell
+
+```text
+1. Prompt Station zeigt kompakten Prompt (assembliert via GET /api/prompts/:id/assembled)
+2. User klickt [◈ PROMPT ANPASSEN]
+   → Prompt-Card wechselt von read-only (HivemindViewer) auf bearbeitbar (HivemindEditor)
+   → Edit-Toolbar erscheint; Prompt-Text wird vollständig expandiert (wie Volltext-Modal)
+3. User editiert den Text (freie Bearbeitung, kein strukturiertes Formular)
+4. [SPEICHERN UND KOPIEREN ▶]
+   → POST /api/prompts/:id/override { "override_text": "..." }
+   → Text wird in Zwischenablage kopiert
+   → Override ist in prompt_history.override_text gespeichert (auditierbar)
+   → UI zeigt Badge "ANGEPASST" auf dem Prompt-Eintrag
+5. [ZURÜCKSETZEN]
+   → Override wird verworfen; assemblierter Originaltext wird erneut geladen
+```
+
+### Semantik des Overrides
+
+- Override gilt nur für diesen Queue-Eintrag — beim nächsten Prompt (andere Task/Agent-Kombination) ist kein Override aktiv
+- Override überschreibt den assemblierten Text vollständig (kein Diff, kein Merge)
+- Wenn ein Override aktiv ist, zeigt die Prompt Station einen visuellen Hinweis: `[ANGEPASST ⚠ Original abweichend]`
+- AI-Calls via MCP-Tools bleiben unverändert — nur der Kontext-Prompt ist modifiziert
+
+> **Kein Backend-Rerender nötig:** Der Override-Text ist das finale Dokument. Der User trägt die Verantwortung für Konsistenz mit dem System-State (Guards, Skills, Context Boundary).
 
 ---
 

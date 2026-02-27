@@ -28,6 +28,8 @@
 | [State Machines](docs/architecture/state-machine.md) | Task-States, Skill-Lifecycle, Concurrency, Eskalations-Flow |
 | [MCP Tool-Set](docs/architecture/mcp-toolset.md) | Alle MCP-Tools, Transports, Sicherheitsregeln |
 | [RBAC](docs/architecture/rbac.md) | Rollen, Berechtigungsmatrix, Audit-Retention |
+| [Observability](docs/architecture/observability.md) | Log-Levels, strukturiertes JSON-Logging, Prometheus-Metrics, OTEL-Tracing, Health-Check |
+| [Disaster Recovery](docs/architecture/disaster-recovery.md) | Backup-Strategie, PITR, Wiederherstellungs-Prozeduren, RTO/RPO |
 
 ---
 
@@ -37,6 +39,7 @@
 | --- | --- |
 | [Übersicht](docs/agents/overview.md) | Alle Agenten im Vergleich |
 | [Kartograph](docs/agents/kartograph.md) | Fog-of-War Explorer, Repo-Analyse, Wiki-Autor |
+| [Stratege](docs/agents/stratege.md) | Plan→Epics, Dependency-Mapping, Roadmap-Planung |
 | [Architekt](docs/agents/architekt.md) | Epic-Dekomposition, Tasks, Context Boundaries |
 | [Worker](docs/agents/worker.md) | Task-Ausführung, Guard-Prüfung, Ergebnislieferung |
 | [Gaertner](docs/agents/gaertner.md) | Skill-Destillation, Decision Records, Doc-Updates |
@@ -54,9 +57,14 @@
 | [Agent Skills](docs/features/agent-skills.md) | System-Skills der Agenten, Claude-Kompatibilität, Fach-Skill-Katalog |
 | [Guards](docs/features/guards.md) | Executable Checks, Scopes (global/project/skill/task), Kartograph-Discovery |
 | [Wiki](docs/features/wiki.md) | Projektübergreifende Wissensbasis, Datenmodell |
+| [Memory Ledger](docs/features/memory-ledger.md) | Agent-Gedächtnis, Infinite Context, Progressive Summarization |
 | [Nexus Grid](docs/features/nexus-grid.md) | Code-Graph, Fog of War, Bug-Heatmap |
 | [Sync & DLQ](docs/features/sync.md) | Outbox Pattern, Retry, Dead Letter Queue, pgvector-Routing |
 | [Federation](docs/features/federation.md) | Sovereign Nodes, Shared Epics, Peer-Protokoll, Skill/Wiki-Sharing |
+| [Epic Restructure](docs/features/epic-restructure.md) | Kartograph-Proposals: Split, Merge, Task-Move — State Machine, API, Constraints |
+| [Gamification](docs/features/gamification.md) | EXP-Tabelle, Badges, Level-System, Datenmodell, Anti-Spam |
+| [Hive Station](docs/features/hive-station.md) | Federation Control Plane — Peer Registry, Presence, Relay (eigenständiger Service) |
+| [Autonomy Loop](docs/features/autonomy-loop.md) | Conductor-Orchestrator, Reviewer-Skill, Governance-Levels, Autonomie-Spektrum |
 | [Glossar](docs/glossary.md) | Zentrale Definition aller Hivemind-Domänenbegriffe |
 
 ---
@@ -87,7 +95,7 @@
 | [Phase 5](docs/phases/phase-5.md) | Worker & Gaertner Writes, Wiki, Nexus Grid 2D | — |
 | [Phase 6](docs/phases/phase-6.md) | Eskalation, Decision Requests, SLA-Automation | — |
 | [Phase 7](docs/phases/phase-7.md) | Integration Hardening, DLQ, Bug Heatmap | — |
-| [Phase 8](docs/phases/phase-8.md) | Volle Autonomie, API-Keys, 3D Nexus Grid | — |
+| [Phase 8](docs/phases/phase-8.md) | Volle Autonomie, Conductor, Reviewer, Governance-Levels, 3D Nexus Grid | — |
 
 ---
 
@@ -95,7 +103,7 @@
 
 - **Masterplan:** vollständig — aufgeteilt in 37 thematische Dokumente
 - **Alle offenen Fragen:** beantwortet
-- **Gap-Analyse:** durchgeführt — 52 Findings identifiziert und behoben (22 initial + 14 aus zweiter Analyse, davon 10 bereits implizit gelöst + 28 aus dritter Analyse)
+- **Gap-Analyse:** durchgeführt — 77 Findings identifiziert und behoben (52 aus früheren Analysen + 25 aus vierter Analyse: 4 neue Docs, 7 bestehende Docs aktualisiert, Widersprüche aufgelöst)
 - **Nächster Schritt:** [Phase 1](docs/phases/phase-1.md) — Umsetzung beginnen
 
 ---

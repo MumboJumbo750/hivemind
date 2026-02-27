@@ -332,7 +332,7 @@ Alle API-Endpoints sind rate-limited. Die Limits gelten pro Actor (identifiziert
 | **SSE-Streams** (`/events/*`) | 5 gleichzeitige Verbindungen | pro User | 429 bei 6. Verbindung |
 
 **Phase 8 (Autonomy) Erweiterung:**
-- AI-Provider-Calls (Claude/OpenAI API) werden via separatem Token-Bucket limitiert: max `HIVEMIND_AI_RPM` Requests/Minute (Default: 10) um Provider-Rate-Limits nicht zu triggern.
+- AI-Provider-Calls werden via separatem Token-Bucket limitiert: Per-Agent-Rolle konfigurierbar über `ai_provider_configs.rpm_limit`; Global-Fallback via `HIVEMIND_AI_RPM` (Default: 10) um Provider-Rate-Limits nicht zu triggern.
 - Federation Peer-to-Peer: Zusätzliches per-Peer Throttling via `HIVEMIND_FEDERATION_PEER_RPM` (Default: 30/min) gegen Abuse durch kompromittierte Peers.
 
 **Implementation:** Middleware-basiert im FastAPI-Service. Phase 1–7: **In-Memory Token Bucket** (Python `dict` mit TTL-basiertem Cleanup, ausreichend für Single-Instance — kein Redis im Stack). Rate-Limit-State geht bei Prozess-Neustart verloren (akzeptabel). Ab Phase 8 bei Multi-Worker Setup: Redis-basierter Distributed Rate Limiter evaluieren.
@@ -363,7 +363,7 @@ scheduler.start()
 | Job-ID | Intervall | Ab Phase | Beschreibung | Konfig Env-Var |
 | --- | --- | --- | --- | --- |
 | `sla_check` | 60 min | 2 | SLA-Warnungen prüfen (Epics + Tasks nahe Deadline) | `HIVEMIND_SLA_CRON_INTERVAL` (Sekunden, default: 3600) |
-| `outbox_consumer` | 30 sec | 2 | Sync-Outbox Pending-Einträge verarbeiten | `HIVEMIND_OUTBOX_POLL_INTERVAL_SECONDS` (default: 30) |
+| `outbox_consumer` | 30 sec | F | Sync-Outbox Pending-Einträge verarbeiten. **Erster Consumer:** `peer_outbound` (Phase F). `outbound` für YouTrack/Sentry folgt in Phase 7. Job ist vor Phase F registriert aber idle (keine Einträge zu verarbeiten). | `HIVEMIND_OUTBOX_POLL_INTERVAL_SECONDS` (default: 30) |
 | `federation_ping` | 60 sec | F | Heartbeat an alle Peers | `HIVEMIND_FEDERATION_PING_INTERVAL` (default: 60) |
 | `dlq_cleanup` | 24 h | 2 | Dead-Letter-Queue alte Einträge archivieren | — |
 | `backup_db` | 24 h | 1 | `pg_dump` (via Docker exec oder subprocess) | `HIVEMIND_BACKUP_CRON` (Cron-Expression) |

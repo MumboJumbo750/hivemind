@@ -12,7 +12,7 @@
 
 ### Backend
 
-- [ ] User-Registrierung + Login (JWT oder Session-basiert)
+- [ ] User-Registrierung + Login (JWT Bearer Token + HttpOnly Refresh Cookie — **entschieden**, siehe [rest-api.md](../architecture/rest-api.md#authentifizierung--session-management))
 - [ ] Actor-Modell: `developer`, `admin`, `service`, `kartograph`
 - [ ] Middleware: AuthN + AuthZ für alle Writes
 - [ ] Scope-Validierung: Developer schreibt nur wenn `project_member` des Projekts ODER als `assigned_to` auf dem spezifischen Task (→ [rbac.md Scope-Regeln](../architecture/rbac.md))
@@ -38,7 +38,7 @@
 - [ ] Solo/Team-Modus-Toggle in Settings (Laufzeit-Switch, kein Neustart nötig)
 - [ ] Command Deck (erster Stand): Epic-Liste, Task-Übersicht, State-Badges
 - [ ] Epic Scoping Modal (Owner, SLA, Priority, DoD-Rahmen)
-- [ ] Task Review Panel (DoD-Checkliste, Approve/Reject) — zeigt nur DoD-Kriterien; Guard-Status kommt in Phase 5
+- [ ] Task Review Panel (DoD-Checkliste, Approve/Reject) — zeigt DoD-Kriterien + Guard-Status als informative Checkliste (passed/failed/skipped, ohne Provenance); Guard-Enforcement (Blockierung bei offenen Guards) kommt in Phase 5 (→ [guards.md — Kanonische Guard-Enforcement-Timeline](../features/guards.md#kanonische-guard-enforcement-timeline))
 - [ ] Task Review Panel strukturiert in **Hard Gates** (systemisch) und **Owner Judgment** (fachlich)
 - [ ] Focus Mode (Prompt-Fokus): blendet Nav Sidebar + Status Bar temporaer aus, kritische Alerts bleiben sichtbar
 - [ ] Spotlight-Suche (Ctrl+K): Übergreifende Suche über Tasks + Epics (ILIKE/Trigram), RBAC-gefiltert, gruppierte Ergebnisse (→ [rest-api.md — Spotlight](../architecture/rest-api.md#globale-suche-spotlight))
@@ -59,14 +59,14 @@
 >
 > **Nicht verfügbar in Phase 2:** `task_done`, `skill_proposal`, `dead_letter`, `escalation`, `decision_request` — diese Typen erfordern den Backend-Notification-Service (Phase 6) oder Features späterer Phasen.
 >
-> **Ab Phase 6:** Der Backend-Notification-Service schreibt alle Typen in die `notifications`-Tabelle. Das Frontend wechselt von client-calculated auf backend-driven Notifications. Beide Quellen sind nicht gleichzeitig aktiv.
+> **Ab Phase 6 — Cutover-Mechanismus:** Der Backend-Notification-Service schreibt alle Typen in die `notifications`-Tabelle. Das Frontend erkennt den Wechsel über `GET /api/settings → { ..., "notification_mode": "client" | "backend" }`. Beim Phase-6-Upgrade setzt die Alembic-Migration `app_settings.notification_mode = 'backend'`. Das Frontend prüft diesen Wert beim App-Start und aktiviert entweder das client-calculated oder das backend-driven Modul — **nie beide gleichzeitig**. Fallback auf `'client'` greift wenn der Notification-Service beim Start nicht antwortet.
 - [ ] SLA-Timer: Sichtbarer Countdown auf Epic- und Task-Ebene
 
 ---
 
 ## Technische Details
 
-### JWT-Auth Flow
+### JWT-Auth Flow (Entschieden: JWT Bearer + HttpOnly Refresh Cookie)
 
 ```text
 POST /api/auth/login  { username, password }

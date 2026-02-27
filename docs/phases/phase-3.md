@@ -95,7 +95,8 @@ ollama-init:
 > - **Priorität 2 (normal):** Kartograph-Bootstrap Batch-Embeddings
 > - **Priorität 3 (niedrig):** Federation Re-Embeddings (Peer-Entitäten)
 >
-> **Circuit-Breaker:** Nach 3 aufeinanderfolgenden Ollama-Timeouts (konfigurierbar: `HIVEMIND_EMBEDDING_CB_THRESHOLD`, Default: 3) wechselt der Embedding-Service in den `OPEN`-State — neue Requests werden sofort mit `embedding=NULL` beantwortet (Feature-Degradation statt Fehler). Nach `HIVEMIND_EMBEDDING_CB_COOLDOWN` Sekunden (Default: 60) wird ein Probe-Request gesendet. Bei Erfolg: Circuit CLOSED, Queue-Verarbeitung wird fortgesetzt.
+> **Circuit-Breaker:** Nach 3 aufeinanderfolgenden Ollama-Timeouts (konfigurierbar: `HIVEMIND_EMBEDDING_CB_THRESHOLD`, Default: 3) wechselt der Embedding-Service in den `OPEN`-State — neue Requests werden sofort mit `embedding=NULL` beantwortet (Feature-Degradation statt Fehler).
+> **Adaptiver Cooldown (Half-Open):** Statt eines fixen Cooldowns verwendet der Breaker **exponentiellen Backoff**: 1. Öffnung → 60s Cooldown; 2. Öffnung → 120s; 3. Öffnung → 240s; max. 600s. Der Backoff-Counter wird nach 10 Minuten stabiler CLOSED-Phase zurückgesetzt. So vermeidet der Breaker den Open/Half-Open-Zyklus bei anhaltend überlasteter Ollama-Instanz. Konfigurierbar via `HIVEMIND_EMBEDDING_CB_BACKOFF_BASE` (Default: 60s) und `HIVEMIND_EMBEDDING_CB_BACKOFF_MAX` (Default: 600s).
 
 ---
 

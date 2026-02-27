@@ -50,8 +50,11 @@ sync_dead_letter           → sync_outbox, users
 decision_requests          → tasks, epics, users
 decision_records           → epics, decision_requests, users
 epic_restructure_proposals → epics, users
+epic_proposals              → projects, users (Stratege)
 guards                     → projects, skills, users
 task_guards                → tasks, guards, users
+review_recommendations     → tasks, users
+conductor_dispatches       (standalone, Audit-Trail)
 notifications              → users
 ```
 
@@ -144,8 +147,8 @@ CREATE TABLE app_settings (
 -- | notification_retention_days          | INT     | 90               | 2     | Tage bis Notifications gelöscht werden              |
 -- | embedding_provider                   | TEXT    | 'ollama'         | 3     | ollama|openai — Embedding-Provider                  |
 -- | embedding_model                      | TEXT    | 'nomic-embed-text'| 3    | Modell-Name beim Provider                           |
--- | ai_provider                          | TEXT    | NULL             | 8     | claude|openai — AI-Provider für Auto-Modus          |
--- | ai_rpm_limit                         | INT     | 10               | 8     | Max Requests/Minute an AI-Provider                  |
+-- | ai_provider                          | TEXT    | NULL             | 8     | anthropic|openai|google|ollama — Global-Default AI-Provider für Auto-Modus (Fallback wenn kein ai_provider_configs-Eintrag) |
+-- | ai_rpm_limit                         | INT     | 10               | 8     | Max Requests/Minute an AI-Provider (Global-Default)  |
 -- | cross_project_alerts                 | BOOLEAN | true             | 2     | SLA/Eskalationen projektübergreifend anzeigen       |
 -- | guard_execution_allowlist            | TEXT[]  | siehe guards.md  | 8     | Erlaubte Guard-Commands für Auto-Execution          |
 -- | guard_timeout_seconds                | INT     | 120              | 8     | Timeout für Guard-Auto-Execution                    |
@@ -154,8 +157,108 @@ CREATE TABLE app_settings (
 -- | backup_retention_weekly              | INT     | 4                | 1     | Anzahl wöchentlicher Backups                        |
 -- | backup_admin_id                      | UUID    | NULL             | 6     | Fallback-Admin bei Inaktivität (> 48h kein Login/Write) |
 -- | triage_delegates                     | UUID[]  | '{}'             | 7     | User-IDs mit delegierten Triage-Rechten (neben Admin) |
--- | ai_api_key_encrypted                 | TEXT    | NULL             | 8     | AI-Provider API-Key (AES-256-GCM verschlüsselt)     |
+-- | ai_api_key_encrypted                 | TEXT    | NULL             | 8     | AI-Provider API-Key (AES-256-GCM verschlüsselt) — Global-Fallback, per-Role Keys in ai_provider_configs |
 -- | ai_api_key_nonce                     | TEXT    | NULL             | 8     | AES-GCM Nonce für ai_api_key_encrypted              |
+-- | memory_token_ratio                   | FLOAT   | 0.3              | 3     | Max. Anteil des Token-Budgets für Memory-Kontext (0.0–1.0) |
+-- | governance                             | JSONB   | siehe unten      | 8     | Governance-Levels pro Entscheidungstyp (manual/assisted/auto) |
+--
+-- governance Default-JSON:
+-- {
+--   "review":           { "level": "manual", "confidence_threshold": 0.85, "grace_minutes": 15 },
+--   "epic_proposal":     { "level": "manual", "confidence_threshold": 0.80, "grace_minutes": 30 },
+--   "epic_scoping":      { "level": "manual" },
+--   "skill_merge":       { "level": "manual", "confidence_threshold": 0.90, "grace_minutes": 30 },
+--   "guard_merge":       { "level": "manual", "confidence_threshold": 0.90, "grace_minutes": 30 },
+--   "decision_request":  { "level": "manual" },
+--   "escalation":        { "level": "manual" }
+-- }
+-- → Vollständige Spezifikation: docs/features/autonomy-loop.md#3-governance-levels
+
+-- ─────────────────────────────────────────────
+-- AI-PROVIDER: Per-Agent-Role Provider-Routing (Phase 8)
+-- ─────────────────────────────────────────────
+
+-- Jede Agent-Rolle kann einen eigenen AI-Provider nutzen.
+-- Nicht-konfigurierte Rollen fallen auf app_settings.ai_provider (Global-Default) zurück.
+-- Kein Global-Default → BYOAI-Modus (User kopiert Prompt manuell).
+-- → Bibliothekar-Integration: docs/agents/bibliothekar.md#agent-provider-routing
+
+CREATE TABLE ai_provider_configs (
+  agent_role        TEXT PRIMARY KEY,        -- kartograph|stratege|architekt|worker|gaertner|triage
+  provider          TEXT NOT NULL,           -- anthropic|openai|google|ollama|custom
+  model             TEXT NOT NULL,           -- z.B. claude-sonnet-4, gpt-4o, gemini-2.5-pro, llama3.3
+  endpoint          TEXT,                    -- Custom-Endpoint-URL (Pflicht bei ollama/custom; NULL → Standard-Endpoint)
+  api_key_encrypted TEXT,                    -- AES-256-GCM verschlüsselt (selbes System wie app_settings.ai_api_key_encrypted; NULL bei Ollama)
+  api_key_nonce     TEXT,                    -- AES-GCM Nonce
+  token_budget      INT NOT NULL DEFAULT 8000, -- Token-Budget für diese Rolle (überschreibt app_settings.token_budget_default)
+  rpm_limit         INT NOT NULL DEFAULT 10,   -- Max Requests/Minute für diese Rolle
+  enabled           BOOLEAN NOT NULL DEFAULT true, -- Deaktiviert → BYOAI-Fallback für diese Rolle
+  updated_by        UUID REFERENCES users(id),
+  updated_at        TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT valid_agent_role CHECK (agent_role IN ('kartograph', 'stratege', 'architekt', 'worker', 'gaertner', 'triage', 'reviewer')),
+  CONSTRAINT valid_provider CHECK (provider IN ('anthropic', 'openai', 'google', 'ollama', 'custom')),
+  CONSTRAINT endpoint_required_for_local CHECK (
+    (provider NOT IN ('ollama', 'custom')) OR (endpoint IS NOT NULL)
+  )
+);
+
+-- Beispiel-Konfiguration (Mixed Cloud + Self-Hosted):
+-- INSERT INTO ai_provider_configs (agent_role, provider, model, endpoint, token_budget, rpm_limit) VALUES
+--   ('kartograph', 'google',    'gemini-2.5-pro',   NULL,                         200000, 5),
+--   ('stratege',   'anthropic', 'claude-sonnet-4',   NULL,                         100000, 10),
+--   ('architekt',  'openai',    'gpt-4o',            NULL,                         128000, 10),
+--   ('worker',     'ollama',    'llama3.3',          'http://gpu-server:11434',    8000,   30),
+--   ('gaertner',   'anthropic', 'claude-sonnet-4',   NULL,                         100000, 10),
+--   ('triage',     'ollama',    'llama3.3',          'http://gpu-server:11434',    8000,   30);
+
+-- ─────────────────────────────────────────────
+-- REVIEW RECOMMENDATIONS: AI-Review-Empfehlungen (Phase 8)
+-- ─────────────────────────────────────────────
+
+CREATE TABLE review_recommendations (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id         UUID NOT NULL REFERENCES tasks(id),
+  recommendation  TEXT NOT NULL,           -- approve|reject|needs_human_review
+  confidence      FLOAT NOT NULL,          -- 0.0–1.0
+  summary         TEXT NOT NULL,           -- Freitext-Zusammenfassung
+  checklist       JSONB NOT NULL DEFAULT '[]',  -- [{ "criterion": "...", "met": true/false }]
+  concerns        JSONB NOT NULL DEFAULT '[]',  -- ["Concern 1", "Concern 2"]
+  grace_until     TIMESTAMPTZ,             -- NULL bei manual/assisted; Zeitstempel bei auto
+  accepted_by     UUID REFERENCES users(id), -- NULL = noch offen; User-ID bei manueller Bestätigung
+  accepted_at     TIMESTAMPTZ,
+  overridden      BOOLEAN NOT NULL DEFAULT false, -- true wenn Owner überschrieben hat
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT valid_recommendation CHECK (recommendation IN ('approve', 'reject', 'needs_human_review')),
+  CONSTRAINT valid_confidence CHECK (confidence >= 0.0 AND confidence <= 1.0)
+);
+
+CREATE INDEX idx_review_recommendations_task ON review_recommendations(task_id);
+CREATE INDEX idx_review_recommendations_pending ON review_recommendations(grace_until)
+  WHERE accepted_by IS NULL AND overridden = false AND grace_until IS NOT NULL;
+
+-- ─────────────────────────────────────────────
+-- CONDUCTOR DISPATCHES: Audit-Trail für Agent-Dispatching (Phase 8)
+-- ─────────────────────────────────────────────
+
+CREATE TABLE conductor_dispatches (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  trigger_event   TEXT NOT NULL,           -- z.B. 'task.state.in_review', 'epic.state.incoming'
+  trigger_entity_id UUID,                  -- Task-ID, Epic-ID, Outbox-ID etc.
+  agent_role      TEXT NOT NULL,           -- kartograph|stratege|architekt|worker|gaertner|triage|reviewer
+  prompt_type     TEXT NOT NULL,           -- Der generierte Prompt-Typ
+  provider        TEXT,                    -- Genutzter AI-Provider (NULL bei BYOAI-Fallback)
+  status          TEXT NOT NULL DEFAULT 'dispatched', -- dispatched|completed|failed|vetoed
+  error_message   TEXT,                    -- Fehlerdetails bei status=failed
+  duration_ms     INT,                     -- Laufzeit in Millisekunden (NULL bis completed/failed)
+  idempotency_key TEXT NOT NULL UNIQUE,    -- Verhindert doppeltes Dispatching
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  completed_at    TIMESTAMPTZ,
+  CONSTRAINT valid_dispatch_status CHECK (status IN ('dispatched', 'completed', 'failed', 'vetoed'))
+);
+
+CREATE INDEX idx_conductor_dispatches_status ON conductor_dispatches(status) WHERE status = 'dispatched';
+CREATE INDEX idx_conductor_dispatches_entity ON conductor_dispatches(trigger_entity_id);
+CREATE INDEX idx_conductor_dispatches_created ON conductor_dispatches(created_at DESC);
 
 CREATE TABLE projects (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -391,6 +494,7 @@ CREATE TABLE skills (
   -- Federation
   origin_node_id    UUID REFERENCES nodes(id), -- NULL = lokal; gesetzt = von Peer empfangen
   federation_scope  TEXT NOT NULL DEFAULT 'local', -- local|federated (federated = wird an Peers gepusht)
+  deleted_at        TIMESTAMPTZ,          -- Soft-Delete: gesetzt bei Peer-Entfernung/Offboarding; Eintrag bleibt für Audit lesbar, wiederherstellbar innerhalb 30 Tagen
   created_at        TIMESTAMPTZ DEFAULT now(),
   updated_at        TIMESTAMPTZ DEFAULT now(),
   CHECK (origin_node_id IS NOT NULL OR owner_id IS NOT NULL)
@@ -502,6 +606,7 @@ CREATE TABLE wiki_articles (
   -- Federation
   origin_node_id    UUID REFERENCES nodes(id), -- NULL = lokal; gesetzt = von Peer empfangen
   federation_scope  TEXT NOT NULL DEFAULT 'local', -- local|federated
+  deleted_at        TIMESTAMPTZ,          -- Soft-Delete: gesetzt bei Peer-Entfernung/Offboarding; Eintrag bleibt für Audit lesbar, wiederherstellbar innerhalb 30 Tagen
   created_at        TIMESTAMPTZ DEFAULT now(),
   updated_at        TIMESTAMPTZ DEFAULT now(),
   CHECK (origin_node_id IS NOT NULL OR author_id IS NOT NULL)
@@ -591,12 +696,13 @@ CREATE TABLE prompt_history (
   project_id   UUID REFERENCES projects(id),
   epic_id      UUID REFERENCES epics(id),
   task_id      UUID REFERENCES tasks(id),
-  agent_type   TEXT NOT NULL,  -- kartograph|architekt|bibliothekar|worker|gaertner|triage
-  prompt_type  TEXT NOT NULL,  -- get_prompt type: kartograph|architekt|bibliothekar|worker|gaertner|triage|review
-  prompt_text  TEXT NOT NULL,  -- Vollständig assemblierter Prompt-Text
-  token_count  INT,            -- Token-Count des assemblierten Prompts
-  generated_by UUID REFERENCES users(id), -- User der den Prompt angefordert hat
-  created_at   TIMESTAMPTZ DEFAULT now()
+  agent_type   TEXT NOT NULL,  -- kartograph|stratege|architekt|bibliothekar|worker|gaertner|triage
+  prompt_type  TEXT NOT NULL,  -- get_prompt type: kartograph|stratege|architekt|bibliothekar|worker|gaertner|triage|review
+  prompt_text   TEXT NOT NULL,  -- Vollständig assemblierter Prompt-Text
+  override_text TEXT,           -- Vom User angepasster Prompt-Text (gesetzt via POST /api/prompts/:id/override); NULL = kein Override aktiv; überschreibt prompt_text für diesen Queue-Eintrag
+  token_count   INT,            -- Token-Count des assemblierten Prompts
+  generated_by  UUID REFERENCES users(id), -- User der den Prompt angefordert hat
+  created_at    TIMESTAMPTZ DEFAULT now()
 );
 
 -- ─────────────────────────────────────────────
@@ -661,7 +767,8 @@ CREATE TABLE sync_outbox (
   payload       JSONB NOT NULL,
   attempts      INT NOT NULL DEFAULT 0,
   next_retry_at TIMESTAMPTZ,
-  state         TEXT NOT NULL DEFAULT 'pending', -- pending|processing|done|dead|cancelled
+  state         TEXT NOT NULL DEFAULT 'pending', -- pending|processing|done|dead|cancelled|quarantined
+  -- quarantined: verdächtige Einträge nach Key-Kompromittierung (Federation Emergency, → federation.md)
   routing_state TEXT DEFAULT 'unrouted',         -- unrouted|routed|ignored — für Triage-Anzeige
   -- unrouted: wartet auf manuelle Entscheidung in Triage Station
   -- routed:   wurde einem Epic zugewiesen (manuell oder auto)
@@ -672,16 +779,18 @@ CREATE TABLE sync_outbox (
 );
 
 CREATE TABLE sync_dead_letter (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  outbox_id   UUID NOT NULL REFERENCES sync_outbox(id),
-  system      TEXT NOT NULL,
-  entity_type TEXT NOT NULL,
-  entity_id   TEXT NOT NULL,
-  payload     JSONB NOT NULL,
-  error       TEXT,
-  failed_at   TIMESTAMPTZ DEFAULT now(),
-  requeued_by UUID REFERENCES users(id),
-  requeued_at TIMESTAMPTZ
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  outbox_id     UUID NOT NULL REFERENCES sync_outbox(id),
+  system        TEXT NOT NULL,
+  entity_type   TEXT NOT NULL,
+  entity_id     TEXT NOT NULL,
+  payload       JSONB NOT NULL,
+  error         TEXT,
+  failed_at     TIMESTAMPTZ DEFAULT now(),
+  requeued_by   UUID REFERENCES users(id),
+  requeued_at   TIMESTAMPTZ,
+  discarded_by  UUID REFERENCES users(id),    -- gesetzt bei discard_dead_letter
+  discarded_at  TIMESTAMPTZ                   -- gesetzt bei discard_dead_letter; Eintrag bleibt für Audit
 );
 
 -- ─────────────────────────────────────────────
@@ -710,6 +819,35 @@ CREATE TABLE decision_records (
   decision            TEXT NOT NULL,
   rationale           TEXT,
   decided_by          UUID NOT NULL REFERENCES users(id),
+  created_at          TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────
+-- EPIC PROPOSALS (Stratege)
+-- ─────────────────────────────────────────────
+
+-- Epic-Proposals des Strategen. Abgeleitet aus Plan-Dokumenten.
+-- Werden in der Triage Station als [EPIC PROPOSAL] angezeigt.
+CREATE TABLE epic_proposals (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id          UUID NOT NULL REFERENCES projects(id),
+  proposed_by         UUID NOT NULL REFERENCES users(id),
+  title               TEXT NOT NULL,
+  description         TEXT NOT NULL,          -- Markdown: Was soll dieses Epic leisten?
+  rationale           TEXT NOT NULL,          -- Begründung: Aus welchem Plan-Abschnitt abgeleitet?
+  suggested_priority  TEXT DEFAULT 'medium',  -- critical|high|medium|low
+  suggested_phase     INT,                    -- Optionale Phasen-Zuordnung
+  depends_on          UUID[] DEFAULT '{}',    -- Referenzen auf andere epic_proposals.id oder epics.id
+  suggested_owner_id  UUID REFERENCES users(id), -- Empfohlener Epic-Owner
+  state               TEXT NOT NULL DEFAULT 'proposed', -- proposed|accepted|rejected
+  -- proposed:  Stratege hat vorgeschlagen, wartet auf Triage-Review
+  -- accepted: Admin/Owner hat akzeptiert → Epic (incoming) wird erstellt
+  -- rejected: Admin/Owner hat abgelehnt mit Begründung
+  resulting_epic_id   UUID REFERENCES epics(id), -- Gesetzt wenn accepted → verweist auf das erstellte Epic
+  reviewed_by         UUID REFERENCES users(id),
+  review_reason       TEXT,                   -- Begründung bei Ablehnung
+  reviewed_at         TIMESTAMPTZ,
+  version             INT NOT NULL DEFAULT 0,
   created_at          TIMESTAMPTZ DEFAULT now()
 );
 

@@ -30,13 +30,13 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 | Epic anlegen | Command Deck | "+ Epic anlegen"-Button + Modal | 2 |
 | Epic Scoping | Command Deck | Scoping-Modal (Owner, SLA, DoD, Priority) | 2 |
 | Task Review (Basis) | Command Deck | Review Panel mit DoD-Checkliste + Approve/Reject | 2 |
-| Guard-Status im Review (Basis) | Command Deck | Review Panel zeigt Guard-Status + result-Text (passed/failed/skipped) — ohne Provenance | 5 |
+| Guard-Status im Review (Basis) | Command Deck | Review Panel zeigt Guard-Status + result-Text (passed/failed/skipped) — informativ, kein Blocker, ohne Provenance (→ [guards.md](../features/guards.md#kanonische-guard-enforcement-timeline)) | 2 |
 | Guard-Ergebnisse im Review (vollständig) | Command Deck | Review Panel zeigt Guard-Status + Ergebnisdetails + Provenance (`source`, `checked_at`) | 5 |
 | Review-Semantik trennen | Command Deck | Bereiche "Hard Gates" (systemisch) und "Owner Judgment" (fachlich) | 2 |
 | DoD-Checkliste | Command Deck | Interaktive Checklist im Review Panel | 2 |
 | Actor-Identity | System Bar | User-Badge + Rolle | 2 |
 | Context Boundary anzeigen | Command Deck | Read-only Panel im Task-Detail (Skills, Docs, Token-Budget) | 4 |
-| Guard-Provenance anzeigen | Command Deck | Guard-Zeile mit `source` (self-reported oder system-executed) + `checked_at` — Phase 2–4: Review zeigt nur DoD-Checkliste, kein Guard-Status | 5 |
+| Guard-Provenance anzeigen | Command Deck | Guard-Zeile mit `source` (self-reported oder system-executed) + `checked_at` — Phase 2–4: Guard-Status sichtbar als informative Checkliste (ohne Provenance), Phase 5+: Provenance-Details (`source`, `checked_at`) | 5 |
 | Decision Records lesen | Command Deck | Kollabierbare Decision-Records-Liste im Epic-Detail | 5 |
 | Decision-Request-Dialog | Command Deck | Modal mit Optionen + SLA-Timer | 6 |
 | Eskalations-Ansicht | Command Deck + Triage | Priorisierte Eskalations-Cards | 6 |
@@ -51,8 +51,9 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 | Skill Change Proposals | Triage Station + Skill Lab | [SKILL CHANGE]-Cards mit Diff-Ansicht + Accept/Reject | 5 |
 | Guard Change Proposals | Triage Station | [GUARD CHANGE]-Cards mit Diff-Ansicht + Accept/Reject | 5 |
 | Epic Restructure Proposals | Triage Station | [RESTRUCTURE]-Cards mit Proposal-Text + Accept/Reject | 5 |
-| Dead-Letter-Queue | Triage Station | [DEAD LETTER]-Cards mit Requeue-Option (ruft `hivemind/requeue_dead_letter`) | 7 |
+| Dead-Letter-Queue | Triage Station | [DEAD LETTER]-Cards mit Requeue-Option (ruft `POST /api/triage/dead-letters/:id/requeue`) | 7 |
 | Eskalations-Queue | Triage Station | [ESCALATED]-Cards nach SLA-Risiko + resolve_escalation Button | 6 |
+| Bug→Epic manuell zuweisen | Triage Station → Tab "Unrouted" | [BUG ZUWEISEN]-Button auf Bug-Cards (Sentry-Events); öffnet Epic-Auswahl-Dropdown → ruft `hivemind/assign_bug` via REST-Alias `POST /api/triage/bugs/:id/assign` | 7 |
 
 ## Arsenal / Skill Lab
 
@@ -98,7 +99,7 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 
 | Funktion | View | UI-Element | Phase |
 | --- | --- | --- | --- |
-| Spotlight-Suche (Ctrl+K) | Global (Overlay) | Schnellsuche über Tasks + Epics (Phase 2), Skills + Guards (Phase 4), Wiki + Code-Nodes (Phase 5). Gruppierte Ergebnisse, RBAC-gefiltert, Fuzzy-Match | 2 |
+| Spotlight-Suche (Ctrl+K) | Global (Overlay) | Schnellsuche über Tasks + Epics (Phase 2), Skills + Guards (Phase 4), Wiki + Code-Nodes (Phase 5). Gruppierte Ergebnisse, RBAC-gefiltert. Client-seitiger Fuzzy-Match via **Fuse.js** (entschieden — kein WASM, einfache Vue-Integration, trifft auf gecachte API-Ergebnisse). Serverseitige Suche via `GET /api/search?q=` (ILIKE Phase 2–3, pgvector-Hybrid ab Phase 3). | 2 |
 | Webhook-Konfiguration | Settings → Tab "System" | Webhook-Endpoint-Anzeige + Auth-Token + YouTrack/Sentry-Toggle + Event-Konfiguration + letzter Empfangsstatus | 3 |
 | MCP-Verbindungsstatus | System Bar | Status-Badge (● verbunden / ◌ getrennt) | 1 |
 | Projekt anlegen/wechseln | System Bar | Project-Switcher Dropdown | 1 |
@@ -114,7 +115,9 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 | Notification Action Queue | Notification Tray | Gruppen `ACTION NOW`, `SOON`, `FYI` inkl. naechster Aktion | 6 |
 | Sync-Status | Status Bar + Settings | Outbox-Indikatoren | 7 |
 | Audit-Log | Settings → Tab "Audit" | Tabelle mit MCP-Invocations (Actor, Tool, Timestamp, Status) + Payload-Preview | 4 |
-| AI-Provider Config | Settings → Tab "KI" | API-Key-Eingabe + Provider-Auswahl | 8 |
+| AI-Provider Config | Settings → Tab "KI" | Per-Agent-Rolle: Provider + Modell + API-Key + Token-Budget; Global-Fallback; Hybrid BYOAI+Auto | 8 |
+| Governance Config | Settings → Tab "Governance" | Pro Entscheidungstyp: manual/assisted/auto; Confidence-Threshold + Grace-Period bei auto; Autonomie-Spektrum-Visualisierung; Safeguard-Anzeige | 8 |
+| AI-Review-Empfehlung | Command Deck → Review Panel | Reviewer-Agent Confidence-Badge + Checklist + 1-Click Bestätigung (assisted) / Grace-Period-Countdown (auto) | 8 |
 
 ## Gilde / Federation (Phase F)
 
@@ -124,7 +127,7 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 | Peer hinzufügen / entfernen | Gilde | `[+ PEER HINZUFÜGEN]` Button + Bestätigungs-Flow | F |
 | Peer blockieren | Gilde | `[BLOCKIEREN ✗]` — blockierte Nodes senden/empfangen nichts mehr | F |
 | Eigene Node-Identität anzeigen | Gilde + Settings → SYSTEM | Node-Name, Node-URL, Public Key + Copy-Button | F |
-| Gildenwissen browsen | Gilde | Federated-Skill-Liste von Peers mit `[ÜBERNEHMEN]`-Button (ruft `hivemind/fork_federated_skill`) | F |
+| Gildenwissen browsen | Gilde | Federated-Skill-Liste von Peers mit `[ÜBERNEHMEN]`-Button (ruft `POST /api/skills/:id/fork` — REST-Endpoint, kein direkter MCP-Aufruf aus UI) | F |
 | Skill übernehmen (lokaler Fork) | Gilde / Arsenal | Skill aus Peer-Node als lokaler Draft-Fork mit `extends` importieren | F |
 | Gilde-Status in System Bar | System Bar | `[◈ GILDE: 2/3 ▾]` Dropdown mit Live-Peer-Status | F |
 | Mercenary Loadout Screen | Prompt Station | BRIEFING-State wenn Task `ready` (Architekt fertig) → intermediärer Schritt vor Worker-Prompt. **Basis-Loadout (Skill-Auswahl + Budget-Prüfung) ab Phase 4; Federated Skills im Loadout ab Phase F.** | 4 |
@@ -185,4 +188,26 @@ Phase 6: + Decision Requests + Eskalations-UI
 Phase 7: + Dead Letter Queue + Bug Heatmap + Sync-Status
 
 Phase 8: + 3D Nexus Grid (Weltkarte in WebGL) + Auto-Modus (API Keys, Settings -> KI)
+         + Settings -> Governance (Autonomie-Spektrum, pro-Typ manual/assisted/auto)
+         + AI-Review-Panel (Reviewer-Empfehlung, Grace Period, 1-Click)
 ```
+
+---
+
+## Frontend State Management — Pinia Store-Strategie
+
+**State-Management-Library: Pinia** (Vue 3 Standard, Composition API kompatibel, DevTools-Support).
+
+| Store | Inhalt | Scope |
+| --- | --- | --- |
+| `useAuthStore` | Access-Token (in-memory), User-Profil (id, role, memberships) | Global, persistent über Navigation |
+| `useProjectStore` | Aktives Projekt, Projekt-Liste | Global |
+| `usePromptStationStore` | Aktueller State (idle/agent_required/...), aktive Queue, Polling-Interval | Global |
+| `useNotificationStore` | Ungelesene Notifications, Badge-Count | Global |
+| `useSettingsStore` | App-Settings (notification_mode, theme, hivemind_mode, current_phase) | Global, gecacht |
+| `useCommandDeckStore` | Gefilterte Epics/Tasks, aktiver Filter-State | View-scoped (reset bei Nav-Wechsel) |
+| `useTriageStore` | Triage-Items, aktiver Tab (unrouted/proposals/escalated/dead-letter) | View-scoped |
+
+**Composables für Server-State:** API-Calls werden nicht direkt in Stores verwaltet, sondern via **VueUse `useFetch`** oder leichte Composables (`useEpics`, `useTaskDetail`). Stores halten nur Client-State (Filter, UI-Mode, gecachte Token-Daten). Serverseitiger State wird bei Bedarf refetched — kein globaler Cache-Layer.
+
+**SSE-Integration:** `usePromptStationStore` und `useNotificationStore` abonnieren SSE-Kanäle (`/events/tasks`, `/events/notifications`) via shared Composable `useSSEChannel`. Reconnect-Logik: exponentieller Backoff (1s → 2s → 4s → max 30s).

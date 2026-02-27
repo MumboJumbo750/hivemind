@@ -2,9 +2,9 @@
 
 ← [Phasen-Übersicht](./overview.md) | [Index](../../masterplan.md)
 
-**Ziel:** AI-Client konsumiert Prompts direkt via API-Key. GitLab MCP Consumer. 3D Nexus Grid. Kein Architekturbruch.
+**Ziel:** AI-Client konsumiert Prompts direkt via API-Key. GitLab MCP Consumer. 3D Nexus Grid. **Conductor-Orchestrator, Reviewer-Agent, Governance-Levels.** Kein Architekturbruch.
 
-**AI-Integration:** API-Keys für Claude/OpenAI. Hivemind schickt Prompts direkt an AI-API. MCP-Calls laufen weiterhin identisch.
+**AI-Integration:** Per-Agent-Rolle konfigurierbare AI-Provider (→ `ai_provider_configs`-Tabelle). Jede Rolle (Kartograph, Stratege, Architekt, Worker, Gaertner, Triage) kann einen eigenen Provider + Modell + Endpoint nutzen — Cloud-APIs, Self-Hosted Ollama, oder gemischt. Nicht-konfigurierte Rollen fallen auf den Global-Default oder BYOAI zurück.
 
 **Voraussetzung:** Alle Kriterien aus [Definition of Ready](./overview.md#definition-of-ready-für-phase-8-autonomous-mode) erfüllt.
 
@@ -13,30 +13,89 @@
 ## Deliverables
 
 ### Backend
-- [ ] AI-Provider-Service: sendet generierte Prompts direkt an Claude/OpenAI API
-  - Provider-Abstraktion: `anthropic`, `openai`, `ollama` (lokal)
+- [ ] AI-Provider-Service: sendet generierte Prompts direkt an AI-APIs
+  - Provider-Abstraktion: `anthropic`, `openai`, `google`, `ollama` (lokal), `custom` (beliebiger OpenAI-kompatibler Endpoint)
+  - **Per-Agent-Rolle konfigurierbar** via `ai_provider_configs`-Tabelle (→ [Bibliothekar — Agent-Provider-Routing](../agents/bibliothekar.md#agent-provider-routing), [data-model.md](../architecture/data-model.md))
+  - Routing-Logik: Prompt-Typ → Agent-Rolle → Lookup `ai_provider_configs` → Provider-spezifischer Client
+  - Fallback-Kaskade: `ai_provider_configs[rolle]` → `app_settings.ai_provider` (Global) → BYOAI-Modus
   - Gleicher Prompt wie bisher — kein Unterschied für MCP-Tools
-  - Rate-Limiting + Retry bei API-Fehlern
+  - **Rate-Limiting & Retry:**
+    - Retry: Exponential Backoff (1s → 2s → 4s → max 60s), max 3 Versuche bei 429/503
+    - RPM/TPM-Konfiguration: `HIVEMIND_AI_RPM_LIMIT` (Requests per Minute), `HIVEMIND_AI_TPM_LIMIT` (Tokens per Minute)
+    - Bei Überschreitung: Queue-Eintrag bleibt `agent_required`, Prompt Station zeigt `RATE LIMITED — Retry in Xs`
+    - Kein Circuit Breaker für AI-Provider (Retries sind ausreichend bei externem API)
+  - **Dev-Umgebung Hinweis:** API-Keys werden via HTTPS übertragen. In Dev-Deployments ohne valides TLS-Zertifikat (self-signed oder HTTP) fließen Keys im Klartext. Empfehlung: API-Keys in Dev immer als Env-Var setzen (nicht via UI eingeben) und `HIVEMIND_ENFORCE_TLS=true` bei allen Deployments mit echtem Key.
+  - **Env-Var-Fallback (Global):** `HIVEMIND_AI_API_KEY` als einzelner Global-Default. Per-Role-Keys werden über die UI oder direkt in der DB gesetzt.
 - [ ] GitLab MCP Consumer: GitLab als Datenquelle (MRs, Pipelines, Issues)
-- [ ] Bibliothekar-Erweiterung für Auto-Modus: Provider-spezifische Token-Kalibrierung + adaptives Budget (pgvector-Similarity läuft bereits seit Phase 3; Phase 8 ergänzt Provider-Integration)
+  - **Auth:** Personal Access Token (PAT) via `HIVEMIND_GITLAB_TOKEN` Env-Var oder verschlüsselt in `app_settings` (selbes AES-256-GCM wie AI-Key)
+  - **GitLab-URL:** `HIVEMIND_GITLAB_URL` (self-hosted oder gitlab.com)
+  - **Ingest-Mechanismus:** Webhook-basiert (GitLab `Push Events`, `Issue Events`, `Pipeline Events`, `Merge Request Events`) — schreibt `direction='inbound'` in `sync_outbox` (selber Pfad wie Sentry/YouTrack)
+  - **Webhook-Setup:** `POST /webhooks/ingest/<token>` empfängt GitLab-Events; Token via `POST /api/webhooks { "source": "gitlab" }` generiert
+  - **Event-Mapping:**
+
+    | GitLab Event | Hivemind-Ziel |
+    | --- | --- |
+    | `issue.opened` / `issue.reopened` | Triage `[UNROUTED]` |
+    | `merge_request.merged` | Task-Artefakt-Link (optional: Epic-Verknüpfung) |
+    | `pipeline.failed` | Triage `[UNROUTED]` (als Bug-Kandidat) |
+    | `push` | Kartograph-Trigger (Code-Änderung → Follow-up-Session) |
+
+  - **MCP-Tool-Wrapper:** `hivemind/get_gitlab_mr`, `hivemind/get_gitlab_pipeline` — Read-only, für Architekt/Worker-Kontext
+- [ ] Bibliothekar-Erweiterung für Auto-Modus: Per-Agent-Rolle Provider-Routing + provider-spezifische Token-Kalibrierung + adaptives Budget (pgvector-Similarity läuft bereits seit Phase 3; Phase 8 ergänzt Provider-Integration → [Agent-Provider-Routing](../agents/bibliothekar.md#agent-provider-routing))
 - [ ] Nexus Grid 3D Backend: Graphdaten-Aggregation optimiert für große Codebases
-- [ ] Auto-Escalation: System eskaliert autonom nach SLA-Regeln ohne manuelle Trigger
+- [ ] Auto-Escalation (Erweiterung): Phase 6 hat bereits SLA-basierte Escalation via Cron-Job (Decision-SLA > 72h → `escalated`). Phase 8 ergänzt **AI-gestützte proaktive Escalation** — der AI-Provider analysiert blockierte Tasks und entscheidet autonom über Eskalations-Zeitpunkt und Backup-Owner-Auswahl, ohne auf den Cron-Zyklus zu warten.
+- [ ] **Conductor-Orchestrator** (→ [autonomy-loop.md](../features/autonomy-loop.md)):
+  - Event-driven Backend-Service, reagiert auf State-Transitions und dispatcht Agenten
+  - 12 Dispatch-Regeln (Task-State-, Epic-State-, Event-Trigger → Agent + Prompt-Typ)
+  - Cooldown- und Idempotenz-Mechanismus (kein doppeltes Dispatching)
+  - `conductor_dispatches` Tabelle für Audit-Trail
+  - Env-Vars: `HIVEMIND_CONDUCTOR_ENABLED` (bool), `HIVEMIND_CONDUCTOR_PARALLEL` (int), `HIVEMIND_CONDUCTOR_COOLDOWN_SECONDS` (int)
+  - Deaktivierbar pro Projekt (Fallback: manuelle Prompt Station)
+- [ ] **Reviewer-Agent**: 7. AI-Agent-Rolle für automatisiertes Code-Review (→ [Reviewer-Skill](../features/agent-skills.md#-reviewer-skill-phase-8))
+  - Prüft Task-Ergebnisse gegen DoD, Guard-Ergebnisse, Skill-Instruktionen
+  - MCP-Tool: `submit_review_recommendation` (→ [mcp-toolset.md](../architecture/mcp-toolset.md#reviewer-writes-phase-8))
+  - Confidence-basiert: `approve` / `reject` / `needs_human_review`
+  - Dispatch nur wenn `governance.review ≠ 'manual'`
+- [ ] **Governance-Levels**: Konfigurierbare Autonomie-Stufen pro Entscheidungstyp (→ [autonomy-loop.md](../features/autonomy-loop.md#3-governance-levels))
+  - 3 Stufen: `manual` (Mensch entscheidet), `assisted` (AI empfiehlt, Mensch bestätigt), `auto` (AI entscheidet mit Grace Period)
+  - 7 Entscheidungstypen: `review`, `epic_proposal`, `epic_scoping`, `skill_merge`, `guard_merge`, `decision_request`, `escalation`
+  - Gespeichert in `app_settings.governance` (JSON)
+  - Auto-Bedingungen + Safeguards pro Typ (z.B. Review: nie auto-reject, immer Grace Period)
+  - `review_recommendations` Tabelle für AI-Review-Audit-Trail
 
 ### Frontend
 - [ ] AI-Provider-Config in Settings:
-  - Provider-Auswahl (Manuell / Claude / OpenAI)
-  - API-Key-Eingabe (verschlüsselt gespeichert)
-  - Modell-Auswahl
-  - Test-Button
+  - Per-Agent-Rolle: Provider-Auswahl, Modell, Endpoint, API-Key, Token-Budget, RPM-Limit
+  - Global-Fallback: Ein Default-Provider für nicht einzeln konfigurierte Rollen
+  - Hybrid-Modus: Einzelne Rollen manuell (BYOAI), andere automatisiert
+  - Test-Button pro Rolle (Ping + Token-Count-Validierung)
+  - Schrittweise Migration: Erst eine Rolle automatisieren, dann weitere hinzufügen
 - [ ] Prompt Station: Auto-Modus
   - Kein Prompt-Card mehr sichtbar
   - Stattdessen: Monitoring-Ansicht (aktive Agenten, Token-Verbrauch, Status)
   - "Manuell eingreifen"-Button jederzeit verfügbar
 - [ ] Nexus Grid 3D (WebGL / Three.js):
   - Toggle-Button: [2D] ↔ [3D]
-  - Fly-Through-Navigation
-  - Fog of War in 3D erhalten
-- [ ] KPI-Dashboard (vollständig): alle 6 KPIs mit historischen Graphen
+  - Fly-Through-Navigation (Orbit-Controls via Three.js)
+  - Fog of War in 3D erhalten (unerkundete Nodes als transparente Sphären)
+  - **Performance-Ziel:** 1000 Nodes @ 30 FPS auf Mid-Range-GPU (GTX 1060 / RX 580 Äquivalent)
+  - **Implementierungsstrategie:**
+    - Instanced Rendering (`THREE.InstancedMesh`) für alle Nodes gleichen Typs — ein Draw-Call pro Node-Typ statt 1000 einzelne
+    - Frustum Culling: Three.js default (automatisch für Meshes)
+    - Level-of-Detail (LOD): Nodes außerhalb des Sichtbereichs → einfachere Geometrie (8-Polygon-Sphäre statt 32)
+    - Kanten als `THREE.LineSegments` mit Buffer Geometry (kein individuelles `Line`-Objekt pro Edge)
+    - Vue-Reaktivität bleibt **außerhalb** des Three.js-Render-Loops — keine reaktiven Refs im Animation-Frame
+    - Fog-of-War-Overlay: Shader-Material (GLSL) auf einer flachen Plane über der Szene — kein DOM-Element
+- [ ] KPI-Dashboard (vollständig): alle 6 KPIs mit historischen Graphen (7/30-Tage-Zeitreihe)
+- [ ] **Governance-Tab** in Settings (→ [autonomy-loop.md](../features/autonomy-loop.md#3-governance-levels)):
+  - Pro Entscheidungstyp: Dropdown `manual | assisted | auto`
+  - Auto-Konfiguration: Confidence-Threshold, Grace-Period-Minuten
+  - Safeguard-Anzeige (welche Einschränkungen gelten pro Typ)
+  - Autonomie-Spektrum-Visualisierung (aktueller Stand)
+- [ ] **AI-Review-Panel** in Task-Detail:
+  - Bei `governance.review = 'assisted'`: Review-Empfehlung mit Checklist, Confidence-Badge, 1-Click Approve/Reject
+  - Bei `governance.review = 'auto'`: Grace-Period-Countdown + "Eingreifen"-Button
+  - Immer: Link zum vollständigen Review-Recommendation-Audit-Trail
 
 ---
 
@@ -46,26 +105,36 @@
 Phase 1-7 (Manuell):
   Prompt Station → User kopiert → AI-Client → MCP
 
-Phase 8 (Auto-Modus):
-  Hivemind → generiert Prompt → sendet an Claude API
-  Claude API → ruft MCP-Tools auf → schreibt Ergebnis
-  Hivemind → Review-Gate weiterhin aktiv (Owner reviewed)
+Phase 8 (Auto-Modus — per Agent-Rolle konfigurierbar):
+  Event/State-Transition → Conductor dispatcht Agent
+    → Lookup ai_provider_configs[agent_role]
+    → Konfiguriert: sendet an Provider (Claude/OpenAI/Gemini/Ollama)
+    → Nicht konfiguriert: Fallback auf app_settings.ai_provider
+    → Kein Provider: BYOAI-Modus (Prompt Station zeigt Prompt)
+  AI-Provider → ruft MCP-Tools auf → schreibt Ergebnis
+  State-Transition → Conductor dispatcht nächsten Agent
+    → z.B. Task done → Gaertner, Task in_review → Reviewer
+  Governance-Level entscheidet bei Gate-Points:
+    manual:   Owner entscheidet (wie bisher)
+    assisted: AI empfiehlt, Owner bestätigt (1-Click)
+    auto:     AI entscheidet, Grace Period für Veto
   User → sieht Monitoring, greift nur bei Bedarf ein
 ```
 
-**Kein Architekturbruch:** Gleicher Prompt, gleiche MCP-Calls, gleiche Validierung. Nur der manuelle Copy-Paste-Schritt entfällt.
+**Kein Architekturbruch:** Gleicher Prompt, gleiche MCP-Calls, gleiche Validierung. Nur der manuelle Copy-Paste-Schritt entfällt — und jede Rolle kann ihren optimalen Provider nutzen.
 
 ### Token-Counting im Auto-Modus
 
-In Phase 1–7 verwendet Hivemind `tiktoken cl100k_base` als universelle Approximation (kompatibel mit GPT-4, Claude, den meisten LLMs). Im Auto-Modus ist der Provider bekannt — Phase 8 kann auf provider-spezifische Tokenizer wechseln:
+In Phase 1–7 verwendet Hivemind `tiktoken cl100k_base` als universelle Approximation (kompatibel mit GPT-4, Claude, den meisten LLMs). Im Auto-Modus ist der Provider per Rolle bekannt — Phase 8 kann auf provider-spezifische Tokenizer wechseln:
 
 | Provider | Tokenizer | Genauigkeit |
 | --- | --- | --- |
 | `anthropic` (Claude) | `tiktoken cl100k_base` (Approximation, < 2% Abweichung) | Ausreichend für Budget-Planung |
 | `openai` (GPT-4/4o) | `tiktoken cl100k_base` (exakt) | Exakt |
+| `google` (Gemini) | `tiktoken cl100k_base` (Approximation) | Ausreichend |
 | `ollama` (lokal) | `tiktoken cl100k_base` (Approximation) | Ausreichend |
 
-**Phase-8-Verhalten:** Das Backend wählt den Tokenizer automatisch basierend auf `app_settings.ai_provider`. Für Anthropic wird `cl100k_base` beibehalten (Anthropic veröffentlicht keinen offiziellen öffentlichen Tokenizer; `cl100k_base` ist de-facto Standard). Eine Provider-spezifische Token-Count-Kalibrierung (Offset-Faktor pro Provider) kann via `HIVEMIND_TOKEN_COUNT_CALIBRATION` Env-Var eingestellt werden (JSON: `{"claude": 1.05, "gpt4": 1.0}`).
+**Phase-8-Verhalten:** Das Backend wählt den Tokenizer automatisch basierend auf `ai_provider_configs[agent_role].provider`. Für Anthropic wird `cl100k_base` beibehalten (Anthropic veröffentlicht keinen offiziellen öffentlichen Tokenizer; `cl100k_base` ist de-facto Standard). Eine Provider-spezifische Token-Count-Kalibrierung (Offset-Faktor pro Provider) kann via `HIVEMIND_TOKEN_COUNT_CALIBRATION` Env-Var eingestellt werden (JSON: `{"anthropic": 1.05, "openai": 1.0, "google": 1.1, "ollama": 1.0}`).
 
 > **Kein Breaking Change:** `tiktoken cl100k_base` bleibt der Default — Phase 8 ergänzt nur die Kalibrierungsoption. Token Radar und Budget-Warnungen funktionieren unverändert.
 
@@ -81,17 +150,25 @@ In Phase 1–7 verwendet Hivemind `tiktoken cl100k_base` als universelle Approxi
 - [ ] KPI-Baselines über 2 Wochen stabil (Phase 7 Messung ✓)
 
 ### Phase 8 Specific
-- [ ] API-Key wird sicher gespeichert (nicht im Plaintext in DB)
-  - **Speicherort:** `app_settings` mit Key `ai_api_key_encrypted` + `ai_api_key_nonce`
+- [ ] API-Keys werden sicher gespeichert (nicht im Plaintext in DB)
+  - **Speicherort:** `ai_provider_configs` mit `api_key_encrypted` + `api_key_nonce` pro Agent-Rolle; `app_settings.ai_api_key_encrypted` als Global-Fallback
   - **Verschlüsselung:** AES-256-GCM mit Schlüssel abgeleitet aus `HIVEMIND_KEY_PASSPHRASE` (identisch zur Ed25519-Key-Verschlüsselung) via HKDF-SHA256 (separater Salt für API-Key-Kontext)
-  - **Ablauf:** Frontend sendet Plaintext-Key via HTTPS → Backend verschlüsselt sofort (AES-256-GCM) → speichert Ciphertext + Nonce in `app_settings` → Plaintext nie persistiert
+  - **Ablauf:** Frontend sendet Plaintext-Key via HTTPS → Backend verschlüsselt sofort (AES-256-GCM) → speichert Ciphertext + Nonce → Plaintext nie persistiert
   - **Entschlüsselung:** Nur im Speicher beim aktiven API-Call; Schlüssel wird nach Verwendung aus dem Speicher gelöscht
-  - **Alternative:** Wenn `HIVEMIND_AI_API_KEY` als Env-Var gesetzt ist, wird dieses bevorzugt (kein DB-Eintrag nötig — für Deployments die Secrets über Env-Vars managen)
+  - **Alternative:** Wenn `HIVEMIND_AI_API_KEY` als Env-Var gesetzt ist, wird dieses als Global-Fallback bevorzugt (kein DB-Eintrag nötig — für Deployments die Secrets über Env-Vars managen). Per-Role-Keys haben Vorrang.
 - [ ] AI-Provider sendet Prompt und empfängt MCP-Calls korrekt
 - [ ] Review-Gate auch im Auto-Modus aktiv (kein direktes `done`)
 - [ ] "Manuell eingreifen"-Button schaltet zurück auf manuelle Prompt Station
 - [ ] Nexus Grid 3D lädt und navigierbar für Codebases > 1000 Nodes
 - [ ] GitLab Issues werden als neue Epics/Tasks ingestiert
+- [ ] Conductor dispatcht Agenten korrekt auf State-Transitions (12 Trigger getestet)
+- [ ] Conductor Cooldown verhindert doppeltes Dispatching (Idempotenz-Test)
+- [ ] Reviewer-Agent gibt korrekte Empfehlungen mit Confidence-Score ab
+- [ ] `submit_review_recommendation` ändert nie direkt den Task-State
+- [ ] Governance-Levels konfigurierbar via Settings UI (alle 7 Typen × 3 Stufen)
+- [ ] Auto-Review: Grace Period läuft ab → auto-approve bei Confidence ≥ Threshold
+- [ ] Auto-Review: Grace Period kann via "Eingreifen"-Button unterbrochen werden
+- [ ] Auto-Reject ist NICHT möglich — `reject` Empfehlung erfordert immer menschliche Bestätigung
 
 ---
 

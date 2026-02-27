@@ -29,6 +29,7 @@ Ab Phase 8: AI-Client konsumiert Prompts direkt — kein manueller Schritt mehr.
 | --- | --- | --- |
 | **Initial-Kartograph** | Neues Projekt / neue Repo | Rolle, Ziel, verfügbare Tools, Startpunkte, Repo-Pfad |
 | **Follow-up-Kartograph** | Kartograph-Session war unvollständig | Noch nicht kartierte Bereiche, offene Fragen |
+| **Strategie-Prompt** | Plan-Dokument vorhanden / Kartograph-Bootstrap abgeschlossen | Plan-Kontext, bestehende Epics, Team-Roster, Zerlegungsauftrag |
 | **Architektur-Prompt** | Epic geht auf `scoped` | Epic-Kontext, DoD-Rahmen, Zerlegungsauftrag |
 | **Bibliothekar-Prompt** | Task soll bearbeitet werden (Phase 1–2) | Alle aktiven Skills + Task-Beschreibung |
 | **Worker-Prompt** | Task geht auf `ready` | Task + Skills + Docs + DoD |

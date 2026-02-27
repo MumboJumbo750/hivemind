@@ -15,7 +15,7 @@
 | [Phase 2](./phase-2.md) | Identity & RBAC | Command Deck, Login, Notifications | Keins — alles manuell |
 | [Phase F](./phase-f.md) | Federation Protocol, Peer Discovery, Epic-Sharing, Kartograph-Sync | Peer-Overview, Shared Map, Skill-Loadout | Keins — alles manuell |
 | [Phase 3](./phase-3.md) | MCP Read-Tools + Bibliothekar-Prompt | Triage Station, Token Radar | Ollama Container (Embeddings) |
-| [Phase 4](./phase-4.md) | Planer-Writes (Architekt) | Skill Lab, Audit-Log | — |
+| [Phase 4](./phase-4.md) | Planer-Writes (Stratege & Architekt) | Skill Lab, Audit-Log | — |
 | [Phase 5](./phase-5.md) | Worker & Gaertner Writes | Wiki, Nexus Grid 2D | — |
 | [Phase 6](./phase-6.md) | Triage & Eskalation | Decision Requests, SLA-UI | — |
 | [Phase 7](./phase-7.md) | Externe Integration Hardening | Dead Letter, Bug Heatmap, Sync-Status | — |
@@ -136,7 +136,7 @@ hivemind export-full                  # Vollständiger Daten-Export (pg_dump + U
 hivemind export-keys                  # Ed25519-Keys exportieren (passwortgeschützt)
 ```
 
-**Implementierung:** `click` oder `typer` (evaluieren in Phase 1). Verbindung zur DB via `DATABASE_URL` Env-Var (selbe Config wie Backend). Kein eigener API-Server — direkter DB-Zugriff für Admin-Operationen.
+**Implementierung:** `click` (**entschieden** — ausgereiftere Plugin-Architektur, kein Pydantic-Overhead für reine CLI-Commands). Verbindung zur DB via `DATABASE_URL` Env-Var (selbe Config wie Backend). Kein eigener API-Server — direkter DB-Zugriff für Admin-Operationen.
 
 ---
 
@@ -194,6 +194,7 @@ Ab Phase 3 (Ollama) werden Embeddings für semantische Suche und pgvector-basier
 
 | Entität | Embedded-Feld | Trigger | Tabelle / Spalte |
 | --- | --- | --- | --- |
+| **Epics** | `title + description` | On-Write: bei Epic-Scoping (`scoped`-Transition) | `epics.embedding` |
 | **Skills** (active) | `content` (Skill-Volltext) | On-Write: bei `merge_skill`, `accept_skill_change` | `skills.embedding` |
 | **Wiki-Artikel** | `content` (Artikel-Volltext) | On-Write: bei `create_wiki_article`, `update_wiki_article` | `wiki_articles.embedding` |
 | **Code-Nodes** | `summary` (Kartograph-generiert) | On-Write: bei Kartograph-Discovery | `code_nodes.embedding` |

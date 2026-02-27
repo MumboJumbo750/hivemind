@@ -94,6 +94,34 @@
 - Jede Guard-Zeile zeigt daher: `source` (`self-reported` | `system-executed`) und `checked_at`.
 - Bei `source=self-reported` und leer/unklarer Ausgabe zeigt die UI einen Warnhinweis für den Reviewer.
 
+**AI-Review-Empfehlung (Phase 8, Governance `assisted` oder `auto`):**
+
+```text
+┌─ AI-REVIEW-EMPFEHLUNG ─────────────────────────────────────────┐
+│  🔍 Reviewer-Agent          Confidence: ████████░░ 92%         │
+│  Empfehlung: ✓ APPROVE                                         │
+│                                                                 │
+│  Checklist:                                                     │
+│  ☑ Endpoint liefert 200 bei gültigen Credentials               │
+│  ☑ Error-Handling für 401/403 vorhanden                        │
+│  ☑ Guard-Ergebnisse konsistent mit Implementierung             │
+│  ☑ Skill-Instruktionen befolgt                                 │
+│                                                                 │
+│  Bedenken: Keine                                                │
+│                                                                 │
+│  [REVIEW-DETAILS ANZEIGEN ▾]                                   │
+│                                                                 │
+│  ─── GOVERNANCE: ASSISTED ──────────────────────────────────── │
+│  [✓ AI-EMPFEHLUNG BESTÄTIGEN]   [✗ TROTZDEM ABLEHNEN]         │
+│                                                                 │
+│  ─── GOVERNANCE: AUTO ──────────────────────────────────────── │
+│  Auto-Approve in: 15:00 Min.  [⏸ EINGREIFEN]                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+> Bei `governance.review = 'manual'` wird kein Reviewer-Agent dispatcht und dieses Panel ist nicht sichtbar. Das klassische Review-Panel (oben) wird unverändert genutzt.
+> Bei `governance.review = 'auto'` und Confidence < Threshold: Fallback auf `assisted` (Owner muss bestätigen).
+
 **Context Boundary Panel** (read-only, im Task-Detail ab Phase 4):
 
 ```text
@@ -144,13 +172,16 @@
 │                                                                 │
 │  ⚠ [UNROUTED]                                      SLA: 2h     │
 │  Sentry: NullPointerException in CartService                    │
-│  Vorgeschlagen: EPIC-12 (0.71), EPIC-14 (0.65)                 │
+│  Vorgeschlagen: EPIC-12, EPIC-14   ← Phase 3–6: Keyword-Match    │
+│  (Similarity-Scores erscheinen erst ab Phase 7: pgvector aktiv) │
 │  [→ EPIC-12 ZUWEISEN]  [→ EPIC-14]  [NEU ANLEGEN]  [IGNORIEREN]│
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-`[DEAD LETTER]` Requeue-Aktion ruft `hivemind/requeue_dead_letter { "id": "<dead-letter-uuid>" }` auf.
+`[DEAD LETTER]` Requeue-Aktion ruft `POST /api/triage/dead-letters/:id/requeue` auf (REST-Alias — kein direkter MCP-Call aus dem UI).
+
+> **Routing-Vorschläge in Phase 3–6:** Die Triage Station zeigt Epic-Vorschläge basierend auf Keyword-Matching (ILIKE). Similarity-Scores (z.B. `EPIC-12 (0.71)`) erscheinen erst ab Phase 7, wenn pgvector-Routing aktiviert ist und Embeddings für Epics berechnet wurden. In Phase 3–6 ist die Score-Anzeige ausgeblendet.
 
 **Tab: PROPOSALS** — Skill-Proposals, Guard-Proposals, Skill-Changes, Guard-Changes
 
@@ -417,6 +448,7 @@ Empfohlene Zuordnung:
 | `task_done` | Task abgeschlossen | Info (grün) | Command Deck |
 | `skill_merged` | Admin hat gemergt | Info (grün) | Arsenal |
 | `dead_letter` | Sync fehlgeschlagen | Normal (amber) | Triage → Dead Letter |
+| `task_delegated` | Task wurde einem Peer-Node delegiert (`assigned_node_id` gesetzt) | Normal (blau) | Command Deck |
 | `peer_task_done` | Peer hat delegierten Task abgeschlossen | Info (grün) | Command Deck |
 | `peer_online` | Peer-Node ist beigetreten | Info (grün) | Gilde |
 | `peer_offline` | Peer-Node nicht erreichbar | Normal (amber) | Gilde |
@@ -548,9 +580,10 @@ Ab Phase 3 erscheint im SYSTEM-Tab ein Webhook-Bereich (nur sichtbar wenn `curre
 │  CI-System         ci@team.dev    [SERVICE ▾]  [ENTFERNEN ✗]   │
 │                                                                 │
 │  ROLLEN:                                                        │
-│  developer — lesen + schreiben nur im eigenen Epic-Scope        │
-│  admin     — globales Schreiben, Triagieren, Mergen             │
-│  service   — technische Integration, nur Lesen                  │
+│  developer   — lesen + schreiben nur im eigenen Epic-Scope      │
+│  admin       — globales Schreiben, Triagieren, Mergen           │
+│  service     — technische Integration, nur Lesen                │
+│  kartograph  — Wiki + Code-Nodes anlegen/bearbeiten, Kartierung │
 │                                                                 │
 │  (Globale Admin-Rechte erfordern users.role = admin im System)  │
 │                                                                 │
@@ -652,20 +685,73 @@ Im Skill Lab erscheint bei federierten Skills ein Origin-Badge:
 ```text
 ┌─ SETTINGS: KI ──────────────────────────────────────────────────┐
 │                                                                 │
-│  MODUS                                                          │
-│  ● Manuell (BYOAI)   ○ Automatisch (API-Key)                   │
+│  GLOBAL-FALLBACK                                                │
+│  Modus: ● Manuell (BYOAI)   ○ Automatisch (API-Key)            │
+│  Provider: [Anthropic ▾]  Modell: [claude-sonnet-4 ▾]          │
+│  API-Key:  [sk-ant-••••••••••••••••]  [TESTEN]                 │
 │                                                                 │
-│  PROVIDER (nur bei Automatisch)                                 │
-│  ○ Claude (Anthropic)   ○ OpenAI                               │
+│  ─── PER-AGENT-ROLLE ────────────────────────────────────────── │
 │                                                                 │
-│  API-KEY                                                        │
-│  [sk-ant-••••••••••••••••••••••••••]  [TESTEN]                 │
+│  Kartograph   [✓ Auto]  Google    gemini-2.5-pro   200K  [⚙]  │
+│  Stratege     [✓ Auto]  Anthropic claude-sonnet-4  100K  [⚙]  │
+│  Architekt    [✓ Auto]  OpenAI    gpt-4o           128K  [⚙]  │
+│  Worker       [✓ Auto]  Ollama    llama3.3         8K    [⚙]  │
+│  Gaertner     [  Global-Fallback ]                        [⚙]  │
+│  Triage       [  Global-Fallback ]                        [⚙]  │
 │                                                                 │
-│  Token Budget / Routing Threshold: [8000    ]                   │
-│  Audit Retention (Tage):           [90      ]                   │
+│  [⚙] öffnet: Provider, Modell, Endpoint, API-Key,             │
+│       Token-Budget, RPM-Limit, Enabled-Toggle                   │
+│                                                                 │
+│  Token Budget Default: [8000    ]                               │
+│  Memory Token Ratio:   [0.3     ]                               │
+│  Audit Retention (Tage): [90    ]                               │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+**Verhalten:**
+- Rollen ohne eigenen Eintrag nutzen den Global-Fallback-Provider
+- Rollen mit `enabled: false` fallen auf BYOAI-Modus zurück (Prompt Station zeigt Prompt)
+- Hybrid-Betrieb ist explizit vorgesehen — nicht alle Rollen müssen automatisiert sein
+- [⚙]-Button öffnet ein Modal mit allen Feldern aus `ai_provider_configs`
+- Test-Button pro Rolle sendet einen Ping-Prompt an den konfigurierten Provider
+
+### Settings: Governance (Phase 8)
+
+```text
+┌─ SETTINGS: GOVERNANCE ──────────────────────────────────────────┐
+│                                                                 │
+│  AUTONOMIE-SPEKTRUM                                             │
+│  ░░░░░░░░████████░░░░░░░░  ASSISTED (4/7 Typen auf assisted)  │
+│  Manual ◄─────────────────────────────────────────────► Auto    │
+│                                                                 │
+│  ─── PRO ENTSCHEIDUNGSTYP ──────────────────────────────────── │
+│                                                                 │
+│  Review             [assisted ▾]  Confidence ≥ [0.85]  Grace [15 Min] │
+│  Epic-Proposal      [assisted ▾]                                │
+│  Epic-Scoping       [manual   ▾]                                │
+│  Skill-Merge        [auto     ▾]  Confidence ≥ [0.90]  Grace [30 Min] │
+│  Guard-Merge        [auto     ▾]  Confidence ≥ [0.90]  Grace [30 Min] │
+│  Decision-Request   [assisted ▾]                                │
+│  Escalation         [manual   ▾]                                │
+│                                                                 │
+│  ─── SAFEGUARDS ────────────────────────────────────────────── │
+│  ⚠ Review: Auto-Reject ist NICHT möglich (immer menschlich)   │
+│  ⚠ Grace Period: Owner kann IMMER innerhalb der Frist eingreifen│
+│  ⚠ Kein "Full Auto"-Button — jeder Typ einzeln konfigurierbar │
+│                                                                 │
+│  [ÄNDERUNGEN SPEICHERN]                                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Verhalten:**
+- Governance-Levels werden in `app_settings.governance` als JSON gespeichert
+- Änderungen erfordern `admin`-Berechtigung
+- Autonomie-Spektrum-Leiste visualisiert den aktuellen Gesamt-Autonomiegrad
+- Bei Auto-Stufe: Confidence-Threshold und Grace-Period konfigurierbar pro Typ
+- Safeguards sind read-only und zeigen die systemischen Einschränkungen
+
+> Vollständige Spezifikation: [autonomy-loop.md — Governance-Levels](../features/autonomy-loop.md#3-governance-levels)
 
 ---
 

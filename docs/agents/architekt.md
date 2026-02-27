@@ -46,7 +46,7 @@ Der Architekt arbeitet als `developer` (eigene Epics) oder `admin` (alle Epics):
 
 3. AI zerlegt Epic:
    hivemind/decompose_epic {
-     "epic_id": "uuid",
+     "epic_id": "EPIC-12",
      "tasks": [
        { "title": "Auth-Endpoint", "description": "...", "definition_of_done": {...} },
        { "title": "JWT Validation", "description": "..." }
@@ -78,8 +78,8 @@ Der Architekt arbeitet als `developer` (eigene Epics) oder `admin` (alle Epics):
 ## MCP-Tools
 
 ```text
-hivemind/decompose_epic       { "epic_id": "uuid", "tasks": [...] }
-hivemind/create_task          { "epic_id": "uuid", "title": "...", "description": "..." }
+hivemind/decompose_epic       { "epic_id": "EPIC-12", "tasks": [...] }
+hivemind/create_task          { "epic_id": "EPIC-12", "title": "...", "description": "..." }
 hivemind/create_subtask       { "parent_task_id": "TASK-88", "title": "..." }
 hivemind/link_skill           { "task_id": "TASK-88", "skill_id": "uuid" }
 hivemind/set_context_boundary { "task_id": "TASK-88", "allowed_skills": [...], ... }
@@ -112,9 +112,9 @@ Im Solo-Modus ist der Entwickler selbst der Architekt. Der Architektur-Prompt hi
 
 ## Abgrenzung
 
-| | Kartograph | Architekt | Worker |
-| --- | --- | --- | --- |
-| Eingabe | Unbekanntes Repository | Gescoptes Epic | Ready Task + Context |
-| Ausgabe | Wiki, Docs, System-Verständnis | Tasks, Boundaries, Zuweisung | Task-Ergebnis + Artefakte |
-| Timing | Initial + iterativ | Nach Epic-Scoping | Nach Architekt |
-| Fokus | Verstehen | Planen | Ausführen |
+| | Stratege | Kartograph | Architekt | Worker |
+| --- | --- | --- | --- | --- |
+| Eingabe | Plan-Dokumente, Wiki, bestehende Epics | Unbekanntes Repository | Gescoptes Epic | Ready Task + Context |
+| Ausgabe | Epic-Proposals, Roadmap, Dependencies | Wiki, Docs, System-Verständnis | Tasks, Boundaries, Zuweisung | Task-Ergebnis + Artefakte |
+| Timing | Vor Architekt; nach Plan/Kartograph | Initial + iterativ | Nach Epic-Scoping | Nach Architekt |
+| Fokus | Strategisch Planen | Verstehen | Taktisch Planen | Ausführen |

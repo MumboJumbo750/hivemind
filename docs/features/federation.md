@@ -49,6 +49,8 @@ Jeder Entwickler betreibt seine eigene vollständige Hivemind-Instanz. Nodes ken
 
 **Origin-Authority:** Jede Entität hat einen `origin_node_id`. Nur der Origin-Node kann editieren. Peers erhalten Read-only-Kopien.
 
+> **Read-only-Scope-Klarstellung:** "Read-only-Kopien" gilt für **Skills, Wiki-Artikel und Code-Nodes** — passive Wissensobjekte. **Delegierte Tasks** sind ein Sonderfall: Ein an Peer-Node Ben delegierter Task wird auf Bens Node als voll editierbar behandelt (Ben kann State-Transitions durchführen, `submit_result` aufrufen, Guards prüfen). Bens Node besitzt den Task für die Dauer der Delegation. Bens State-Updates laufen via `POST /federation/task/update` zurück an den Origin-Node (Alex) — dort hat Alex wieder Origin-Authority. Kurz: Peers sind Read-only für geteiltes Wissen (Skills/Wiki), Write-fähig für delegierte Aufgaben (Tasks).
+
 ---
 
 ## Node-Identität
@@ -161,14 +163,42 @@ peers:
     public_key: "ed25519:pub:XyZw12..."
 ```
 
-**2) Optional: Hive Station Bootstrap** (zentraler Registry/Presence-Dienst):
+**2) Optional: Hive Station** (zentraler Control-Plane-Dienst für `hub_assisted` und `hub_relay`):
 
-- Node registriert sich bei der Station und lädt bekannte Peers
-- Station liefert Discovery + Status, aber bleibt ohne Schreibhoheit auf Hivemind-Entitäten
-- Payloads zwischen Nodes bleiben Ed25519-signiert; Origin-Authority bleibt bei den Nodes
+Die Hive Station ist ein eigenständiger, leichtgewichtiger Server der **ausschließlich** als Control Plane agiert:
 
-**3) Sekundär: mDNS** (automatische Discovery im LAN, optional via `HIVEMIND_MDNS_ENABLED=true`).
-Neu entdeckte Nodes erscheinen zur manuellen Bestätigung in den Settings (Tab: FEDERATION).
+| Service | Beschreibung |
+| --- | --- |
+| **Peer Registry** | Nodes registrieren sich mit `node_id`, `node_name`, `node_url`, `public_key` |
+| **Presence** | Heartbeat-basierter Online-Status (Node sendet alle 60s `POST /hive/heartbeat`) |
+| **Peer-Liste** | `GET /hive/peers` liefert alle bekannten Nodes mit Status |
+| **Store-and-Forward Relay** (optional) | `hub_relay`-Topologie: Nachrichten die Peer nicht direkt erreichen via `POST /hive/relay/{peer_id}` zustellen |
+
+**Was die Hive Station NICHT macht:** Entitäten speichern, Epics/Tasks/Skills verwalten, Signaturen erstellen. Origin-Authority und Ed25519-Signaturen bleiben ausschließlich bei den Nodes.
+
+**API-Contract (minimal):**
+
+```text
+POST /hive/register   { "node_id": "...", "node_name": "...", "node_url": "...", "public_key": "..." }
+POST /hive/heartbeat  { "node_id": "..." }
+GET  /hive/peers      → [{ node_id, node_name, node_url, public_key, last_seen, online }]
+POST /hive/relay/:id  Body: signierter Payload → weiterleiten an target node_url
+```
+
+**Auth:** Hive Station akzeptiert Registrierungen nur mit gültigem `HIVEMIND_HIVE_STATION_TOKEN` im Header. Ohne Token: HTTP 401.
+
+**Deployment:** Eigenständiges Docker-Image (Python/FastAPI, < 200 LOC), kein pgvector/PostgreSQL nötig — in-memory oder SQLite für Presence-State. Öffentlich erreichbar oder im selben VPN wie die Nodes.
+
+**Offline-Toleranz:** Wenn Hive Station nicht erreichbar, arbeitet jeder Node mit seinem lokalen `peers.yaml`-Cache weiter. Discovery-Updates sind dann bis zur nächsten Station-Verbindung verzögert.
+
+**3) Sekundär: mDNS** (automatische Discovery im lokalen Netz, optional):
+
+- Aktivierung: `HIVEMIND_MDNS_ENABLED=true`
+- **Protokoll:** DNS-SD / mDNS via `python-zeroconf` — Service-Typ `_hivemind._tcp.local.`
+- **Advertised Records:** `node_id` (TXT), `node_name` (TXT), `node_url` (SRV → Host + Port)
+- **Discovery:** Node lauscht auf mDNS-Broadcasts im LAN und fügt neu entdeckte Nodes zur internen Pending-Liste hinzu
+- **Sicherheit:** mDNS-Discovery ist **nicht authentifiziert** — öffentlicher Key wird nicht via mDNS übertragen. Neu entdeckte Nodes erscheinen als `status=pending_confirmation` in den Settings (Tab: FEDERATION). Admin muss Public Key manuell eintragen und Peer bestätigen bevor Kommunikation möglich ist.
+- **Fallback:** Wenn mDNS nicht verfügbar (Container-Netzwerk, VPN ohne Multicast), greift `peers.yaml` als primäre Discovery-Quelle.
 
 ---
 
@@ -183,7 +213,7 @@ Neu entdeckte Nodes erscheinen zur manuellen Bestätigung in den Settings (Tab: 
 **Hive Station ist Control Plane, nicht Data Plane.**  
 Sie koordiniert Discovery/Presence (und optional Relay), aber sie ist nie Origin einer Epic/Task/Skill/Wiki-Entität.
 
-> **Hive Station — Scope-Abgrenzung:** Die Hive Station ist ein **separates Projekt** mit eigener Codebasis, eigenem Deployment und eigenem Sicherheitsmodell. Hivemind-Docs spezifizieren nur die Client-seitige Integration (Registrierung, Presence-Abfrage, Relay-Nutzung). API-Spezifikation, Deployment-Anleitung und Sicherheitsmodell der Hive Station werden in einem dedizierten Repository dokumentiert (`hive-station/`). Hivemind funktioniert vollständig ohne Hive Station (`direct_mesh`-Topologie).
+> **Hive Station — Scope-Abgrenzung:** Die Hive Station ist ein **separates Projekt** mit eigener Codebasis, eigenem Deployment und eigenem Sicherheitsmodell. Hivemind-Docs spezifizieren nur die Client-seitige Integration (Registrierung, Presence-Abfrage, Relay-Nutzung). → **Vollständige Spec: [hive-station.md](./hive-station.md)** (API-Contract, Datenmodell, Deployment, Sicherheitsmodell, Relay-Protokoll). Hivemind funktioniert vollständig ohne Hive Station (`direct_mesh`-Topologie).
 
 ---
 
@@ -456,8 +486,7 @@ Wenn ein Peer via `[ENTFERNEN]` oder `[BLOCKIEREN]` aus der Gilde entfernt wird,
 ```
 
 > **Wiederaufnahme:** Ein blockierter Peer kann über `[ENTSPERREN]` wieder aktiviert werden → Full-Sync. Ein entfernter Peer muss komplett neu hinzugefügt werden (neuer Key-Exchange).
-
-> **Schema-Referenz Offboarding:** `nodes.status` unterstützt die Werte `active|inactive|blocked|removed` (→ [data-model.md](../architecture/data-model.md)). `sync_outbox.state` unterstützt `cancelled` für abgebrochene Outbound-Einträge. Soft-Delete für Skills/Wiki nutzt `nodes.deleted_at` (TIMESTAMPTZ) — Einträge mit `deleted_at IS NOT NULL` sind logisch gelöscht, bleiben aber für Audit lesbar und sind innerhalb von 30 Tagen wiederherstellbar.
+> **Schema-Referenz Offboarding:** `nodes.status` unterstützt die Werte `active|inactive|blocked|removed` (→ [data-model.md](../architecture/data-model.md)). `sync_outbox.state` unterstützt `cancelled` für abgebrochene Outbound-Einträge und `quarantined` für verdächtige Einträge nach Key-Kompromittierung. Soft-Delete für Skills/Wiki nutzt `skills.deleted_at` bzw. `wiki_articles.deleted_at` (TIMESTAMPTZ) — Einträge mit `deleted_at IS NOT NULL` sind logisch gelöscht, bleiben aber für Audit lesbar und sind innerhalb von 30 Tagen wiederherstellbar.
 
 ---
 
@@ -540,5 +569,7 @@ Bibliothekar sucht Skill via Embedding-Similarity:
 | `HIVEMIND_MDNS_ENABLED` | `false` | mDNS-Discovery aktivieren |
 | `HIVEMIND_FEDERATED_SEARCH` | `false` | Federated Semantic Search (ab Phase 3) |
 | `HIVEMIND_FEDERATION_PING_INTERVAL` | `60` | Heartbeat-Intervall in Sekunden |
-| `HIVEMIND_FEDERATION_OFFLINE_THRESHOLD` | `3` | Anzahl verfehlter Heartbeats bevor Peer als `inactive` markiert wird. Bei Ping-Intervall 60s entspricht `3` einem Timeout von ~3 Minuten. |
+| `HIVEMIND_FEDERATION_OFFLINE_THRESHOLD` | `3` | Anzahl verfehlter Heartbeats bevor Peer als `inactive` markiert wird. Bei Ping-Intervall 60s entspricht `3` einem Timeout von ~3 Minuten (~180s). |
 | `HIVEMIND_KEY_ROTATION_GRACE_SECONDS` | `3600` | Sekunden in denen der alte Key nach Rotation noch akzeptiert wird (für nicht-aktualisierte Peers) |
+
+> **Heartbeat-Timeout-Unterschied:** Es gibt zwei separate Offline-Detection-Systeme mit bewusst unterschiedlichen Schwellwerten: (1) **Hive Station** (`HIVE_STATION_HEARTBEAT_TIMEOUT_SECONDS=120`) erkennt Node-Ausfälle schneller (~2 verfehlte Pings) für die Control-Plane-Funktionen (Presence-Anzeige, Discovery). (2) **Node-to-Node** (`HIVEMIND_FEDERATION_OFFLINE_THRESHOLD=3`) ist toleranter (~3 Minuten) weil Federation-Datenverkehr (Skills, Epics, Tasks) eigene Retry-Logik über die Outbox hat und ein kurzzeitiger Netzwerk-Hiccup keinen unnötigen `inactive`-Status auslösen soll. Die Hive Station ist Control Plane (schnelle Reaktion auf Presence-Änderungen); der Outbox-Consumer ist Data Plane (resilient durch At-least-once-Retry).
