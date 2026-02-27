@@ -1,18 +1,18 @@
 {
   "external_id": "TASK-1A-013",
   "epic_ref": "EPIC-PHASE-1A",
-  "title": "Backup-Cron: pg_dump via APScheduler",
-  "description": "Täglicher pg_dump --format=custom via APScheduler-Job. Konfigurierbar via HIVEMIND_BACKUP_CRON + HIVEMIND_BACKUP_DIR. Retention: 7 tägliche + 4 wöchentliche Backups.",
+  "title": "Backup-Cron: pg_dump via Cron-Sidecar-Container",
+  "description": "Täglicher pg_dump --format=custom via separatem Cron-Sidecar-Container im Docker Compose Stack. Konfigurierbar via HIVEMIND_BACKUP_CRON + HIVEMIND_BACKUP_DIR. Retention: 7 tägliche + 4 wöchentliche + 3 monatliche Backups.",
   "state": "incoming",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [
-      "APScheduler als Dependency installiert und konfiguriert",
+      "db-backup Service in docker-compose.yml als Sidecar-Container konfiguriert",
       "Backup-Job läuft täglich (Default: 02:00 UTC)",
       "pg_dump --format=custom erstellt Backup in HIVEMIND_BACKUP_DIR",
-      "Retention-Policy: 7 tägliche + 4 wöchentliche Backups",
-      "Alte Backups werden automatisch gelöscht",
-      "Backup-Cron und Backup-Dir via Env-Vars konfigurierbar"
+      "Retention-Policy: 7 tägliche + 4 wöchentliche + 3 monatliche Backups",
+      "Alte Backups werden automatisch rotiert",
+      "Backup-Cron, Backup-Dir und Retention via Env-Vars konfigurierbar"
     ]
   },
   "tags": ["backend", "infrastructure", "backup"],

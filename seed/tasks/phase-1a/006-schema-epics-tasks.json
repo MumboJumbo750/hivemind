@@ -11,7 +11,8 @@
       "tasks-Tabelle mit allen Spalten inkl. self-ref für Subtasks existiert",
       "State-CHECK-Constraints auf epics.state und tasks.state vorhanden",
       "FK auf projects, users, nodes korrekt",
-      "Indexes auf häufig gefilterte Spalten (state, epic_id, assigned_to)"
+      "Indexes auf häufig gefilterte Spalten (state, epic_id, assigned_to)",
+      "DB-Trigger für epic_key und task_key Immutability (automatisch generierte Keys dürfen nach INSERT nicht geändert werden)"
     ]
   },
   "tags": ["backend", "database", "domain", "schema"],

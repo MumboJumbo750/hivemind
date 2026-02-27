@@ -28,7 +28,7 @@
 - [ ] Outbox-Tabelle und DLQ-Tabelle (noch kein Consumer)
 - [ ] Audit-Tabelle `mcp_invocations` (noch kein Audit-Writer)
 - [ ] Memory-Ledger-Schema: `memory_sessions`, `memory_summaries`, `memory_entries`, `memory_facts` Tabellen + Indexes (→ [Memory Ledger](../features/memory-ledger.md)); noch kein Embedding, noch keine Kompaktierung — nur Schema und `save_memory` als MCP-Write-Tool verfügbar
-- [ ] Backup-Cron: `pg_dump --format=custom` via APScheduler-Job (täglich 02:00 UTC), konfigurierbar via `HIVEMIND_BACKUP_CRON` + `HIVEMIND_BACKUP_DIR` (Default: `/backups`). Retention: 7 tägliche + 4 wöchentliche Backups (→ [Backup-Strategie](../architecture/overview.md#data-export--backup))
+- [ ] Backup-Cron: `pg_dump --format=custom` via Cron-Sidecar-Container im Docker Compose Stack (täglich 02:00 UTC), konfigurierbar via `HIVEMIND_BACKUP_CRON` + `HIVEMIND_BACKUP_DIR` (Default: `/backups`). Retention: 7 tägliche + 4 wöchentliche + 3 monatliche Backups (→ [Disaster Recovery](../architecture/disaster-recovery.md))
 - [ ] DB-Trigger für `epic_key` und `task_key` Immutability gemäß [data-model.md](../architecture/data-model.md) (automatisch generierte Keys dürfen nach Erstellung nicht geändert werden)
 
 ### Acceptance Criteria Phase 1a

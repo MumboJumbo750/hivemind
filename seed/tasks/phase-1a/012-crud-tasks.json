@@ -10,8 +10,8 @@
       "POST erstellt Task mit state=incoming",
       "GET listet Tasks eines Epics mit State-Filter",
       "PATCH /api/tasks/{task_key}/state validiert State-Transition",
-      "POST /api/tasks/{task_key}/approve → in_review → done",
-      "POST /api/tasks/{task_key}/reject → in_review → qa_failed",
+      "POST /api/tasks/{task_key}/review { action: approve } → in_review → done",
+      "POST /api/tasks/{task_key}/review { action: reject } → in_review → qa_failed",
       "Review-Gate: in_progress → done wird 422",
       "Epic-Auto-Transitions werden korrekt ausgelöst",
       "Integration-Tests für alle Transitions"

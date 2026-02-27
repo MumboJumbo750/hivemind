@@ -33,7 +33,7 @@ TASK_TRANSITIONS = {
     "in_progress": ["in_review", "blocked", "cancelled"],
     "in_review":   ["done", "qa_failed"],
     "blocked":     ["in_progress", "escalated", "cancelled"],
-    "qa_failed":   ["in_progress", "escalated", "cancelled"],
+    "qa_failed":   ["in_progress", "escalated"],
     "escalated":   ["in_progress", "cancelled"],
     "done":        [],
     "cancelled":   [],
@@ -47,7 +47,8 @@ TASK_TRANSITIONS = {
 | `scoped → ready` | `assigned_to` muss gesetzt sein |
 | `in_progress → in_review` | `result` muss vorhanden sein; Guards passed/skipped (ab Phase 5) |
 | `in_review → done` | Nur Owner oder Admin |
-| `qa_failed → in_progress` | Worker nimmt sich Task aktiv zurück |
+| `qa_failed → in_progress` | Worker nimmt sich Task aktiv zurück (nur wenn `qa_failed_count < 3`) |
+| `qa_failed → escalated` | System-Intercept wenn `qa_failed_count >= 3` und Worker `in_progress` anfordert |
 | `* → escalated` | 3x qa_failed ODER Decision-SLA > 72h |
 
 ### Epic-Auto-Transitions
