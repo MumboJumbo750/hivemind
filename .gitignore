@@ -1,0 +1,104 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+ENV/
+.env
+*.env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+pyrightconfig.json
+
+# Node / Frontend
+node_modules/
+dist/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+*.local
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vite
+/frontend/dist/
+/frontend/dist-ssr/
+
+# Generated API client (re-generated on build)
+/frontend/src/api/client/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# Docker
+.dockerignore
+
+# Database / Alembic
+*.db
+*.sqlite3
+/backend/alembic/versions/__pycache__/
+
+# IDE / Editor
+.vscode/settings.json
+.idea/
+*.iml
+*.iws
+.netbeans/
+nbproject/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+*.pid
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*~
+
+# Test outputs
+/htmlcov/
+/.tox/
