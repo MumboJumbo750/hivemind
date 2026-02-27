@@ -82,7 +82,7 @@
 
 1. **Hard Gates (systemisch):**
    - `result` vorhanden
-   - Guard-Status pro Guard (`passed|failed|skipped`)
+   - Guard-Status pro Guard (`passed|failed|skipped`) — siehe [kanonische Guard-Enforcement-Timeline](../features/guards.md#kanonische-guard-enforcement-timeline) für phasenabhängiges Verhalten
    - Eintrag in `in_review` ist technisch zulässig
 2. **Owner Judgment (fachlich):**
    - DoD-Checkliste und manuelle Qualitätsentscheidung
@@ -107,7 +107,7 @@
 │  DOCS:                                                          │
 │  ◈ EPIC-12 Architektur-Doc     — 210 Tokens                    │
 │                                                                 │
-│  Token-Budget:  810 / 6000 ████░░░░░░░░  (13%)                 │
+│  Token-Budget:  810 / 8000 ████░░░░░░░░  (10%)                 │
 │                                                                 │
 │  External Access: sentry (Phase 8)                             │
 └─────────────────────────────────────────────────────────────────┘
@@ -394,8 +394,8 @@ Empfohlene Zuordnung:
 
 | Gruppe | Typen |
 | --- | --- |
-| `ACTION NOW` | `sla_warning`, `sla_breach`, `decision_escalated_admin`, `escalation` |
-| `SOON` | `decision_request`, `decision_escalated_backup`, `review_requested`, `dead_letter` |
+| `ACTION NOW` | `sla_breach`, `escalation`, `decision_escalated_admin`, `dead_letter`, `peer_offline` |
+| `SOON` | `sla_warning`, `decision_request`, `decision_escalated_backup`, `guard_failed`, `review_requested`, `task_delegated`, `guard_proposal`, `restructure_proposal` |
 | `FYI` | alle übrigen Info-/Status-Events |
 
 **Notification-Typen (kanonische Liste → [data-model.md](../architecture/data-model.md)):**
@@ -431,9 +431,11 @@ Empfohlene Zuordnung:
 
 ```text
 ┌─ SETTINGS ──────────────────────────────────────────────────────┐
-│  [SYSTEM]  [PROJEKT]  [AUDIT]  [KI]                            │
-└─────────────────────────────────────────────────────────────────┘
+│  [SYSTEM]  [PROJEKT]  [AUDIT]  [KI]  [FEDERATION]              │
+└────────────────────────────────────────────────────────────────┘
 ```
+
+> **Tab-Sichtbarkeit:** FEDERATION-Tab ist nur sichtbar wenn `HIVEMIND_FEDERATION_ENABLED=true`. AUDIT-Tab ab Phase 4, KI-Tab ab Phase 8. SYSTEM und PROJEKT sind ab Phase 1 verfügbar.
 
 ### Tab: SYSTEM (Phase 1)
 
@@ -590,13 +592,18 @@ Im Skill Lab erscheint bei federierten Skills ein Origin-Badge:
 
 ---
 
-## Mercenary Loadout Screen (Phase F)
+## Mercenary Loadout Screen (Phase 4 Basis, Phase F Erweiterung)
 
 **🎮 Game Mode:** MERCENARY BRIEFING | **💼 Pro Mode:** WORKER VORBEREITEN
 
 **Zweck:** Bevor eine Quest/Task startet, wechselt die Prompt Station in den Briefing-State. Der Kommandant (Architekt-Agent) stellt das Loadout zusammen — welche Skills aus dem Arsenal bekommt der Mercenary für diese Mission? Dieser Moment ist bewusst ritualisiert.
 
 **Auslöser:** Task wechselt zu `ready` (Architekt hat Dekomposition + Context Boundary gesetzt) → Prompt Station wechselt in Briefing-State bevor der Worker-Prompt generiert wird.
+
+**Phasen-Verfügbarkeit:**
+- **Phase 4:** Basis-Loadout mit lokalen Skills + Budget-Prüfung (Arsenal verfügbar)
+- **Phase F:** Zusätzlich Federated Skills im Skill-Picker (Peer-Skills wählbar mit `[◈ peer-name]` Badge)
+- **Phase 1–3:** Kein Loadout-Screen — Bibliothekar wählt Skills automatisch oder per Prompt
 
 ```text
 ┌─ BEFEHLSSTATION ──────────────────────────────────────────────────┐

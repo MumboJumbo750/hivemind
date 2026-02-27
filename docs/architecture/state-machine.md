@@ -68,6 +68,7 @@ Sonderstates:
 - **`create_decision_request` ist atomar:** Das Tool erstellt den offenen Decision Request und setzt den Task in derselben DB-Transaktion von `in_progress` auf `blocked`
 - **`decompose_epic` Initialstate:** Tasks die via `decompose_epic` oder `create_task` erstellt werden, starten im State `scoped`. Der Architekt setzt danach Context Boundary + DoD und weist zu, danach Transition auf `ready`
 - **`cancelled` aus `in_review` ist nicht erlaubt** — Owner muss den Review abschließen (approve oder reject). Bei Epic-Cancel werden `in_review`-Tasks **nicht** automatisch gecancelt; der Owner muss sie zuerst reviewen
+- **Auto-Delegation bei Owner-Inaktivität:** Wenn der Owner > 72h inaktiv ist und `in_review`-Tasks blockieren, übernimmt der Backup-Owner (wenn gesetzt) oder Projekt-Admins die Review-Berechtigung (→ [rbac.md — Governance-Delegation](./rbac.md#governance-delegation--entlastungsmechanik))
 
 ---
 
@@ -136,6 +137,40 @@ Wenn ein Admin ein Epic cancelt:
 
 ---
 
+## Decision Request State Machine
+
+```text
+           ┌──────────┐
+           │   open   │ ← Worker: create_decision_request (atomar mit Task → blocked)
+           └────┬─────┘
+                │
+        ┌───────┼──────────────┐
+        │       │              │
+   ┌────▼──┐ ┌──▼──────┐ ┌───▼─────┐
+   │resolved│ │ expired │ │escalated│
+   └───────┘ └─────────┘ └─────────┘
+```
+
+### Decision Request Transitionen
+
+| Von | Nach | Wer | Bedingung |
+| --- | --- | --- | --- |
+| `open` | `resolved` | Owner/Backup-Owner/Admin (`resolve_decision_request`) | Innerhalb SLA (72h) |
+| `open` | `expired` | System (SLA-Cron) | 72h ohne Auflösung → Task `blocked → escalated`, DR `open → expired` |
+| `open` | `escalated` | — | Kein eigenständiger Übergang — `expired` markiert den DR; der zugehörige Task geht auf `escalated` |
+
+### Decision Request Regeln
+
+- **Erstellt nur aus `in_progress`:** `create_decision_request` setzt den Task atomar auf `blocked`. Aufrufe aus anderen States → 409 Conflict.
+- **Höchstens 1 offener DR pro Task:** Bevor ein neuer DR erstellt wird, prüft das Backend ob bereits `state = 'open'` für denselben Task existiert → 422 bei Duplikat. Zusätzlich DB-seitig abgesichert via `UNIQUE INDEX ON decision_requests(task_id) WHERE state = 'open'` (partielle Unique-Constraint).
+- **`resolved` ist final:** Ein aufgelöster DR kann nicht erneut geöffnet werden. Bei erneutem Blocker: neuer DR erstellen.
+- **`expired` ist final:** Ein abgelaufener DR kann nicht nachträglich resolved werden. Der Admin muss bei Eskalations-Auflösung (`resolve_escalation`) ggf. einen neuen DR erstellen oder die Entscheidung direkt dokumentieren.
+- **SLA-Kette:** 24h → Owner-Notification, 48h → Backup-Owner-Notification (wenn vorhanden), 72h → `expired` + Task `escalated` + Admin-Notification.
+- **Idempotenz:** `resolve_decision_request` mit identischer `idempotency_key` auf bereits resolved DR → Noop (kein Fehler).
+- **Cascading bei Epic-Cancel:** Offene DRs (`state = 'open'`) für gecancelte Tasks → `state = 'expired'`; SLA-Timer gestoppt.
+
+---
+
 ## Concurrency: Optimistic Locking
 
 Jeder mutierende Write auf eine bestehende Entität muss `expected_version` und `idempotency_key` mitschicken:
@@ -151,7 +186,7 @@ Jeder mutierende Write auf eine bestehende Entität muss `expected_version` und 
 }
 ```
 
-> Epics werden immer per UUID referenziert (kein textueller Epic-Key). Tasks werden API-seitig per `task_key` referenziert (z.B. `"TASK-88"`), intern aber auf `tasks.id` (UUID) aufgelöst. Siehe [mcp-toolset.md — Identifier-Konvention](./mcp-toolset.md#identifier-konvention).
+> Epics werden API-seitig per `epic_key` referenziert (z.B. `"EPIC-12"`), intern aber auf `epics.id` (UUID) aufgelöst. Tasks werden API-seitig per `task_key` referenziert (z.B. `"TASK-88"`), intern aber auf `tasks.id` (UUID) aufgelöst. Siehe [mcp-toolset.md — Identifier-Konvention](./mcp-toolset.md#identifier-konvention).
 
 - **`expected_version` mismatch** → HTTP 409 Conflict — Client muss reload und retry
 - **`idempotency_key` bereits bekannt** → selbe Response wie beim ersten Aufruf (kein Fehler)

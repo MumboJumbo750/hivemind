@@ -58,7 +58,7 @@
   - "Mit Epic verknüpfen"-Dialog
   - Versions-History anzeigen
 - [ ] Nexus Grid 2D (erster Stand):
-  - Force-directed Graph (D3.js oder Cytoscape.js)
+  - Force-directed Graph (Cytoscape.js — verbindlich, siehe [nexus-grid.md](../features/nexus-grid.md#bibliothek-entscheidung-cytoscapejs))
   - Fog-of-War-Overlay (unerkundete Nodes = dunkel/semi-transparent)
   - Click auf Node → Detail-Panel (verlinkter Docs, Skills, Tasks)
   - Kartierte Nodes hervorheben (● statt ░)

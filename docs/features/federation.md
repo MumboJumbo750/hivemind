@@ -271,6 +271,72 @@ UI-Hinweis: Der Button `[ÜBERNEHMEN]` in Gilde/Arsenal ruft `hivemind/fork_fede
 
 **Philosophie:** Origin-Authority statt Distributed Consensus → keine CRDTs, keine Vector Clocks, keine komplexe Merge-Logik.
 
+### Concurrent State Transitions bei Shared Epics
+
+Wenn zwei Nodes gleichzeitig State-Transitions auf denselben Shared-Task versuchen, greift **Origin-Authority mit Optimistic Locking**:
+
+```text
+Szenario: Ben (Peer) und Alex (Origin) ändern TASK-2 fast gleichzeitig
+
+1. Ben: TASK-2 in_progress → in_review  (Bens lokaler State)
+   → Ben sendet POST /federation/task/update { task_key, new_state: 'in_review', expected_version: 5 }
+
+2. Alex: TASK-2 in_progress → blocked    (Alex setzt lokal Decision Request)
+   → Alex hat Origin-Authority → schreibt direkt, version 5 → 6
+
+3. Bens Update kommt an bei Alex:
+   → expected_version: 5 ≠ aktuelle version: 6
+   → HTTP 409 Conflict zurück an Ben
+   → Ben erhält aktuellen State (blocked, version 6) in der 409-Response
+
+4. Bens Node aktualisiert lokalen State auf 'blocked' (version 6)
+   → Triage-Item auf Bens Node: "Task-State-Konflikt gelöst — TASK-2 ist jetzt 'blocked'"
+```
+
+**Regeln:**
+
+| Regel | Beschreibung |
+| --- | --- |
+| **Origin-Wins** | Bei Version-Konflikten hat die Origin-Node den autoritativen State. Peers übernehmen |
+| **Optimistic Locking** | Alle `/federation/task/update`-Calls senden `expected_version`; Mismatch → 409 |
+| **Keine parallele Task-Bearbeitung** | Ein Shared-Task hat genau einen `assigned_node_id` — nur diese Node darf State-Transitions ausführen |
+| **State-Sync bei Reconnect** | Nach Netzwerk-Partition holt sich der Peer via `GET /federation/sync?since=<last_seen>` alle verpassten Updates |
+| **Triage bei unlösbarem Konflikt** | Falls ein `409` nach 3 automatischen Retries nicht auflösbar ist → `sync_dead_letter` + Triage-Item |
+
+### Peer-Entfernung / Offboarding
+
+Wenn ein Peer via `[ENTFERNEN]` oder `[BLOCKIEREN]` aus der Gilde entfernt wird, muss ein definierter Cleanup-Prozess greifen:
+
+**`[BLOCKIEREN]` (reversibel):**
+
+```text
+1. nodes.status → 'blocked'
+2. Alle ausstehenden sync_outbox-Einträge für diesen Peer → state: 'cancelled'
+3. Keine neuen Outbound-Nachrichten an diesen Peer
+4. Eingehende Nachrichten von diesem Peer → HTTP 403 (Signatur gültig, aber blocked)
+5. Shared Epics: Tasks die auf dem blockierten Peer lagen → state: 'blocked' + Triage-Item
+   "TASK-X war auf [blockierter Peer] — Neu zuweisen oder abbrechen?"
+6. Federated Skills/Wiki von diesem Peer: bleiben als read-only Kopie (origin_node_id unverändert)
+   Kein Auto-Delete — Owner kann manuell löschen
+```
+
+**`[ENTFERNEN]` (irreversibel, erfordert Admin-Bestätigung):**
+
+```text
+1. Alle Schritte von [BLOCKIEREN] +
+2. nodes-Eintrag → status: 'removed' (nicht gelöscht — Audit-Trail)
+3. Federated Skills/Wiki von diesem Peer:
+   → Admin-Dialog: "3 Skills und 2 Wiki-Artikel von [Peer]. Behalten (ohne Updates) oder löschen?"
+   → Bei 'Behalten': federation_scope → 'local', origin_node_id bleibt (für Provenance), kein Sync mehr
+   → Bei 'Löschen': Soft-Delete (restore innerhalb 30 Tage möglich)
+4. Code-Nodes mit origin_node_id = entfernter Peer: bleiben in der Karte (Fog of War nicht zurücksetzen)
+5. sync_dead_letter-Einträge für diesen Peer: archiviert, nicht re-queueable
+```
+
+> **Wiederaufnahme:** Ein blockierter Peer kann über `[ENTSPERREN]` wieder aktiviert werden → Full-Sync. Ein entfernter Peer muss komplett neu hinzugefügt werden (neuer Key-Exchange).
+
+> **Schema-Referenz Offboarding:** `nodes.status` unterstützt die Werte `active|inactive|blocked|removed` (→ [data-model.md](../architecture/data-model.md)). `sync_outbox.state` unterstützt `cancelled` für abgebrochene Outbound-Einträge. Soft-Delete für Skills/Wiki nutzt `nodes.deleted_at` (TIMESTAMPTZ) — Einträge mit `deleted_at IS NOT NULL` sind logisch gelöscht, bleiben aber für Audit lesbar und sind innerhalb von 30 Tagen wiederherstellbar.
+
 ---
 
 ## Federated Kartograph — Die gemeinsame Weltkarte

@@ -12,7 +12,7 @@
 6. **Global Skills mit Gate** — Lesbar für alle, aktivierbar nur über Merge-Prozess.
 7. **Security by Default** — Kein Write ohne AuthN, AuthZ, Scope und Audit.
 8. **Deterministische Workflows** — Eindeutige Statusmaschine, Idempotenz, Konfliktregeln.
-9. **Sovereign Nodes** — Jeder Entwickler betreibt seine eigene vollständige Instanz. Federation ist opt-in, nicht Pflicht.
+9. **Sovereign Nodes** — Jeder Entwickler betreibt seine eigene vollständige Instanz. Federation ist architektonisch nativ (Schema ab Phase 1, kein Nachbau), aber operativ opt-in — Aktivierung über `HIVEMIND_FEDERATION_ENABLED`.
 
 ---
 
@@ -86,7 +86,9 @@ Konfiguration: in der Datenbank (`app_settings`-Tabelle, Key `hivemind_mode`). K
 
 ## Federation Modus
 
-Neben Solo und Team gibt es einen dritten Betriebsmodus: **Federation**. Alle drei Modi sind kompatibel und können kombiniert werden.
+Neben Solo und Team gibt es einen dritten Betriebsmodus: **Federation**. Federation ist orthogonal zu `hivemind_mode` (solo|team) und wird separat über `HIVEMIND_FEDERATION_ENABLED` aktiviert.
+
+> **Abgrenzung:** `hivemind_mode` (solo|team) steuert RBAC-Enforcement und Actor-Modell. Federation steuert Peer-Kommunikation und Datenverteilung. Beide sind unabhängig kombinierbar: Solo+Federation (Einzel-Node synct mit Peers ohne RBAC), Team+Federation (geteilte Instanz mit RBAC synct mit Peers).
 
 | Modus | Beschreibung | Typischer Einsatz |
 | --- | --- | --- |
@@ -94,7 +96,41 @@ Neben Solo und Team gibt es einen dritten Betriebsmodus: **Federation**. Alle dr
 | **Team** | Geteilte zentrale Instanz, RBAC aktiv | Team mit einem gemeinsamen Server |
 | **Federation** | Jeder Node ist souverän; Peers teilen Skills/Wiki/Epics | Team im selben VPN — jeder hat eigenen Host |
 
-Federation ist kein optionales Feature — es ist die Grundlage des kollaborativen Spielerlebnisses. Jeder Entwickler betreibt seine eigene vollständige Hivemind-Instanz (eigene DB, eigenes Docker Compose). Nodes kennen sich über eine `peers.yaml` Peer-Liste (VPN-IPs) und können:
+---
+
+## Multi-Projekt-Kontextwechsel
+
+Der System Bar ermöglicht das Umschalten zwischen Projekten. Beim Wechsel gelten folgende Regeln:
+
+| Bereich | Verhalten bei Projekt-Wechsel |
+| --- | --- |
+| **Prompt Queue** | Queue wird nach neuem Projekt gefiltert. Alte Queue-Einträge des vorherigen Projekts verschwinden aus der Ansicht, bleiben aber im Backend bestehen. Cross-Projekt-Queue-Items (SLA-Warnungen, Eskalationen) bleiben sichtbar wenn `HIVEMIND_CROSS_PROJECT_ALERTS=true` (Default: true). |
+| **Notifications** | Notifications sind **projektübergreifend** — kein Filter beim Wechsel. Das Notification Tray zeigt immer alle ungelesenen Notifications aller Projekte. |
+| **Nexus Grid** | Grid wird zurückgesetzt auf das neue Projekt. Der letzte Viewport-State (Zoom, Position) wird pro Projekt im LocalStorage gespeichert und beim Rückkehr wiederhergestellt. |
+| **Command Deck** | Zeigt Epics/Tasks des neuen Projekts. |
+| **Arsenal / Skill Lab** | Zeigt projekt-spezifische + globale Skills. |
+| **Wiki** | Wiki ist projektunabhängig — kein Wechsel nötig. |
+| **Settings** | Tab PROJEKT wechselt auf das neue Projekt (Mitglieder, Rollen). |
+| **LocalStorage Key** | `hivemind:last_project_id:<user_id>` — wird beim Reload automatisch wiederhergestellt. |
+
+> **Technisch:** Der Frontend-Store (`useProjectStore`) hält die aktive `project_id`. Alle API-Calls die projekt-scoped sind, senden diese als Query-Parameter oder Path-Segment. SSE-Subscriptions werden beim Wechsel ge-unsubscribed und neu-subscribed.
+
+---
+
+## Solo-Modus: Task-Assignment
+
+Im Solo-Modus (`hivemind_mode = 'solo'`) gibt es nur einen User. Task-Assignment wird automatisiert:
+
+| Szenario | Verhalten |
+| --- | --- |
+| `assign_task` aufgerufen (Architekt-Agent) | `assigned_to` wird automatisch auf den Solo-User gesetzt, unabhängig vom übergebenen `user_id`-Parameter. Das Backend erkennt Solo-Modus und substituiert. |
+| `assign_task` nicht aufgerufen | Beim Versuch `scoped → ready` prüft das Backend: `assigned_to` nicht gesetzt? → Automatisch mit Solo-User befüllen (kein 422). |
+| Epic-Owner | Automatisch der Solo-User. `owner_id` und `backup_owner_id` werden auf den Solo-User gesetzt. |
+| Decision Request SLA | Deaktiviert im Solo-Modus (kein Timeout, da Solo-User gleichzeitig Owner und Worker ist). |
+
+> **Regel:** Im Solo-Modus wird `assign_task` nicht übersprungen — es wird mit dem Solo-User aufgerufen. Der Workflow bleibt identisch, nur das Ziel ist implizit. Das ermöglicht einen nahtlosen Übergang zu Team-Modus ohne Code-Änderung.
+
+Federation ist architektonisch nativ — das Schema (`nodes`, `node_identity`, `origin_node_id`, `federation_scope`) wird in Phase 1 angelegt, nicht nachträglich aufgepfropft. Operativ ist Federation opt-in: ohne `HIVEMIND_FEDERATION_ENABLED=true` bleiben alle Federation-Endpoints inaktiv und die Node arbeitet rein lokal. Jeder Entwickler betreibt seine eigene vollständige Hivemind-Instanz (eigene DB, eigenes Docker Compose). Nodes kennen sich über eine `peers.yaml` Peer-Liste (VPN-IPs) und können:
 
 - **Skills & Wiki-Artikel** mit `federation_scope = 'federated'` an alle bekannten Peers pushen
 - **Epics teilen** — Sub-Tasks eines Epics können einem anderen Node zugewiesen werden und werden dort abgearbeitet
@@ -150,6 +186,132 @@ Frontend und Backend kommunizieren Echtzeitdaten via **Server-Sent Events (SSE)*
 | `/events/triage` | Neue `[UNROUTED]`-Items, Proposals | Triage Station |
 
 SSE wurde gewählt weil: (1) bereits für MCP HTTP-Transport verwendet, (2) simpler als WebSocket für unidirektionale Server→Client-Push, (3) automatische Reconnection durch Browser. Polling-Fallback: 30 Sekunden für Clients die SSE nicht unterstützen.
+
+### SSE-Verbindungsmanagement
+
+| Parameter | Wert | Konfigurierbar |
+| --- | --- | --- |
+| **Heartbeat-Intervall** | 15 Sekunden (`:heartbeat` Comment-Event) | `HIVEMIND_SSE_HEARTBEAT_INTERVAL` |
+| **Client Timeout-Detection** | 45 Sekunden ohne Event (inkl. Heartbeat) → Verbindung als tot betrachten | Frontend-Konstante `SSE_DEAD_TIMEOUT_MS` |
+| **Reconnection-Delay** | Exponential Backoff: 1s → 2s → 4s → 8s → max 30s | Frontend: `SSE_RECONNECT_BASE_MS`, `SSE_RECONNECT_MAX_MS` |
+| **Fallback auf Polling** | Nach 3 fehlgeschlagenen SSE-Reconnects → Polling alle 30s | `HIVEMIND_POLL_FALLBACK_INTERVAL` |
+| **Rückkehr zu SSE** | Polling prüft Server-Health; bei Erfolg → SSE-Reconnect-Versuch | Automatisch |
+
+**Frontend-Ablauf:**
+1. SSE-Stream öffnen → Events empfangen
+2. Heartbeat innerhalb von 45s nicht empfangen → SSE-Stream schließen
+3. Reconnect mit Exponential Backoff versuchen (max 3 Versuche)
+4. Nach 3 Fehlversuchen → Polling-Fallback aktivieren, Status-Badge auf ◌ (getrennt)
+5. Polling prüft `/health` + letzte Events → bei Erfolg SSE erneut versuchen
+6. SSE wiederhergestellt → Polling deaktivieren, Status-Badge auf ● (verbunden)
+
+---
+
+## Error States & UI-Fehlerbehandlung
+
+Das Frontend behandelt Fehler nach einer einheitlichen Strategie. Alle Error-States sind visuell definiert und benötigen keine spezifischen Mockups pro View — sie nutzen eine gemeinsame `ErrorBoundary`-Komponente.
+
+### HTTP-Fehler
+
+| HTTP Status | UI-Verhalten | Benutzeraktion |
+| --- | --- | --- |
+| 401 Unauthorized | Redirect zum Login; Session-Token erneuern | Erneut anmelden |
+| 403 Forbidden | Inline-Fehlerbanner: "Keine Berechtigung für diese Aktion" + betroffene Permission | — (informativ) |
+| 409 Conflict | Toast: "Daten wurden zwischenzeitlich geändert — bitte neu laden" + Auto-Reload des betroffenen Elements | [NEU LADEN] Button |
+| 422 Unprocessable | Inline-Validation-Fehler am betroffenen Formularfeld oder Guard-Status; bei Guard-Block: Liste offener Guards anzeigen | Eingabe korrigieren |
+| 429 Too Many Requests | Toast: "Anfrage-Limit erreicht — bitte warten" + Retry-After Header beachten | Automatisches Retry nach Header-Wert |
+| 500 Internal Server Error | Fullscreen-Error-Banner mit Retry-Button; Fehler-ID aus Response anzeigen | [ERNEUT VERSUCHEN] |
+| Netzwerk-Timeout (kein Response) | Nach 30s: Toast "Verbindung zum Server verloren" + MCP-Badge auf ◌ | Automatischer Retry |
+
+### MCP-Verbindungsabbruch
+
+| Situation | UI-Verhalten |
+| --- | --- |
+| MCP-Endpoint nicht erreichbar | Status-Badge ● → ◌; Prompt Station zeigt "MCP nicht verbunden — Prompts können nicht generiert werden" |
+| MCP-Response-Timeout (> 60s) | Spinner stoppt → Toast: "MCP-Operation Timeout — prüfe den AI-Client" |
+| MCP wiederhergestellt | Status-Badge ◌ → ●; Toast: "MCP-Verbindung wiederhergestellt" |
+
+### Backend-Container-Crash
+
+| Situation | UI-Verhalten |
+| --- | --- |
+| SSE-Stream bricht ab + Health-Check schlägt fehl | Fullscreen-Overlay: "Backend nicht erreichbar" mit pulsierendem Reconnect-Indikator |
+| Backend wieder erreichbar | Overlay verschwindet; alle Views laden neu; Toast: "Verbindung wiederhergestellt" |
+
+### Reconnection-Strategie (zusammengefasst)
+
+```text
+SSE-Disconnect → Exponential Backoff (1s/2s/4s/8s/30s max) × 3 Versuche
+  ├─ Erfolg → SSE restored, alle Subscriptions erneuern
+  └─ 3× Fehlgeschlagen → Polling-Fallback (30s)
+       ├─ /health OK → SSE erneut versuchen
+       └─ /health Fail → Overlay "Backend nicht erreichbar"
+```
+
+---
+
+## Data Export & Backup
+
+Hivemind läuft als souveräne, selbst-gehostete Instanz. Export und Backup sind Pflicht-Features.
+
+### Backup-Strategie
+
+| Komponente | Methode | Zyklus | Konfig |
+| --- | --- | --- | --- |
+| **PostgreSQL** | `pg_dump --format=custom` via Cron-Job im Docker-Container | Täglich 02:00 UTC (Default) | `HIVEMIND_BACKUP_CRON`, `HIVEMIND_BACKUP_DIR` |
+| **Uploads / Attachments** | Dateisystem-Snapshot des `volumes/uploads`-Verzeichnisses | Zusammen mit DB-Backup | Selbes Backup-Dir |
+| **Ed25519 Keys** | Exportiert via `hivemind export-keys` CLI-Befehl; **nicht** im regulären Backup enthalten (Separation of Secrets) | Manuell bei Setup + nach Key-Rotation | Passwort-geschützter Export |
+| **Retention** | Letzte N Backups behalten, ältere löschen | Default: 7 tägliche + 4 wöchentliche | `HIVEMIND_BACKUP_RETENTION_DAILY`, `_WEEKLY` |
+
+### Daten-Export (User-facing)
+
+| Export | Format | Verfügbar ab | MCP-Tool / Endpoint |
+| --- | --- | --- | --- |
+| **Projektzusammenfassung** | Markdown (.md) | Phase 1 | `GET /api/projects/:id/export` |
+| **Epics + Tasks** | JSON oder CSV | Phase 2 | `GET /api/projects/:id/export?format=json&scope=epics` |
+| **Wiki** | Markdown-Archiv (.zip) | Phase 5 | `GET /api/projects/:id/wiki/export` |
+| **Skills** | JSON (inkl. Versionshistorie) | Phase 4 | `GET /api/projects/:id/skills/export` |
+| **Vollständig (alle Daten)** | `pg_dump`-kompatibles SQL oder JSON | Phase 6 | `hivemind export-full` CLI |
+| **Audit-Log** | CSV | Phase 6 | `GET /api/audit/export?from=&to=` |
+
+### Restore
+
+```bash
+# Vollständiges Restore aus Backup
+hivemind restore --backup /backups/hivemind-2025-01-15.dump
+
+# Nur Datenbank (ohne Uploads)
+hivemind restore --backup /backups/hivemind-2025-01-15.dump --db-only
+
+# Dry-Run (validate ohne zu schreiben)
+hivemind restore --backup /backups/hivemind-2025-01-15.dump --dry-run
+```
+
+> **Phase F (Federation):** Restore setzt `origin_node_id` korrekt. Peers werden nach Restore via `/federation/ping` re-announced. Peers mit zwischenzeitlichen Änderungen erhalten ein Full-Sync.
+
+---
+
+## Rate-Limiting & Throttling
+
+Alle API-Endpoints sind rate-limited. Die Limits gelten pro Actor (identifiziert via JWT `actor_id`).
+
+| Endpoint-Kategorie | Limit | Zeitfenster | HTTP bei Überschreitung |
+| --- | --- | --- | --- |
+| **Read-Tools** (`get_*`, `list_*`, `search_*`) | 120 Requests | 60 Sekunden | 429 + `Retry-After` Header |
+| **Write-Tools** (`create_*`, `update_*`, `submit_*`, `propose_*`) | 30 Requests | 60 Sekunden | 429 + `Retry-After` Header |
+| **Admin-Writes** (`merge_*`, `reject_*`, `resolve_*`, `cancel_*`) | 20 Requests | 60 Sekunden | 429 |
+| **Webhook-Ingest** (`/webhooks/*`) | 60 Requests | 60 Sekunden | 429 (pro Source-IP) |
+| **Federation-Endpoints** (`/federation/*`) | 60 Requests | 60 Sekunden | 429 (pro Peer-Node-ID) |
+| **Health-Check** (`/health`) | Kein Limit | — | — |
+| **SSE-Streams** (`/events/*`) | 5 gleichzeitige Verbindungen | pro User | 429 bei 6. Verbindung |
+
+**Phase 8 (Autonomy) Erweiterung:**
+- AI-Provider-Calls (Claude/OpenAI API) werden via separatem Token-Bucket limitiert: max `HIVEMIND_AI_RPM` Requests/Minute (Default: 10) um Provider-Rate-Limits nicht zu triggern.
+- Federation Peer-to-Peer: Zusätzliches per-Peer Throttling via `HIVEMIND_FEDERATION_PEER_RPM` (Default: 30/min) gegen Abuse durch kompromittierte Peers.
+
+**Implementation:** Middleware-basiert im FastAPI-Service. Phase 1–4: In-Memory Token Bucket (ausreichend für Single-Instance). Ab Phase 8 bei Multi-Worker Setup: Redis-basierter Distributed Rate Limiter evaluieren.
+
+> **DDoS-Schutz:** Rate-Limiting ist die erste Verteidigung. Zusätzlich: Federation-Endpoints akzeptieren nur signierte Requests (Ed25519); Webhook-Endpoints validieren HMAC-Signatures. Nicht-authentifizierte Endpoints (nur `/health`) sind unkritisch.
 
 ---
 

@@ -70,6 +70,8 @@ Tag-Filterung ist in allen Phasen aktiv und wird **vor** der Text-/Similarity-Su
 
 ## Datenmodell
 
+> **Kanonisches Schema:** Das autoritäre Schema steht in [data-model.md](../architecture/data-model.md). Die folgenden SQL-Snippets sind vereinfachte Auszüge zur Illustration. Bei Abweichungen gilt data-model.md.
+
 ```sql
 CREATE TABLE wiki_articles (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -79,9 +81,10 @@ CREATE TABLE wiki_articles (
   tags          TEXT[] NOT NULL DEFAULT '{}',
   linked_epics  UUID[] DEFAULT '{}',
   linked_skills UUID[] DEFAULT '{}',
-  author_id     UUID NOT NULL REFERENCES users(id),
+  author_id     UUID REFERENCES users(id),  -- NULL erlaubt für federated (origin_node_id gesetzt)
   embedding     vector(768),                -- default: nomic-embed-text; Provider-Wechsel siehe data-model.md
   version       INT NOT NULL DEFAULT 1,
+  -- Federation-Spalten: origin_node_id, federation_scope — siehe data-model.md
   created_at    TIMESTAMPTZ DEFAULT now(),
   updated_at    TIMESTAMPTZ DEFAULT now()
 );

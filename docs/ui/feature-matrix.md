@@ -12,7 +12,7 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 | --- | --- | --- | --- |
 | Aktiven Prompt anzeigen | Prompt Station | Prompt Card + Copy-Button | 1 |
 | Agent-Queue verwalten | Prompt Station | Geordnete Warteschlange mit Priorisierung | 1 |
-| Queue-Priorisierung begruenden | Prompt Station | "Warum jetzt?"-Badges (`ESCALATED`, `DECISION OFFEN`, `SLA <4h`) pro Queue-Eintrag | 1 |
+| Queue-Priorisierung begruenden | Prompt Station | "Warum jetzt?"-Badges pro Queue-Eintrag. **Phase 1–2:** nur `NORMAL` und `FOLLOW-UP` (da Escalations/Decisions/SLA erst später existieren). **Ab Phase 6:** vollständige Badge-Palette (`ESCALATED`, `DECISION OFFEN`, `SLA <4h`, etc.) | 1 |
 | Menschliche Aktionen ankündigen | Prompt Station | "Jetzt bist DU dran"-State mit Link zur Aktion | 1 |
 | Menschliche Aktion kontextualisieren | Prompt Station | Deadline + Grund im `human_action_required`-State | 1 |
 | Prompt anpassen (manuell) | Prompt Station | Bearbeitbares Textfeld vor dem Kopieren | 2 |
@@ -84,7 +84,7 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 
 | Funktion | View | UI-Element | Phase |
 | --- | --- | --- | --- |
-| Code-Graph 2D | Nexus Grid | Force-directed Graph (D3.js/Cytoscape.js) | 5 |
+| Code-Graph 2D | Nexus Grid | Force-directed Graph (**Cytoscape.js**) | 5 |
 | Fog of War Overlay | Nexus Grid | Semi-transparente Maske über unerkundeten Nodes | 5 |
 | Node Detail | Nexus Grid | Click → Detail-Panel (Docs, Skills, Bugs, Tasks) | 5 |
 | Epic-Overlay Toggle | Nexus Grid | Layer-Switcher (welches Epic deckt welche Nodes) | 5 |
@@ -125,7 +125,7 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 | Gildenwissen browsen | Gilde | Federated-Skill-Liste von Peers mit `[ÜBERNEHMEN]`-Button (ruft `hivemind/fork_federated_skill`) | F |
 | Skill übernehmen (lokaler Fork) | Gilde / Arsenal | Skill aus Peer-Node als lokaler Draft-Fork mit `extends` importieren | F |
 | Gilde-Status in System Bar | System Bar | `[◈ GILDE: 2/3 ▾]` Dropdown mit Live-Peer-Status | F |
-| Mercenary Loadout Screen | Prompt Station | BRIEFING-State wenn Task `ready` (Architekt fertig) → intermediärer Schritt vor Worker-Prompt | F |
+| Mercenary Loadout Screen | Prompt Station | BRIEFING-State wenn Task `ready` (Architekt fertig) → intermediärer Schritt vor Worker-Prompt. **Basis-Loadout (Skill-Auswahl + Budget-Prüfung) ab Phase 4; Federated Skills im Loadout ab Phase F.** | 4 |
 | Federated Skill im Loadout | Mercenary Loadout | Peer-Skills wählbar mit `[◈ peer-name]` Origin-Badge | F |
 | Task an Peer delegieren | Command Deck | Task-Detail: `[AN PEER DELEGIEREN ▾]` Dropdown | F |
 | Peer-Task-Status sehen | Command Deck | Task-Badge `[◈ ben-hivemind ●]` im Epic-Überblick | F |

@@ -34,7 +34,7 @@ Triage erfordert die **`admin`-Rolle**:
 | `cancel_task` | Tasks abbrechen |
 | `reassign_owner` | Epic-Owner wechseln |
 
-> "Triage" ist keine eigene RBAC-Rolle, sondern eine **Admin-Funktion**. Nur User mit `role = 'admin'` haben Zugriff auf die Triage Station und können `get_triage` aufrufen.
+> "Triage" ist keine eigene RBAC-Rolle, sondern eine **Admin-Funktion**. Nur User mit `role = 'admin'` haben Zugriff auf die Triage Station und können `get_triage` aufrufen. Ab Phase 7 können Admins Triage-Rechte an ausgewählte User delegieren via `app_settings.triage_delegates` (→ [rbac.md — Governance-Delegation](../architecture/rbac.md#governance-delegation--entlastungsmechanik)).
 
 ---
 
@@ -74,7 +74,10 @@ Triage erfordert die **`admin`-Rolle**:
     → Admin bestätigt oder überschreibt
 
 4. Event geroutet → routing_state = 'routed'
-   → Neuer Task oder Bug-Report im Ziel-Epic
+   → Admin wählt `create_as`: 'task' oder 'bug'
+   → 'task': Neuer Task im Ziel-Epic (state='incoming')
+   → 'bug': Bug-Report in node_bug_reports + Verknüpfung mit Epic
+   → Entscheidungshilfe: Sentry-Events → default 'bug'; YouTrack-Issues → default 'task'
 ```
 
 ---

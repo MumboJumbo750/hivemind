@@ -9,6 +9,25 @@ Guards sind die **ausführbare Verifikationsschicht** von Hivemind. Während die
 
 ---
 
+## Kanonische Guard-Enforcement-Timeline
+
+Diese Tabelle ist die **einzige verbindliche Referenz** für Guard-Verhalten pro Phase. Alle anderen Dokumente (views.md, feature-matrix.md, mcp-toolset.md) verweisen hierher.
+
+| Phase | Sichtbar? | Informativ/Blockierend? | Self-Reported? | System-Executed? | Details |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Nein (kein Arsenal) | — | — | — | Guards existieren im Schema, sind aber nicht in der UI sichtbar |
+| 2 | Ja (Review Panel, kompakt) | **Informativ** — kein Blocker für `in_review` | Ja | Nein | Guard-Status im Review Panel als Checkliste; `report_guard_result` verfügbar aber optional |
+| 3 | Ja (Review Panel + Worker-Prompt) | **Informativ** — kein Blocker | Ja | Nein | Guards erscheinen im Worker-Prompt; Reporting empfohlen |
+| 4 | Ja (Arsenal: Guard-Tab + Review) | **Informativ** — kein Blocker | Ja | Nein | Guards browsbar im Arsenal; Guard-Proposals möglich |
+| 5 | Ja (+ Provenance-Anzeige) | **Blockierend** — `in_review` nur wenn alle Guards `passed\|skipped` | Ja (mit `source: self-reported` Badge) | Nein | Backend gibt 422 bei offenen Guards; Provenance-Marker im Review Panel |
+| 6 | Ja | **Blockierend** | Ja (self-reported) | Nein | Keine Änderung zu Phase 5 |
+| 7 | Ja | **Blockierend** | Ja (self-reported) | Nein | Keine Änderung zu Phase 5 |
+| 8 | Ja | **Blockierend** | Nein (bei API-Key-Modus) | **Ja** (Autonomy) | Backend führt Guards via Allowlist aus; `source: system-executed`; Worker meldet nicht mehr selbst |
+
+> **Kurzformel:** Phase 1: unsichtbar → Phase 2–4: sichtbar + informativ → Phase 5–7: sichtbar + blockierend + self-reported → Phase 8: sichtbar + blockierend + system-executed.
+
+---
+
 ## Guard-Typen
 
 | Typ | Beschreibung | Beispiel |
@@ -60,6 +79,20 @@ In Phase 1–7 sind Guard-Ergebnisse **self-reported** — das Backend verifizie
 | **Working Directory** | Ausführung immer im Projekt-Root (konfigurierbar). Kein `cd` außerhalb des Roots. |
 | **Resource Limits** | CPU + Memory via cgroup (konfigurierbar, default: 1 CPU, 512 MB). |
 | **No Shell Injection** | Commands werden als Array übergeben (nicht als Shell-String) — keine String-Interpolation. |
+
+**Execution-Umgebung (Phase 8):**
+
+Guards werden **im selben Docker-Container** ausgeführt, in dem das Projekt-Repository gemountet ist. Keine separate Container-Isolation pro Guard-Execution in Phase 8 (Overhead zu hoch für typische Lint/Test-Checks). Stattdessen:
+
+| Aspekt | Umsetzung |
+| --- | --- |
+| **Prozess-Isolation** | `subprocess.run()` mit `shell=False`, eigenem `cwd` und Timeout |
+| **Filesystem** | Read-only-Mount des Projekt-Repos (`HIVEMIND_PROJECT_ROOT`); Guard-Writes nur in `/tmp/hivemind-guard-<uuid>/` |
+| **Netzwerk** | Kein Netzwerk-Zugriff für Guard-Prozesse (via `--network=none` bei Container-Start oder `seccomp`-Profil) |
+| **Parallelität** | Maximal `HIVEMIND_GUARD_PARALLEL` Guards gleichzeitig (Default: 2) — verhindert Resource-Starvation |
+| **Cleanup** | `/tmp/hivemind-guard-<uuid>/` wird nach Execution gelöscht (auch bei Timeout/Crash) |
+
+> **Evaluierung für Phase 9+:** Bei Bedarf (z.B. untrusted Guard-Commands von Peers) kann auf Container-per-Guard gewechselt werden (Docker-in-Docker oder Sidecar-Pattern). Phase 8 priorisiert Einfachheit.
 
 > In Phase 1–7 liegt die Execution-Verantwortung beim Worker. Das Backend speichert nur das Ergebnis. Keine automatische Command-Ausführung durch Hivemind.
 

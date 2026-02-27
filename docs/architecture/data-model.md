@@ -16,8 +16,11 @@ node_identity
 -- Core
 users
 app_settings               → users
+level_thresholds
+badge_definitions
 projects
 project_members            → users, projects
+user_achievements          → users, badge_definitions
 epics                      → projects, users, nodes (origin_node_id)
 tasks                      → epics, users, nodes (assigned_node_id), (self-ref für Subtasks)
 skills                     → projects, users, nodes (origin_node_id)
@@ -27,7 +30,8 @@ skill_change_proposals     → skills, users             (nach skills — FK auf
 guard_change_proposals     → guards, users             (nach task_guards — FK auf guards.id)
 docs                       → epics, users
 context_boundaries         → tasks, users
-wiki_articles              → users, nodes (origin_node_id)
+wiki_categories            (self-ref für parent_id)
+wiki_articles              → wiki_categories, users, nodes (origin_node_id)
 wiki_versions              → wiki_articles, users
 code_nodes                 → projects, users
 code_edges                 → projects, code_nodes
@@ -35,6 +39,7 @@ node_bug_reports           → code_nodes
 epic_node_links            → epics, code_nodes
 task_node_links            → tasks, code_nodes
 mcp_invocations            → users
+prompt_history             → projects, epics, tasks, users
 sync_outbox                (target_node_id → nodes optional)
 sync_dead_letter           → sync_outbox, users
 decision_requests          → tasks, epics, users
@@ -64,17 +69,25 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE nodes (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   node_name   TEXT NOT NULL,        -- "alex-hivemind", "ben-hivemind"
-  node_url    TEXT NOT NULL,        -- "http://192.168.1.10:8000"
-  public_key  TEXT,                 -- Ed25519 Public Key (PEM) — NULL bis Key-Exchange
-  status      TEXT NOT NULL DEFAULT 'active', -- active|inactive|blocked
+  node_url    TEXT NOT NULL UNIQUE,  -- "http://192.168.1.10:8000" — eindeutig pro Node
+  public_key  TEXT UNIQUE,           -- Ed25519 Public Key (PEM) — NULL bis Key-Exchange; eindeutig wenn gesetzt
+  status      TEXT NOT NULL DEFAULT 'active', -- active|inactive|blocked|removed
+  -- active:   Peer ist verbunden und funktional
+  -- inactive: Peer ist nicht erreichbar (automatisch via Heartbeat)
+  -- blocked:  Admin hat Peer blockiert (reversibel, kein Sync)
+  -- removed:  Admin hat Peer endgültig entfernt (irreversibel, Audit-Trail bleibt)
   last_seen   TIMESTAMPTZ,          -- letzter erfolgreicher /federation/ping
+  deleted_at  TIMESTAMPTZ,          -- Soft-Delete: gesetzt bei Entfernung, Peer bleibt für Audit sichtbar
   created_at  TIMESTAMPTZ DEFAULT now()
 );
 
 -- Identität dieser Node (genau 1 Zeile)
 -- Wird beim ersten Start auto-generiert wenn noch nicht vorhanden
+-- Single-Row-Enforcement: node_id referenziert die eigene Zeile in nodes + singleton_guard erzwingt max. 1 Zeile
 CREATE TABLE node_identity (
-  node_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  node_id        UUID PRIMARY KEY REFERENCES nodes(id),  -- FK auf eigenen Eintrag in nodes
+  singleton_guard BOOLEAN NOT NULL DEFAULT true UNIQUE CHECK (singleton_guard = true),
+  -- singleton_guard: UNIQUE + CHECK(true) garantiert exakt 0 oder 1 Zeile
   node_name   TEXT NOT NULL,
   private_key TEXT NOT NULL,  -- Ed25519 Private Key (PEM, at-rest verschlüsselt via HIVEMIND_KEY_PASSPHRASE)
   public_key  TEXT NOT NULL,  -- Ed25519 Public Key (PEM)
@@ -89,7 +102,8 @@ CREATE TABLE users (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username      TEXT NOT NULL UNIQUE,
   email         TEXT UNIQUE,
-  password_hash TEXT,           -- bcrypt/argon2; NULL für service-Accounts (API-Key-Auth)
+  password_hash TEXT,           -- argon2; NULL für service-Accounts (API-Key-Auth) und Solo-Modus ohne Login
+  api_key_hash  TEXT UNIQUE,    -- SHA-256 Hash des API-Keys; nur für role='service'; NULL für alle anderen
   role          TEXT NOT NULL DEFAULT 'developer', -- developer|admin|service|kartograph
   exp_points    INT NOT NULL DEFAULT 0,            -- Gamification Progression
   created_at    TIMESTAMPTZ DEFAULT now()
@@ -110,6 +124,32 @@ CREATE TABLE app_settings (
 -- Bootstrap-Eintrag (wird in Phase 1-Migration gesetzt):
 -- INSERT INTO app_settings (key, value) VALUES ('hivemind_mode', 'solo');
 
+-- Kanonische Key-Liste (alle erwarteten Keys mit Typ und Default):
+-- | Key                                  | Typ     | Default          | Phase | Beschreibung                                      |
+-- |--------------------------------------|---------|------------------|-------|---------------------------------------------------|
+-- | hivemind_mode                        | TEXT    | 'solo'           | 1     | solo|team — Laufzeit-Switch via Settings           |
+-- | current_phase                        | INT     | 1                | 1     | Aktive Phase (1-8); steuert Feature-Gates          |
+-- | federation_enabled                   | BOOLEAN | false            | F     | Federation aktiviert (überschreibt Env-Var nach Bootstrap) |
+-- | federation_topology                  | TEXT    | 'direct_mesh'    | F     | direct_mesh|hub_assisted|hub_relay                 |
+-- | token_budget_default                 | INT     | 8000             | 3     | Default Token-Budget für Prompt-Assembly            |
+-- | routing_threshold                    | FLOAT   | 0.5              | 7     | pgvector Similarity-Schwelle für Auto-Routing       |
+-- | sla_cron_interval_minutes            | INT     | 60               | 6     | SLA-Check-Intervall in Minuten                      |
+-- | audit_retention_payload_days         | INT     | 90               | 2     | Tage bis Audit Payload gelöscht wird                |
+-- | audit_retention_summary_days         | INT     | 365              | 2     | Tage bis Audit Summary gelöscht wird                |
+-- | notification_retention_days          | INT     | 90               | 2     | Tage bis Notifications gelöscht werden              |
+-- | embedding_provider                   | TEXT    | 'ollama'         | 3     | ollama|openai — Embedding-Provider                  |
+-- | embedding_model                      | TEXT    | 'nomic-embed-text'| 3    | Modell-Name beim Provider                           |
+-- | ai_provider                          | TEXT    | NULL             | 8     | claude|openai — AI-Provider für Auto-Modus          |
+-- | ai_rpm_limit                         | INT     | 10               | 8     | Max Requests/Minute an AI-Provider                  |
+-- | cross_project_alerts                 | BOOLEAN | true             | 2     | SLA/Eskalationen projektübergreifend anzeigen       |
+-- | guard_execution_allowlist            | TEXT[]  | siehe guards.md  | 8     | Erlaubte Guard-Commands für Auto-Execution          |
+-- | guard_timeout_seconds                | INT     | 120              | 8     | Timeout für Guard-Auto-Execution                    |
+-- | backup_cron                          | TEXT    | '0 2 * * *'      | 1     | Cron-Expression für Backup                          |
+-- | backup_retention_daily               | INT     | 7                | 1     | Anzahl täglicher Backups                            |
+-- | backup_retention_weekly              | INT     | 4                | 1     | Anzahl wöchentlicher Backups                        |
+-- | backup_admin_id                      | UUID    | NULL             | 6     | Fallback-Admin bei Inaktivität (> 48h kein Login/Write) |
+-- | triage_delegates                     | UUID[]  | '{}'             | 7     | User-IDs mit delegierten Triage-Rechten (neben Admin) |
+
 CREATE TABLE projects (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name        TEXT NOT NULL,
@@ -126,10 +166,68 @@ CREATE TABLE project_members (
   PRIMARY KEY (project_id, user_id)
 );
 
+-- ─────────────────────────────────────────────
+-- GAMIFICATION: Levels, Badges, Achievements
+-- ─────────────────────────────────────────────
+
+-- Level-Schwellen-Konfiguration (Commander Ranks)
+-- Wird beim Bootstrap mit Default-Werten gefüllt; Admin kann anpassen.
+CREATE TABLE level_thresholds (
+  level        INT PRIMARY KEY,            -- 1, 2, 3, ...
+  exp_required INT NOT NULL,               -- Kumulative EXP für dieses Level
+  rank_name    TEXT NOT NULL,              -- z.B. "Recruit", "Operative", "Commander", "Strategist", "Grandmaster"
+  unlocks      TEXT                         -- Kosmetische Freischaltung (z.B. "theme:operator-mono", "avatar:gold-frame")
+);
+-- Bootstrap-Daten:
+-- INSERT INTO level_thresholds VALUES
+--   (1,     0, 'Recruit',    NULL),
+--   (2,   100, 'Operative',  NULL),
+--   (3,   300, 'Specialist', NULL),
+--   (4,   600, 'Commander',  NULL),
+--   (5,  1000, 'Strategist', 'avatar:silver-frame'),
+--   (6,  1500, 'Veteran',    NULL),
+--   (7,  2200, 'Elite',      'theme:operator-mono'),
+--   (8,  3000, 'Mastermind', 'avatar:gold-frame'),
+--   (9,  4000, 'Legend',     NULL),
+--   (10, 5000, 'Grandmaster','avatar:holo-frame');
+
+-- EXP-Vergabe-Regeln (kanonisch):
+-- | Event                          | EXP  | Bedingung                        |
+-- |--------------------------------|------|----------------------------------|
+-- | Task → done                    |  50  | Basis                            |
+-- | Task → done (HIGH Priority)    | +25  | Bonus                            |
+-- | Task → done (Eskalation gelöst)|+100  | resolve_escalation vorher        |
+-- | Skill gemergt                  |  30  | merge_skill                      |
+-- | Wiki-Artikel erstellt          |  20  | create_wiki_article              |
+-- | Decision Request gelöst <24h   |  15  | resolve_decision_request         |
+-- | 500 Code-Nodes kartiert        | 200  | Achievement-Trigger              |
+-- Formel: user.exp_points += event_exp; Level = MAX(level) WHERE exp_required <= user.exp_points
+
+-- Badge-Definitionen-Katalog (formale Definition aller Achievements)
+CREATE TABLE badge_definitions (
+  badge_id        TEXT PRIMARY KEY,          -- z.B. "fog_clearer", "guild_contributor", "master_architect"
+  title           TEXT NOT NULL,             -- Anzeigename: "Fog Clearer"
+  description     TEXT NOT NULL,             -- "500 Code-Nodes im Nexus Grid erkundet"
+  icon            TEXT,                      -- Icon-Reference oder Emoji (z.B. "🗺️", "🏗️", "⚔️")
+  category        TEXT NOT NULL DEFAULT 'general', -- general|exploration|collaboration|quality
+  unlock_condition TEXT NOT NULL,            -- Maschinenlesbare Bedingung: "code_nodes_explored >= 500"
+  exp_reward      INT NOT NULL DEFAULT 0,   -- Bonus-EXP bei Freischaltung
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+-- Bootstrap-Daten:
+-- INSERT INTO badge_definitions VALUES
+--   ('fog_clearer',       'Fog Clearer',       '500 Code-Nodes im Nexus Grid erkundet',             '🗺️', 'exploration',    'code_nodes_explored >= 500',          200),
+--   ('guild_contributor', 'Guild Contributor', '10 eigene Skills von Peers übernommen',              '⚔️', 'collaboration',  'skills_forked_by_peers >= 10',        150),
+--   ('master_architect',  'Master Architect',  '20 Epics erfolgreich (alle Tasks done) abgeschlossen','🏗️', 'quality',        'epics_completed >= 20',               300),
+--   ('sla_savior',        'SLA Savior',        '10 Eskalationen innerhalb SLA gelöst',               '⏱️', 'quality',        'escalations_resolved_in_sla >= 10',   100),
+--   ('first_blood',       'First Blood',       'Ersten Task abgeschlossen',                          '🎯', 'general',        'tasks_completed >= 1',                 25),
+--   ('cartographer',      'Cartographer',      '1000 Code-Nodes kartiert',                           '🌍', 'exploration',    'code_nodes_explored >= 1000',         500),
+--   ('skill_smith',       'Skill Smith',       '10 Skill-Proposals gemergt',                         '🔧', 'quality',        'skills_merged >= 10',                 200);
+
 CREATE TABLE user_achievements (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  badge_id    TEXT NOT NULL, -- z.B. "master_architect", "fog_clearer", "guild_contributor"
+  badge_id    TEXT NOT NULL REFERENCES badge_definitions(badge_id), -- FK auf badge_definitions statt freier Text
   earned_at   TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_id, badge_id)
 );
@@ -138,8 +236,14 @@ CREATE TABLE user_achievements (
 -- EPICS & TASKS
 -- ─────────────────────────────────────────────
 
+CREATE SEQUENCE epic_key_seq;
+
 CREATE TABLE epics (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  epic_key        TEXT NOT NULL UNIQUE,
+  -- epic_key wird in der Applikationsschicht generiert:
+  -- epic_key = f"EPIC-{nextval('epic_key_seq')}" (Python, vor INSERT)
+  -- Analog zu task_key: API-stabil, immutable, menschenlesbar.
   project_id      UUID REFERENCES projects(id), -- NULL erlaubt für federated
   external_id     TEXT UNIQUE,
   title           TEXT NOT NULL,
@@ -159,6 +263,23 @@ CREATE TABLE epics (
   CHECK (origin_node_id IS NOT NULL OR project_id IS NOT NULL),
   CHECK (origin_node_id IS NOT NULL OR owner_id IS NOT NULL)
 );
+
+-- epic_key bleibt API-stabil und immutable (EPIC-12 darf nicht umbenannt werden)
+CREATE OR REPLACE FUNCTION prevent_epic_key_update()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.epic_key IS DISTINCT FROM OLD.epic_key THEN
+    RAISE EXCEPTION 'epic_key is immutable';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_epics_epic_key_immutable
+BEFORE UPDATE ON epics
+FOR EACH ROW
+WHEN (OLD.epic_key IS DISTINCT FROM NEW.epic_key)
+EXECUTE FUNCTION prevent_epic_key_update();
 
 CREATE SEQUENCE task_key_seq;
 
@@ -220,6 +341,16 @@ CREATE TABLE skills (
   version_range  JSONB,
   owner_id       UUID REFERENCES users(id),     -- NULL erlaubt für federated
   confidence     NUMERIC(3,2) DEFAULT 0.5,
+  -- Confidence-Berechnung:
+  --   Initial: 0.50 (Default bei Erstellung)
+  --   Bei merge_skill (Gaertner-Proposal akzeptiert): keine Änderung (bleibt beim Start-Wert)
+  --   Bei Task done + gepinnter Skill:       confidence += 0.05 (max 1.00)
+  --   Bei Task qa_failed + gepinnter Skill:  confidence -= 0.10 (min 0.00)
+  --   Bei accept_skill_change:               confidence += 0.02 (Verbesserung akkumuliert)
+  --   Bei reject_skill_change:               keine Änderung (Proposal abgelehnt != Skill schlecht)
+  --   Bei deprecated:                        confidence eingefroren (kein Update mehr)
+  -- Update erfolgt atomar im approve_review / reject_review Handler (Backend).
+  -- Manuelles Override: Admin kann confidence direkt setzen (für Kalibrierung).
   source_epics   TEXT[] DEFAULT '{}',
   lifecycle         TEXT NOT NULL DEFAULT 'draft', -- draft|pending_merge|active|rejected|deprecated
   version           INT NOT NULL DEFAULT 1,
@@ -238,6 +369,7 @@ CREATE TABLE skill_versions (
   version         INT NOT NULL,
   content         TEXT NOT NULL,          -- vollständig assemblierter Inhalt (Parents aufgelöst)
   parent_versions JSONB DEFAULT '[]',     -- [{"skill_id": "uuid", "version": 3}] — Snapshot der Parent-Versionen
+  token_count     INT,                    -- Token-Count des assemblierten Inhalts (tiktoken cl100k_base); beim Merge/Version-Update einmalig berechnet und gecacht
   changed_by      UUID NOT NULL REFERENCES users(id),
   created_at      TIMESTAMPTZ DEFAULT now(),
   UNIQUE(skill_id, version)               -- verhindert doppelte Versionen; Task-Pinning eindeutig
@@ -308,8 +440,21 @@ CREATE TABLE context_boundaries (
 -- WIKI
 -- ─────────────────────────────────────────────
 
+CREATE TABLE wiki_categories (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  parent_id   UUID REFERENCES wiki_categories(id), -- NULL = Top-Level-Kategorie
+  title       TEXT NOT NULL,
+  slug        TEXT NOT NULL UNIQUE,                 -- URL-Teil (z.B. "fastapi", "authentication", "jwt")
+  sort_order  INT NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+-- Breadcrumb-Auflösung: Rekursive CTE über parent_id bis parent_id IS NULL.
+-- Beispiel: JWT (parent: Authentication) → Authentication (parent: FastAPI) → FastAPI (parent: NULL)
+-- Ergibt Breadcrumb: FastAPI > Authentication > JWT
+
 CREATE TABLE wiki_articles (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category_id   UUID REFERENCES wiki_categories(id), -- NULL = unkategorisiert; Breadcrumb über wiki_categories.parent_id
   title         TEXT NOT NULL,
   slug          TEXT NOT NULL UNIQUE,
   content       TEXT NOT NULL,
@@ -401,6 +546,24 @@ CREATE TABLE task_node_links (
 );
 
 -- ─────────────────────────────────────────────
+-- PROMPT HISTORY
+-- ─────────────────────────────────────────────
+
+-- Persistiert generierte Prompts für den Prompt-Verlauf (Phase 4 Feature: "Kollabierbare History")
+CREATE TABLE prompt_history (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id   UUID REFERENCES projects(id),
+  epic_id      UUID REFERENCES epics(id),
+  task_id      UUID REFERENCES tasks(id),
+  agent_type   TEXT NOT NULL,  -- kartograph|architekt|bibliothekar|worker|gaertner|triage
+  prompt_type  TEXT NOT NULL,  -- get_prompt type: kartograph|architekt|bibliothekar|worker|gaertner|triage|review
+  prompt_text  TEXT NOT NULL,  -- Vollständig assemblierter Prompt-Text
+  token_count  INT,            -- Token-Count des assemblierten Prompts
+  generated_by UUID REFERENCES users(id), -- User der den Prompt angefordert hat
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────
 -- AUDIT & MCP
 -- ─────────────────────────────────────────────
 
@@ -434,11 +597,12 @@ CREATE TABLE sync_outbox (
   payload       JSONB NOT NULL,
   attempts      INT NOT NULL DEFAULT 0,
   next_retry_at TIMESTAMPTZ,
-  state         TEXT NOT NULL DEFAULT 'pending', -- pending|processing|done|dead
+  state         TEXT NOT NULL DEFAULT 'pending', -- pending|processing|done|dead|cancelled
   routing_state TEXT DEFAULT 'unrouted',         -- unrouted|routed|ignored — für Triage-Anzeige
   -- unrouted: wartet auf manuelle Entscheidung in Triage Station
   -- routed:   wurde einem Epic zugewiesen (manuell oder auto)
   -- ignored:  Admin hat bewusst entschieden, Event nicht zu routen (kein Epic-Bezug); bleibt lesbar für Audit
+  embedding     vector(768),   -- nomic-embed-text (Ollama, default); für pgvector-basiertes Auto-Routing ungerouteter Events
   created_at    TIMESTAMPTZ DEFAULT now()
 );
 
@@ -491,7 +655,7 @@ CREATE TABLE decision_records (
 CREATE TABLE epic_restructure_proposals (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   epic_id     UUID NOT NULL REFERENCES epics(id),
-  proposed_by UUID NOT NULL REFERENCES users(id),  -- immer Kartograph-Service-User
+  proposed_by UUID NOT NULL REFERENCES users(id),  -- immer ein User mit kartograph-Rolle (nicht service-Rolle)
   rationale   TEXT NOT NULL,
   proposal    TEXT NOT NULL,          -- Freitext-Vorschlag des Kartographen (Markdown)
   state       TEXT NOT NULL DEFAULT 'open', -- open|accepted|rejected
@@ -586,12 +750,29 @@ CREATE TABLE notifications (
   --   federated_skill             — Neuer Skill von Peer-Node verfügbar → alle User (Phase F)
   --   discovery_session           — Peer erkundet Codebase-Area → alle User (Phase F)
   --   restructure_rejected        — Epic-Restructure-Proposal wurde abgelehnt → Kartograph/Proposer
+  priority   TEXT NOT NULL DEFAULT 'fyi',
+  -- Priority-Gruppen (kanonisch, übereinstimmend mit views.md Notification-Tray):
+  --   action_now  — sofortige Aufmerksamkeit erforderlich
+  --   action_soon — zeitnah, aber nicht sofort
+  --   fyi         — informativ, kein Handlungsbedarf
+  -- Mapping type → priority:
+  --   action_now:  sla_breach, escalation, decision_escalated_admin, dead_letter, peer_offline
+  --   action_soon: sla_warning, decision_request, decision_escalated_backup, guard_failed,
+  --                review_requested, task_delegated, guard_proposal, restructure_proposal
+  --   fyi:         skill_proposal, skill_merged, task_done, task_assigned, peer_task_done,
+  --                peer_online, federated_skill, discovery_session, restructure_rejected
   title      TEXT NOT NULL,
   body       TEXT,
   link       TEXT,           -- Deep-Link z.B. /epics/uuid
   read       BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Notification-Retention: gelesene Notifications werden nach NOTIFICATION_RETENTION_DAYS (default: 90) gelöscht.
+-- Ungelesene Notifications werden nach NOTIFICATION_UNREAD_RETENTION_DAYS (default: 365) gelöscht.
+-- Der Retention-Cron läuft täglich (zusammen mit dem Audit-Retention-Cron).
+-- DELETE FROM notifications WHERE (read = true AND created_at < now() - interval 'NOTIFICATION_RETENTION_DAYS days')
+--    OR (read = false AND created_at < now() - interval 'NOTIFICATION_UNREAD_RETENTION_DAYS days');
 ```
 
 ---
@@ -610,6 +791,7 @@ CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
 CREATE INDEX idx_epics_state      ON epics(state);
 CREATE INDEX idx_epics_project_id ON epics(project_id);
 CREATE INDEX idx_epics_owner_id   ON epics(owner_id);
+CREATE INDEX idx_epics_epic_key   ON epics(epic_key);
 
 -- Skills: Bibliothekar-Suche
 CREATE INDEX idx_skills_lifecycle ON skills(lifecycle);
@@ -621,6 +803,9 @@ CREATE INDEX idx_skills_embedding       ON skills   USING hnsw (embedding vector
 CREATE INDEX idx_wiki_articles_embedding ON wiki_articles USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX idx_docs_embedding         ON docs         USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX idx_code_nodes_embedding   ON code_nodes USING hnsw (embedding vector_cosine_ops);
+
+-- pgvector: Sync-Outbox Embedding für Auto-Routing ungerouteter Events
+CREATE INDEX idx_sync_outbox_embedding  ON sync_outbox USING hnsw (embedding vector_cosine_ops);
 
 -- Sync: Outbox-Queue-Processing
 CREATE INDEX idx_sync_outbox_state         ON sync_outbox(state);
@@ -652,6 +837,9 @@ CREATE INDEX idx_decision_requests_task_id ON decision_requests(task_id);
 CREATE INDEX idx_decision_requests_state   ON decision_requests(state);
 CREATE INDEX idx_decision_requests_sla_due ON decision_requests(sla_due_at);
 
+-- Decision Requests: höchstens 1 offener DR pro Task (DB-seitig erzwungen)
+CREATE UNIQUE INDEX idx_decision_requests_one_open_per_task ON decision_requests(task_id) WHERE state = 'open';
+
 -- Federation: Peer-Routing und Origin-Tracking
 CREATE INDEX idx_epics_origin_node_id         ON epics(origin_node_id) WHERE origin_node_id IS NOT NULL;
 CREATE INDEX idx_tasks_assigned_node_id       ON tasks(assigned_node_id) WHERE assigned_node_id IS NOT NULL;
@@ -665,6 +853,17 @@ CREATE INDEX idx_code_nodes_exploring_node_id    ON code_nodes(exploring_node_id
 CREATE INDEX idx_code_edges_project_id           ON code_edges(project_id);
 CREATE INDEX idx_code_edges_target_id            ON code_edges(target_id); -- cross-project: "wer hängt von diesem Node ab?"
 CREATE INDEX idx_code_edges_origin_node_id       ON code_edges(origin_node_id) WHERE origin_node_id IS NOT NULL;
+
+-- Wiki-Categories: Breadcrumb-Auflösung
+CREATE INDEX idx_wiki_categories_parent_id ON wiki_categories(parent_id);
+
+-- Wiki-Articles: Kategorie-Zuordnung
+CREATE INDEX idx_wiki_articles_category_id ON wiki_articles(category_id) WHERE category_id IS NOT NULL;
+
+-- Prompt History: Verlaufs-Queries
+CREATE INDEX idx_prompt_history_project_id ON prompt_history(project_id);
+CREATE INDEX idx_prompt_history_task_id    ON prompt_history(task_id);
+CREATE INDEX idx_prompt_history_created    ON prompt_history(created_at DESC);
 ```
 
 > HNSW-Indexes für pgvector sind beim ersten `CREATE INDEX` leer und werden mit den Embeddings befüllt. In Phase 1–2 noch nicht genutzt, aber Schema ist bereit.
@@ -702,18 +901,18 @@ CREATE INDEX idx_code_edges_origin_node_id       ON code_edges(origin_node_id) W
 
 ---
 
-## Designentscheidung: UUID-FK intern, task_key API-stabil
+## Designentscheidung: UUID-FK intern, task_key/epic_key API-stabil
 
-MCP-Tools und Prompts verwenden weiterhin `task_key` (z.B. `"TASK-88"`).  
-Intern löst das Backend den Key einmal auf `tasks.id` (UUID) auf und arbeitet danach nur mit UUID-FKs.
+MCP-Tools und Prompts verwenden weiterhin `task_key` (z.B. `"TASK-88"`) und `epic_key` (z.B. `"EPIC-12"`).  
+Intern löst das Backend den Key einmal auf `tasks.id` bzw. `epics.id` (UUID) auf und arbeitet danach nur mit UUID-FKs.
 
 | Entscheidung | Wirkung |
 | --- | --- |
 | `context_boundaries.task_id` und `decision_requests.task_id` als UUID-FK | Keine Orphan-Einträge, referentielle Integrität durch DB |
-| `task_key` bleibt API-Identifier | Keine Änderung für MCP-Clients/Prompts |
-| `task_key` ist immutable (DB-Trigger) | Stabile externe Referenzen, kein späteres Renaming-Risiko |
+| `task_key` und `epic_key` bleiben API-Identifier | Keine Änderung für MCP-Clients/Prompts |
+| `task_key` und `epic_key` sind immutable (DB-Trigger) | Stabile externe Referenzen, kein späteres Renaming-Risiko |
 
-> Die zusätzliche Key→UUID-Auflösung ist ein einfacher, indexierter Lookup auf `tasks.task_key` und steht im Verhältnis zum Integritätsgewinn.
+> Die zusätzliche Key→UUID-Auflösung ist ein einfacher, indexierter Lookup auf `tasks.task_key` bzw. `epics.epic_key` und steht im Verhältnis zum Integritätsgewinn.
 
 ---
 

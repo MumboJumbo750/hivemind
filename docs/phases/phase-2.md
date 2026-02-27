@@ -48,7 +48,7 @@
 ### JWT-Auth Flow
 
 ```text
-POST /auth/login  { username, password }
+POST /api/auth/login  { username, password }
 → { access_token, expires_in }
 
 Header: Authorization: Bearer <token>

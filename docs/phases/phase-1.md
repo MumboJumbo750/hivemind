@@ -40,6 +40,8 @@
 
 ### Docker Compose
 
+> **Hinweis:** Ein initiales `docker-compose.yml` existiert bereits im Repo-Root als Scaffold. Phase 1 erweitert und finalisiert es mit den unten spezifizierten Services + Health-Checks + Volume-Mounts.
+
 ```yaml
 services:
   postgres:   pgvector/pgvector:pg16
@@ -80,13 +82,17 @@ ALLOWED_TRANSITIONS = {
     "incoming":    ["scoped", "cancelled"],
     "scoped":      ["ready", "cancelled"],
     "ready":       ["in_progress", "cancelled"],
-    "in_progress": ["in_review", "blocked", "escalated", "cancelled"],
+    "in_progress": ["in_review", "blocked", "cancelled"],
     "in_review":   ["done", "qa_failed"],    # kein cancelled aus in_review — Owner muss entscheiden
-    "qa_failed":   ["in_progress"],
-    "blocked":     ["in_progress", "cancelled"],
+    "qa_failed":   ["in_progress", "escalated"],  # escalated nur als System-Intercept bei qa_failed_count >= 3
+    "blocked":     ["in_progress", "escalated", "cancelled"],  # escalated nur als System-Intercept bei Decision-SLA > 72h
     "escalated":   ["in_progress", "cancelled"],
     # "done" und "cancelled" sind Terminalstates — keine weiteren Transitionen
 }
+
+# Eskalations-Logik (System-Pfade, nicht vom User direkt aufrufbar):
+# (a) qa_failed → escalated:  wenn qa_failed_count >= 3 und Worker versucht in_progress → System intercepted
+# (b) blocked  → escalated:  wenn Decision-Request-SLA > 72h ohne Auflösung → System-Automatik
 
 # qa_failed_count Logik:
 # Bei jeder Transition in_review → qa_failed (via reject_review): tasks.qa_failed_count += 1

@@ -77,11 +77,18 @@ Priorität 3: Wiki-Artikel                 (globales Hintergrundwissen)
 
 | Konfiguration | Wert |
 | --- | --- |
-| Standardwert | 8000 Tokens (`HIVEMIND_TOKEN_BUDGET`) |
+| Standardwert | 8000 Tokens (`app_settings.token_budget_default`) |
 | Pro Task überschreibbar | via Context Boundary `max_token_budget` |
+| Provider-Override (Phase 8) | `HIVEMIND_TOKEN_BUDGET_PROVIDER_OVERRIDE` Env-Var (JSON: `{"claude": 100000, "gpt4": 128000}`) |
 | Phase 1–2 | Richtwert für den AI-Client im Prompt, nicht technisch erzwungen |
 
-> **Budget-Sizing-Richtwerte:** Ein typischer Skill verbraucht ~400 Tokens, ein Epic-Doc ~200, ein Wiki-Artikel ~300. Bei Skill Composition (3 Ebenen Stacking) kann ein assemblierter Skill ~600 Tokens belegen. Realistisches Minimum für einen Task mit 2 Skills + 1 Doc + 1 Wiki: **~1300 Tokens Kontext**. Der Default von 8000 Tokens lässt Spielraum für 4-6 Skills — bei komplexen Tasks mit vielen Abhängigkeiten kann das Budget knapp werden. **Empfehlung:** Budget pro AI-Provider adaptiv setzen (Claude 200K Context → höheres Budget sinnvoll, GPT-4o 128K → Default ausreichend). Konfigurations-Erweiterung für Phase 8: `HIVEMIND_TOKEN_BUDGET_PROVIDER_OVERRIDE` mit Provider-spezifischen Werten.
+**Präzedenz-Reihenfolge (höchste zuerst):**
+
+1. `context_boundaries.max_token_budget` (Task-spezifisch, vom Architekten gesetzt)
+2. `HIVEMIND_TOKEN_BUDGET_PROVIDER_OVERRIDE` (Provider-spezifisch, Env-Var, Phase 8)
+3. `app_settings.token_budget_default` (DB-persistiert, Admin-setzbar, Default: 8000)
+
+> **Budget-Sizing-Richtwerte:** Ein typischer Skill verbraucht ~400 Tokens, ein Epic-Doc ~200, ein Wiki-Artikel ~300. Bei Skill Composition (3 Ebenen Stacking) kann ein assemblierter Skill ~600 Tokens belegen. Realistisches Minimum für einen Task mit 2 Skills + 1 Doc + 1 Wiki: **~1300 Tokens Kontext**. Der Default von 8000 Tokens lässt Spielraum für 4-6 Skills — bei komplexen Tasks mit vielen Abhängigkeiten kann das Budget knapp werden. **Empfehlung:** Budget pro AI-Provider adaptiv setzen (Claude 200K Context → höheres Budget sinnvoll, GPT-4o 128K → Default ausreichend).
 
 ---
 

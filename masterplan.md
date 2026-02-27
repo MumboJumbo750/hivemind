@@ -23,6 +23,7 @@
 | Dokument | Inhalt |
 | --- | --- |
 | [Übersicht & Stack](docs/architecture/overview.md) | Leitprinzipien, Tech Stack, Trust Boundary, Solo/Team-Modus |
+| [REST API](docs/architecture/rest-api.md) | Frontend-Backend-Vertrag, Auth-Flow, SSE-Event-Schema, Endpoint-Übersicht |
 | [Datenmodell](docs/architecture/data-model.md) | Vollständiges SQL-Schema aller Tabellen |
 | [State Machines](docs/architecture/state-machine.md) | Task-States, Skill-Lifecycle, Concurrency, Eskalations-Flow |
 | [MCP Tool-Set](docs/architecture/mcp-toolset.md) | Alle MCP-Tools, Transports, Sicherheitsregeln |
@@ -91,9 +92,9 @@
 
 ## Aktueller Stand
 
-- **Masterplan:** vollständig — aufgeteilt in 36 thematische Dokumente
+- **Masterplan:** vollständig — aufgeteilt in 37 thematische Dokumente
 - **Alle offenen Fragen:** beantwortet
-- **Gap-Analyse:** durchgeführt — 22 Findings dokumentiert und behoben
+- **Gap-Analyse:** durchgeführt — 24 Findings identifiziert und behoben (22 initial + 14 aus zweiter Analyse, davon 10 bereits implizit gelöst)
 - **Nächster Schritt:** [Phase 1](docs/phases/phase-1.md) — Umsetzung beginnen
 
 ---

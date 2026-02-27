@@ -4,6 +4,8 @@
 
 Hivemind ist selbst ein MCP-Server. Alle Tools folgen demselben Sicherheitsmodell: AuthN + AuthZ + Idempotenz + Audit.
 
+**Tool-Naming-Konvention:** Alle Tools verwenden den Namespace-Prefix `hivemind/` gefolgt vom Tool-Namen in `snake_case`. Beispiel: `hivemind/get_task`, `hivemind/create_epic`. Kein Tool verwendet `hm/` oder einen anderen Prefix. Intern (Code, Logs, Audit) wird der volle Name `hivemind/<tool>` verwendet.
+
 ---
 
 ## Transports
@@ -87,12 +89,12 @@ hivemind/get_audit_log      { "epic_id":   "uuid",      -- optional
 | Entität | Identifier | Beispiel | Verwendung in MCP-Tools |
 | --- | --- | --- | --- |
 | Task | `task_key` (TEXT) | `"TASK-88"` | `task_id`-Parameter in allen Tools |
-| Epic | UUID | `"550e8400-e29b..."` | `epic_id`-Parameter in allen Tools |
+| Epic | `epic_key` (TEXT) | `"EPIC-12"` | `epic_id`-Parameter in allen Tools |
 | Skill | UUID | `"550e8400-e29b..."` | `skill_id`-Parameter |
 | Guard | UUID | `"550e8400-e29b..."` | `guard_id`-Parameter |
 | User | UUID | `"550e8400-e29b..."` | `actor_id`-Parameter |
 
-> API-seitig werden Epics per UUID referenziert. Werte wie `"EPIC-123"` können weiterhin als `epics.external_id` in UI/Prompts auftauchen, sind aber kein API-Identifier.
+> API-seitig werden Epics per `epic_key` referenziert (`"EPIC-12"`). Das Backend löst den Key intern auf `epics.id` (UUID) auf. `epics.external_id` bleibt für externe System-IDs (z.B. YouTrack Issue-Key) reserviert.
 > Task-Requests verwenden weiterhin `task_key` (`"TASK-88"`). Das Backend löst den Key intern auf `tasks.id` (UUID) auf; persistente Relationen speichern die UUID-FKs (z.B. `context_boundaries.task_id`, `decision_requests.task_id`).
 
 **`get_prompt` Typen:**
@@ -148,8 +150,9 @@ hivemind/submit_result           { "task_id": "TASK-88", "result": "...", "artif
 hivemind/update_task_state       { "task_id": "TASK-88", "state": "in_review" }
                                    -- Setzt State auf in_review NUR wenn:
                                    --   (1) submit_result wurde aufgerufen (result vorhanden)
-                                   --   (2) alle Guards status = passed|skipped
-                                   -- Sonst: 422 mit Liste der offenen Guards
+                                   --   (2) Phase 1–4: Keine Guard-Prüfung — Guards dienen als Checkliste, blockieren aber nicht
+                                   --   (3) Ab Phase 5: alle Guards status = passed|skipped — sonst 422 mit Liste der offenen Guards
+                                   -- Siehe state-machine.md für Phase-basierte Guard-Enforcement-Regeln
 
 hivemind/create_decision_request { "task_id": "TASK-88", "blocker": "...", "options": [...] }
                                    -- Atomar: erstellt decision_request (state='open')
@@ -167,12 +170,15 @@ hivemind/report_guard_result     { "task_id": "TASK-88", "guard_id": "uuid",
 1. Worker: hivemind/report_guard_result  → alle Guards auf passed|skipped setzen
 2. Worker: hivemind/submit_result        → Ergebnis + Artefakte speichern
 3. Worker: hivemind/update_task_state { "state": "in_review" }
-             → Backend prüft: Guards vollständig? Result vorhanden?
-             → Ja: State → in_review + Notification an Owner
-             → Nein: 422 + Liste der offenen Guards / fehlenden Artefakte
+             → Backend prüft: Result vorhanden?
+             → Phase 1–4: Ja → State → in_review (Guards nicht enforced)
+             → Ab Phase 5: Guards vollständig? Result vorhanden?
+                → Ja: State → in_review + Notification an Owner
+                → Nein: 422 + Liste der offenen Guards / fehlenden Artefakte
 ```
 
-> `submit_result` und `update_task_state → in_review` sind getrennte Schritte — kein automatischer State-Übergang durch `submit_result`. Das ermöglicht mehrfaches Nacharbeiten vor dem finalen Submit.
+> **Phase 1–4:** `report_guard_result` ist verfügbar und empfohlen, aber kein technischer Blocker für `in_review`. Guards erscheinen im Review Panel als informative Checkliste für den Owner.
+> **Ab Phase 5:** Guard-Enforcement ist technisch aktiv — kein `in_review` ohne `passed|skipped` auf allen Guards.
 
 ---
 
@@ -221,11 +227,11 @@ hivemind/start_discovery_session  { "area": "auth/",
                                     "description": "JWT + Session-Handling" }
                                     -- Setzt code_nodes.exploring_node_id für diesen Bereich
                                     -- Broadcastet discovery_session-Event (type='start') an alle Peers
-                                    -- Erfordert: kartograph-Rolle
+                                    -- Erfordert: kartograph- oder admin-Rolle
 hivemind/end_discovery_session    { "area": "auth/" }
                                     -- Räumt exploring_node_id auf (setzt auf NULL)
                                     -- Broadcastet discovery_session-Event (type='end') an alle Peers
-                                    -- Erfordert: kartograph-Rolle
+                                    -- Erfordert: kartograph- oder admin-Rolle
                                     -- Wird auch automatisch aufgerufen wenn Session > HIVEMIND_DISCOVERY_SESSION_TIMEOUT (default: 4h)
 ```
 
@@ -292,9 +298,21 @@ hivemind/resolve_escalation       { "task_id": "TASK-88", "comment": "..." }
                                     -- Gilt für beide Eskalationsquellen:
                                     --   (a) 3x qa_failed → escalated
                                     --   (b) blocked → escalated (Decision-SLA > 72h)
-hivemind/route_event              { "outbox_id": "uuid", "epic_id": "uuid" }
+hivemind/route_event              { "outbox_id": "uuid", "epic_id": "uuid",
+                                    "create_as": "task|bug" }     -- Pflicht: bestimmt ob Task oder Bug-Report erzeugt wird
                                     -- sync_outbox.routing_state: unrouted → routed
-                                    -- Weist Event dem Epic zu; erzeugt Task oder Bug-Report
+                                    -- Weist Event dem Epic zu
+                                    -- Entscheidungslogik für create_as:
+                                    --   "task": bei feature-bezogenen Events (YouTrack Issues, funktionale Anforderungen)
+                                    --           → erzeugt neuen Task im Epic (state='incoming')
+                                    --   "bug":  bei Fehler-Events (Sentry Exceptions, Crash-Reports, Regressions)
+                                    --           → erzeugt node_bug_report + verknüpft mit Epic via epic_node_links
+                                    -- Der Admin wählt create_as in der Triage Station explizit;
+                                    -- bei Auto-Routing (Phase 7+) entscheidet der Triage-Agent anhand:
+                                    --   (1) system='sentry' → default 'bug'
+                                    --   (2) system='youtrack' → default 'task'
+                                    --   (3) pgvector-Similarity < 0.5 zu bestehenden Tasks → 'task' (neues Thema)
+                                    --   (4) pgvector-Similarity >= 0.5 zu bestehendem Bug → 'bug' (Bug-Count erhöhen)
                                     -- Erfordert: triage-Permission (admin only)
 hivemind/ignore_event             { "outbox_id": "uuid" }
                                     -- sync_outbox.routing_state: unrouted → ignored

@@ -259,7 +259,8 @@ gemäß Definition of Done und Guards.
      "task_id": "TASK-88", "guard_id": "uuid",
      "status": "passed|failed|skipped", "result": "output"
    }
-   → Alle Guards müssen passed|skipped sein
+   → Phase 2–4: Guards sind informativ (empfohlen, kein Blocker)
+   → Ab Phase 5: Alle Guards müssen passed|skipped sein
 
 5. Ergebnis einreichen:
    hivemind/submit_result {
@@ -270,7 +271,9 @@ gemäß Definition of Done und Guards.
 
 6. Status auf in_review setzen:
    hivemind/update_task_state { "task_id": "TASK-88", "state": "in_review" }
-   → Schlägt fehl wenn Guards offen oder Result fehlt
+   → Phase 2–4: fehlschlägt nur wenn Result fehlt
+   → Ab Phase 5: fehlschlägt wenn Guards offen oder Result fehlt
+   (Siehe [guards.md — Kanonische Guard-Enforcement-Timeline](../features/guards.md#kanonische-guard-enforcement-timeline))
 
 7. Wenn blockiert:
    hivemind/create_decision_request {
@@ -283,7 +286,8 @@ gemäß Definition of Done und Guards.
 - Nicht: Direkt auf done setzen (immer in_review → Owner reviewed)
 - Nicht: Außerhalb des eigenen Tasks/Epics schreiben
 - Nicht: Skills erstellen oder Wiki schreiben
-- Immer: Alle Guards bestehen bevor in_review
+- Phase 2–4: Guards reporting ist empfohlen, aber kein technischer Blocker für in_review
+- Ab Phase 5: Immer alle Guards bestehen bevor in_review (→ [guards.md](../features/guards.md))
 - Immer: Nur die gelisteten Hivemind-Tools verwenden
 
 ## Federation-Verhalten (Phase F)

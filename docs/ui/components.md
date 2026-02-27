@@ -88,7 +88,8 @@ src/components/domain/
 
   AgentBadge.vue          Agent-Symbol + Name
                           Props: agent (kartograph|architekt|worker|gaertner|triage|bibliothekar)
-                          Symbole aus concept.md (◬ ◎ ◈ ⊕ …)
+                          Symbole: ◬ Kartograph, ◎ Architekt, ◆ Worker, ⊕ Gaertner, ⊘ Triage, ⊙ Bibliothekar
+                          (siehe concept.md Ikonografie-Sektion)
 
   SlaTimer.vue            SLA-Countdown mit Farb-Transition (amber → rot)
                           Props: deadline (ISO-String), compact (Boolean)
@@ -190,7 +191,7 @@ src/views/
     WikiEditorModal.vue       Editor-Modal für Admins (HivemindEditor)
 
   nexus-grid/
-    NexusGrid.vue             Root (D3/Cytoscape Canvas)
+    NexusGrid.vue             Root (Cytoscape.js Canvas)
     NodeDetailPanel.vue       Click-Panel (Docs, Skills, Bugs, Tasks)
     LayerSwitcher.vue         Epic-Overlay Toggle
     FogOverlay.vue            Semi-transparente Maske

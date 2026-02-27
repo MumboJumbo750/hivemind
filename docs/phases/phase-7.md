@@ -24,7 +24,7 @@
 - [ ] Admin-Tool: `hivemind/assign_bug` (manuelles Bug→Epic Routing)
 - [ ] Audit-Retention-Cron: bereinigt alte `input_payload`/`output_payload`
 - [ ] DLQ-Requeue als MCP-Tool: `hivemind/requeue_dead_letter { "id": "uuid" }` (admin + triage permission)
-- [ ] Optionaler REST-Alias: `POST /admin/dlq/{id}/requeue` ruft intern denselben Requeue-Service auf
+- [ ] Optionaler REST-Alias: `POST /api/triage/dead-letters/{id}/requeue` ruft intern denselben Requeue-Service auf
 - [ ] Embedding-Neuberechnung: wenn Embedding-Provider gewechselt wird
 
 ### Frontend

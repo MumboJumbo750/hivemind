@@ -29,6 +29,7 @@
 - [ ] Eskalations-Logik: nach 3x `qa_failed` → Task auf `escalated`
 - [ ] Triage-Prompt-Generator für `[UNROUTED]`-Items
 - [ ] Notification-Service (in-DB, kein externer Service): schreibt in `notifications`-Tabelle
+- [ ] Notification-Retention-Cron: läuft täglich, löscht gelesene Notifications nach `NOTIFICATION_RETENTION_DAYS` (default: 90 Tage) und ungelesene nach `NOTIFICATION_UNREAD_RETENTION_DAYS` (default: 365 Tage)
 
 ### Frontend
 

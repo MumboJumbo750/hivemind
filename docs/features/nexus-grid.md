@@ -99,8 +99,21 @@ Kartograph analysiert src/auth/jwt.py
 
 ## UI-Anforderungen
 
-- **2D-Modus:** Force-directed Graph (D3.js oder Cytoscape.js) — Standard
+- **2D-Modus:** Force-directed Graph (**Cytoscape.js**) — Standard
 - **3D-Modus:** WebGL-basiert (Three.js) — für große Codebases
+
+### Bibliothek-Entscheidung: Cytoscape.js
+
+| Kriterium | Cytoscape.js | D3.js |
+| --- | --- | --- |
+| Graph-Fokus | Graphen sind Kerndomäne; eingebaute Layouts (force-directed, dagre, cola) | Allzweck-Vis — Graph muss manuell gebaut werden |
+| Performance >1000 Nodes | `haystack`-Edge-Rendering + WebGL-Extension (`cytoscape-webgl`) ab Phase 8 verfügbar | Canvas-Rendering möglich aber manuell |
+| Fog-of-War Overlay | Compound Nodes + CSS-Klassen für transparente Masken | Custom SVG Layer nötig |
+| Interaktion | Built-in: Pan, Zoom, Box-Select, Tap, cxtmenu (Rechtsklick) | Alles manuell implementieren |
+| 3D-Upgrade | Kein nativer 3D-Support → Three.js als separater Modus (Phase 8), Shared Data Model | Ebenfalls separater Three.js-Modus nötig |
+| Bundle Size | ~360 KB min+gz (mit Layouts) | ~280 KB min+gz (ohne Graph-Features) |
+
+**Entscheidung:** Cytoscape.js. Der Graph-first-Ansatz spart erhebliche Entwicklungszeit für Layout, Interaktion und Overlay-Features. D3.js bleibt als Dependency für mögliche Statistik-Charts (Burndown, SLA-Timeline) separat evaluierbar.
 - **Fog-of-War-Overlay:** Semi-transparente Maske über unerkundeten Bereichen
 - **Bug-Heatmap:** Knotengröße oder -farbe repräsentiert Bug-Dichte
 - **Epic-Overlay:** Toggle — zeigt welche Nodes von welchem Epic abgedeckt werden
@@ -122,10 +135,12 @@ Kartograph analysiert src/auth/jwt.py
 
 ## Datenmodell
 
+> **Kanonisches Schema:** Das autoritäre Schema steht in [data-model.md](../architecture/data-model.md). Die folgenden SQL-Snippets sind vereinfachte Auszüge zur Illustration. Bei Abweichungen gilt data-model.md.
+
 ```sql
 CREATE TABLE code_nodes (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id  UUID NOT NULL REFERENCES projects(id),
+  project_id  UUID REFERENCES projects(id),  -- NULL erlaubt für federated (origin_node_id gesetzt)
   path        TEXT NOT NULL,              -- "src/auth/jwt.py"
   node_type   TEXT NOT NULL,             -- file|module|package|service
   label       TEXT NOT NULL,
@@ -133,16 +148,18 @@ CREATE TABLE code_nodes (
   explored_by UUID REFERENCES users(id),
   embedding   vector(768),              -- default: nomic-embed-text; Provider-Wechsel siehe data-model.md
   metadata    JSONB,                     -- Sprache, LOC, Komplexität etc.
+  -- Federation-Spalten: origin_node_id, federation_scope, exploring_node_id — siehe data-model.md
   created_at  TIMESTAMPTZ DEFAULT now(),
   UNIQUE(project_id, path)
 );
 
 CREATE TABLE code_edges (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID NOT NULL REFERENCES projects(id), -- Quell-Projekt; target_id kann in anderem Projekt liegen
+  project_id UUID REFERENCES projects(id), -- Quell-Projekt; NULL erlaubt für federated; target_id kann in anderem Projekt liegen
   source_id  UUID NOT NULL REFERENCES code_nodes(id),
   target_id  UUID NOT NULL REFERENCES code_nodes(id), -- cross-project möglich
   edge_type  TEXT NOT NULL,             -- import|call|dependency|extends
+  -- Federation-Spalte: origin_node_id — siehe data-model.md
   created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(source_id, target_id, edge_type) -- ohne project_id: cross-project Edges eindeutig
 );

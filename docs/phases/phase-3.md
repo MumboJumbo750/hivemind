@@ -6,6 +6,8 @@
 
 **AI-Integration:** Ollama `nomic-embed-text` für Embeddings. Bibliothekar als manueller Prompt (Wizard of Oz).
 
+> **Falls Phase F bereits abgeschlossen:** Die Federation-REST-Endpoints existieren bereits. Phase 3 aktiviert die MCP-Tool-Wrapper (`hivemind/fork_federated_skill`, `hivemind/start_discovery_session`, `hivemind/end_discovery_session`) und registriert die Federation-Read-Tools (`hivemind/list_peers`) im MCP-Server.
+
 ---
 
 ## Deliverables

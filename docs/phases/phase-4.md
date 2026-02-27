@@ -23,7 +23,7 @@
 - [ ] Skill Lab Backend: Skills CRUD, Lifecycle-Transitions
 - [ ] Proposer-Submit-Tool: `hivemind/submit_skill_proposal` (`draft → pending_merge`)
 - [ ] Admin-Write-Tools (Subset): `hivemind/merge_skill`, `hivemind/reject_skill`
-- [ ] Audit-Log-Viewer-Endpoint: `GET /admin/audit` mit Filterung
+- [ ] Audit-Log-Viewer-Endpoint: `GET /api/audit` mit Filterung
 
 ### Frontend
 

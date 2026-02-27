@@ -200,4 +200,24 @@ POST /federation/* empfangen
 
 > `peer_status`-Einträge werden **lokal** vom Ping-Cron generiert (kein Push vom offline Peer), `direction = 'peer_inbound'`, `routing_state = 'unrouted'` → erscheinen in Triage Station als `[PEER OFFLINE]`. Nur erzeugt wenn `tasks.assigned_node_id = offline_peer.id` mit nicht-terminalem State existiert.
 
+---
+
+## Wiki-Conflict-Resolution bei Federation
+
+Wiki-Artikel können über Federation geteilt werden (`federation_scope='federated'`). Konflikte entstehen wenn zwei Peers denselben Artikel gleichzeitig bearbeiten.
+
+### Konfliktregeln für Wiki
+
+| Situation | Verhalten | Begründung |
+| --- | --- | --- |
+| Origin-Node editiert eigenen Artikel | Normaler Write | Origin-Authority gilt |
+| Peer empfängt Update mit höherer `version` | Übernehmen (aktualisieren) | Höhere Version gewinnt |
+| Peer empfängt Update mit gleicher `version` | **Last-Write-Wins** (Timestamp `updated_at` vergleichen) | Einfachste Strategie für Phase F; kein Merge-Aufwand |
+| Peer empfängt Update mit niedrigerer `version` | Verwerfen (veraltet) | Lokale Version ist aktueller |
+| Lokaler Edit auf empfangenem Artikel (Peer ist nicht Origin) | **Nicht erlaubt** — Read-only-Kopie | Origin-Authority: nur Origin-Node darf editieren |
+
+**Hinweis:** Wiki-Artikel haben eine `origin_node_id`. Nur der Origin-Node kann den Artikel editieren. Empfangende Peers erhalten Read-only-Kopien. Änderungsvorschläge von Peers können als manuelles Feedback (z.B. über Decision Request oder Chat) an die Origin-Node kommuniziert werden. Es gibt keine automatischen Change-Proposals für Wiki-Artikel über Federation.
+
+> **Zukunft:** Falls Multi-Origin-Editing gewünscht wird (zwei Peers bearbeiten denselben Artikel), muss ein CRDT- oder OT-basierter Merge implementiert werden. Das ist für Phase F nicht geplant.
+
 → Vollständige Federation-Spec: [federation.md](../features/federation.md)

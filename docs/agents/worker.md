@@ -26,6 +26,7 @@ Der Worker arbeitet als `developer` oder `admin`:
 | --- | --- |
 | `execute_tasks` | Tasks bearbeiten (submit_result, update_task_state, report_guard_result) |
 | `read_own_epic` | Eigene Epics und Tasks lesen |
+| `read_assigned_task` | Implizit: Task + Epic + Context Boundary lesen wenn via `assigned_to` zugeteilt (auch ohne `project_member`) |
 | `read_any_skill` | Alle aktiven Skills sehen |
 | `read_any_doc` | Docs im Epic lesen |
 
@@ -91,6 +92,8 @@ Worker stellt fest: Blocker (z.B. unklare API-Spezifikation)
 
 ## Guard-Sequenz (verpflichtend vor in_review)
 
+> **Phase-abhängiges Verhalten:** Die kanonische Guard-Enforcement-Timeline steht in [guards.md](../features/guards.md#kanonische-guard-enforcement-timeline). Phase 2–4: Guards sind **informativ** (kein Blocker für `in_review`). Ab Phase 5: Guards sind **blockierend** (422 bei offenen Guards).
+
 ```text
 1. hivemind/get_guards { "task_id": "TASK-88" }
    → Alle Guards laden (global + project + skill + task)
@@ -102,7 +105,8 @@ Worker stellt fest: Blocker (z.B. unklare API-Spezifikation)
 3. hivemind/submit_result { "task_id": "TASK-88", "result": "...", "artifacts": [...] }
 
 4. hivemind/update_task_state { "task_id": "TASK-88", "state": "in_review" }
-   → 422 wenn Guards offen oder Result fehlt
+   → Phase 2–4: 422 nur wenn Result fehlt (Guards nicht geprüft)
+   → Ab Phase 5: 422 wenn Guards offen oder Result fehlt
 ```
 
 ---

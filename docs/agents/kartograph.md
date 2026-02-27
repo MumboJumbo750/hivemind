@@ -105,6 +105,22 @@ Die Prompt Pipeline (→ [Prompt Pipeline](./prompt-pipeline.md)) unterstützt d
 
 ---
 
+## Kartograph-Outputs
+
+| Output-Typ | Beschreibung | MCP-Tool |
+| --- | --- | --- |
+| Wiki-Artikel | Systemwissen dokumentieren | `create_wiki_article`, `update_wiki_article` |
+| Epic-Docs | Epic-spezifische Dokumentation | `create_epic_doc` |
+| Code-Nodes | Nexus Grid befüllen (Fog of War lichten) | Automatisch via Backend bei Wiki/Doc-Write |
+| Guard-Proposals | Guards aus Repo-Dateien entdecken (`.eslintrc`, `pytest.ini`, `pyproject.toml`, CI-Configs) | `propose_guard`, `submit_guard_proposal` |
+| Guard-Change-Proposals | Bestehende Guards aktualisieren (z.B. Coverage-Schwelle ändern) | `propose_guard_change` |
+| Epic-Restructure-Proposals | Falsch geschnittene Epics vorschlagen umzustrukturieren | `propose_epic_restructure` |
+| Discovery Sessions | Codebase-Bereiche aktiv erkunden und an Peers broadcasten | `start_discovery_session`, `end_discovery_session` |
+
+> **Guard-Discovery:** Der Kartograph analysiert Repo-Dateien (`.github/workflows/ci.yml`, `Makefile`, `package.json`, `pyproject.toml`, `.pre-commit-config.yaml`) und erstellt daraus Guard-Proposals. Vollständige Quellen-Tabelle: [→ guards.md — Kartograph-Discovery](../features/guards.md#kartograph-discovery)
+
+---
+
 ## Abgrenzung
 
 | | Kartograph | Architekt | Worker |

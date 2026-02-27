@@ -47,7 +47,7 @@ Der User muss **nicht verstehen** wie das System intern funktioniert. Er sieht n
 │  │                         630 / 8000 Tokens  ████░░░░░░░░░  ││
 │  └─────────────────────────────────────────────────────────────┘│
 │                                                                 │
-│  [▶ IN AI-CLIENT EINFÜGEN]    [◈ PROMPT ANPASSEN]              │
+│  [▶ IN AI-CLIENT EINFÜGEN]    [◈ PROMPT ANPASSEN] ← Phase 2+  │
 │                                                                 │
 │  Warte auf MCP-Rückmeldung...  ◌◌◌  (MCP verbunden ✓)         │
 │                                                                 │
@@ -109,6 +109,23 @@ Der Prompt wird standardmäßig **kompakt** angezeigt — Skill- und Doc-Referen
 
 **Priorisierung:** Eskalierte Items > Offene Decision Requests > SLA-nahe Tasks > Normale Tasks
 
+### Vollständige Prioritätstabelle
+
+Die Queue-Priorisierung ist deterministisch. Innerhalb derselben Prioritätsstufe wird nach `deadline_at` (aufsteigend, früheste zuerst) sortiert; bei gleicher Deadline nach `created_at` (aufsteigend).
+
+| Priorität | Agent-Typ | Event-Typ | reason_code | Beispiel |
+| --- | --- | --- | --- | --- |
+| **P0** (Kritisch) | — | Eskalierter Task (Admin-Aktion erforderlich) | `escalated` | Task 3x qa_failed oder Decision-SLA > 72h |
+| **P1** (Hoch) | — | Offener Decision Request (Owner-Entscheidung blockiert Worker) | `decision_open` | Worker wartet auf Antwort |
+| **P2** (Dringend) | Worker / Architekt | SLA-naher Task (< 4h bis Deadline) | `sla_critical` | TASK-88 SLA läuft ab |
+| **P3** (Normal) | Triage | Unrouted Events (manuelles Routing erforderlich) | `triage_unrouted` | Sentry-Event ohne Epic-Zuordnung |
+| **P4** (Normal) | Kartograph | Follow-up-Kartierung (Fog of War reduzieren) | `kartograph_followup` | "frontend/ noch nicht kartiert" |
+| **P5** (Normal) | Worker | Normaler Task (kein SLA-Druck) | `normal` | TASK-90 ready → Worker-Prompt |
+| **P6** (Niedrig) | Gaertner | Follow-up nach Task-Done (Skill-Destillation) | `gaertner_followup` | TASK-88 done → Skill extrahieren |
+| **P7** (Niedrig) | Bibliothekar | Context-Update (kein blockierender Vorgang) | `context_update` | Wiki-Embedding veraltet |
+
+> **Human-Action-Items** (Review, Scoping, Decision) werden **über** der normalen Queue angezeigt, da sie keine AI-Prompts sind. Sie erscheinen im `human_action_required`-State der Prompt Station mit eigenem visuellen Bereich.
+
 ### Entscheidungs-Transparenz ("Warum jetzt?")
 
 Jeder Queue-Eintrag zeigt ein kompaktes **Warum-Jetzt-Badge**. Dadurch ist die Priorisierung nachvollziehbar, ohne Triage öffnen zu müssen.
@@ -147,9 +164,11 @@ Manche Schritte erfordern eine **menschliche Entscheidung** — kein AI-Prompt, 
 
 | System-Event | Anzeige | UI-Aktion |
 | --- | --- | --- |
-| Task wird `in_review` | "Jetzt bist DU dran: Review TASK-88" | → Command Deck öffnen, DoD-Checkliste |
-| Epic ist `incoming` | "Epic EPIC-12 wartet auf Scoping" | → Command Deck öffnen, Scoping-Modal |
-| Decision Request offen | "Entscheidung erforderlich: EPIC-12" | → Command Deck öffnen, Decision-Request-Modal |
+| Task wird `in_review` | "Jetzt bist DU dran: Review TASK-88" | Phase 1: Review **inline in Prompt Station** (vereinfachtes Review-Panel mit DoD-Checkliste + Approve/Reject). Ab Phase 2: → Command Deck öffnen, DoD-Checkliste |
+| Epic ist `incoming` | "Epic EPIC-12 wartet auf Scoping" | Phase 1: Scoping **inline in Prompt Station** (Minimal-Formular: Titel, Beschreibung, Priorität). Ab Phase 2: → Command Deck öffnen, Scoping-Modal |
+| Decision Request offen | "Entscheidung erforderlich: EPIC-12" | → Command Deck öffnen, Decision-Request-Modal (ab Phase 6) |
+
+> **Phase 1 ohne Command Deck:** Da der Command Deck erst in Phase 2 verfügbar ist, bietet die Prompt Station in Phase 1 eingebettete Mini-Formulare für Review und Scoping. Diese sind funktional identisch, aber visuell kompakter. Ab Phase 2 delegiert die Prompt Station an den Command Deck.
 
 Die Prompt Station unterscheidet klar zwischen "AI-Prompt ausführen" und "Du musst jetzt etwas tun".
 
@@ -163,7 +182,8 @@ Die Prompt Station unterscheidet klar zwischen "AI-Prompt ausführen" und "Du mu
 | Kartierung unvollständig | Kartograph | Follow-up-Kartograph | — |
 | Epic wird `scoped` | Architekt | Architektur-Prompt | — |
 | Task wird `ready` (Phase 1-2) | Bibliothekar → Worker | Bibliothekar → Worker | — |
-| Task wird `ready` (Phase F+) | Mercenary Briefing (UI) → Bibliothekar → Worker | Briefing-State → Worker | Loadout bestätigen |
+| Task wird `ready` (Phase 4+) | Mercenary Briefing (UI) → Bibliothekar → Worker | Briefing-State → Worker | Loadout bestätigen |
+| Task wird `ready` (Phase F: federated Skills verfügbar) | Mercenary Briefing (UI) → Bibliothekar → Worker | Briefing-State + Peer-Skills → Worker | Loadout bestätigen |
 | Task wird `in_review` | — | — | Owner reviewed DoD |
 | Epic ist `incoming` | — | — | Owner scopet Epic |
 | Task wird `done` | Gaertner | Gaertner-Prompt | — |

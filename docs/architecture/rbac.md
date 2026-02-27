@@ -51,6 +51,7 @@ Rollen können **pro Projekt überschrieben** werden (via `project_members.role`
 | `propose_skill` | ✓ | ✓ | — | — |
 | `fork_federated_skill` | ✓ | ✓ | — | — |
 | `propose_skill_change` | ✓ | ✓ | — | — |
+| `create_skill_change_proposal` | ✓ | ✓ | — | — |
 | `submit_skill_proposal` | ✓ | ✓ | — | — |
 | `merge_skills` | — | ✓ | — | — |
 | `reject_skill` | — | ✓ | — | — |
@@ -119,6 +120,13 @@ Rollen können **pro Projekt überschrieben** werden (via `project_members.role`
 
 **Konsequenz für Task-Zuweisung:** Ein Developer der via `assigned_to` zu einem Task zugeteilt wird, erhält damit automatisch Schreibrecht auf genau diesen Task — auch wenn er kein `project_member` des Projekts ist. Admins und Owners können Tasks epics-weit zuweisen.
 
+**Implizite Leserechte bei `assigned_to`:** Ein Developer mit `assigned_to` auf einem Task erhält automatisch Leserecht auf:
+- Den zugewiesenen Task (inkl. State, Description, Guards, Result)
+- Das zugehörige Epic (inkl. Title, Description, DoD, SLA)
+- Alle aktiven Skills und Docs die via Context Boundary des Tasks referenziert sind
+
+Diese impliziten Leserechte verhindern das Szenario "write allowed, read denied" bei Nicht-Project-Members.
+
 ---
 
 ## Governance-Regeln
@@ -127,6 +135,29 @@ Rollen können **pro Projekt überschrieben** werden (via `project_members.role`
 - Skill-Aktivierung nur per Admin-Merge
 - Kein direkter Write in globale Skills ohne Proposal-Flow
 - Jeder Write erzeugt Audit-Eintrag mit Vorher/Nachher-Diff
+
+### Governance-Delegation & Entlastungsmechanik
+
+Admin-only-Funktionen (Triage, Merge, Eskalation) können bei Urlaub, Krankheit oder Peak-Load zu operativen Engpässen führen. Folgende Mechanismen entlasten:
+
+**1. Projekt-Admin-Delegation:**
+Projekt-Admins (`project_members.role = 'admin'`) erhalten erweiterte Rechte **innerhalb ihres Projekts**:
+- `resolve_decision_request` für alle Epics des Projekts
+- `cancel_task` für Tasks innerhalb des Projekts
+- `resolve_escalation` für eskalierte Tasks innerhalb des Projekts
+- `route_event` für Events die einem Epic des Projekts zugeordnet werden können
+
+**2. Backup-Admin (Phase 6+):**
+`app_settings.backup_admin_id` (UUID) — automatisches Fallback wenn der primäre Admin > 48h nicht aktiv war (kein Login, kein Write). Das System leitet Admin-Notifications an den Backup-Admin weiter. Konfigurierbar via Settings-UI.
+
+**3. Auto-Delegation bei Inaktivität:**
+Wenn ein Epic-Owner > 72h inaktiv ist und offene `in_review`-Tasks oder Decision Requests existieren:
+- System erstellt Triage-Item: "Owner [X] inaktiv — [N] Tasks warten auf Review"
+- Backup-Owner (falls gesetzt auf Epic) erhält Owner-Rechte für offene Reviews
+- Wenn kein Backup-Owner: Projekt-Admins erhalten die Notification
+
+**4. Triage-Permission delegierbar (Phase 7+):**
+`app_settings.triage_delegates` (UUID[]) — Liste von Usern die neben dem Admin Triage-Rechte erhalten (`route_event`, `ignore_event`, `requeue_dead_letter`). Weiterhin nur von `users.role = 'admin'` setzbar.
 
 ---
 
@@ -139,3 +170,12 @@ Rollen können **pro Projekt überschrieben** werden (via `project_members.role`
 | Record selbst | Unbegrenzt | Nie löschen |
 
 Täglicher Archivierungs-Cron-Job im Backend.
+
+## Notification-Retention
+
+| Daten | Retention | Verhalten nach Ablauf |
+| --- | --- | --- |
+| Gelesene Notifications (`read = true`) | 90 Tage (`NOTIFICATION_RETENTION_DAYS`) | Record wird gelöscht |
+| Ungelesene Notifications (`read = false`) | 365 Tage (`NOTIFICATION_UNREAD_RETENTION_DAYS`) | Record wird gelöscht |
+
+Derselbe tägliche Cron-Job wie Audit-Retention. Verhindert ungebremstes Tabellenwachstum ab Phase 6 (alle Notification-Typen aktiv).

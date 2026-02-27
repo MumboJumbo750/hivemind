@@ -76,7 +76,8 @@ Mono:      "JetBrains Mono"                 (Code, IDs, Prompts)
 ### Ikonografie & Symbole
 
 ```text
-◈  Hivemind-Symbol / aktiver Agent / Peer-Node-Indikator
+◈  Hivemind-Symbol / Peer-Node-Indikator / Federation-Marker
+◆  Worker-Agent (gefüllt — unterscheidet sich visuell von ◈)
 ◌  wartend / inaktiv
 ●  kartiert / erledigt
 ░  Fog of War / unbekannt
@@ -86,8 +87,12 @@ Mono:      "JetBrains Mono"                 (Code, IDs, Prompts)
 ◎  Architekt-Agent
 ◬  Kartograph-Agent (Scout)
 ⊕  Gaertner-Agent
+⊘  Triage-Agent (Routing)
+⊙  Bibliothekar-Agent (Context Assembly)
 ⚔  Skill / Arsenal-Item
 ```
+
+> **Symbol-Abgrenzung:** `◈` (offenes Rautsymbol) wird ausschließlich für Hivemind/Node/Peer-Kontexte verwendet. `◆` (gefülltes Rautsymbol) markiert den Worker-Agent, um visuelle Ambiguität zu vermeiden. `⊘` markiert Triage, `⊙` markiert den Bibliothekar.
 
 ---
 
@@ -152,6 +157,18 @@ Für kognitiv schwere Aufgaben kann die UI in einen Fokusmodus wechseln:
 - **Prompt-Fokus:** blendet Nav Sidebar und Status Bar temporär aus, wenn der User Volltext-Prompts liest oder editiert.
 - **Map-Fokus:** maximiert Nexus Grid (2D/3D) auf die volle Canvas-Breite; Context Panel öffnet nur on-demand.
 - **Sicherheitsprinzip:** Kritische Alarme bleiben sichtbar als kompakter Overlay-Strip (SLA rot, Decision Requests, Escalations).
+
+**Aktivierung:**
+
+| Methode | Aktion | Ergebnis |
+| --- | --- | --- |
+| **Tastatur** | `Ctrl+Shift+F` (Windows/Linux) / `Cmd+Shift+F` (macOS) | Toggle zwischen Focus Mode und Normal Mode |
+| **UI-Button** | Expand-Icon (⛶) in der rechten oberen Ecke des Content-Bereichs | Selber Toggle |
+| **Kontextbezogen** | Klick auf "Volltext bearbeiten" in Prompt Station | Aktiviert automatisch Prompt-Fokus |
+| **Kontextbezogen** | Doppelklick auf Nexus Grid Canvas | Aktiviert automatisch Map-Fokus |
+| **Escape** | `Esc`-Taste | Verlässt Focus Mode (immer, in jedem Kontext) |
+
+**Modus-Erkennung:** Der aktive Focus-Modus wird durch den Kontext bestimmt — Prompt Station → Prompt-Fokus, Nexus Grid → Map-Fokus. `Ctrl+Shift+F` aktiviert den zum aktuellen View passenden Modus. In Views ohne definierten Fokus-Modus hat der Shortcut keine Wirkung.
 
 ### Nav Sidebar — Progressive Reveal (Phasen-Rollout)
 
@@ -245,7 +262,7 @@ Ein UI fühlt sich nach "Spiel" an, wenn jede Interaktion befriedigendes, fast s
 - **SLA-Countdown:** Sichtbarer Timer der sich orange → rot färbt — Druck ohne Panik
 - **Fog of War:** Das Aufdecken durch den Kartographen passiert nicht instantan, sondern als sichtbare "Scan"-Welle (Radial Reveal) über das Grid (░ → ●)
 - **State-Transitions:** Task `in_progress` → `in_review` → `done` mit kurzem Pulse-Effekt; Epic `done` löst einen dezenten Glow-Effekt über der Epic-Card aus.
-- **Agent-Badges:** Jeder Agent hat ein eigenes Symbol (◈ Worker, ◎ Architekt, ◬ Kartograph, ⊕ Gaertner)
+- **Agent-Badges:** Jeder Agent hat ein eigenes Symbol (◆ Worker, ◎ Architekt, ◬ Kartograph, ⊕ Gaertner, ⊘ Triage, ⊙ Bibliothekar)
 - **Token Radar:** Animierter Progress-Ring der zeigt wieviel Kontext geladen ist (Loadout-Gewicht)
 - **Skill Confidence Bar:** Visueller Indikator der Verlässlichkeit eines Skills im Arsenal
 - **Prompt Queue Fortschritt:** "3 von 5 Agenten-Aufgaben heute erledigt" — Game-Loop-Gefühl
