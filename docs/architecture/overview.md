@@ -315,6 +315,53 @@ Alle API-Endpoints sind rate-limited. Die Limits gelten pro Actor (identifiziert
 
 ---
 
+## Cron-Job & Scheduled Tasks — Infrastruktur
+
+Hivemind nutzt mehrere periodische Hintergrund-Jobs. Die Infrastruktur ist bewusst einfach und wächst mit den Phasen:
+
+### Phase 1–7: In-Process APScheduler
+
+Alle Cron-Jobs laufen **im FastAPI-Prozess** via [APScheduler](https://apscheduler.readthedocs.io/) (`AsyncIOScheduler`). Kein separater Worker-Prozess, kein Celery, kein Redis.
+
+```python
+# Beispiel: Job-Registrierung beim App-Start
+scheduler = AsyncIOScheduler()
+scheduler.add_job(sla_check_cron, "interval", minutes=60, id="sla_check")
+scheduler.add_job(outbox_consumer, "interval", seconds=30, id="outbox_consumer")
+scheduler.add_job(federation_ping, "interval", seconds=60, id="federation_ping")
+scheduler.start()
+```
+
+### Registrierte Jobs
+
+| Job-ID | Intervall | Ab Phase | Beschreibung | Konfig Env-Var |
+| --- | --- | --- | --- | --- |
+| `sla_check` | 60 min | 2 | SLA-Warnungen prüfen (Epics + Tasks nahe Deadline) | `HIVEMIND_SLA_CRON_INTERVAL` (Sekunden, default: 3600) |
+| `outbox_consumer` | 30 sec | 2 | Sync-Outbox Pending-Einträge verarbeiten | `HIVEMIND_OUTBOX_POLL_INTERVAL_SECONDS` (default: 30) |
+| `federation_ping` | 60 sec | F | Heartbeat an alle Peers | `HIVEMIND_FEDERATION_PING_INTERVAL` (default: 60) |
+| `dlq_cleanup` | 24 h | 2 | Dead-Letter-Queue alte Einträge archivieren | — |
+| `backup_db` | 24 h | 1 | `pg_dump` (via Docker exec oder subprocess) | `HIVEMIND_BACKUP_CRON` (Cron-Expression) |
+| `idempotency_cleanup` | 1 h | 2 | Abgelaufene Idempotency-Keys löschen (TTL-basiert) | — |
+| `peer_status_check` | 5 min | F | Offline-Peers erkennen, Triage-Items erzeugen | `HIVEMIND_FEDERATION_OFFLINE_THRESHOLD` |
+| `embedding_queue` | 10 sec | 3 | Ausstehende Embedding-Berechnungen via Ollama | `HIVEMIND_EMBEDDING_BATCH_SIZE` (default: 10) |
+
+### Phase 8: Prozess-Separation & Leader Election
+
+Ab Phase 8 (Multi-Worker-Setup) müssen Cron-Jobs dedupliziert werden damit z.B. der SLA-Check nicht von 3 Workers gleichzeitig ausgeführt wird:
+
+```text
+Strategie: PostgreSQL Advisory Lock als Leader Election
+
+1. Jeder Worker versucht beim Job-Start: SELECT pg_try_advisory_lock(:job_id_hash)
+2. Nur ein Worker erhält das Lock → führt den Job aus
+3. Lock wird nach Job-Abschluss freigegeben (oder nach Timeout)
+4. Kein Redis, kein ZooKeeper — PostgreSQL reicht
+```
+
+> **Bewusste Entscheidung:** APScheduler statt Celery/Dramatiq weil kein Message-Broker benötigt wird (Phase 1–7 = Single-Process). Der Wechsel zu einem externen Scheduler ist für Phase 8 evaluierbar, aber mit Advisory Locks + APScheduler ist Multi-Worker bereits abgedeckt.
+
+---
+
 ## Bekannte Skalierungsgrenzen
 
 | Bereich | Limit | Mitigation | Phase |

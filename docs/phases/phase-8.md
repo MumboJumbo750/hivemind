@@ -18,7 +18,7 @@
   - Gleicher Prompt wie bisher — kein Unterschied für MCP-Tools
   - Rate-Limiting + Retry bei API-Fehlern
 - [ ] GitLab MCP Consumer: GitLab als Datenquelle (MRs, Pipelines, Issues)
-- [ ] Bibliothekar als echter Backend-Service (pgvector-Similarity, kein Prompt mehr)
+- [ ] Bibliothekar-Erweiterung für Auto-Modus: Provider-spezifische Token-Kalibrierung + adaptives Budget (pgvector-Similarity läuft bereits seit Phase 3; Phase 8 ergänzt Provider-Integration)
 - [ ] Nexus Grid 3D Backend: Graphdaten-Aggregation optimiert für große Codebases
 - [ ] Auto-Escalation: System eskaliert autonom nach SLA-Regeln ohne manuelle Trigger
 
@@ -82,6 +82,11 @@ In Phase 1–7 verwendet Hivemind `tiktoken cl100k_base` als universelle Approxi
 
 ### Phase 8 Specific
 - [ ] API-Key wird sicher gespeichert (nicht im Plaintext in DB)
+  - **Speicherort:** `app_settings` mit Key `ai_api_key_encrypted` + `ai_api_key_nonce`
+  - **Verschlüsselung:** AES-256-GCM mit Schlüssel abgeleitet aus `HIVEMIND_KEY_PASSPHRASE` (identisch zur Ed25519-Key-Verschlüsselung) via HKDF-SHA256 (separater Salt für API-Key-Kontext)
+  - **Ablauf:** Frontend sendet Plaintext-Key via HTTPS → Backend verschlüsselt sofort (AES-256-GCM) → speichert Ciphertext + Nonce in `app_settings` → Plaintext nie persistiert
+  - **Entschlüsselung:** Nur im Speicher beim aktiven API-Call; Schlüssel wird nach Verwendung aus dem Speicher gelöscht
+  - **Alternative:** Wenn `HIVEMIND_AI_API_KEY` als Env-Var gesetzt ist, wird dieses bevorzugt (kein DB-Eintrag nötig — für Deployments die Secrets über Env-Vars managen)
 - [ ] AI-Provider sendet Prompt und empfängt MCP-Calls korrekt
 - [ ] Review-Gate auch im Auto-Modus aktiv (kein direktes `done`)
 - [ ] "Manuell eingreifen"-Button schaltet zurück auf manuelle Prompt Station

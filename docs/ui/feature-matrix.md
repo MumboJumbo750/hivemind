@@ -46,8 +46,8 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 | Funktion | View | UI-Element | Phase |
 | --- | --- | --- | --- |
 | Unrouted Events | Triage Station | [UNROUTED]-Cards mit Routing-Vorschlägen + route/ignore Buttons | 3 |
-| Guard-Proposals reviewen | Triage Station | [GUARD PROPOSAL]-Cards mit Diff-Ansicht + Merge/Reject | 4 |
 | Skill Proposals | Triage Station + Skill Lab | [SKILL PROPOSAL]-Cards mit Diff-Ansicht + Merge/Reject | 4 |
+| Guard-Proposals reviewen | Triage Station | [GUARD PROPOSAL]-Cards mit Diff-Ansicht + Merge/Reject | 5 |
 | Skill Change Proposals | Triage Station + Skill Lab | [SKILL CHANGE]-Cards mit Diff-Ansicht + Accept/Reject | 5 |
 | Guard Change Proposals | Triage Station | [GUARD CHANGE]-Cards mit Diff-Ansicht + Accept/Reject | 5 |
 | Epic Restructure Proposals | Triage Station | [RESTRUCTURE]-Cards mit Proposal-Text + Accept/Reject | 5 |
@@ -108,7 +108,7 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 | Theme-Auswahl | Settings → Tab "System" | Theme-Switch (`space-neon`, `industrial-amber`, `operator-mono`) | 1 |
 | Token-basierte UI | Global (alle Views) | Komponenten lesen nur Theme-Tokens (keine Hardcoded-Farbwerte) | 1 |
 | Focus Mode | Layout-Shell | Prompt-Fokus (ab Phase 2), Map-Fokus (ab Phase 5) | 2 |
-| SLA-Alerts | Notification Tray | 🔔 Badge + aufklappbares Panel | 2 |
+| SLA-Alerts | Notification Tray | 🔔 Badge + aufklappbares Panel. **Phase 2:** Notifications werden client-seitig aus Epic/Task-Daten berechnet (SLA-Timer aus `epics.sla_due_at`, `task_assigned` aus Task-State-Changes, `review_requested` aus `in_review`-Transition). Kein Backend-Notification-Service nötig. **Ab Phase 6:** Voller Backend-Notification-Service schreibt alle Typen in `notifications`-Tabelle (inkl. SLA-Cron-basierte `sla_warning`, `sla_breach`, Decision-SLA-Kette). | 2 |
 | Projekt-Mitgliederverwaltung | Settings → Tab "Projekt" | Mitglieder-Liste + Rollen pro Projekt + Invite-Button | 2 |
 | Decision Request Alerts | Notification Tray | Priorisiert nach SLA | 6 |
 | Notification Action Queue | Notification Tray | Gruppen `ACTION NOW`, `SOON`, `FYI` inkl. naechster Aktion | 6 |
@@ -128,12 +128,12 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 | Skill übernehmen (lokaler Fork) | Gilde / Arsenal | Skill aus Peer-Node als lokaler Draft-Fork mit `extends` importieren | F |
 | Gilde-Status in System Bar | System Bar | `[◈ GILDE: 2/3 ▾]` Dropdown mit Live-Peer-Status | F |
 | Mercenary Loadout Screen | Prompt Station | BRIEFING-State wenn Task `ready` (Architekt fertig) → intermediärer Schritt vor Worker-Prompt. **Basis-Loadout (Skill-Auswahl + Budget-Prüfung) ab Phase 4; Federated Skills im Loadout ab Phase F.** | 4 |
-| Federated Skill im Loadout | Mercenary Loadout | Peer-Skills wählbar mit `[◈ peer-name]` Origin-Badge | F |
-| Task an Peer delegieren | Command Deck | Task-Detail: `[AN PEER DELEGIEREN ▾]` Dropdown | F |
-| Peer-Task-Status sehen | Command Deck | Task-Badge `[◈ ben-hivemind ●]` im Epic-Überblick | F |
-| Node-Filter im Command Deck | Command Deck | `[NODE-FILTER: alle ▾]` — Tasks nach Origin-Node filtern | F |
-| Discovery Session starten | Nexus Grid | Beim Kartograph-Start → Area markieren + an Peers broadcasten | F |
-| Discovery Session sehen | Nexus Grid | Pulsierender Badge über erkundetem Bereich | F |
+| Federated Skill im Loadout | Mercenary Loadout | Peer-Skills wählbar mit `[◈ peer-name]` Origin-Badge. **Voraussetzung: Phase 4 (Arsenal/Loadout).** | F |
+| Task an Peer delegieren | Command Deck | Task-Detail: `[AN PEER DELEGIEREN ▾]` Dropdown. **Voraussetzung: Phase 2 (Command Deck).** | F |
+| Peer-Task-Status sehen | Command Deck | Task-Badge `[◈ ben-hivemind ●]` im Epic-Überblick. **Voraussetzung: Phase 2 (Command Deck).** | F |
+| Node-Filter im Command Deck | Command Deck | `[NODE-FILTER: alle ▾]` — Tasks nach Origin-Node filtern. **Voraussetzung: Phase 2 (Command Deck).** | F |
+| Discovery Session starten | Nexus Grid | Beim Kartograph-Start → Area markieren + an Peers broadcasten. **Voraussetzung: Phase 5 (Nexus Grid).** | F |
+| Discovery Session sehen | Nexus Grid | Pulsierender Badge über erkundetem Bereich. **Voraussetzung: Phase 5 (Nexus Grid).** | F |
 | Federation-Notifications | Notification Tray | peer_task_done, peer_online, federated_skill, discovery_session | F |
 
 ---
@@ -153,10 +153,13 @@ Phase 2: + Command Deck (Epics, Tasks, Review, Scoping, SLA)
          + Spotlight-Suche Ctrl+K (Tasks + Epics)
 
 Phase F: + Gilde / Federation (Peer-Uebersicht, Gildenwissen, Node-Identitaet)
-         + Mercenary Loadout Screen in Prompt Station
-         + Nexus Grid: Peer-Farben + Discovery Session Overlay
-         + Command Deck: Peer-Task-Delegation + Node-Filter
-         + System Bar: Gilde-Status `[GILDE: 2/3]`
+           Verfuegbar sofort nach Phase 2:
+             Gilde-View, Settings Federation-Tab, System Bar Gilde-Status
+           Progressiv verfuegbar (Features werden sichtbar sobald abhaengige Phase implementiert):
+             Command Deck Integration (Delegation, Node-Filter) -> ab Phase 2
+             Mercenary Loadout mit Federated Skills -> ab Phase 4 (Arsenal)
+             Federated Skills im Arsenal -> ab Phase 4
+             Nexus Grid: Peer-Farben + Discovery Session Overlay -> ab Phase 5
 
 Phase 3: + Triage Station (Unrouted Events)
          + Prompt Station: Token Radar

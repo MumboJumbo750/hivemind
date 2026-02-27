@@ -131,6 +131,59 @@ Empfohlenes Setup:
 
 ---
 
+## Context Boundary Filter — Implementierung
+
+`context_boundary_filter: true` (Developer, Admin, Service) bewirkt, dass Lese-Queries auf Entitäten eingeschränkt werden. Die Implementierung erfolgt als **Middleware-Layer** im FastAPI-Backend (kein Raw-SQL in jedem Endpoint):
+
+### Mechanismus
+
+```python
+# Middleware-Schicht: ContextBoundaryMiddleware (FastAPI Dependency)
+# Wird auf alle Read-Endpoints angewendet die projekt-/epic-scoped sind.
+
+async def apply_context_boundary(
+    actor: Actor,          # aus JWT extrahiert
+    query: SQLAlchemy Query
+) -> SQLAlchemy Query:
+    if actor.role == "kartograph":
+        return query  # context_boundary_filter = false → kein Filter
+
+    # Schritt 1: Projekt-Membership filtern
+    # Developer/Service sehen nur Entitäten aus Projekten in denen sie project_member sind
+    # ODER Entitäten aus Epics/Tasks auf die sie assigned_to sind
+    query = query.filter(
+        or_(
+            Entity.project_id.in_(actor.project_ids),
+            Entity.id.in_(assigned_entity_ids(actor))
+        )
+    )
+
+    # Schritt 2: Context Boundary anwenden (nur bei Task-scoped Reads)
+    # Wenn ein Task eine gesetzte context_boundary hat, werden nur allowed_skills
+    # und allowed_docs zurückgegeben — andere Entitäten werden ausgefiltert
+    if task_context and task_context.context_boundary:
+        boundary = task_context.context_boundary
+        if entity_type == "skill":
+            query = query.filter(Skill.id.in_(boundary.allowed_skills))
+        elif entity_type == "doc":
+            query = query.filter(Doc.id.in_(boundary.allowed_docs))
+        # Wiki ignoriert Context Boundary (globales Hintergrundwissen)
+
+    return query
+```
+
+### Sonderfälle
+
+| Szenario | Verhalten |
+| --- | --- |
+| **Projektübergreifende Entitäten (Wiki)** | Wiki ist projektunabhängig — kein Project-Filter, kein Context-Boundary-Filter. Alle Rollen sehen alle Wiki-Artikel. |
+| **Globale Skills (`project_id = NULL`)** | Sichtbar für alle Rollen (globale Skills sind per Definition projektübergreifend). |
+| **Tasks ohne Epic-Zuweisung** | Kann nicht existieren — `tasks.epic_id` ist NOT NULL (FK). Jeder Task gehört zu einem Epic. |
+| **Federated Entitäten (`origin_node_id IS NOT NULL`)** | Werden wie lokale Entitäten behandelt — der Context-Boundary-Filter greift identisch. Read-only-Restriction kommt aus der Origin-Authority-Prüfung, nicht aus RBAC. |
+| **Admin-Rolle** | `context_boundary_filter: true`, aber Admin hat `read_any_epic` — sieht alle Projekte. Context Boundary wird nur auf Task-Level angewendet wenn explizit ein Task-Kontext geladen wird. |
+
+---
+
 ## Scope-Regeln für `write_tasks`
 
 `developer` darf Tasks schreiben (`write_tasks`) wenn **mindestens eine** der folgenden Bedingungen gilt:

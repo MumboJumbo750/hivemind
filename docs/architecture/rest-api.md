@@ -146,6 +146,28 @@ GET    /api/wiki/categories                   → Kategorie-Baum
 GET    /api/projects/:id/wiki/export          → Wiki-Export (.zip Markdown)
 ```
 
+### Globale Suche (Spotlight)
+
+Die Spotlight-Suche (Ctrl+K) nutzt einen übergreifenden Such-Endpoint. Die Ergebnisse sind RBAC-gefiltert und nach Entitätstyp gruppiert.
+
+```text
+GET    /api/search                            → Übergreifende Suche
+                                                Query-Params:
+                                                  q (Pflicht): Suchbegriff (mind. 2 Zeichen)
+                                                  types (Optional): Komma-separiert: tasks,epics,skills,guards,wiki,code_nodes
+                                                         Default: alle verfügbaren Typen der aktuellen Phase
+                                                  project_id (Optional): Auf ein Projekt beschränken
+                                                  limit (Optional): Max. Ergebnisse pro Typ (Default: 5, Max: 20)
+                                                → Response: { data: { tasks: [...], epics: [...], skills: [...], ... } }
+                                                → Suchmethode:
+                                                  Phase 2–3: ILIKE-Suche auf title/name-Feldern (Fuzzy via trigram)
+                                                  Ab Phase 3: Hybrid — ILIKE + pgvector-Similarity (bestes Ergebnis gewinnt)
+                                                → RBAC: Developer sieht nur Entitäten aus eigenen Projekten/Epics;
+                                                  Admin/Kartograph sieht alles; context_boundary_filter wird angewendet
+                                                → Phasen-Rollout: Phase 2 (Tasks+Epics), Phase 4 (+Skills+Guards),
+                                                  Phase 5 (+Wiki+Code-Nodes)
+```
+
 ### Triage
 
 ```text

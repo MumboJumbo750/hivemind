@@ -57,6 +57,7 @@
 | [Nexus Grid](docs/features/nexus-grid.md) | Code-Graph, Fog of War, Bug-Heatmap |
 | [Sync & DLQ](docs/features/sync.md) | Outbox Pattern, Retry, Dead Letter Queue, pgvector-Routing |
 | [Federation](docs/features/federation.md) | Sovereign Nodes, Shared Epics, Peer-Protokoll, Skill/Wiki-Sharing |
+| [Glossar](docs/glossary.md) | Zentrale Definition aller Hivemind-Domänenbegriffe |
 
 ---
 

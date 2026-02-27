@@ -125,6 +125,18 @@ YouTrack/Sentry Event kommt über Webhook
 
 Das Backend validiert die Signature **vor** dem Eintragen in `sync_outbox`. Fehlende oder ungültige Signature → HTTP 401 (kein Eintrag in Outbox). Webhook-Secrets werden als Env-Var konfiguriert und nie in der DB gespeichert.
 
+### Replay-Schutz (Inbound-Webhooks)
+
+Zusätzlich zur Signatur-Validierung werden folgende Maßnahmen gegen Replay-Angriffe angewendet:
+
+| Maßnahme | Detail |
+| --- | --- |
+| **Timestamp-Validierung** | Der Webhook muss einen Timestamp-Header mitliefern (`X-Webhook-Timestamp` bzw. provider-spezifisch). Events mit Timestamp > 5 Minuten in Vergangenheit oder Zukunft werden verworfen (HTTP 401). Toleranz konfigurierbar via `HIVEMIND_WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS` (default: 300). |
+| **Nonce / Event-ID Dedup** | Jeder Webhook-Event muss eine eindeutige Event-ID liefern (YouTrack: `X-Hub-Delivery`, Sentry: `sentry-hook-resource`). Diese ID fließt in den `dedup_key` der `sync_outbox`. Da `dedup_key` UNIQUE ist, wird ein replayed Event beim INSERT abgelehnt (idempotent, kein Fehler nach außen). |
+| **HMAC über Timestamp** | Der Timestamp ist Teil des signierten Payloads: `HMAC(secret, timestamp + "." + body)`. Damit kann ein Angreifer den Timestamp nicht manipulieren ohne die Signatur zu invalide. |
+
+> **Hinweis:** YouTrack und Sentry liefern jeweils eigene Event-IDs und Signatur-Mechanismen. Die Timestamp-Toleranz gilt einheitlich. Für Provider, die keinen eigenen Timestamp-Header senden, wird der Server-Empfangszeitpunkt verwendet (weniger sicher, aber akzeptabel mit HMAC + Dedup).
+
 ---
 
 ## Dispatch-Flow (Outbox-Consumer, Phase 7+)

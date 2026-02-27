@@ -39,6 +39,8 @@ Der AI-Client wählt aus, begründet, und gibt den fertigen Worker-Prompt aus. *
 
 Ab Phase 3 (Ollama verfügbar) übernimmt der Bibliothekar als echte Backend-Komponente:
 
+> **Klarstellung Phase 3 vs. Phase 8:** Ab Phase 3 ist der Bibliothekar ein Backend-Service mit pgvector-Similarity-Suche. Der generierte Prompt enthält automatisch die relevantesten Skills/Docs — kein manueller Wizard-of-Oz-Prompt mehr. **Phase 8 erweitert** den Bibliothekar um: (a) Provider-spezifische Token-Kalibrierung, (b) direkte AI-API-Anbindung (Prompt wird direkt an Claude/OpenAI gesendet statt kopiert), (c) adaptives Token-Budget per Provider. Der Bibliothekar als pgvector-basierter Kontext-Assembler existiert bereits seit Phase 3.
+
 1. Task-Entität laden (inkl. Context Boundary falls gesetzt)
 2. pgvector-Similarity-Suche: Task-Embedding vs. aktive Skills
 3. Skills ranken nach Similarity + Confidence + `service_scope`-Match

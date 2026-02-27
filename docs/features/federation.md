@@ -96,6 +96,53 @@ Ein Schlüsseltausch ist notwendig wenn der Private Key kompromittiert wurde, de
 
 > **Backup:** Der Private Key wird AES-256-GCM-verschlüsselt mit `HIVEMIND_KEY_PASSPHRASE` gespeichert. Vor einer Rotation sollte ein verschlüsseltes Backup des alten Keys angelegt werden (`hivemind federation export-key --encrypted`), damit Audit-Logs die alte Signatur noch verifizieren können.
 
+### Key-Kompromittierung — Notfallprozedur
+
+Wenn ein Private Key kompromittiert wurde, muss sofort gehandelt werden. Die reguläre Rotation mit Grace-Period ist **nicht ausreichend**, da ein Angreifer während der Grace-Period gefälschte Nachrichten signieren könnte.
+
+```text
+1. SOFORT: Alle Peers revoken den kompromittierten Public Key
+   → Admin auf JEDEM Peer: hivemind federation revoke-key --peer <kompromittierte_node_id>
+   → Alternativ Broadcast: POST /federation/emergency-revoke (signed by kompromittierte Node, NOT)
+   → Sicherste Variante: Manuell-koordinierte Revocation (Telefon/Chat)
+
+2. Kompromittierter Node: Komplettes Key-Reset
+   → hivemind federation rotate-key --no-grace  (Grace-Period = 0)
+   → HIVEMIND_KEY_PASSPHRASE ändern
+   → Neuen Public Key manuell an jeden Peer übermitteln (nicht über Federation!)
+   → Manuelle Übermittlung zwingend — Federation-Kanal ist kompromittiert
+
+3. Audit: Nachrichten seit Kompromittierung prüfen
+   → SELECT * FROM sync_outbox
+     WHERE direction = 'peer_inbound'
+       AND created_at > :estimated_compromise_time
+       AND JSON_EXTRACT(payload, '$.signing_node_id') = :compromised_node_id
+   → Verdächtige Einträge: state → 'quarantined' (neuer State)
+   → Triage-Items erzeugen für manuelle Prüfung
+
+4. Entitäten-Audit:
+   → Alle Entitäten mit origin_node_id = kompromittierter Node prüfen
+   → Skills, Wiki, Code-Nodes: Letzte Änderungen nach Kompromittierungszeitpunkt
+     flaggen und manuell reviewen
+   → Bei Zweifeln: Entität auf letzten vertrauenswürdigen Stand zurücksetzen
+     (version vor Kompromittierung)
+
+5. Recovery-Bestätigung:
+   → Kompromittierter Node sendet mit neuem Key POST /federation/ping
+   → Jeder Peer trägt neuen Public Key ein und bestätigt
+   → Full-Sync (GET /federation/sync?since=0) um sauberen State herzustellen
+```
+
+| Schritt | Verantwortlich | Zeitrahmen |
+| --- | --- | --- |
+| Revoke auf allen Peers | Jeder Peer-Admin | < 15 Minuten |
+| Key-Reset auf kompromittiertem Node | Node-Owner | < 30 Minuten |
+| Manueller Key-Austausch | Alle Beteiligten | < 1 Stunde |
+| Audit + Quarantäne | Node-Owner | < 24 Stunden |
+| Full-Sync + Bestätigung | Automatisch nach Key-Akzeptanz | Minuten |
+
+> **Wichtig:** Federation über unsichere Kanäle (nicht-VPN) erhöht das Kompromittierungsrisiko. Bei Hub-Relay-Topologie muss auch der Hub-Key geprüft werden. Die Hive Station hat **keine** Signing-Keys — sie ist kein Angriffsvektor für gefälschte Entitäten, aber ein kompromittierter Hub könnte falsche Peer-Discovery-Informationen liefern.
+
 ---
 
 ## Peer Discovery
@@ -216,6 +263,45 @@ Backend prüft Signatur gegen `nodes.public_key` → unbekannte oder ungültige 
    → Spiegelt TASK-2 state auf seinem Node
    → Epic-Fortschritt sichtbar: TASK-1 ✓, TASK-2 ✓ (◈ ben-hivemind), TASK-3 pending
 ```
+
+### `assigned_to` vs. `assigned_node_id` — Semantik bei Federation
+
+Bei der Delegation von Tasks an Peer-Nodes gibt es zwei orthogonale Zuweisungskonzepte:
+
+| Feld | Typ | Bedeutung | Beispiel |
+| --- | --- | --- | --- |
+| `tasks.assigned_to` | `UUID → users(id)` | **Lokaler User** der den Task bearbeitet. Immer eine lokale User-ID (nie ein Fremd-Node-User). | Ben's lokaler Solo-User |
+| `tasks.assigned_node_id` | `UUID → nodes(id)` | **Peer-Node** auf dem der Task bearbeitet wird. NULL = lokaler Bearbeitung. | Ben's Node-ID |
+
+**Ablauf bei Peer-Delegation:**
+
+```text
+1. Origin-Node (Alex) setzt:
+   tasks.assigned_node_id = ben's node_id
+   tasks.assigned_to = NULL  (Alex kennt Bens lokale User nicht)
+
+2. Peer-Node (Ben) empfängt Task via epic_share:
+   → Erstellt lokale Kopie mit origin_node_id = alex's node_id
+   → tasks.assigned_to = bens lokaler Solo-User (automatisch)
+   → tasks.assigned_node_id = NULL (auf Bens Node ist es ein lokaler Task)
+
+3. Status-Sync via task_update:
+   → Ben's Node → Alex's Node: { task_id, new_state, assigned_to: NULL }
+   → assigned_to wird NICHT synchronisiert (lokales Konzept)
+   → Alex sieht: TASK-2 state=done, assigned_node_id=ben's node_id
+```
+
+**Sonderfälle:**
+
+| Szenario | `assigned_to` | `assigned_node_id` | Verhalten |
+| --- | --- | --- | --- |
+| Lokaler Task (kein Federation) | Lokaler User | `NULL` | Normaler Solo/Team-Betrieb |
+| An Peer delegiert (auf Origin) | `NULL` | Peer Node-ID | Origin sieht "delegiert an [Peer]" |
+| Empfangener Task (auf Peer) | Peer's lokaler User | `NULL` | Peer bearbeitet lokal |
+| Rückdelegation an Origin | Lokaler User | `NULL` | `assigned_node_id` auf NULL, `assigned_to` auf lokalen User setzen |
+| Peer offline, Task reassign | Neuer User / neuer Peer | Ggf. neuer Node | Triage-Item erzeugt; Admin weist manuell zu |
+
+> **Prinzip:** `assigned_to` ist immer eine Node-lokale User-ID. Niemals werden User-IDs über Federation synchronisiert — jeder Node hat seine eigene User-Verwaltung. `assigned_node_id` ist das Federation-Routing-Feld.
 
 ---
 
@@ -430,6 +516,8 @@ Bibliothekar sucht Skill via Embedding-Similarity:
       Embeddings werden lokal gecacht (origin_node_id + version als Cache-Key)
       Re-Embedding nur wenn Peer meldet: neue Version vorhanden
 ```
+
+> **⚠ Skalierungshinweis — Ollama als Single-Instance-Flaschenhals:** In der Federation läuft Ollama auf *jeder Node* lokal. Bei Federated Semantic Search muss jeder Node die Embeddings für empfangene Peer-Entitäten **lokal** berechnen (Re-Embedding bei Cache-Miss). Bei einer Gilde mit N Peers und M Entitäten ergibt sich ein O(N×ΔM)-Embedding-Aufwand pro Sync-Zyklus. **Mitigationen:** (1) Pre-computed Embeddings mit Peer-Nachrichten mitliefern (erfordert identisches Embedding-Modell auf allen Nodes — `embedding_model`-Feld in allen Embedding-Tabellen prüfen), (2) Embedding-Queue mit Batch-Verarbeitung und Priorität (lokale Entitäten > Peer-Entitäten), (3) `HIVEMIND_EMBEDDING_BATCH_SIZE` konservativ setzen bei schwacher GPU. Siehe auch [Bekannte Skalierungsgrenzen](../architecture/overview.md) ("Ollama Single Instance").
 
 ---
 

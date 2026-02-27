@@ -4,6 +4,10 @@
 
 Alle Tabellen werden in Phase 1 erstellt (auch wenn viele Spalten erst später befüllt werden). Keine späteren Migrations-Überraschungen.
 
+> **Design-Entscheidung — Vollständiges Schema ab Phase 1:**
+> Bewusst gewählt statt inkrementellem Schema-Aufbau. Vorteile: (1) Keine Breaking Migrations zwischen Phasen — Alembic läuft von Anfang an im Auto-Generate-Modus und produziert nur additive `ALTER TABLE`-Statements für spätere Feinjustierungen, (2) Federation-Felder (`origin_node_id`, `federation_scope`, `assigned_node_id`) sind ab Tag 1 Teil der FK-Kette und müssen nicht nachträglich in bestehende Tabellen injiziert werden, (3) Jede Phase kann sofort ihre Features implementieren ohne auf Schema-Erweiterungen warten zu müssen.
+> **Alternativen erwogen:** *Inkrementelles Schema* (nur Tabellen der aktuellen Phase anlegen, Rest per Migration in späteren Phasen) — verworfen weil Federation-FKs dann nachträgliche NOT-NULL-Migrations auf Tabellen mit Bestandsdaten erfordern. *Schema-per-Phase-Feature-Flags* (Tabellen existieren, aber Spalten werden per Feature-Flag ignoriert) — unnötige Komplexität, da NULL-Spalten in PostgreSQL keinen Storage-Overhead verursachen.
+
 ---
 
 ## Tabellen-Übersicht
@@ -39,6 +43,7 @@ node_bug_reports           → code_nodes
 epic_node_links            → epics, code_nodes
 task_node_links            → tasks, code_nodes
 mcp_invocations            → users
+idempotency_keys           → users
 prompt_history             → projects, epics, tasks, users
 sync_outbox                (target_node_id → nodes optional)
 sync_dead_letter           → sync_outbox, users
@@ -149,6 +154,8 @@ CREATE TABLE app_settings (
 -- | backup_retention_weekly              | INT     | 4                | 1     | Anzahl wöchentlicher Backups                        |
 -- | backup_admin_id                      | UUID    | NULL             | 6     | Fallback-Admin bei Inaktivität (> 48h kein Login/Write) |
 -- | triage_delegates                     | UUID[]  | '{}'             | 7     | User-IDs mit delegierten Triage-Rechten (neben Admin) |
+-- | ai_api_key_encrypted                 | TEXT    | NULL             | 8     | AI-Provider API-Key (AES-256-GCM verschlüsselt)     |
+-- | ai_api_key_nonce                     | TEXT    | NULL             | 8     | AES-GCM Nonce für ai_api_key_encrypted              |
 
 CREATE TABLE projects (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -169,6 +176,12 @@ CREATE TABLE project_members (
 -- ─────────────────────────────────────────────
 -- GAMIFICATION: Levels, Badges, Achievements
 -- ─────────────────────────────────────────────
+
+-- Gamification-Skeleton — Schema ab Phase 1; Seeds (level_thresholds, badge_definitions) in Phase-1-Migration;
+-- EXP-Vergabe + Achievement-Trigger aktiv ab Phase 2 (erste Writes mit Audit).
+-- Phase 1: Tabellen + Bootstrap-Seeds vorhanden, aber kein EXP-Vergabecode aktiv.
+-- Phase 2+: approve_review / reject_review / merge_skill etc. vergeben EXP gemäß EXP-Vergabe-Regeln (s.u.).
+-- UI-Anzeige (EXP-Bar in Status Bar, Achievement-Badges): ab Phase 2.
 
 -- Level-Schwellen-Konfiguration (Commander Ranks)
 -- Wird beim Bootstrap mit Default-Werten gefüllt; Admin kann anpassen.
@@ -264,6 +277,7 @@ CREATE TABLE epics (
   --   - Empfehlung: SLA beim Scoping setzen; NULL als "unbefristet" interpretieren, nicht als Fehler
   dod_framework   JSONB,
   embedding       vector(768),   -- nomic-embed-text (Ollama, default); bei Wechsel auf OpenAI → ALTER auf 1536
+  embedding_model TEXT,           -- Modell das dieses Embedding berechnet hat (Partial Recompute bei Provider-Wechsel)
   version         INT NOT NULL DEFAULT 0,
   -- Federation
   origin_node_id  UUID REFERENCES nodes(id), -- NULL = lokal erstellt; gesetzt = von Peer empfangen
@@ -361,9 +375,19 @@ CREATE TABLE skills (
   -- Update erfolgt atomar im approve_review / reject_review Handler (Backend).
   -- Manuelles Override: Admin kann confidence direkt setzen (für Kalibrierung).
   source_epics   TEXT[] DEFAULT '{}',
+  skill_type        TEXT NOT NULL DEFAULT 'domain', -- system|domain
+  -- skill_type: Unterscheidet Agent-Rollen-Skills ('system') von Fach-Skills ('domain').
+  -- 'system': Agent-Rollen-Skills (z.B. hivemind-kartograph, hivemind-worker) — global, lifecycle-managed.
+  --           Identifizierbar via skill_type='system' statt über project_id IS NULL (was auch für globale Fach-Skills gilt).
+  -- 'domain': Fach-Skills die aus dem Gaertner-Flow entstehen (z.B. "FastAPI Endpoint erstellen").
+  -- Validierung auf Applikationsebene; DB-Constraint als Sicherheitsnetz:
+  CONSTRAINT chk_skill_type CHECK (skill_type IN ('system', 'domain')),
   lifecycle         TEXT NOT NULL DEFAULT 'draft', -- draft|pending_merge|active|rejected|deprecated
   version           INT NOT NULL DEFAULT 1,
   embedding         vector(768),   -- nomic-embed-text (Ollama, default)
+  embedding_model   TEXT,           -- Modell das dieses Embedding berechnet hat (z.B. 'nomic-embed-text', 'text-embedding-3-small')
+                                    -- NULL = noch nicht berechnet oder Legacy-Embedding ohne Tracking
+                                    -- Ermöglicht Partial Recompute bei Provider-Wechsel: nur Zeilen mit altem Modell neu berechnen
   -- Federation
   origin_node_id    UUID REFERENCES nodes(id), -- NULL = lokal; gesetzt = von Peer empfangen
   federation_scope  TEXT NOT NULL DEFAULT 'local', -- local|federated (federated = wird an Peers gepusht)
@@ -427,6 +451,7 @@ CREATE TABLE docs (
   content     TEXT NOT NULL,
   epic_id     UUID REFERENCES epics(id),
   embedding   vector(768),   -- nomic-embed-text (Ollama, default)
+  embedding_model TEXT,       -- Modell das dieses Embedding berechnet hat (Partial Recompute bei Provider-Wechsel)
   version     INT NOT NULL DEFAULT 0,
   updated_by  UUID REFERENCES users(id),
   created_at  TIMESTAMPTZ DEFAULT now(),
@@ -472,6 +497,7 @@ CREATE TABLE wiki_articles (
   linked_skills UUID[] DEFAULT '{}',
   author_id         UUID REFERENCES users(id),    -- NULL erlaubt für federated
   embedding         vector(768),   -- nomic-embed-text (Ollama, default)
+  embedding_model   TEXT,           -- Modell das dieses Embedding berechnet hat (Partial Recompute bei Provider-Wechsel)
   version           INT NOT NULL DEFAULT 1,
   -- Federation
   origin_node_id    UUID REFERENCES nodes(id), -- NULL = lokal; gesetzt = von Peer empfangen
@@ -504,6 +530,7 @@ CREATE TABLE code_nodes (
   explored_at TIMESTAMPTZ,   -- NULL = Fog of War
   explored_by UUID REFERENCES users(id),
   embedding   vector(768),   -- nomic-embed-text (Ollama, default)
+  embedding_model TEXT,       -- Modell das dieses Embedding berechnet hat (Partial Recompute bei Provider-Wechsel)
   metadata    JSONB,
   -- Federation
   origin_node_id   UUID REFERENCES nodes(id), -- NULL = lokal entdeckt; gesetzt = von Peer empfangen
@@ -592,6 +619,34 @@ CREATE TABLE mcp_invocations (
 );
 
 -- ─────────────────────────────────────────────
+-- IDEMPOTENZ (Write-Deduplication)
+-- ─────────────────────────────────────────────
+
+-- Speichert verwendete Idempotency-Keys mit gecachter Response.
+-- Verarbeitungsablauf:
+--   1. Client sendet Write-Request mit `Idempotency-Key: <UUID>` Header
+--   2. Backend prüft idempotency_keys WHERE key = <UUID>
+--      a) Key existiert + status='completed': gecachte Response zurückgeben (HTTP 200, kein erneuter Write)
+--      b) Key existiert + status='processing': HTTP 409 Conflict ("Request wird gerade verarbeitet")
+--      c) Key existiert nicht: INSERT mit status='processing', dann Write ausführen, dann UPDATE auf 'completed'
+--   3. Bei fehlgeschlagenem Write: Key-Eintrag löschen (Client kann Retry mit gleichem Key)
+-- TTL: 24 Stunden. Täglicher Cleanup-Job löscht abgelaufene Keys.
+-- Kein Redis nötig in Phase 1–7 — PostgreSQL-basiert (ausreichend für Single-Instance).
+CREATE TABLE idempotency_keys (
+  key             UUID PRIMARY KEY,
+  actor_id        UUID NOT NULL REFERENCES users(id),
+  tool_name       TEXT NOT NULL,           -- MCP-Tool oder REST-Endpoint
+  status          TEXT NOT NULL DEFAULT 'processing', -- processing|completed
+  response_status INT,                     -- HTTP-Status der gecachten Response
+  response_body   JSONB,                   -- Gecachte Response (komplett)
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  expires_at      TIMESTAMPTZ DEFAULT now() + interval '24 hours'
+);
+
+-- Partial-Index für Cleanup-Job: nur abgelaufene Keys
+CREATE INDEX idx_idempotency_keys_expires ON idempotency_keys(expires_at) WHERE status = 'completed';
+
+-- ─────────────────────────────────────────────
 -- SYNC: Outbox & Dead Letter Queue
 -- ─────────────────────────────────────────────
 
@@ -611,8 +666,9 @@ CREATE TABLE sync_outbox (
   -- unrouted: wartet auf manuelle Entscheidung in Triage Station
   -- routed:   wurde einem Epic zugewiesen (manuell oder auto)
   -- ignored:  Admin hat bewusst entschieden, Event nicht zu routen (kein Epic-Bezug); bleibt lesbar für Audit
-  embedding     vector(768),   -- nomic-embed-text (Ollama, default); für pgvector-basiertes Auto-Routing ungerouteter Events
-  created_at    TIMESTAMPTZ DEFAULT now()
+  embedding       vector(768),   -- nomic-embed-text (Ollama, default); für pgvector-basiertes Auto-Routing ungerouteter Events
+  embedding_model TEXT,           -- Modell das dieses Embedding berechnet hat (Partial Recompute bei Provider-Wechsel)
+  created_at      TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE sync_dead_letter (
@@ -810,6 +866,22 @@ CREATE INDEX idx_skills_lifecycle ON skills(lifecycle);
 CREATE INDEX idx_skills_project_id ON skills(project_id);
 
 -- pgvector: HNSW-Index für Cosine-Similarity (ab Phase 3 befüllt)
+-- Index-Typ: HNSW (Hierarchical Navigable Small World) — gewählt wegen:
+--   (a) Bessere Query-Performance als IVFFlat bei < 1M Vektoren
+--   (b) Kein Rebuild nach Inserts nötig (IVFFlat braucht regelmäßiges REINDEX)
+--   (c) INSERT-Performance akzeptabel für Hivemind-Workload (kein Massen-Streaming)
+-- Parameter (Defaults, anpassbar via ALTER INDEX ... SET):
+--   ef_construction = 64  — Qualität beim Index-Aufbau (höher = genauer, langsamer)
+--   m = 16                — Max. Kanten pro Node im Graph (höher = mehr RAM, bessere Recall)
+-- Query-Parameter (Session-Level, pro Query anpassbar):
+--   SET hnsw.ef_search = 40;  — Suchtiefe (höher = genauer, langsamer; Default: 40)
+-- Skalierungs-Richtwerte:
+--   < 10.000 Embeddings:  Defaults ausreichend (< 10ms Query-Zeit)
+--   10.000 – 100.000:     ef_search = 100, ef_construction = 128 evaluieren
+--   > 100.000:            ef_construction = 200, m = 32; Monitoring via pg_stat_user_indexes
+-- Rebuild-Strategie nach Massen-Imports (z.B. Kartograph-Bootstrap > 1000 Nodes):
+--   REINDEX INDEX CONCURRENTLY idx_code_nodes_embedding;  — kein Downtime, kein Lock
+--   Empfehlung: Batch-Import → REINDEX CONCURRENTLY → dann Queries (bessere Recall nach Rebuild)
 CREATE INDEX idx_epics_embedding        ON epics    USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX idx_skills_embedding       ON skills   USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX idx_wiki_articles_embedding ON wiki_articles USING hnsw (embedding vector_cosine_ops);
