@@ -91,6 +91,7 @@ CREATE TABLE users (
   email         TEXT UNIQUE,
   password_hash TEXT,           -- bcrypt/argon2; NULL für service-Accounts (API-Key-Auth)
   role          TEXT NOT NULL DEFAULT 'developer', -- developer|admin|service|kartograph
+  exp_points    INT NOT NULL DEFAULT 0,            -- Gamification Progression
   created_at    TIMESTAMPTZ DEFAULT now()
 );
 
@@ -123,6 +124,14 @@ CREATE TABLE project_members (
   user_id     UUID NOT NULL REFERENCES users(id),
   role        TEXT NOT NULL DEFAULT 'developer', -- developer|admin|service|kartograph
   PRIMARY KEY (project_id, user_id)
+);
+
+CREATE TABLE user_achievements (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  badge_id    TEXT NOT NULL, -- z.B. "master_architect", "fog_clearer", "guild_contributor"
+  earned_at   TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, badge_id)
 );
 
 -- ─────────────────────────────────────────────
