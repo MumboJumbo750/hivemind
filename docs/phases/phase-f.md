@@ -57,13 +57,14 @@ Phase 4 (nach Phase F):
 - [ ] Epic-Share-Flow: `assigned_node_id` auf Task setzen → Epic-Spec + Task-Spec an Peer-Node senden
 - [ ] Task-Update-Empfang: Eingehende Task-State-Updates von Peer-Nodes verarbeiten + lokal spiegeln
 - [ ] Heartbeat-Service: Regelmäßiger Ping an alle bekannten Peers (aktualisiert `nodes.last_seen`)
-- [ ] **Federation-Notification-Types** (Notification-Service-Einträge für alle Federation-Events):
+- [ ] **Federation-Notification-Types** (vor Phase 6: client-calculated aus SSE-Events; ab Phase 6: Notification-Service-Einträge):
   - `task_delegated` — bei `assigned_node_id` setzen → Epic-Owner
   - `peer_task_done` — bei eingehendem Task-Update mit `state='done'` von Peer → Epic-Owner
   - `peer_online` — wenn `nodes.status` von `inactive` → `active` wechselt → alle User
   - `peer_offline` — wenn Peer mit delegierten Tasks als `inactive` erkannt wird → alle Admins
   - `federated_skill` — bei Empfang eines neuen federierten Skills → alle User
   - `discovery_session` — bei `start_discovery_session` / `end_discovery_session` eines Peers → alle User
+  > **Hinweis:** Der backend-seitige Notification-Service wird erst in Phase 6 implementiert. Bis dahin werden diese Notification-Types **client-calculated** aus den entsprechenden SSE-Events (Federation-State-Changes) abgeleitet — analog zum Phase-2-Muster für andere Notifications.
 - [ ] `peers.yaml`-Loader: Beim Start Peer-Konfiguration in `nodes`-Tabelle einlesen
 - [ ] Topologie-Schalter: `HIVEMIND_FEDERATION_TOPOLOGY` (`direct_mesh|hub_assisted|hub_relay`) unterstützt
 - [ ] Optionaler Hive-Station-Client (`hub_assisted`): Register + Presence + Peer-Liste laden

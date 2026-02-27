@@ -13,6 +13,7 @@
 ### Backend
 
 - [ ] Planer-Write-Tools implementiert:
+  - `hivemind/create_epic` — Epic direkt erstellen mit state='incoming' (developer in eigenen Projekten, admin überall)
   - `hivemind/propose_epic` — Epic-Proposal erstellen (Stratege)
   - `hivemind/update_epic_proposal` — Proposal nachbessern (Stratege)
   - `hivemind/accept_epic_proposal` — Proposal akzeptieren → Epic (incoming) (Triage/Admin)

@@ -370,6 +370,7 @@ scheduler.start()
 | `idempotency_cleanup` | 1 h | 2 | Abgelaufene Idempotency-Keys löschen (TTL-basiert) | — |
 | `peer_status_check` | 5 min | F | Offline-Peers erkennen, Triage-Items erzeugen | `HIVEMIND_FEDERATION_OFFLINE_THRESHOLD` |
 | `embedding_queue` | 10 sec | 3 | Ausstehende Embedding-Berechnungen via Ollama | `HIVEMIND_EMBEDDING_BATCH_SIZE` (default: 50) |
+| `prompt_history_cleanup` | 24 h | 3 | Einträge älter als Retention-Period löschen (FIFO, max 500/Task) | `HIVEMIND_PROMPT_HISTORY_RETENTION_DAYS` (default: 180) |
 
 ### Phase 8: Prozess-Separation & Leader Election
 

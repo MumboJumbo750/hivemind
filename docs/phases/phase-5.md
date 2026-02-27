@@ -53,8 +53,8 @@
 - [ ] **Notification-Types aktivieren** (werden ab Phase 6 an Notification-Service übergeben):
   - `guard_proposal` — bei `submit_guard_proposal` → alle Admins
   - `restructure_proposal` — bei `propose_epic_restructure` → alle Admins
-- [ ] **Gamification aktivieren** (→ [Phase 1 Gamification-Spezifikation](./phase-1.md#gamification-spezifikation)):
-  - EXP-Trigger in `approve_review` (+100 EXP, +50 First-Try-Bonus), `merge_skill` (+75), `create_wiki_article` (+50), `merge_guard` (+50), `create_decision_record` (+25)
+- [ ] **Gamification aktivieren** (→ [Phase 1 Gamification-Spezifikation](./phase-1.md#gamification-spezifikation), kanonische Werte: [gamification.md](../features/gamification.md#exp-vergabe--vollständige-tabelle)):
+  - EXP-Trigger in `approve_review` (+50 EXP, +20 Clean-Run-Bonus), `merge_skill` (+30), `create_wiki_article` (+15), `merge_guard` (+30), `create_decision_record` (+10)
   - Badge-Check nach jedem EXP-Event (gegen `badge_definitions`)
   - Level-Up-Check (gegen `level_thresholds`)
   - Status Bar zeigt `[EXP: ████████░░░░ Lvl. 5 Commander]`

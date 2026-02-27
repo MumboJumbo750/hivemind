@@ -523,8 +523,8 @@ CREATE INDEX idx_memory_sessions_scope ON memory_sessions(scope, scope_id, ended
 CREATE INDEX idx_memory_entries_uncovered ON memory_entries(scope, scope_id) WHERE covered_by IS NULL;
 
 -- pgvector-Similarity-Search (Phase 3+)
-CREATE INDEX idx_memory_entries_embedding ON memory_entries USING ivfflat (embedding vector_cosine_ops);
-CREATE INDEX idx_memory_summaries_embedding ON memory_summaries USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX idx_memory_entries_embedding ON memory_entries USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX idx_memory_summaries_embedding ON memory_summaries USING hnsw (embedding vector_cosine_ops);
 ```
 
 ---

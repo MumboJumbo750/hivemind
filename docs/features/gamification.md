@@ -36,6 +36,7 @@ EXP wird bei erfolgreichen Events vergeben. Kein EXP bei Fehlern, Abbrüchen ode
 | **Review als Owner durchgeführt** | 15 | `approve_review` oder `reject_review` (beide) | 1x pro Review-Aktion |
 | **Skill als Draft eingereicht** | 10 | `submit_skill_proposal` | 1x pro Skill-Proposal |
 | **Skill gemergt (Active)** | 30 | `merge_skill` → Skill `active` | 1x pro Skill |
+| **Guard gemergt (Active)** | 30 | `merge_guard` → Guard `active` | 1x pro Guard |
 | **Skill-Change-Proposal akzeptiert** | 20 | `accept_skill_change` | 1x pro Change |
 | **Wiki-Artikel erstellt** | 15 | `create_wiki_article` (Gaertner/Kartograph) | 1x pro Artikel |
 | **Wiki-Artikel aktualisiert** | 5 | `update_wiki_article` | max 1x/Tag pro Artikel |

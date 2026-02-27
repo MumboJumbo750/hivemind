@@ -133,6 +133,7 @@ CREATE TABLE users (
   bio           TEXT,           -- Kurze Selbstbeschreibung (max 280 Zeichen); sichtbar im Profil und in der Gilde
   preferred_theme TEXT DEFAULT 'space-neon', -- User-eigene Theme-Präferenz (space-neon|industrial-amber|operator-mono); überschreibt app_settings Theme für diesen User
   preferred_tone  TEXT DEFAULT 'game',      -- User-eigene Tone-Präferenz (game|pro); überschreibt app_settings Tone für diesen User
+  notification_preferences JSONB DEFAULT '{}'::jsonb, -- Per-User Notification-Präferenzen (z.B. {"sla_warnings": true, "badge_awarded": true, "level_up": true})
   exp_points    INT NOT NULL DEFAULT 0,            -- Gamification Progression
   created_at    TIMESTAMPTZ DEFAULT now(),
   CONSTRAINT valid_preferred_theme CHECK (preferred_theme IN ('space-neon', 'industrial-amber', 'operator-mono')),
@@ -162,11 +163,12 @@ CREATE TABLE app_settings (
 -- | federation_enabled                   | BOOLEAN | false            | F     | Federation aktiviert (überschreibt Env-Var nach Bootstrap) |
 -- | federation_topology                  | TEXT    | 'direct_mesh'    | F     | direct_mesh|hub_assisted|hub_relay                 |
 -- | token_budget_default                 | INT     | 8000             | 3     | Default Token-Budget für Prompt-Assembly            |
--- | routing_threshold                    | FLOAT   | 0.5              | 7     | pgvector Similarity-Schwelle für Auto-Routing       |
+-- | routing_threshold                    | FLOAT   | 0.85             | 7     | pgvector Similarity-Schwelle für Auto-Routing (Confidence >= Threshold → auto-assign) |
 -- | sla_cron_interval_minutes            | INT     | 60               | 6     | SLA-Check-Intervall in Minuten                      |
 -- | audit_retention_payload_days         | INT     | 90               | 2     | Tage bis Audit Payload gelöscht wird                |
 -- | audit_retention_summary_days         | INT     | 365              | 2     | Tage bis Audit Summary gelöscht wird                |
 -- | notification_retention_days          | INT     | 90               | 2     | Tage bis Notifications gelöscht werden              |
+-- | notification_mode                    | TEXT    | 'client'         | 2     | client|backend — Notification-Berechnung (client: Frontend-berechnet, backend: Notification-Service ab Phase 6) |
 -- | embedding_provider                   | TEXT    | 'ollama'         | 3     | ollama|openai — Embedding-Provider                  |
 -- | embedding_model                      | TEXT    | 'nomic-embed-text'| 3    | Modell-Name beim Provider                           |
 -- | ai_provider                          | TEXT    | NULL             | 8     | anthropic|openai|google|ollama — Global-Default AI-Provider für Auto-Modus (Fallback wenn kein ai_provider_configs-Eintrag) |

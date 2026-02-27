@@ -19,13 +19,14 @@
 - [ ] YouTrack-Sync: Status-Updates + Assignee rücksyncen
 - [ ] Sentry-Sync: Bug-Reports aggregieren in `node_bug_reports`
 - [ ] pgvector-Routing: Epic-Embeddings verwenden für Auto-Routing
-  - Confidence >= Threshold → auto-assign (Default-Threshold: **0.85**, konfigurierbar via `app_settings.pgvector_routing_threshold` und Env-Override `HIVEMIND_ROUTING_THRESHOLD`)
+  - Confidence >= Threshold → auto-assign (Default-Threshold: **0.85**, konfigurierbar via `app_settings.routing_threshold` und Env-Override `HIVEMIND_ROUTING_THRESHOLD`)
   - Confidence < Threshold → `[UNROUTED]`
-  - Admin kann Threshold zur Laufzeit ändern via `PATCH /api/settings/pgvector_routing_threshold` ohne Neustart
+  - Admin kann Threshold zur Laufzeit ändern via `PATCH /api/settings/routing_threshold` ohne Neustart
 - [ ] Admin-Tool: `hivemind/assign_bug` — manuelles Bug→Epic Routing (hier implementiert, **nicht** in Phase 6 — erst Phase 7 hat Sentry-Daten)
 - [ ] Audit-Retention-Cron: bereinigt alte `input_payload`/`output_payload`
 - [ ] DLQ-Requeue als MCP-Tool: `hivemind/requeue_dead_letter { "id": "uuid" }` (admin + triage permission)
-- [ ] Optionaler REST-Alias: `POST /api/triage/dead-letters/{id}/requeue` ruft intern denselben Requeue-Service auf
+- [ ] DLQ-Discard als MCP-Tool: `hivemind/discard_dead_letter { "id": "uuid" }` (admin + triage permission)
+- [ ] Optionaler REST-Alias: `POST /api/triage/dead-letters/{id}/requeue` und `POST /api/triage/dead-letters/{id}/discard` rufen intern denselben Service auf
 - [ ] Embedding-Neuberechnung: wenn Embedding-Provider gewechselt wird
 
 ### Frontend
