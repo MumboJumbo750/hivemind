@@ -31,6 +31,20 @@
 
 ---
 
+## API-Vertrag & Typensicherheit (Golden Middle)
+
+Hivemind nutzt den "Goldenen Mittelweg": Das Backend läuft in Python/FastAPI (für optimalen Zugang zum KI-Ökosystem und LLM-Tools), während das Frontend in Vue3/TypeScript entwickelt wird.
+
+Um 100%ige Typensicherheit vom Datenbank-Modell bis in die Vue-Components zu garantieren, *ohne* Typen doppelt pflegen zu müssen, setzen wir auf **automatische API-Client-Generierung**:
+
+1. **Backend (Pydantic):** Alle Requests und Responses sind als Pydantic-Modelle in FastAPI strikt typisiert.
+2. **OpenAPI-Export:** Ein Build-Skript exportiert die `openapi.json` statisch aus dem FastAPI-Kern (ohne dass der Server laufen muss).
+3. **Frontend-Generierung:** Das Tool `@hey-api/openapi-ts` liest die Struktur und generiert im Frontend-Workspace automatisch einen typisierten API-Client (`src/api/client/`).
+
+**Regel:** Wenn sich das Backend-Model ändert, bricht der TypeScript-Compiler im Frontend sofort den Build ab.
+
+---
+
 ## Trust Boundary
 
 ```text
