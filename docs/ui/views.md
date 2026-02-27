@@ -364,7 +364,7 @@
 **Zweck:** SLA-Alerts, offene Decision Requests und kritische Events — sichtbar aus jeder Ansicht.
 
 ```text
-System Bar: [◈ HIVEMIND] ... [🔔 3] ...
+System Bar: [◈ HIVEMIND] ... [🔔 3] ... [Lvl. 5]
 
 Aufgeklappt:
 ┌─ NOTIFICATIONS ─────────────────────────────────────────────────┐
@@ -376,8 +376,9 @@ Aufgeklappt:
 │  Decision Request für TASK-89 wartet auf dich                   │
 │  [IM COMMAND DECK ÖFFNEN ▶]                                    │
 │                                                                 │
-│  ✓ SKILL GEMERGT                                     vor 2 Std.│
-│  "PostgreSQL Index-Optimierung" ist jetzt aktiv                 │
+│  ☆ GUILD SUPPORT                                     vor 2 Std.│
+│  ben-hivemind hat deinen delegierten Task-88 abgeschlossen.     │
+│  → [+150 Bonus-EXP] [Loot-Box Badge gesendet]                  │
 │                                                                 │
 │                              [ALLE MARKIEREN ALS GELESEN]       │
 └─────────────────────────────────────────────────────────────────┘
@@ -657,12 +658,14 @@ Im Skill Lab erscheint bei federierten Skills ein Origin-Badge:
 │                                                                   │
 │  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░       │
 │  ░░░░  [◬ clara erkundet frontend/ · · ·]  ░░░░░░░░░░░░░░       │
+│  ░░░░░░   (Sektor löst sich mittels "Scan-Welle" auf)   ░░░░       │
 │  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░       │
 │                                                                   │
 │          ●───────●───────●  ← auth/ (alex, cyan)                 │
 │          │       │                                                │
-│          ●───────●───────●───●  ← api/ (alex, cyan)             │
-│                          │                                        │
+│          ●───────⚻───────●───●  ← api/ (alex, cyan)             │
+│                  │                                                │
+│              [⚠ Bug-Partikel "Störung"]                           │
 │                     ●────●────●  ← worker/ (ben, magenta)        │
 │                          │                                        │
 │                     ░░░░░░░░░░░  ← Fog of War                    │
@@ -719,19 +722,23 @@ Im Skill Lab erscheint bei federierten Skills ein Origin-Badge:
 │                                              [+ PEER HINZUFÜGEN]  │
 │  ─── MEINE BASE ──────────────────────────────────────────────── │
 │  ◈ alex-hivemind   [DU]                                           │
+│    Commander-Level 5 (███████░░░░ 700 / 1000 EXP)                 │
 │    Quests aktiv: 2  ·  Skills im Arsenal: 8  ·  Karte: 120 Nodes │
 │    Node-ID: f3a9-...  ·  Key: ed25519:pub:AbCd...  [KOPIEREN]    │
+│    [Trophäenschrank / Achivements: 🥇 🥈 🥉 (3 freigeschaltet)]  │
 │                                                                   │
 │  ─── GILDENMITGLIEDER ────────────────────────────────────────── │
 │                                                                   │
 │  ● ben-hivemind         online   zuletzt: vor 3 Min.             │
 │    Quest aktiv: TASK-42 "JWT Refresh Token"   [◈ DEINE QUEST]    │
 │    ⚔ Gildenwissen: 4 Skills   🗺 Weltkarte: 80 Nodes beigetragen  │
+│    [Level 7] [🥇 Master Architect] [🥈 Guild Contributor]         │
 │    [QUEST ANSEHEN ▶]  [PING]  [BLOCKIEREN ✗]                     │
 │                                                                   │
 │  ● clara-hivemind       online   zuletzt: vor 45 Min.            │
 │    ◬ Erkundet: frontend/components/   [DISCOVERY SESSION]        │
 │    ⚔ Gildenwissen: 7 Skills   🗺 Weltkarte: 480 Nodes beigetragen │
+│    [Level 8] [🥇 Fog Clearer] [🥉 SLA Savior]                     │
 │    [SESSION ANSEHEN ▶]  [PING]  [BLOCKIEREN ✗]                   │
 │                                                                   │
 │  ○ old-node             offline  zuletzt: vor 3 Tagen             │

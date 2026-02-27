@@ -112,6 +112,7 @@ Mono:      "JetBrains Mono"                 (Code, IDs, Prompts)
 │            │                                 │                   │
 ├────────────┴─────────────────────────────────┴───────────────────┤
 │  STATUS BAR  [MCP ✓]  [3 Tasks aktiv]  [⚠ SLA: EPIC-12 in 4h]  │
+│              [EXP: ████████░░░░░░░░░░░ Lvl. 5 Commander]         │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -237,29 +238,43 @@ BRIEFING                                 ERGEBNIS EINREICHEN
                                        (Loot: Artifact)
 ```
 
-### Visuelle Feedback-Elemente
+### Visuelle Feedback-Elemente (Micro-Interactions & Juice)
+
+Ein UI fühlt sich nach "Spiel" an, wenn jede Interaktion befriedigendes, fast schon physisches Feedback gibt ("Juice").
 
 - **SLA-Countdown:** Sichtbarer Timer der sich orange → rot färbt — Druck ohne Panik
-- **Fog of War:** Echte visuelle Belohnung wenn der Scout (Kartograph) einen Bereich erkundet (░ → ●)
-- **State-Transitions:** Task `in_progress` → `in_review` → `done` mit kurzem Pulse-Effekt
+- **Fog of War:** Das Aufdecken durch den Kartographen passiert nicht instantan, sondern als sichtbare "Scan"-Welle (Radial Reveal) über das Grid (░ → ●)
+- **State-Transitions:** Task `in_progress` → `in_review` → `done` mit kurzem Pulse-Effekt; Epic `done` löst einen dezenten Glow-Effekt über der Epic-Card aus.
 - **Agent-Badges:** Jeder Agent hat ein eigenes Symbol (◈ Worker, ◎ Architekt, ◬ Kartograph, ⊕ Gaertner)
 - **Token Radar:** Animierter Progress-Ring der zeigt wieviel Kontext geladen ist (Loadout-Gewicht)
 - **Skill Confidence Bar:** Visueller Indikator der Verlässlichkeit eines Skills im Arsenal
 - **Prompt Queue Fortschritt:** "3 von 5 Agenten-Aufgaben heute erledigt" — Game-Loop-Gefühl
 - **Peer-Farben im Nexus Grid:** Jeder Peer hat eine eigene Akzentfarbe für seine Discoveries
 - **Discovery Session Pulse:** Aktive Kartograph-Sessions pulsieren auf der Weltkarte
+- **Skill Pinning (Loadout):** Physisches "Snap"-Feedback — wenn ein Skill im Arsenal in das Loadout gezogen wird, gibt es ein sattes, visuelles Einrasten mit einem kurzen Aufleuchten des Token-Budgets.
+- **Guard Checks (Sequential Reveal):** Guard-Prüfungen ploppen als sequenzielles "Aufblinken" und Abhaken (✓) pro Guard auf, um Spannung zu erzeugen.
+
+### Progression & Rewards (Commander Rank/EXP)
+
+Die persistente Weiterentwicklung des Users motiviert langfristig (nicht nur pro Quest):
+
+- **Experience Points (EXP):** Jeder abgeschlossene Task bringt EXP. Besondere Tasks (z. B. gelöste Eskalationen, erfolgreich destillierte Skills) generieren Bonus-EXP.
+- **Level-Ups:** Fortschritt in den "Commander Ranks" (Node-Levels) schaltet neue kosmetische UI-Themes oder Avatare frei (z.B. spezielle Farbe in der Gilden-Weltkarte).
+- **Achievements/Medaillen**: Ein Trophäenschrank im Profil (z.B. "Fog Clearer" = 500 Code-Nodes erkundet, "Guild Contributor" = 10 eigene Skills von Peers übernommen). Diese sind für Peers in der Gilde sichtbar.
 
 ### Mercenary Loadout Moment
 
 Der wichtigste Moment im Game-Loop. Bevor eine Quest startet, wechselt die Prompt Station in den **BRIEFING-State** — der Kommandant rüstet den Mercenary mit Skills aus dem Arsenal aus. Dieses Ritual (Skill auswählen → Budget prüfen → starten) erzeugt Ownership und Verantwortungsgefühl.
 
-### Gilde als sozialer Layer
+### Gilde als sozialer Layer (Koop-Mechaniken)
 
 Federation ist nicht nur Infrastruktur — es ist das soziale Spiel:
 
-- Peers sehen was du explorierst → Koordination ohne Meeting
-- Federated Skills teilen → echte Wissenstransfers als Spielmoment
-- Shared Quests → gemeinsam an einem Epic arbeiten → Erfolgserlebnis geteilt
+- **Peers sehen was du explorierst** → Koordination ohne Meeting
+- **Federated Skills teilen** → echte Wissenstransfers als Spielmoment
+- **Shared Quests** → gemeinsam an einem Epic arbeiten → Erfolgserlebnis geteilt
+- **Sync-Strikes (Co-op Bonus):** Wenn zwei verbundene Nodes gleichzeitig an Tasks desselben Shared Epics arbeiten, erhalten beide visuell leuchtende Avatar-Grenzen für die Session.
+- **Mercenary Verleih:** Wenn eine Quest an einen Peer delegiert wird und dieser sie abschließt, erhält die vergebende Node eine spezielle "Guild Support"-Notification inklusive speziellem Loot-Icon.
 
 ---
 
