@@ -23,6 +23,8 @@
   - 72h → **System-Automatik:** Task `blocked → escalated`; Decision Request `state → expired`; alle Admins erhalten Notification (`decision_escalated_admin`) — kein automatischer Beschluss; Admin löst `escalated` danach manuell auf
 - [ ] Decision-Write:
   - `hivemind/resolve_decision_request` — Decision Request auflösen (Owner oder Admin; Admin immer erlaubt)
+- [ ] Eskalations-Write:
+  - `hivemind/resolve_escalation` — `escalated → in_progress` (Admin only; gilt für beide Quellen: 3x qa_failed und Decision-SLA > 72h)
 - [ ] Admin-Writes:
   - `hivemind/reassign_epic_owner` — Owner wechseln
   - _(hivemind/assign_bug gehört **nicht** in Phase 6 — Sentry-Bug-Daten stehen erst ab Phase 7 zur Verfügung. Manuelles Bug→Epic Routing ist ein Deliverable von Phase 7.)_

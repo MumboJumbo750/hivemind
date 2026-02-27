@@ -45,6 +45,8 @@ Ab Phase 3 (Ollama verfügbar) übernimmt der Bibliothekar als echte Backend-Kom
 2. pgvector-Similarity-Suche: Task-Embedding vs. aktive Skills
 3. Skills ranken nach Similarity + Confidence + `service_scope`-Match
 4. **Context Boundary prüfen:** Falls gesetzt, nur `allowed_skills` und `allowed_docs` laden — Similarity-Ranking gilt innerhalb dieser Whitelist. Kein Context Boundary = alle passenden Skills und Docs.
+
+> **Phase 1–3 (vor `set_context_boundary`):** Context Boundaries werden erst in Phase 4 via `set_context_boundary` gesetzt. In Phase 1–3 ist `context_boundaries` für jeden Task leer — der Bibliothekar lädt immer alle passenden Skills/Docs und nutzt den globalen `app_settings.token_budget_default` (8000). Das ist erwartetes Verhalten, nicht eine unbehandelte Lücke.
 5. Docs laden wenn in `context_boundary.allowed_docs` enthalten (oder keine Boundary gesetzt)
 6. **Wiki-Artikel via Similarity laden — Wiki ignoriert Context Boundary.** Wiki-Artikel sind globales Hintergrundwissen ohne Projekt-Scope; sie werden immer per Similarity-Suche geladen, unabhängig von Boundary-Einschränkungen.
 7. Kontext-Package zusammenstellen bis `max_token_budget` — Wiki-Artikel werden zuletzt hinzugefügt und als erstes gestrichen wenn Budget erschöpft
@@ -87,8 +89,10 @@ Priorität 3: Wiki-Artikel                 (globales Hintergrundwissen)
 **Präzedenz-Reihenfolge (höchste zuerst):**
 
 1. `context_boundaries.max_token_budget` (Task-spezifisch, vom Architekten gesetzt)
-2. `HIVEMIND_TOKEN_BUDGET_PROVIDER_OVERRIDE` (Provider-spezifisch, Env-Var, Phase 8)
+2. `HIVEMIND_TOKEN_BUDGET_PROVIDER_OVERRIDE` (Provider-spezifisch, Env-Var, **erst ab Phase 8 evaluiert** — in Phase 1–7 existiert diese Stufe nicht, da kein Provider bekannt ist)
 3. `app_settings.token_budget_default` (DB-persistiert, Admin-setzbar, Default: 8000)
+
+> **Phase 1–7:** Die Budget-Kaskade hat effektiv **2 Stufen** (context_boundary → app_settings.token_budget_default). Stufe 2 (`PROVIDER_OVERRIDE`) wird erst ab Phase 8 evaluiert, wenn der AI-Provider über `app_settings.ai_provider` bekannt ist.
 
 > **Budget-Sizing-Richtwerte:** Ein typischer Skill verbraucht ~400 Tokens, ein Epic-Doc ~200, ein Wiki-Artikel ~300. Bei Skill Composition (3 Ebenen Stacking) kann ein assemblierter Skill ~600 Tokens belegen. Realistisches Minimum für einen Task mit 2 Skills + 1 Doc + 1 Wiki: **~1300 Tokens Kontext**. Der Default von 8000 Tokens lässt Spielraum für 4-6 Skills — bei komplexen Tasks mit vielen Abhängigkeiten kann das Budget knapp werden. **Empfehlung:** Budget pro AI-Provider adaptiv setzen (Claude 200K Context → höheres Budget sinnvoll, GPT-4o 128K → Default ausreichend).
 

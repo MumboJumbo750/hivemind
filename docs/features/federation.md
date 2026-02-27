@@ -183,6 +183,8 @@ Neu entdeckte Nodes erscheinen zur manuellen Bestätigung in den Settings (Tab: 
 **Hive Station ist Control Plane, nicht Data Plane.**  
 Sie koordiniert Discovery/Presence (und optional Relay), aber sie ist nie Origin einer Epic/Task/Skill/Wiki-Entität.
 
+> **Hive Station — Scope-Abgrenzung:** Die Hive Station ist ein **separates Projekt** mit eigener Codebasis, eigenem Deployment und eigenem Sicherheitsmodell. Hivemind-Docs spezifizieren nur die Client-seitige Integration (Registrierung, Presence-Abfrage, Relay-Nutzung). API-Spezifikation, Deployment-Anleitung und Sicherheitsmodell der Hive Station werden in einem dedizierten Repository dokumentiert (`hive-station/`). Hivemind funktioniert vollständig ohne Hive Station (`direct_mesh`-Topologie).
+
 ---
 
 ## Was wird geteilt?
@@ -501,6 +503,8 @@ Clara startet Exploration von frontend/:
 ```
 
 Datenmodell: `code_nodes.explored_by` + neues Feld `exploring_node_id` (temporär, NULL nach Abschluss).
+
+> **Lokale Doppelarbeit:** `exploring_node_id` verhindert nur Federation-Doppelarbeit (Cross-Node). Wenn zwei manuelle Kartograph-Prompts auf **derselben Node** gleichzeitig denselben Code-Bereich explorieren, gibt es keinen lokalen Lock-Mechanismus. **Mitigation:** Die Prompt Station zeigt aktive Kartograph-Sessions an; der Prompt-Generator warnt wenn bereits ein Kartograph-Prompt für denselben `path`-Prefix generiert wurde (Best-Effort, kein Hard-Lock). Für Phase 8 (Autonomie) ist ein Advisory-Lock (`pg_advisory_xact_lock` auf `hashtext(path_prefix)`) evaluierbar.
 
 ---
 

@@ -106,6 +106,38 @@ hivemind upgrade --to-phase 3
 # Warnung bei fehlenden Voraussetzungen (z.B. "Phase 2 RBAC nicht abgeschlossen")
 ```
 
+### CLI-Spezifikation (`hivemind` Management-Tool)
+
+Das `hivemind`-CLI ist ein **Click/Typer-basiertes Python-Tool** das als Entry-Point im Backend-Package installiert wird (`pyproject.toml`). Es verbindet sich direkt mit der PostgreSQL-Datenbank (kein laufender Server nötig für Admin-Operationen).
+
+```bash
+# Phase-Management
+hivemind upgrade --to-phase <N>      # Alembic-Migrations + current_phase aktualisieren
+hivemind status                       # Aktuelle Phase, DB-Health, Pending-Migrations anzeigen
+
+# Backup & Restore
+hivemind backup                       # Manuelles pg_dump (zusätzlich zum Cron)
+hivemind restore --backup <path>      # Vollständiges Restore aus Backup
+hivemind restore --backup <path> --db-only   # Nur DB (ohne Uploads)
+hivemind restore --backup <path> --dry-run   # Validierung ohne Write
+
+# Embedding-Management
+hivemind reembed --all                # Alle Embeddings neu berechnen (Provider-Wechsel)
+hivemind reembed --entity skills      # Nur Skills re-embedden
+
+# Federation Key-Management
+hivemind federation rotate-key        # Ed25519-Keypair rotieren
+hivemind federation revoke-key --peer <id>  # Peer-Key widerrufen
+hivemind federation show-key          # Eigenen Public Key anzeigen
+hivemind federation export-key --encrypted  # Key-Backup
+
+# Export
+hivemind export-full                  # Vollständiger Daten-Export (pg_dump + Uploads)
+hivemind export-keys                  # Ed25519-Keys exportieren (passwortgeschützt)
+```
+
+**Implementierung:** `click` oder `typer` (evaluieren in Phase 1). Verbindung zur DB via `DATABASE_URL` Env-Var (selbe Config wie Backend). Kein eigener API-Server — direkter DB-Zugriff für Admin-Operationen.
+
 ---
 
 ## Testing-Strategie
@@ -186,6 +218,32 @@ Ab Phase 3 (Ollama) werden Embeddings für semantische Suche und pgvector-basier
 | Wiki-Artikel-Update | Neues Embedding für die neue Version |
 | Provider-Wechsel (Ollama → OpenAI) | Batch-Re-Embedding aller Entitäten (async Background-Job, `hivemind reembed --all`) |
 | Embedding-Spalte NULL | Entität wird bei semantischer Suche ignoriert; erscheint nur bei ILIKE-Suche |
+
+### Dimensionswechsel als Breaking Migration
+
+Wenn der neue Embedding-Provider eine andere Vektordimension verwendet (z.B. `nomic-embed-text` 768d → OpenAI `text-embedding-3-small` 1536d), ist ein **Schema-Änderung** nötig:
+
+```sql
+-- Dimensionswechsel erfordert:
+ALTER TABLE skills ALTER COLUMN embedding TYPE vector(1536);
+ALTER TABLE wiki_articles ALTER COLUMN embedding TYPE vector(1536);
+ALTER TABLE code_nodes ALTER COLUMN embedding TYPE vector(1536);
+ALTER TABLE sync_outbox ALTER COLUMN embedding TYPE vector(1536);
+-- HNSW-Indexes werden automatisch invalidiert und müssen rebuilt werden
+REINDEX INDEX idx_skills_embedding;
+-- etc.
+```
+
+| Metrik | Geschätzter Aufwand |
+| --- | --- |
+| ALTER TABLE pro Tabelle | < 1 Sekunde (Metadaten-Änderung, keine Daten-Rewrite) |
+| REINDEX pro HNSW-Index | ~2–5 Sekunden pro 1000 Einträge |
+| Re-Embedding via Ollama | ~10–20 Sekunden pro 1000 Einträge (abhängig von GPU) |
+| Re-Embedding via OpenAI API | ~5–10 Sekunden pro 1000 Einträge (Netzwerk-abhängig) |
+| **Gesamtdauer (1000 Entitäten)** | **~15–30 Sekunden** |
+| **Gesamtdauer (10.000 Entitäten)** | **~3–5 Minuten** |
+
+> **Klassifikation:** Ein Dimensionswechsel ist eine **Breaking Migration** — während des Re-Embeddings ist die semantische Suche degradiert (Entitäten mit NULL-Embedding werden ignoriert). Der Wechsel sollte in einem Wartungsfenster erfolgen. `hivemind reembed --all` ist idempotent und re-runnable.
 
 ### Konfiguration
 

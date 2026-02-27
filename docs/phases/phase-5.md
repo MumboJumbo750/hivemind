@@ -49,6 +49,12 @@
 - [ ] `code_nodes` schreiben: wenn Kartograph Wiki-Artikel erstellt → `explored_at` setzen
 - [ ] Wiki-Such-Backend: Volltextsuche + Tag-Filterung (pgvector ab Phase 3 verfügbar)
 - [ ] qa_failed-Flow: `reject_review` setzt Task auf `qa_failed` (persistenter State); Worker setzt via `update_task_state { "state": "in_progress" }` aktiv zurück nach Review-Kommentar-Lesen
+- [ ] **Gamification aktivieren** (→ [Phase 1 Gamification-Spezifikation](./phase-1.md#gamification-spezifikation)):
+  - EXP-Trigger in `approve_review` (+100 EXP, +50 First-Try-Bonus), `merge_skill` (+75), `create_wiki_article` (+50), `merge_guard` (+50), `create_decision_record` (+25)
+  - Badge-Check nach jedem EXP-Event (gegen `badge_definitions`)
+  - Level-Up-Check (gegen `level_thresholds`)
+  - Status Bar zeigt `[EXP: ████████░░░░ Lvl. 5 Commander]`
+  - `GET /api/users/me/achievements` Endpoint aktiv
 
 ### Frontend
 

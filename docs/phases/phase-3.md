@@ -28,13 +28,25 @@
   - `hivemind/get_prompt` (Prompt-Generator-Endpunkt)
 - [ ] Prompt-Generator: generiert Bibliothekar-Prompt, Worker-Prompt, Kartograph-Prompt etc.
   - **`prompt_history` Write-Zeitpunkt:** Jeder `get_prompt`-Call schreibt ab Phase 3 einen Eintrag in `prompt_history` (agent_type, prompt_type, prompt_text, token_count, generated_by). Das Backend-Schema existiert seit Phase 1. Die UI-Ansicht (kollabierbare History in der Prompt Station) wird erst in Phase 4 implementiert — aber das Backend schreibt schon ab Phase 3.
+  - **Retention-Policy für `prompt_history`:** Max. 500 Einträge pro Task (FIFO bei Überschreitung). Zusätzlich Retention-Cron: Einträge älter als `HIVEMIND_PROMPT_HISTORY_RETENTION_DAYS` (Default: 180 Tage) werden gelöscht. Cron läuft täglich zusammen mit dem Audit-Retention-Job.
 - [ ] Prompt-Templates als Skills (globale, lifecycle-gemanagte Skills)
 - [ ] Ollama-Container in Docker Compose (nur Phase 3+)
 - [ ] Embedding-Service-Abstraktion (Provider-Switch ohne fachliche Datenmigration; mit Embedding-Spalten-ALTER + Recompute)
 - [ ] Embeddings für Epics berechnen (Basis für Routing in Phase 7)
+- [ ] Basis-REST-CRUD für spätere MCP-Write-Entitäten (ermöglicht manuelles Befüllen bis MCP-Write-Tools verfügbar sind):
+  - `POST/PATCH /api/wiki/articles` — Wiki-Artikel anlegen/bearbeiten (kartograph + admin)
+  - `POST/PATCH /api/guards` — Guards anlegen/bearbeiten (admin)
+  - `POST/PATCH /api/code-nodes` — Code-Nodes anlegen/bearbeiten (kartograph + admin)
+  - `POST /api/epics/{epic_key}/docs` — Epic-Docs anlegen (admin)
+  - Die MCP-Tool-Wrapper für diese Endpoints kommen in Phase 5; die REST-Endpoints sind die technische Grundlage
 - [ ] Webhook-Ingest: YouTrack + Sentry Events empfangen und als `direction='inbound'` in `sync_outbox` schreiben
 - [ ] Triage: `[UNROUTED]`-Items für `inbound`-Events erzeugen wenn kein Routing möglich (Phase 1-2: alle Events unrouted)
 - [ ] Triage-Write-Tools: `hivemind/route_event` (routing_state → routed) und `hivemind/ignore_event` (routing_state → ignored) — manuelle Zuweisung aus Triage Station
+- [ ] SSE-Infrastruktur: Server-Sent Events für Echtzeit-Updates (→ [rest-api.md — SSE](../architecture/rest-api.md#sse-event-schema-server-sent-events))
+  - Kanäle: `/events/notifications`, `/events/tasks`, `/events/triage`
+  - Stream-Token-Handshake (`POST /api/auth/stream-token`)
+  - Heartbeat (15s), kanonische Event-Typen
+  - Voraussetzung für: Notification Tray Live-Updates, Command Deck State-Sync, Triage-Echtzeit
 
 ### Frontend
 - [ ] Triage Station (erster Stand): Unrouted Events anzeigen, manuelle Zuweisung
@@ -42,6 +54,8 @@
 - [ ] Prompt Station: MCP-Verbindungsstatus live (WebSocket oder Polling)
 - [ ] Prompt Station Queue zeigt "Warum jetzt?"-Badges (`ESCALATED`, `DECISION OFFEN`, `SLA <4h`, `FOLLOW-UP`)
 - [ ] Kartograph-Bootstrap-Flow: "Neues Projekt → Kartograph starten" UI
+
+> **Kartograph-Bootstrap in Phase 3 — Write-Einschränkung:** Der Kartograph-Bootstrap-Flow generiert einen Analyse-Prompt und zeigt Ergebnisse im UI an. Da Kartograph-Write-Tools (`create_wiki_article`, `create_code_node`, etc.) erst in Phase 5 implementiert werden, müssen Resultate des Kartograph-Bootstraps in Phase 3–4 **manuell eingepflegt** werden (Copy-Paste oder manuelles Anlegen). Die UI zeigt einen Hinweis: "Kartograph-Ergebnisse werden ab Phase 5 automatisch gespeichert. Bis dahin: Ergebnisse manuell in Wiki/Code-Graph übertragen." Ab Phase 5 integriert der Bootstrap-Flow die Write-Tools und speichert direkt.
 
 ### Docker Compose Erweiterung
 
@@ -75,6 +89,13 @@ ollama-init:
 > **Fallback bei Ollama-Fehler:** Wenn Ollama nicht erreichbar ist oder `nomic-embed-text` nicht geladen werden konnte, loggt das Backend eine Warnung und arbeitet ohne Embeddings weiter. Semantische Suche und pgvector-Routing sind dann deaktiviert — alle anderen Features bleiben funktional. Embedding-Berechnung wird automatisch nachgeholt sobald Ollama wieder erreichbar ist.
 >
 > **Known Limit — Single Ollama Instance:** Bei paralleler Nutzung durch mehrere Team-Mitglieder (Team-Modus) oder beim Kartograph-Bootstrap großer Repos (> 1000 Dateien) kann die sequenzielle Embedding-Berechnung zum Flaschenhals werden. Mitigation: `HIVEMIND_EMBEDDING_BATCH_SIZE` (Default: 50) erhöhen und Bootstrap außerhalb der Kernarbeitszeit durchführen. Horizontal Scaling wird ab Phase 8 evaluiert (→ [architecture/overview.md — Bekannte Skalierungsgrenzen](../architecture/overview.md#bekannte-skalierungsgrenzen)).
+>
+> **Embedding-Request-Queue & Circuit-Breaker:** Alle Embedding-Requests laufen über eine interne Priority-Queue:
+> - **Priorität 1 (hoch):** Lokale on-write Embeddings (Skill-Merge, Wiki-Create)
+> - **Priorität 2 (normal):** Kartograph-Bootstrap Batch-Embeddings
+> - **Priorität 3 (niedrig):** Federation Re-Embeddings (Peer-Entitäten)
+>
+> **Circuit-Breaker:** Nach 3 aufeinanderfolgenden Ollama-Timeouts (konfigurierbar: `HIVEMIND_EMBEDDING_CB_THRESHOLD`, Default: 3) wechselt der Embedding-Service in den `OPEN`-State — neue Requests werden sofort mit `embedding=NULL` beantwortet (Feature-Degradation statt Fehler). Nach `HIVEMIND_EMBEDDING_CB_COOLDOWN` Sekunden (Default: 60) wird ein Probe-Request gesendet. Bei Erfolg: Circuit CLOSED, Queue-Verarbeitung wird fortgesetzt.
 
 ---
 

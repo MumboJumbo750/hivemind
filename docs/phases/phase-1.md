@@ -21,11 +21,13 @@
 - [ ] Docker Compose Stack (PostgreSQL 16 + pgvector, FastAPI, Vue 3)
 - [ ] Vollständiges Datenbankschema via Alembic-Migration (alle Tabellen aus Phase 1–8)
 - [ ] FastAPI-Skeleton mit Health-Endpoint
+- [ ] CORS-Middleware: `CORSMiddleware` mit konfigurierbarem `HIVEMIND_CORS_ORIGINS` (Default: `http://localhost:5173`), `allow_methods=["*"]`, `allow_headers=["*"]`, `allow_credentials=True`
 - [ ] Grundlegende CRUD-Endpunkte (ohne Auth) für Projekte, Epics, Tasks
 - [ ] Task-State-Machine als Backend-Logik (State-Validierung, erlaubte Transitionen)
 - [ ] Epic Auto-Transition: `scoped → in_progress` atomar in `update_task_state`; `in_progress → done` atomar in `approve_review` und `cancel_task` (siehe [State Machine](../architecture/state-machine.md#epic-auto-transition--backend-implementierung))
 - [ ] Outbox-Tabelle und DLQ-Tabelle (noch kein Consumer)
 - [ ] Audit-Tabelle `mcp_invocations` (noch kein Audit-Writer)
+- [ ] Backup-Cron: `pg_dump --format=custom` via APScheduler-Job (täglich 02:00 UTC), konfigurierbar via `HIVEMIND_BACKUP_CRON` + `HIVEMIND_BACKUP_DIR` (Default: `/backups`). Retention: 7 tägliche + 4 wöchentliche Backups (→ [Backup-Strategie](../architecture/overview.md#data-export--backup))
 
 ### Acceptance Criteria Phase 1a
 
@@ -102,7 +104,7 @@ Alle Tabellen werden in Phase 1 erstellt — auch die die erst in späteren Phas
 - `guards`, `task_guards`
 - `notifications`
 - `epic_restructure_proposals`
-- `level_thresholds`, `badge_definitions`, `user_achievements` (Gamification-Skeleton — befüllt ab Phase G)
+- `level_thresholds`, `badge_definitions`, `user_achievements` (Gamification-Skeleton — Seed-Daten in Phase 1, EXP-Logik aktiv ab Phase 5; siehe [Gamification-Spezifikation](#gamification-spezifikation))
 - `prompt_history` (Schema ab Phase 1; befüllt ab Phase 3)
 
 → Vollständiges Schema: [data-model.md](../architecture/data-model.md)
@@ -200,8 +202,8 @@ hivemind/
 - [ ] Projekt-Anlegen-Dialog funktioniert: Projekt wird erstellt und ist in System Bar wählbar
 - [ ] **Inline-Review:** Wenn ein Task `in_review` geht, erscheint das Mini-Formular in der Prompt Station mit DoD-Checkliste + Approve/Reject-Buttons
 - [ ] **Inline-Scoping:** Wenn ein Epic `incoming` ist, erscheint das Scoping-Formular in der Prompt Station mit Priorität-Auswahl (low/medium/high/critical) + optionalem Deadline-Feld
-- [ ] `hivemind/approve_review` über Inline-Formular setzt Task auf `done`
-- [ ] `hivemind/reject_review` über Inline-Formular setzt Task auf `qa_failed`
+- [ ] `POST /api/tasks/{task_key}/review { "action": "approve" }` über Inline-Formular setzt Task auf `done` (logische Operation `hivemind/approve_review` — in Phase 1 als REST-Endpoint, ab Phase 3 auch als MCP-Tool)
+- [ ] `POST /api/tasks/{task_key}/review { "action": "reject" }` über Inline-Formular setzt Task auf `qa_failed`
 
 ---
 
@@ -212,3 +214,73 @@ hivemind/
 ## Öffnet folgende Phase
 
 → [Phase 2: Identity & RBAC](./phase-2.md)
+
+---
+
+## Gamification-Spezifikation
+
+Das Gamification-System (EXP, Levels, Badges) wird in Phase 1 als Schema angelegt und in **Phase 5** aktiviert. Phase 5 implementiert die Worker/Gaertner-Flows, die die primären EXP-Trigger liefern.
+
+### EXP-Formel
+
+| Ereignis | EXP | Trigger |
+| --- | --- | --- |
+| Task auf `done` (approve_review) | +100 | Assigned Worker erhält EXP |
+| Task auf `done` ohne `qa_failed` (First-Try) | +50 Bonus | Zusätzlich zum Basis-EXP |
+| Skill-Proposal gemergt (`merge_skill`) | +75 | Skill-Proposer erhält EXP |
+| Decision Record erstellt | +25 | Record-Ersteller erhält EXP |
+| Wiki-Artikel erstellt | +50 | Artikel-Autor erhält EXP |
+| Guard-Proposal gemergt (`merge_guard`) | +50 | Guard-Proposer erhält EXP |
+| Epic komplett (`done`, alle Tasks `done`) | +200 | Epic-Owner erhält EXP |
+| Eskalation gelöst (`resolve_escalation`) | +30 | Lösender Admin erhält EXP |
+
+### Level-Schwellwerte (Seed-Daten in `level_thresholds`)
+
+| Level | Titel (Game Mode) | Titel (Pro Mode) | EXP kumuliert |
+| --- | --- | --- | --- |
+| 1 | Recruit | Junior | 0 |
+| 2 | Operative | Associate | 200 |
+| 3 | Specialist | Mid-Level | 500 |
+| 4 | Lieutenant | Senior | 1 000 |
+| 5 | Commander | Lead | 2 000 |
+| 6 | Captain | Staff | 4 000 |
+| 7 | Admiral | Principal | 7 000 |
+| 8 | Overlord | Distinguished | 12 000 |
+
+### Badge-Katalog (Seed-Daten in `badge_definitions`)
+
+| Badge | Bedingung | Kategorie |
+| --- | --- | --- |
+| `first_blood` | Erster Task auf `done` | Meilenstein |
+| `clean_sweep` | 5 Tasks ohne `qa_failed` in Folge | Qualität |
+| `skill_smith` | 3 Skill-Proposals gemergt | Wissensarbeit |
+| `wiki_scribe` | 10 Wiki-Artikel erstellt | Wissensarbeit |
+| `fire_fighter` | 3 Eskalationen gelöst | Verantwortung |
+| `guardian` | 5 Guards vorgeschlagen und gemergt | Qualität |
+| `cartographer` | 50 Code-Nodes kartiert | Exploration |
+| `epic_closer` | 3 Epics komplett abgeschlossen | Meilenstein |
+| `mentor` | 10 Decision Records erstellt | Wissensarbeit |
+| `iron_will` | Task nach 3x `qa_failed` doch auf `done` | Ausdauer |
+
+### Trigger-Mapping (Backend)
+
+EXP- und Badge-Prüfung läuft als synchroner Post-Commit-Hook im Backend:
+
+```python
+# Nach approve_review:
+async def on_task_done(task, actor_id):
+    await add_exp(actor_id=task.assigned_to, amount=100, reason="task_done")
+    if task.qa_failed_count == 0:
+        await add_exp(actor_id=task.assigned_to, amount=50, reason="first_try_bonus")
+    await check_badges(actor_id=task.assigned_to)
+    await check_level_up(actor_id=task.assigned_to)
+```
+
+### Phase-Zuordnung
+
+| Phase | Gamification-Status |
+| --- | --- |
+| 1 | Schema + Seed-Daten (level_thresholds, badge_definitions) |
+| 2–4 | Inaktiv — EXP-Felder existieren, werden nicht beschrieben |
+| 5 | **Aktivierung:** EXP-Trigger in approve_review, merge_skill, create_wiki_article etc. |
+| 6+ | Vollständig aktiv inkl. Eskalations-EXP |

@@ -28,6 +28,8 @@
 | Integrationen | YouTrack (Webhook/API), Sentry (Webhook/API), GitLab (MCP Consumer) |
 
 > **Skalierungsstrategie:** In Phase 1–7 laufen alle Komponenten (MCP-Server, Webhook-Ingest, Prompt-Generator, Bibliothekar) im selben FastAPI-Prozess. Ab Phase 8 (hohe Last / Team-Setup) können Backend-Aufgaben in separate Prozesse ausgelagert werden: **(1)** Outbox-Consumer als eigener Worker-Prozess, **(2)** SLA-Cron als eigenständiger Scheduler, **(3)** Embedding-Berechnung als Background-Job-Queue. Die Trennung erfordert keinen Architekturbruch — alle Prozesse teilen dieselbe DB und nutzen die Outbox-Tabelle als Koordinationspunkt.
+>
+> **Bottleneck-Hinweis (Phase 3+):** Im Team-Modus mit 5+ Usern können gleichzeitige Embedding-Berechnungen (Kartograph-Bootstrap), Prompt-Generierung und MCP-Calls den Single-Process belasten. Alle async Background-Tasks laufen über `asyncio.create_task` im selben Event-Loop. **Empfehlung ab Phase 3:** Embedding-Queue mit konfigurierbarem Parallelisierungsgrad (`HIVEMIND_EMBEDDING_CONCURRENCY`, Default: 2) und Monitoring der Event-Loop-Latenz. Bei nachgewiesenem Bottleneck vor Phase 8: Embedding-Worker als separaten Prozess evaluieren (Docker Compose Service, selbe DB).
 
 ---
 
@@ -187,15 +189,39 @@ Frontend und Backend kommunizieren Echtzeitdaten via **Server-Sent Events (SSE)*
 
 SSE wurde gewählt weil: (1) bereits für MCP HTTP-Transport verwendet, (2) simpler als WebSocket für unidirektionale Server→Client-Push, (3) automatische Reconnection durch Browser. Polling-Fallback: 30 Sekunden für Clients die SSE nicht unterstützen.
 
-### SSE-Verbindungsmanagement
+### SSE-Verbindungsmanagement & Event-Catch-Up
 
 | Parameter | Wert | Konfigurierbar |
 | --- | --- | --- |
-| **Heartbeat-Intervall** | 15 Sekunden (`:heartbeat` Comment-Event) | `HIVEMIND_SSE_HEARTBEAT_INTERVAL` |
+| **Heartbeat-Intervall** | 15 Sekunden (`:heartbeat` Comment-Event, mit `id`-Sequenz) | `HIVEMIND_SSE_HEARTBEAT_INTERVAL` |
 | **Client Timeout-Detection** | 45 Sekunden ohne Event (inkl. Heartbeat) → Verbindung als tot betrachten | Frontend-Konstante `SSE_DEAD_TIMEOUT_MS` |
 | **Reconnection-Delay** | Exponential Backoff: 1s → 2s → 4s → 8s → max 30s | Frontend: `SSE_RECONNECT_BASE_MS`, `SSE_RECONNECT_MAX_MS` |
 | **Fallback auf Polling** | Nach 3 fehlgeschlagenen SSE-Reconnects → Polling alle 30s | `HIVEMIND_POLL_FALLBACK_INTERVAL` |
 | **Rückkehr zu SSE** | Polling prüft Server-Health; bei Erfolg → SSE-Reconnect-Versuch | Automatisch |
+
+**Event-Sequencing & Last-Event-ID Catch-Up:**
+
+SSE-Events werden mit einer aufsteigenden `id`-Sequenz pro Kanal versehen. Dies ermöglicht Catch-Up nach Verbindungsunterbrechungen:
+
+```text
+id: 4217
+event: task_state_changed
+data: {"task_key":"TASK-88","old_state":"in_progress","new_state":"in_review",...}
+```
+
+- Client sendet `Last-Event-ID` Header beim Reconnect (Browser-nativ bei SSE)
+- Backend liefert alle Events seit dieser ID nach (aus einem Ring-Buffer der letzten 1000 Events pro Kanal)
+- Falls `Last-Event-ID` nicht mehr im Buffer (zu viele Events verpasst): Server sendet `event: full_sync` — Client lädt State komplett neu via REST
+- Ring-Buffer-Größe konfigurierbar: `HIVEMIND_SSE_BUFFER_SIZE` (Default: 1000)
+
+**Polling-Fallback-Endpoint (explizit):**
+
+```text
+GET /api/events/poll?channel=tasks&since=<last_event_id>&project_id=<uuid>
+→ 200 { "events": [...], "last_id": 4220 }
+→ Aktiviert nach 3 fehlgeschlagenen SSE-Reconnects
+→ Polling-Intervall: 30 Sekunden (HIVEMIND_POLL_FALLBACK_INTERVAL)
+```
 
 **Frontend-Ablauf:**
 1. SSE-Stream öffnen → Events empfangen
@@ -309,7 +335,7 @@ Alle API-Endpoints sind rate-limited. Die Limits gelten pro Actor (identifiziert
 - AI-Provider-Calls (Claude/OpenAI API) werden via separatem Token-Bucket limitiert: max `HIVEMIND_AI_RPM` Requests/Minute (Default: 10) um Provider-Rate-Limits nicht zu triggern.
 - Federation Peer-to-Peer: Zusätzliches per-Peer Throttling via `HIVEMIND_FEDERATION_PEER_RPM` (Default: 30/min) gegen Abuse durch kompromittierte Peers.
 
-**Implementation:** Middleware-basiert im FastAPI-Service. Phase 1–4: In-Memory Token Bucket (ausreichend für Single-Instance). Ab Phase 8 bei Multi-Worker Setup: Redis-basierter Distributed Rate Limiter evaluieren.
+**Implementation:** Middleware-basiert im FastAPI-Service. Phase 1–7: **In-Memory Token Bucket** (Python `dict` mit TTL-basiertem Cleanup, ausreichend für Single-Instance — kein Redis im Stack). Rate-Limit-State geht bei Prozess-Neustart verloren (akzeptabel). Ab Phase 8 bei Multi-Worker Setup: Redis-basierter Distributed Rate Limiter evaluieren.
 
 > **DDoS-Schutz:** Rate-Limiting ist die erste Verteidigung. Zusätzlich: Federation-Endpoints akzeptieren nur signierte Requests (Ed25519); Webhook-Endpoints validieren HMAC-Signatures. Nicht-authentifizierte Endpoints (nur `/health`) sind unkritisch.
 

@@ -190,7 +190,7 @@ Konkrete Budgets pro View — Überschreitung muss vor Merge dokumentiert und be
 | **Prompt Station** | Prompt-Volltext-Rendering | < 200ms für 10.000 Token-Prompt | TipTap `editable:false` ohne Extensions die nicht benötigt werden |
 | **Token Radar** | Animation FPS | 60 FPS (Progress-Ring) | CSS `will-change: transform`; bei `prefers-reduced-motion`: statische Anzeige |
 | **Command Deck** | Max Epics + Tasks (flache Liste) | 200 Items | Paginierung; virtualisierte Liste ab 100+ |
-| **Wiki Breadcrumb** | Rekursive Kategorie-Auflösung | < 50ms für 5 Ebenen Tiefe | Rekursive CTE mit `max_depth=10`; Breadcrumbs im API-Response vorberechnet |
+| **Wiki Breadcrumb** | Rekursive Kategorie-Auflösung | < 50ms für 5 Ebenen Tiefe | Rekursive CTE mit `max_depth=10`; Breadcrumbs im API-Response vorberechnet; **Index-Strategie:** `CREATE INDEX idx_wiki_categories_parent ON wiki_categories(parent_id) INCLUDE (name, slug)` für Covering-Index auf der rekursiven CTE. Zusätzlich materialisierter Breadcrumb-Cache im API-Response (Invalidierung bei Kategorie-Änderung). |
 | **Notification Tray** | Max sichtbare Notifications | 50 Items | Ältere Einträge hinter [ALLE ANZEIGEN] verstecken |
 
 > **Messmethode:** Lighthouse Performance Score >= 80 für alle Views mit Dummy-Daten (max Budget-Grenze). CI-Pipeline prüft auf Regression bei jeder PR die eine View ändert.

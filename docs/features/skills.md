@@ -113,6 +113,7 @@ async def create_item(body: ItemCreate, db: AsyncSession = Depends(get_db)):
 - Neue Skill-Verknüpfungen erhalten immer die aktuelle `active`-Version
 - `skill_versions` ist **immutable** (append-only, kein Delete, kein Update)
 - Deprecated Skills bleiben lesbar für Audit, werden dem Bibliothekar nicht mehr angeboten
+- **Deprecated Skill auf gepinntem Task:** Wenn ein auf einem laufenden Task gepinnter Skill deprecated wird, gilt: (1) Der Task behält die gepinnte Version (Snapshot ist immutable). (2) Eine Notification `skill_deprecated` wird an den Assigned Worker + Epic-Owner gesendet. (3) Im Worker-Prompt erscheint ein Warnhinweis: `⚠ Skill [title] ist deprecated — prüfe ob eine aktive Alternative verfügbar ist.` (4) Kein automatischer Versionswechsel — der Architekt muss den Skill manuell ersetzen oder entpinnen.
 
 > **`skills.version` vs. `skill_versions`:** `skills.version` ist die **aktuelle Versionsnummer** des Skills (wird bei jedem Merge inkrementiert: `skills.version += 1`). `skill_versions` enthält die **vollständige, immutable Versionshistorie** aller vergangenen Inhalte. Source of Truth für die aktuelle Version: `skills.version`. Source of Truth für den Inhalt einer bestimmten Version: `skill_versions WHERE skill_id = X AND version = Y`.
 
@@ -235,6 +236,7 @@ Bibliothekar lädt "review-fastapi-endpoint":
 | **Max. 3 Ebenen (Tiefe)** | Backend-Enforcement: `propose_skill` gibt HTTP 422 zurück wenn die aufgelöste `extends`-Kette tiefer als 3 Ebenen ist. Flachen oder aufsplitten ist Pflicht. |
 | **Max. 5 Parents (Breite)** | Backend-Enforcement: Die Gesamtsumme aller inkludierten Parent-Skills aus dem Baum darf 5 nicht überschreiten (Token-Budget-Schutz). |
 | **Diamond-Auflösung** | Wenn mehrere Parents denselben Ancestor teilen (Diamond), wird der gemeinsame Ancestor **nur einmal** eingefügt — in der Position des ersten Auftretens in der Tiefensuche (DFS, Reihenfolge laut `extends`-Array). Keine Duplikate im assemblierten Inhalt. |
+| **Load-Order (Inklusionsreihenfolge)** | Parent-Skills werden per **DFS (Depth-First Search)** in der Reihenfolge des `extends`-Arrays inkludiert: tiefster Ancestor zuerst, spezifischster (Child) zuletzt. Beispiel: `review-general → review-pr → review-fastapi` wird assembliert als: (1) review-general, (2) review-pr, (3) review-fastapi. Bei Mixins (mehrere Parents): linker Parent-Baum komplett vor rechtem Parent-Baum. |
 | **Circular Check** | Backend verhindert zirkuläre Abhängigkeiten beim Merge (`propose_skill` schlägt fehl wenn Cycle erkannt) |
 | **Version-Pinning** | Task pinnt auf Child-Version; Child pinnt intern auf Parent-Versionen (gespeichert in `skill_versions.parent_versions`) |
 | **Guard-Vererbung** | Guards aller Parents werden mit den eigenen Guards zusammengeführt (keine Duplikate bei Diamond) |
