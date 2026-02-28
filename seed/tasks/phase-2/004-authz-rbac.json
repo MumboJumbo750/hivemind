@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-2-004",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "AuthZ + Scope-Validierung + Solo-Modus",
+  "description": "RBAC-Enforcement als FastAPI-Dependency implementieren. Regeln: `admin` darf alles. `developer` darf nur in Projekten schreiben, in denen er `project_member` ist ODER wenn `assigned_to` auf dem Task auf ihn zeigt. `service`-Rolle für System-Agents. Im Solo-Modus (`app_settings.mode = 'solo'`): RBAC komplett deaktiviert, System-User `solo` wird automatisch als Actor eingesetzt. `app_settings`-Tabelle anlegen (Alembic-Migration): `key` (PK, Text), `value` (JSONB). Seed-Wert: `mode = 'solo'`, `notification_mode = 'client'`. Dependency `require_role(*roles)` und `require_project_access(project_id)`. HTTP 403 bei fehlender Berechtigung.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "Alembic-Migration für `app_settings`-Tabelle (key TEXT PK, value JSONB)",
+      "Seed-Werte: mode='solo', notification_mode='client'",
+      "`require_role()` Dependency: prüft ob Actor die nötige Rolle hat",
+      "`require_project_access()` Dependency: prüft project_member oder assigned_to",
+      "Solo-Modus: RBAC deaktiviert, System-User 'solo' als Actor",
+      "HTTP 403 bei fehlender Berechtigung im Team-Modus",
+      "AppSettings-Model in models/ angelegt",
+      "Tests: Admin darf alles, Developer nur eigene Projekte, Solo-Modus bypassed RBAC"
+    ]
+  },
+  "tags": ["backend", "rbac", "auth"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "api-test", "rbac-middleware"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-2-003"]
+}

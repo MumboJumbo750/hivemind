@@ -1,0 +1,29 @@
+{
+  "external_id": "TASK-F-012",
+  "epic_ref": "EPIC-PHASE-F",
+  "title": "Settings Tab: Federation-Konfiguration",
+  "description": "Neuer Tab 'Federation' in der bestehenden `SettingsView`. Inhalte:\n\n**Eigene Node-Identität (Read-only):** `node_id` (UUID, kopierbar), `node_name`, `node_url`, Public Key (truncated, mit Copy-Button).\n\n**Peer-Liste:** Tabelle aller bekannten Peers mit: Name, URL, Status-Badge (`active` = grün, `inactive` = gelb, `blocked` = rot), `last_seen`-Zeitstempel (relative Zeitangabe). Pro Peer: `[BLOCKIEREN]`-Button (setzt `nodes.status='blocked'`), `[ENTFERNEN]`-Button (soft-delete via `deleted_at`). Oben: `[PEER HINZUFÜGEN]`-Button → Modal mit Feldern: Name, URL, Public Key.\n\n**Topologie-Auswahl:** Radio-Buttons für `direct_mesh`, `hub_assisted`, `hub_relay`. Beschreibungstext pro Option. Ändert `HIVEMIND_FEDERATION_TOPOLOGY` via `PATCH /api/settings/federation`.\n\n**Hive Station:** URL-Feld + Token-Feld (nur sichtbar bei `hub_assisted` oder `hub_relay`). Verbindungsstatus-Badge (connected/disconnected). `[VERBINDUNG TESTEN]`-Button.\n\nAPI-Calls: `GET /api/nodes` (Peer-Liste), `POST /api/nodes` (Peer anlegen), `PATCH /api/nodes/{id}` (Status ändern), `DELETE /api/nodes/{id}` (Peer entfernen), `GET /api/node-identity` (eigene Identität).",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Neuer Tab 'Federation' in SettingsView sichtbar und navigierbar",
+      "Eigene Node-Identität wird korrekt angezeigt (node_id, name, url, truncated public key)",
+      "Peer-Liste zeigt alle Peers mit Status-Badge und `last_seen`",
+      "`[PEER HINZUFÜGEN]`-Modal mit Validierung (Name, URL, Public Key Pflicht)",
+      "`[BLOCKIEREN]` setzt Peer-Status auf `blocked` via API",
+      "`[ENTFERNEN]` soft-deleted Peer via API",
+      "Topologie-Auswahl mit 3 Radio-Buttons und Beschreibungstexten",
+      "Hive-Station-Felder nur bei `hub_assisted`/`hub_relay` sichtbar",
+      "Design-Tokens aus bestehendem System verwendet",
+      "Responsive Layout, konsistent mit bestehendem Settings-Design"
+    ]
+  },
+  "tags": ["frontend", "federation", "settings"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": ["federation-konzept"],
+  "source_doc": "docs/phases/phase-f.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-F-001", "TASK-F-002"]
+}

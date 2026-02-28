@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-2-006",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Audit-Writer (mcp_invocations Logger)",
+  "description": "Nach jedem Write-Endpoint einen Eintrag in `mcp_invocations`-Tabelle schreiben. Felder: `tool_name` (Endpoint-Name), `actor_id`, `epic_id` (falls zutreffend), `input_payload` (Request Body als JSONB), `output_payload` (Response als JSONB), `duration_ms` (Ausführungszeit). Implementierung als Service-Layer-Decorator `@audit_write` oder als FastAPI-Middleware die nur auf mutierende Methoden (POST/PATCH/DELETE) reagiert. Timing via `time.perf_counter()`. `mcp_invocations` existiert bereits im Schema — sicherstellen dass `input_payload` und `output_payload` JSONB-Spalten vorhanden sind.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Jeder Write-Endpoint erzeugt einen Eintrag in `mcp_invocations`",
+      "Eintrag enthält: tool_name, actor_id, epic_id, input_payload, output_payload, duration_ms",
+      "Duration wird korrekt gemessen (Millisekunden)",
+      "Audit-Schreiben ist non-blocking (darf Endpoint-Response nicht verzögern)",
+      "Decorator oder Middleware ist wiederverwendbar auf allen Write-Endpoints",
+      "Test: Write-Endpoint erzeugt audit-Eintrag mit korrekten Feldern"
+    ]
+  },
+  "tags": ["backend", "audit", "middleware"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-2-003"]
+}

@@ -25,6 +25,10 @@ services:
       HIVEMIND_ROUTING_THRESHOLD: ${HIVEMIND_ROUTING_THRESHOLD:-0.85}
       HIVEMIND_DLQ_MAX_ATTEMPTS: ${HIVEMIND_DLQ_MAX_ATTEMPTS:-5}
       AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-90}
+      HIVEMIND_CORS_ORIGINS: ${HIVEMIND_CORS_ORIGINS:-http://localhost:5173}
+      HIVEMIND_OLLAMA_URL: ${HIVEMIND_OLLAMA_URL:-http://ollama:11434}
+      HIVEMIND_EMBEDDING_MODEL: ${HIVEMIND_EMBEDDING_MODEL:-nomic-embed-text}
+      HIVEMIND_EMBEDDING_BATCH_SIZE: ${HIVEMIND_EMBEDDING_BATCH_SIZE:-50}
     ports:
       - "8000:8000"
     depends_on:
@@ -32,7 +36,8 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - backend_venv:/app/.venv
+      - ./seed:/seed:ro
 
   frontend:
     build: ./frontend
@@ -42,9 +47,30 @@ services:
       - backend
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - frontend_node_modules:/app/node_modules
     environment:
       VITE_API_URL: http://localhost:8000
+
+  db-backup:
+    build: ./backend/cron
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-hivemind}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hivemind}
+      POSTGRES_DB: ${POSTGRES_DB:-hivemind}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-hivemind}
+      HIVEMIND_BACKUP_CRON: ${HIVEMIND_BACKUP_CRON:-0 2 * * *}
+      HIVEMIND_BACKUP_DIR: ${HIVEMIND_BACKUP_DIR:-/backups}
+      HIVEMIND_BACKUP_RETAIN_DAILY: ${HIVEMIND_BACKUP_RETAIN_DAILY:-7}
+      HIVEMIND_BACKUP_RETAIN_WEEKLY: ${HIVEMIND_BACKUP_RETAIN_WEEKLY:-4}
+      HIVEMIND_BACKUP_RETAIN_MONTHLY: ${HIVEMIND_BACKUP_RETAIN_MONTHLY:-3}
+    volumes:
+      - backup_data:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
   # NOTE: Ollama is NOT included in Phase 1-2.
   # It will be added in Phase 3 when the Bibliothekar service is automated.
@@ -56,6 +82,35 @@ services:
   #   volumes:
   #     - ollama_data:/root/.ollama
 
+  # Phase 3: Ollama for Embeddings (--profile ai)
+  ollama:
+    image: ollama/ollama
+    profiles: ["ai"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  ollama-init:
+    image: curlimages/curl:latest
+    profiles: ["ai"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      sh -c "curl -s http://ollama:11434/api/pull
+      -d '{\"name\": \"nomic-embed-text\"}' --max-time 600"
+
 volumes:
   postgres_data:
-  # ollama_data:  # Phase 3
+  backup_data:
+  backend_venv:
+  frontend_node_modules:
+  ollama_data:

@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-3-016",
+  "epic_ref": "EPIC-PHASE-3",
+  "title": "Frontend: MCP-Status + Queue-Badges",
+  "description": "Zwei Frontend-Features für die Prompt Station: (1) MCP-Verbindungsstatus: Live-Anzeige in der System Bar ob MCP-Server erreichbar ist. Indikator: `● verbunden` (grün) / `◌ getrennt` (rot). Prüfung via Polling (30s Intervall) oder WebSocket. Status wird in einem globalen Pinia Store gehalten. Tooltip zeigt Transport-Typ (stdio/HTTP/SSE) und letzte erfolgreiche Verbindung. (2) Prompt Queue 'Warum jetzt?'-Badges: Jeder Eintrag in der Prompt Queue (Agent-Queue in der Prompt Station) zeigt einen Badge der erklärt warum dieser Task/Agent gerade priorisiert ist. Badge-Typen: `ESCALATED` (orange), `DECISION OFFEN` (gelb), `SLA <4h` (rot), `FOLLOW-UP` (blau). Badge-Daten kommen aus dem Task-State und `sync_outbox`-Metadaten. Badges sind klickbar und zeigen Tooltip mit Details.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "MCP-Verbindungsstatus in System Bar: `● verbunden` (grün) / `◌ getrennt` (rot)",
+      "Status-Polling alle 30s oder via WebSocket",
+      "Tooltip zeigt Transport-Typ und letzte erfolgreiche Verbindung",
+      "Globaler Pinia Store für MCP-Status",
+      "Queue-Badges: ESCALATED, DECISION OFFEN, SLA <4h, FOLLOW-UP korrekt angezeigt",
+      "Badge-Farben korrekt: orange, gelb, rot, blau",
+      "Badges klickbar mit Detail-Tooltip",
+      "Prompt Queue zeigt pro Eintrag nachvollziehbaren Priorisierungsgrund"
+    ]
+  },
+  "tags": ["frontend", "ui", "prompt-station"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-3.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-3-001", "TASK-3-013"]
+}

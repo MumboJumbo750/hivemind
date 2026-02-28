@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-3-015",
+  "epic_ref": "EPIC-PHASE-3",
+  "title": "Frontend: Token Radar in Prompt Station",
+  "description": "Token Radar Widget in der Prompt Station implementieren — animated Progress-Ring der den Token-Verbrauch eines generierten Prompts visualisiert. Anzeige: Aktuell verbrauchte Tokens / Max Tokens (Default: 8000). Progress-Ring als SVG Circle mit animiertem `stroke-dashoffset`. Farbskala: 0-60% → Cyan (accent), 60-85% → Gelb (warning), 85-100% → Rot (danger). Numerische Anzeige im Zentrum des Rings: `2450 / 8000`. Animation: smooth Transition bei Token-Count-Änderung (CSS transition 300ms). Token-Count kommt vom Prompt-Generator-Response (`token_count`-Feld aus `hivemind/get_prompt` Response). Initial-State: `0 / 8000` wenn kein Prompt generiert. Platzierung: oben rechts in der Prompt Station View, neben dem Agent-Queue-Header.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Token Radar als SVG Progress-Ring in Prompt Station angezeigt",
+      "Farbskala korrekt: Cyan <60%, Gelb 60-85%, Rot >85%",
+      "Numerische Anzeige im Ring-Zentrum (aktuelle/max Tokens)",
+      "Smooth Animation bei Token-Count-Änderung (300ms Transition)",
+      "Token-Count wird aus Prompt-Generator-Response geladen",
+      "Initial-State zeigt `0 / 8000`",
+      "Responsive: Ring skaliert auf verschiedenen Bildschirmgrößen",
+      "Accessibility: `aria-label` mit Token-Informationen"
+    ]
+  },
+  "tags": ["frontend", "ui", "prompt-station"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-3.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-3-005"]
+}

@@ -1,0 +1,29 @@
+{
+  "external_id": "TASK-2-002",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Auth-Endpoints (Register, Login, Refresh, Logout)",
+  "description": "Vier Auth-Endpoints implementieren: `POST /api/auth/register` (erstellt User mit gehashtem Passwort via `passlib[bcrypt]`), `POST /api/auth/login` (validiert Credentials, liefert JWT Access-Token + setzt HttpOnly Refresh-Cookie), `POST /api/auth/refresh` (liest Refresh-Cookie, rotiert Tokens), `POST /api/auth/logout` (löscht Refresh-Cookie). JWT via `python-jose[cryptography]`. Access-Token enthält Claims: `sub` (user_id), `role`, `exp`. Refresh-Token mit längerer Laufzeit. Pydantic-Schemas: `AuthRegister`, `AuthLogin`, `TokenResponse`. Neue Router-Datei `backend/app/routers/auth.py`. Dependencies `python-jose[cryptography]` und `passlib[bcrypt]` in `requirements.txt` ergänzen. Config: `JWT_SECRET_KEY`, `JWT_ALGORITHM` (default HS256), `ACCESS_TOKEN_EXPIRE_MINUTES` (default 30), `REFRESH_TOKEN_EXPIRE_DAYS` (default 7).",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "`python-jose[cryptography]` und `passlib[bcrypt]` in requirements.txt",
+      "POST /api/auth/register erstellt User mit password_hash (201)",
+      "POST /api/auth/login liefert access_token + setzt HttpOnly refresh_token Cookie",
+      "POST /api/auth/refresh rotiert Tokens korrekt",
+      "POST /api/auth/logout löscht Refresh-Cookie",
+      "JWT enthält Claims: sub (user_id), role, exp",
+      "Pydantic-Schemas AuthRegister, AuthLogin, TokenResponse vorhanden",
+      "Config-Variablen JWT_SECRET_KEY, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS",
+      "Router in main.py registriert",
+      "Integration-Tests für alle 4 Endpoints"
+    ]
+  },
+  "tags": ["backend", "auth", "api"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "api-test", "jwt-auth"],
+  "linked_wiki": ["system-architektur", "tech-stack"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "large",
+  "depends_on": []
+}

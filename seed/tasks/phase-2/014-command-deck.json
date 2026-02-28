@@ -1,0 +1,29 @@
+{
+  "external_id": "TASK-2-014",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Command Deck View",
+  "description": "`src/views/CommandDeck/CommandDeckView.vue` implementieren. Hauptansicht für Epic- und Task-Management. Aufbau: (A) Epic-Liste mit State-Badges (incoming/scoped/active/done), SLA-Countdown pro Epic via SlaCountdown-Komponente. (B) Jedes Epic einklappbar/ausklappbar: zeigt zugehörige Tasks mit State-Badge, Assignee, Priority. (C) Action-Buttons RBAC-aware: `[ARCHITEKT STARTEN ▶]` bei Epic-State `scoped` (nur Admin), `[SCOPEN ▶]` bei Epic-State `incoming` (öffnet EpicScopingModal). (D) Task-Zeile: Klick öffnet TaskReviewPanel bei State `in_review`. Daten via API: `GET /api/epics` + `GET /api/tasks?epic_id=`. Pinia-Store für Command-Deck-State oder bestehenden projectStore erweitern.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "CommandDeckView.vue unter src/views/CommandDeck/ erstellt",
+      "Epic-Liste mit State-Badges und SLA-Countdown angezeigt",
+      "Epics einklappbar/ausklappbar mit zugehörigen Tasks",
+      "Tasks zeigen State-Badge, Assignee, Priority",
+      "[ARCHITEKT STARTEN ▶]-Button bei scoped Epics (nur Admin)",
+      "[SCOPEN ▶]-Button bei incoming Epics (öffnet EpicScopingModal)",
+      "Task-Klick öffnet TaskReviewPanel bei State in_review",
+      "Route /command-deck in Vue-Router registriert",
+      "RBAC-aware: Buttons nur wenn berechtigt (aus Auth-Store)",
+      "Daten werden via API geladen"
+    ]
+  },
+  "tags": ["frontend", "vue-component", "domain", "command-deck"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": ["system-architektur", "state-machine-guide"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-2-012", "TASK-2-013"]
+}

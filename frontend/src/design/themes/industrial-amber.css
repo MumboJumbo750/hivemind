@@ -1,0 +1,17 @@
+[data-theme="industrial-amber"] {
+  --color-bg: #0d0a00;
+  --color-surface: #1a1200;
+  --color-surface-alt: #231800;
+  --color-border: #4a3000;
+  --color-text: #fff3d0;
+  --color-text-muted: #a08040;
+  --color-accent: #ffaa00;
+  --color-accent-2: #ff6b00;
+  --color-success: #80ff40;
+  --color-warning: #ffdd00;
+  --color-danger: #ff3300;
+  --focus-ring-color: #ffaa00;
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}

@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-2-013",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "SLA-Timer-Komponente (SlaCountdown)",
+  "description": "`src/components/ui/SlaCountdown.vue` implementieren. Reine Präsentationskomponente die einen Countdown im Format `Xh Ym` anzeigt. Props: `sla_due_at` (ISO-Datetime-String). Farbwechsel basierend auf verbleibender Zeit: > 24h → `--color-text-muted`, < 24h → `--color-warning`, < 4h → `--color-danger`. Aktualisiert sich per `setInterval` (alle 60 Sekunden). Zeigt 'Abgelaufen' in danger-Farbe wenn Deadline überschritten. Wird in Command Deck und Prompt Station eingesetzt.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "SlaCountdown.vue unter src/components/ui/ erstellt",
+      "Zeigt Countdown im Format 'Xh Ym'",
+      "Farbwechsel: >24h=text-muted, <24h=warning, <4h=danger",
+      "Props: sla_due_at (ISO-Datetime-String)",
+      "Auto-Update alle 60 Sekunden via setInterval",
+      "Zeigt 'Abgelaufen' in danger-Farbe bei überschrittener Deadline",
+      "Cleanup: Interval wird bei unmount cleared",
+      "Styles nutzen Design-Token-CSS-Variablen"
+    ]
+  },
+  "tags": ["frontend", "ui", "vue-component"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": [],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

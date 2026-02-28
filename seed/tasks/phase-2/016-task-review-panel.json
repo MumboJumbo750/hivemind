@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-2-016",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Task Review Panel",
+  "description": "`src/components/domain/TaskReviewPanel.vue` implementieren. Wird im Command Deck angezeigt wenn ein Task mit State `in_review` ausgewählt wird. Aufbau: (A) **Hard Gates** (systemische Prüfungen, read-only): `result` vorhanden (nicht NULL/leer), State-Transition gültig, Review-Gate aktiv. Status: passed/failed/skipped. (B) **Owner Judgment** (fachliche DoD-Kriterien): Checkliste aus `definition_of_done.criteria`, manuell abhakbar (nur UI, kein Backend-Write der Checkbox-States). (C) `review_comment`-Textarea: wird bei Ablehnung eingeblendet (Pflichtfeld). (D) Buttons: `[✓ GENEHMIGEN]` → `PATCH /api/tasks/{key}` mit Transition `in_review → done`. `[✗ ABLEHNEN]` → `PATCH /api/tasks/{key}` mit Transition `in_review → in_progress` + `review_comment`. Guard-Enforcement: in Phase 2 rein informativ (keine Blockade).",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "TaskReviewPanel.vue unter src/components/domain/ erstellt",
+      "Hard Gates Sektion zeigt systemische Prüfungen (result, transition, review-gate)",
+      "Owner Judgment zeigt DoD-Checkliste mit abhakbaren Checkboxen",
+      "review_comment Textarea bei Ablehnung eingeblendet (Pflichtfeld)",
+      "GENEHMIGEN-Button sendet Transition in_review→done",
+      "ABLEHNEN-Button sendet Transition in_review→in_progress mit review_comment",
+      "Guard-Status rein informativ (kein Enforcement in Phase 2)",
+      "Panel refresht Task-State nach Aktion"
+    ]
+  },
+  "tags": ["frontend", "vue-component", "domain", "command-deck"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component"],
+  "linked_wiki": ["state-machine-guide"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-2-014"]
+}

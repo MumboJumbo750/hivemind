@@ -1,0 +1,17 @@
+[data-theme="operator-mono"] {
+  --color-bg: #000000;
+  --color-surface: #0a0a0a;
+  --color-surface-alt: #141414;
+  --color-border: #333333;
+  --color-text: #f0f0f0;
+  --color-text-muted: #888888;
+  --color-accent: #ffffff;
+  --color-accent-2: #cccccc;
+  --color-success: #00ff00;
+  --color-warning: #ffff00;
+  --color-danger: #ff0000;
+  --focus-ring-color: #ffffff;
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}

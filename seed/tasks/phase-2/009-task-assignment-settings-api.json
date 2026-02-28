@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-2-009",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Task-Assignment + Settings-API",
+  "description": "Zwei kleine API-Erweiterungen: (A) Task-Assignment: `PATCH /api/tasks/{task_key}` um `assigned_to`-Feld erweitern. RBAC: nur Project-Member oder Admin darf Tasks zuweisen. Validiert dass der zugewiesene User existiert und Project-Member ist. (B) Solo/Team-Modus Settings: `PATCH /api/settings` mit `{ mode: 'solo' | 'team' }`. Schreibt in `app_settings`-Tabelle. Kein Neustart nötig — RBAC-Middleware liest Modus bei jedem Request. `GET /api/settings` liefert aktuellen Modus + `notification_mode`. Neuer Router `backend/app/routers/settings.py`. In main.py registrieren.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "PATCH /api/tasks/{task_key} akzeptiert `assigned_to` (User-UUID)",
+      "Validierung: zugewiesener User muss existieren und Project-Member sein",
+      "RBAC: nur Project-Member oder Admin darf zuweisen",
+      "PATCH /api/settings akzeptiert `{ mode: 'solo' | 'team' }`",
+      "GET /api/settings liefert aktuellen Modus + notification_mode",
+      "Settings-Router in main.py registriert",
+      "Modus-Wechsel ohne App-Neustart wirksam",
+      "Tests: Task-Assignment, Settings-Read, Settings-Update"
+    ]
+  },
+  "tags": ["backend", "api", "rbac"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "api-test", "rbac-middleware", "optimistic-locking"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-2-004"]
+}

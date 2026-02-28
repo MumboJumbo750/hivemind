@@ -1,0 +1,28 @@
+{
+  "external_id": "TASK-F-009",
+  "epic_ref": "EPIC-PHASE-F",
+  "title": "Task-Delegation + ausgehende State-Updates",
+  "description": "Zwei Richtungen der Task-Delegation implementieren:\n\n**Eingehend (bereits in TASK-F-004 als `/federation/task/update`):** Task-State-Updates von Peer werden lokal gespiegelt. Hier: sicherstellen dass nur Tasks aktualisiert werden die `assigned_node_id` = sendender Node haben (Origin-Authority). State-Transition via bestehende State-Machine validieren.\n\n**Ausgehend:** Service-Layer-Hook in der Task-Update-Logik. Wenn `tasks.assigned_node_id` gesetzt ist und sich der Task-State ändert: Outbox-Eintrag für den betroffenen Peer anlegen mit `direction='peer_outbound'`, `event_type='task_updated'`, `target_node_id` = `assigned_node_id`, `payload` = Task-ID + neuer State + Result. `dedup_key` = `task_update:{task_id}:{new_state}`.\n\nImplementierung als Service-Funktion `notify_peer_task_update(task_id, new_state)` in `app/services/federation.py`. Integration in bestehende Task-State-Machine-Transitions. Nur aktiv wenn `HIVEMIND_FEDERATION_ENABLED=true` und `assigned_node_id` gesetzt.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Eingehende Task-Updates prüfen `assigned_node_id` gegen sendenden Node",
+      "State-Transitions werden via State-Machine validiert",
+      "Ausgehende Updates: Outbox-Eintrag bei Task-State-Änderung wenn `assigned_node_id` gesetzt",
+      "`event_type='task_updated'` mit Task-ID, neuem State und Result im Payload",
+      "`dedup_key` verhindert redundante Outbox-Einträge",
+      "Service-Funktion `notify_peer_task_update()` in `app/services/federation.py`",
+      "Integration in bestehende State-Machine-Transitions",
+      "Nur aktiv wenn Federation enabled und `assigned_node_id` gesetzt",
+      "Unit-Test: State-Änderung an delegiertem Task erzeugt Outbox-Eintrag für zugewiesenen Peer"
+    ]
+  },
+  "tags": ["backend", "federation", "service-layer"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "api-test", "outbox-consumer"],
+  "linked_wiki": ["federation-konzept", "state-machine-guide"],
+  "source_doc": "docs/phases/phase-f.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-F-004", "TASK-F-005"]
+}

@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-3-017",
+  "epic_ref": "EPIC-PHASE-3",
+  "title": "Frontend: Kartograph-Bootstrap-Flow",
+  "description": "Kartograph-Bootstrap UI implementieren: 'Neues Projekt → Kartograph starten'-Flow. Entry-Point: Button in Project-Settings oder Command Deck 'Kartograph-Analyse starten'. Flow: (1) Repo-URL eingeben oder lokalen Pfad wählen. (2) Kartograph-Prompt via `hivemind/get_prompt { type: 'kartograph' }` generieren. (3) Generierter Prompt in Volltext-Modal anzeigen (Copy-to-Clipboard-Button). (4) User kopiert Prompt in AI-Client, führt Analyse durch. (5) Ergebnis-Panel: Textbereich für Kartograph-Output (manuelles Einfügen). Hinweis-Banner: 'Kartograph-Ergebnisse werden ab Phase 5 automatisch gespeichert. Bis dahin: Ergebnisse manuell in Wiki/Code-Graph übertragen.' Write-Einschränkung beachten: Kartograph-Write-Tools kommen erst in Phase 5. In Phase 3-4 ist alles manuelles Copy-Paste. Integration: Route `/kartograph-bootstrap`, Link im Command Deck und Project-Settings.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Kartograph-Bootstrap unter Route `/kartograph-bootstrap` erreichbar",
+      "Repo-URL/Pfad-Eingabe funktioniert",
+      "Kartograph-Prompt wird via `get_prompt` generiert und im Modal angezeigt",
+      "Copy-to-Clipboard-Button für generierten Prompt",
+      "Ergebnis-Panel für manuellen Kartograph-Output",
+      "Hinweis-Banner über manuelle Speicherung bis Phase 5 angezeigt",
+      "Link im Command Deck und Project-Settings vorhanden",
+      "Responsive Layout"
+    ]
+  },
+  "tags": ["frontend", "ui", "kartograph"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": ["agent-konzept", "system-architektur"],
+  "source_doc": "docs/phases/phase-3.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-3-005"]
+}

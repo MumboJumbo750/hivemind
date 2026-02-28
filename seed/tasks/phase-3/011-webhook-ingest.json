@@ -1,0 +1,28 @@
+{
+  "external_id": "TASK-3-011",
+  "epic_ref": "EPIC-PHASE-3",
+  "title": "Webhook-Ingest (YouTrack + Sentry)",
+  "description": "Webhook-Endpoints für externe Event-Quellen implementieren. Router: `app/routers/webhooks.py` mit Prefix `/api/webhooks`. Endpoints: `POST /api/webhooks/youtrack` — empfängt YouTrack Issue-Events. `POST /api/webhooks/sentry` — empfängt Sentry Error-Events. Sicherheit: HMAC-SHA256 Signatur-Validierung (Webhook-Secret in `HIVEMIND_YOUTRACK_WEBHOOK_SECRET` / `HIVEMIND_SENTRY_WEBHOOK_SECRET`). Verarbeitung: Payload-Normalisierung (Roh-JSON → internes Format), dann `sync_outbox`-Eintrag mit `direction='inbound'`, `routing_state='unrouted'`, normalisierten Payload + raw_payload. Idempotenz via `idempotency_key` aus Event-ID (Duplikate → Skip mit 200 OK). Phase 1-2: Alle inbound Events sind `[UNROUTED]` — kein Auto-Routing. Die `[UNROUTED]`-Items werden in der Triage Station angezeigt.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "`POST /api/webhooks/youtrack` empfängt und verarbeitet YouTrack-Events",
+      "`POST /api/webhooks/sentry` empfängt und verarbeitet Sentry-Events",
+      "HMAC-SHA256 Signatur-Validierung: ungültig → 401",
+      "Payload-Normalisierung: Rohes JSON → internes Format mit `source`, `external_id`, `summary`",
+      "`sync_outbox`-Eintrag erstellt mit `direction='inbound'`, `routing_state='unrouted'`",
+      "`raw_payload` wird zusätzlich zum normalisierten Payload gespeichert",
+      "Idempotenz: Duplikat-Event → Skip mit 200 OK",
+      "Webhook-Secrets über Env-Variablen konfigurierbar",
+      "Unit-Test: Webhook-Empfang, Signatur-Validierung, Idempotenz, Payload-Normalisierung"
+    ]
+  },
+  "tags": ["backend", "integration"],
+  "subtasks": [],
+  "pinned_skills": ["webhook-ingest", "fastapi-endpoint", "pydantic-model", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-3.md",
+  "estimated_complexity": "large",
+  "depends_on": []
+}

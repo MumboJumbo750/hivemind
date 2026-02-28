@@ -1,0 +1,49 @@
+:root {
+  /* Button */
+  --button-primary-bg: var(--color-accent);
+  --button-primary-text: var(--color-bg);
+  --button-primary-hover-bg: color-mix(in srgb, var(--color-accent) 80%, white);
+  --button-danger-bg: var(--color-danger);
+
+  /* Card */
+  --card-bg: var(--color-surface);
+  --card-border: 1px solid var(--color-border);
+  --card-radius: var(--radius-md);
+
+  /* Input */
+  --input-bg: var(--color-surface-alt);
+  --input-border: var(--color-border);
+  --input-focus-border: var(--color-accent);
+
+  /* Modal */
+  --modal-bg: var(--color-surface);
+  --modal-backdrop: rgba(0, 0, 0, 0.7);
+
+  /* Sidebar */
+  --sidebar-bg: var(--color-surface);
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 48px;
+
+  /* Status Bar */
+  --statusbar-bg: var(--color-surface-alt);
+  --statusbar-height: 24px;
+
+  /* System Bar */
+  --systembar-bg: var(--color-surface);
+  --systembar-height: 32px;
+}
+
+/* Accessibility: Focus Ring */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Interaktive Elemente erben den Ring */
+a, button, input, select, textarea, [tabindex] {
+  /* Focus-Ring wird durch :focus-visible oben gesetzt */
+}

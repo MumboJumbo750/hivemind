@@ -1,0 +1,29 @@
+{
+  "external_id": "TASK-F-005",
+  "epic_ref": "EPIC-PHASE-F",
+  "title": "Outbox-Consumer (peer_outbound)",
+  "description": "Erster Outbox-Consumer im System: verarbeitet `sync_outbox`-Einträge mit `direction='peer_outbound'`. Implementierung als APScheduler-Job (Intervall: 30 Sekunden, konfigurierbar via `HIVEMIND_OUTBOX_INTERVAL`). Pro Run: alle `sync_outbox`-Einträge mit `direction='peer_outbound'` und `attempts < max_attempts` laden (älteste zuerst, Batch-Limit 50). Für jeden Eintrag: Ziel-URL aus `nodes`-Tabelle via `target_node_id` ermitteln. HTTP POST an `{node_url}/federation/{event_type}` mit signiertem Request-Body (via `sign_request()`-Utility aus TASK-F-003). Bei HTTP 2xx: Eintrag aus `sync_outbox` löschen. Bei Fehler: `attempts` inkrementieren. Wenn `attempts >= max_attempts` (aus `HIVEMIND_DLQ_MAX_ATTEMPTS`, Default: 5): Eintrag in `sync_dead_letter` verschieben mit `last_error`. HTTP-Client: `httpx.AsyncClient` mit Timeout 10s. Dependency `httpx` in `requirements.txt` ergänzen. Dependency `apscheduler` in `requirements.txt` ergänzen falls nicht vorhanden. APScheduler im FastAPI Lifespan starten/stoppen.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "`httpx` und `apscheduler` in requirements.txt vorhanden",
+      "APScheduler-Job läuft alle 30s und verarbeitet `peer_outbound`-Einträge",
+      "HTTP POST an Peer-URL mit korrekter Ed25519-Signatur (`X-Node-Signature`, `X-Node-ID`)",
+      "Bei HTTP 2xx: Outbox-Eintrag wird gelöscht",
+      "Bei Fehler: `attempts` wird inkrementiert",
+      "Bei `attempts >= max_attempts`: Eintrag in `sync_dead_letter` verschoben",
+      "`HIVEMIND_DLQ_MAX_ATTEMPTS` und `HIVEMIND_OUTBOX_INTERVAL` in Settings ergänzt",
+      "APScheduler wird im FastAPI Lifespan korrekt gestartet und gestoppt",
+      "Inaktive Peers (`nodes.status != 'active'`) werden übersprungen",
+      "Unit-Test: Outbox-Eintrag wird verarbeitet und bei Erfolg gelöscht; DLQ bei max_attempts"
+    ]
+  },
+  "tags": ["backend", "federation", "infrastructure"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "api-test", "outbox-consumer", "scheduled-job", "http-client"],
+  "linked_wiki": ["federation-konzept", "system-architektur"],
+  "source_doc": "docs/phases/phase-f.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-F-003", "TASK-F-004"]
+}

@@ -1,0 +1,28 @@
+{
+  "external_id": "TASK-F-003",
+  "epic_ref": "EPIC-PHASE-F",
+  "title": "Ed25519-Signatur-Middleware für Federation-Requests",
+  "description": "FastAPI-Middleware die alle eingehenden `/federation/*`-Requests validiert. Erwartet Header `X-Node-Signature` (Base64-encoded Ed25519-Signatur über Request-Body) und `X-Node-ID` (UUID des sendenden Nodes). Public Key wird aus `nodes`-Tabelle via `X-Node-ID` geladen. HTTP 401 bei: fehlendem Header, unbekanntem Node-ID, ungültiger Signatur, inaktivem/blockiertem Peer (`nodes.status != 'active'`). Zusätzlich: Utility-Funktion `sign_request(body: bytes) -> str` die ausgehende Federation-Requests mit dem eigenen Private Key signiert (für Outbox-Consumer und Heartbeat). Private Key wird aus `node_identity`-Tabelle geladen und mit `HIVEMIND_KEY_PASSPHRASE` entschlüsselt. Middleware nur aktiv wenn `HIVEMIND_FEDERATION_ENABLED=true`.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "Middleware validiert `X-Node-Signature` + `X-Node-ID` auf allen `/federation/*`-Routen",
+      "Public Key Lookup aus `nodes`-Tabelle via `X-Node-ID`",
+      "HTTP 401 bei fehlenden Headern, unbekanntem Node, ungültiger Signatur",
+      "HTTP 401 bei inaktivem oder blockiertem Peer (`status != 'active'`)",
+      "Utility `sign_request(body)` signiert mit eigenem Private Key aus `node_identity`",
+      "Private Key wird mit `HIVEMIND_KEY_PASSPHRASE` entschlüsselt",
+      "Middleware nur aktiv wenn `HIVEMIND_FEDERATION_ENABLED=true`",
+      "Nicht-Federation-Routen bleiben unberührt",
+      "Unit-Test: gültige Signatur → 200; ungültige → 401; fehlender Header → 401"
+    ]
+  },
+  "tags": ["backend", "federation", "auth", "middleware"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "api-test", "ed25519-signing"],
+  "linked_wiki": ["federation-konzept", "system-architektur"],
+  "source_doc": "docs/phases/phase-f.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-F-001"]
+}

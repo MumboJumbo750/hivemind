@@ -1,0 +1,18 @@
+:root,
+[data-theme="space-neon"] {
+  --color-bg: #070b14;
+  --color-surface: #101a2b;
+  --color-surface-alt: #162238;
+  --color-border: #223a63;
+  --color-text: #e6f0ff;
+  --color-text-muted: #7f92b3;
+  --color-accent: #20e3ff;
+  --color-accent-2: #ff3fd2;
+  --color-success: #3cff9a;
+  --color-warning: #ffb020;
+  --color-danger: #ff4d6d;
+  --focus-ring-color: #20e3ff;
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}

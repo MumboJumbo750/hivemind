@@ -1,0 +1,29 @@
+{
+  "external_id": "TASK-F-006",
+  "epic_ref": "EPIC-PHASE-F",
+  "title": "Skill/Wiki Publish-Trigger für Federation",
+  "description": "Service-Layer-Hook (kein DB-Trigger) der bei Skill- und Wiki-Updates Outbox-Einträge für alle bekannten aktiven Peers anlegt.\n\n**Skill-Trigger:** Wenn ein Skill auf `lifecycle='active'` + `federation_scope='federated'` gesetzt wird: für jeden `active`-Peer in `nodes`-Tabelle (außer eigener Node) einen `sync_outbox`-Eintrag anlegen mit `direction='peer_outbound'`, `event_type='skill_published'`, `target_node_id` = Peer-ID, `payload` = serialisierter Skill (JSON). `dedup_key` = `skill:{skill_id}:{peer_node_id}` zur Deduplizierung.\n\n**Wiki-Trigger:** Gleiches Pattern für `wiki_articles`. Bei `federation_scope='federated'` und Publish-Aktion: Outbox-Einträge für alle aktiven Peers. `event_type='wiki_published'`, `dedup_key` = `wiki:{article_id}:{peer_node_id}`.\n\nImplementierung als Service-Funktionen `publish_skill_to_federation(skill_id)` und `publish_wiki_to_federation(article_id)` in `app/services/federation.py`. Aufgerufen aus den bestehenden Skill/Wiki-CRUD-Operationen wenn die Bedingungen erfüllt sind. Nur aktiv wenn `HIVEMIND_FEDERATION_ENABLED=true`.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Service-Funktion `publish_skill_to_federation(skill_id)` in `app/services/federation.py`",
+      "Service-Funktion `publish_wiki_to_federation(article_id)` in `app/services/federation.py`",
+      "Outbox-Einträge werden für alle aktiven Peers angelegt",
+      "`event_type` ist `skill_published` bzw. `wiki_published`",
+      "`dedup_key` verhindert doppelte Outbox-Einträge für gleichen Skill/Wiki + Peer",
+      "Nur Skills/Wiki mit `federation_scope='federated'` + `lifecycle='active'` triggern",
+      "Eigener Node wird bei Peer-Iteration übersprungen",
+      "Nur aktiv wenn `HIVEMIND_FEDERATION_ENABLED=true`",
+      "Integration in bestehende Skill/Wiki-CRUD-Operationen",
+      "Unit-Test: Skill-Update auf federated+active erzeugt Outbox-Einträge für alle aktiven Peers"
+    ]
+  },
+  "tags": ["backend", "federation", "service-layer"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "api-test", "outbox-consumer"],
+  "linked_wiki": ["federation-konzept"],
+  "source_doc": "docs/phases/phase-f.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-F-005"]
+}

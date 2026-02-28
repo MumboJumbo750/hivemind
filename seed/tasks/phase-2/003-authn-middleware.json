@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-2-003",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "AuthN-Middleware (get_current_actor)",
+  "description": "FastAPI `Depends`-basierte AuthN-Dependency `get_current_actor()` implementieren. Liest `Authorization: Bearer <token>` Header, validiert JWT-Signatur und Expiry, extrahiert `actor_id` (sub) und `actor_role` aus Claims. Gibt ein `CurrentActor`-Objekt zurück (id, username, role). Bei fehlehaftem oder fehlendem Token: HTTP 401 Unauthorized. Optional: `get_optional_actor()` für Endpoints die auch ohne Auth funktionieren. Dependency in `backend/app/routers/deps.py` ergänzen. Validiert zusätzlich, dass der User in der DB existiert (nicht gelöscht).",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "`get_current_actor()` Dependency in deps.py implementiert",
+      "Bearer Token wird aus Authorization Header extrahiert und validiert",
+      "actor_id + actor_role werden aus JWT Claims gelesen",
+      "HTTP 401 bei fehlendem oder ungültigem Token",
+      "HTTP 401 wenn User in DB nicht (mehr) existiert",
+      "`CurrentActor` Schema mit id, username, role definiert",
+      "`get_optional_actor()` Variante für optionale Auth vorhanden",
+      "Unit-Tests: gültiger Token, abgelaufener Token, fehlender Token, gelöschter User"
+    ]
+  },
+  "tags": ["backend", "auth", "middleware"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "api-test", "jwt-auth"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-2-002"]
+}

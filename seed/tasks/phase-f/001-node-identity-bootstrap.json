@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-F-001",
+  "epic_ref": "EPIC-PHASE-F",
+  "title": "node_identity-Bootstrap mit Ed25519-Keypair",
+  "description": "Beim ersten FastAPI-Start: UUID + Ed25519-Keypair via `cryptography`-Lib generieren und in `node_identity`-Tabelle speichern. Eigenen Node in `nodes`-Tabelle eintragen (node_name aus `HIVEMIND_NODE_NAME`, node_url aus `HIVEMIND_NODE_URL`, public_key als PEM-String). Private Key mit `HIVEMIND_KEY_PASSPHRASE` verschlüsselt in `node_identity.private_key` ablegen. Idempotent: nur ausführen wenn `node_identity`-Tabelle leer ist. Als FastAPI `lifespan`-Event implementieren. Dieser Task überlappt mit TASK-2-001 (Node-Bootstrap aus Phase 2) — prüfen ob bereits implementiert und nur Ed25519-spezifische Teile ergänzen (Keypair-Generierung, Passphrase-Verschlüsselung, PEM-Encoding). Neue Env-Variablen in Settings ergänzen: `HIVEMIND_NODE_NAME`, `HIVEMIND_NODE_URL`, `HIVEMIND_KEY_PASSPHRASE`, `HIVEMIND_FEDERATION_ENABLED`. Dependency `cryptography` in `requirements.txt` falls noch nicht vorhanden.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "`cryptography` in requirements.txt vorhanden",
+      "FastAPI startup-Event generiert Ed25519-Keypair und speichert in `node_identity`-Tabelle",
+      "Eigener Node wird in `nodes`-Tabelle eingetragen mit `node_name`, `node_url`, `public_key`",
+      "Private Key ist mit `HIVEMIND_KEY_PASSPHRASE` verschlüsselt gespeichert",
+      "Idempotent: bei erneutem Start wird kein zweiter Eintrag angelegt",
+      "Config-Variablen `HIVEMIND_NODE_NAME`, `HIVEMIND_NODE_URL`, `HIVEMIND_KEY_PASSPHRASE`, `HIVEMIND_FEDERATION_ENABLED` in Settings ergänzt",
+      "Bestehender Phase-2-Bootstrap wird erweitert, nicht dupliziert",
+      "Unit-Test: Startup erstellt Node + Identity; zweiter Aufruf ist No-Op"
+    ]
+  },
+  "tags": ["backend", "federation", "infrastructure", "auth"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "api-test", "ed25519-signing"],
+  "linked_wiki": ["federation-konzept", "system-architektur"],
+  "source_doc": "docs/phases/phase-f.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

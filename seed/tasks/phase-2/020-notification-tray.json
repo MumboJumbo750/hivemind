@@ -1,0 +1,29 @@
+{
+  "external_id": "TASK-2-020",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Notification Tray (Client-Calculated)",
+  "description": "`src/components/domain/NotificationTray.vue` implementieren. 🔔-Badge in der System Bar mit ungelesener Zähler. Klick öffnet Panel mit Notification-Liste. Phase 2: **client-calculated** (kein Backend-Service). Berechnet Notifications aus aktuellen Epic/Task-Daten: (A) `sla_warning`: Epics mit `sla_due_at < now + 4h`, (B) `review_requested`: Tasks mit State `in_review`, (C) `task_assigned`: Tasks mit `assigned_to = current_user`. Jede Notification zeigt Typ-Icon, Titel, Zeitstempel. Prüft `GET /api/settings → notification_mode` beim App-Start: nur aktiv wenn `notification_mode = 'client'`. Composable `src/composables/useClientNotifications.ts` für Berechnung. Polling: alle 60 Sekunden Epic/Task-Daten neu laden und Notifications neu berechnen.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "NotificationTray.vue unter src/components/domain/ erstellt",
+      "🔔-Badge in System Bar mit Zähler",
+      "Panel zeigt Notification-Liste mit Typ-Icon, Titel, Zeitstempel",
+      "Client-berechnet: sla_warning, review_requested, task_assigned",
+      "sla_warning: Epics mit sla_due_at < now + 4h",
+      "review_requested: Tasks mit State in_review",
+      "task_assigned: Tasks mit assigned_to = current_user",
+      "Nur aktiv wenn notification_mode = 'client' (aus Settings-API)",
+      "useClientNotifications.ts Composable erstellt",
+      "Polling alle 60 Sekunden"
+    ]
+  },
+  "tags": ["frontend", "vue-component", "domain", "notifications"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-2-012", "TASK-2-013"]
+}

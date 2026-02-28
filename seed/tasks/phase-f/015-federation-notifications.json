@@ -1,0 +1,30 @@
+{
+  "external_id": "TASK-F-015",
+  "epic_ref": "EPIC-PHASE-F",
+  "title": "Federation-Notifications via SSE",
+  "description": "Backend SSE-Endpoint + Frontend-Erweiterung des Phase-2-Notification-Moduls für Federation-Events.\n\n**Backend — SSE-Endpoint:** `GET /api/events` als Server-Sent Events Stream. Nutzt `asyncio.Queue` pro verbundenem Client. Event-Typen:\n- `node_status` — wenn `nodes.status` sich ändert (aus Heartbeat-Service TASK-F-010). Payload: `{ node_id, node_name, status, last_seen }`.\n- `federation_skill` — wenn ein neuer federierter Skill empfangen wird (aus `/federation/skill/publish` TASK-F-004). Payload: `{ skill_id, title, origin_node_name }`.\n- `task_assigned` — wenn `assigned_node_id` auf einem Task gesetzt/geändert wird (aus TASK-F-008/009). Payload: `{ task_id, task_title, assigned_node_name }`.\n\nSSE-Events werden über einen In-Memory Event-Bus (`app/services/event_bus.py`) dispatcht. Federation-Endpoints und Heartbeat-Service publishen Events auf den Bus.\n\n**Frontend — Notification-Erweiterung:** EventSource-Client der `GET /api/events` abonniert. Client-calculated Notification-Typen:\n- `peer_online` / `peer_offline` — aus `node_status`-Events abgeleitet. Toast + Badge im Notification-Tray.\n- `federated_skill` — aus `federation_skill`-Events. Toast 'Neuer Skill von [node-name]: [title]'.\n- `task_delegated` — aus `task_assigned`-Events. Toast 'Task [title] an [node-name] delegiert'.\n\nNotification-Tray (aus Phase 2) um diese Typen erweitern. SSE-Reconnect bei Verbindungsabbruch (exponential backoff).",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "`GET /api/events` SSE-Endpoint liefert Server-Sent Events Stream",
+      "Event-Typen `node_status`, `federation_skill`, `task_assigned` werden korrekt gesendet",
+      "In-Memory Event-Bus in `app/services/event_bus.py` implementiert",
+      "Heartbeat-Service publisht `node_status`-Events auf den Bus",
+      "Federation-Endpoints publishen `federation_skill` und `task_assigned`-Events",
+      "Frontend EventSource-Client verbindet sich zu `/api/events`",
+      "Client-calculated Notifications: peer_online, peer_offline, federated_skill, task_delegated",
+      "Toast-Benachrichtigungen für alle Federation-Event-Typen",
+      "Notification-Tray aus Phase 2 um Federation-Typen erweitert",
+      "SSE-Reconnect mit exponential backoff bei Verbindungsabbruch",
+      "Unit-Test: Event-Bus dispatcht Events; SSE-Endpoint sendet Events an verbundene Clients"
+    ]
+  },
+  "tags": ["backend", "frontend", "federation", "sse"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "vue-component", "api-test", "sse-event-stream"],
+  "linked_wiki": ["federation-konzept", "system-architektur"],
+  "source_doc": "docs/phases/phase-f.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-F-004", "TASK-F-010"]
+}

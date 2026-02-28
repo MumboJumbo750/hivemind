@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-3-007",
+  "epic_ref": "EPIC-PHASE-3",
+  "title": "Ollama Docker Compose Setup",
+  "description": "Ollama-Container und Init-Container in Docker Compose ergänzen. Services: `ollama` — Image `ollama/ollama`, Port 11434, Volume `ollama_data`, Healthcheck (`curl http://localhost:11434/api/tags`). `ollama-init` — Image `curlimages/curl:latest`, depends_on ollama healthy, einmaliger Startup (`restart: no`), lädt `nomic-embed-text` Modell via `curl http://ollama:11434/api/pull`. Backend-Service: `HIVEMIND_OLLAMA_URL=http://ollama:11434` als neue Env-Variable. Settings-Klasse erweitern: `ollama_url`, `embedding_model` (Default: `nomic-embed-text`), `embedding_batch_size` (Default: 50). Fallback-Verhalten: Wenn Ollama nicht erreichbar → Backend loggt Warnung und arbeitet ohne Embeddings. Ollama-Services nur ab Phase 3+ nötig — optional via Docker Compose Profile `--profile ai`.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "Ollama-Service in docker-compose.yml mit Healthcheck und Volume",
+      "ollama-init-Service lädt `nomic-embed-text` beim ersten Start",
+      "`HIVEMIND_OLLAMA_URL` Env-Variable in Backend-Settings ergänzt",
+      "`HIVEMIND_EMBEDDING_MODEL` und `HIVEMIND_EMBEDDING_BATCH_SIZE` konfigurierbar",
+      "`docker compose --profile ai up` startet Ollama-Services",
+      "Ollama nicht erreichbar → Backend Warning-Log, kein Crash",
+      "`nomic-embed-text` Modell nach Init-Container verfügbar (`/api/tags` zeigt es an)",
+      "Integration-Test: Ollama-Healthcheck grün; `nomic-embed-text` in Modellliste"
+    ]
+  },
+  "tags": ["devops", "infrastructure", "ai"],
+  "subtasks": [],
+  "pinned_skills": ["docker-service"],
+  "linked_wiki": ["tech-stack", "system-architektur"],
+  "source_doc": "docs/phases/phase-3.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

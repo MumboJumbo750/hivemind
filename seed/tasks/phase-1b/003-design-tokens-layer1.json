@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-1B-003",
+  "epic_ref": "EPIC-PHASE-1B",
+  "title": "CSS Design System Layer 1 — Core, Semantic, Component Tokens",
+  "description": "Reines CSS-Token-System ohne Vue-Abhängigkeit in `src/design/` anlegen. Drei Dateien: (1) `tokens.css` — Core-Tokens als CSS Custom Properties: Farb-Primitiven (hex-Werte, neutral benannt z.B. `--primitive-blue-500`), Spacing-Skala (`--space-1` bis `--space-16`), Typografie-Skala (`--font-size-xs` bis `--font-size-4xl`), Border-Radius (`--radius-sm`, `--radius-md`, `--radius-lg`, `--radius-full`), Schatten (`--shadow-sm`, `--shadow-md`), Z-Index-Skala (`--z-tooltip`, `--z-modal`, `--z-overlay`). (2) `semantic.css` — Semantic-Tokens die auf Core-Tokens verweisen: `--color-bg`, `--color-surface`, `--color-surface-alt`, `--color-border`, `--color-text`, `--color-text-muted`, `--color-accent`, `--color-accent-2`, `--color-success`, `--color-warning`, `--color-danger`. Hier nur Fallback-Werte (überschrieben durch Themes). (3) `components.css` — Component-Tokens: `--button-primary-bg`, `--button-primary-text`, `--button-primary-hover-bg`, `--card-bg`, `--card-border`, `--card-radius`, `--input-bg`, `--input-border`, `--input-focus-border`, `--modal-bg`, `--modal-backdrop`, `--sidebar-bg`, `--sidebar-width`, `--sidebar-collapsed-width`. Alle drei Dateien in `main.ts` importieren.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "`src/design/tokens.css` existiert mit vollständiger Core-Token-Skala (spacing, typo, radius, shadow, z-index, color-primitives)",
+      "`src/design/semantic.css` existiert mit allen semantischen Farb-Tokens als Fallback-Werte",
+      "`src/design/components.css` existiert mit allen Component-Tokens für Button, Card, Input, Modal, Sidebar",
+      "Alle drei Dateien werden in `main.ts` importiert",
+      "Browser-DevTools zeigen die Custom Properties auf `:root` an",
+      "Kein Vue-Code in den CSS-Dateien — nur Custom Properties"
+    ]
+  },
+  "tags": ["frontend", "design-system", "css"],
+  "subtasks": [],
+  "pinned_skills": ["design-token"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-1.md#phase-1b",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-1B-001"]
+}

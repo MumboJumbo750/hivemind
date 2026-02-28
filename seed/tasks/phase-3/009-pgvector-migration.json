@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-3-009",
+  "epic_ref": "EPIC-PHASE-3",
+  "title": "pgvector Migration + Initial Embeddings",
+  "description": "Alembic-Migration für Embedding-Spalten und HNSW-Indexes erstellen. Spalten: `embedding vector(768)` auf Tabellen `skills`, `wiki_articles`, `epics`. HNSW-Indexes: `CREATE INDEX ... USING hnsw (embedding vector_cosine_ops)` auf jeder Tabelle mit Embedding-Spalte. pgvector-Extension `CREATE EXTENSION IF NOT EXISTS vector` in der Migration. Daten-Migration (separater Alembic-Schritt, re-runnable): Initial-Embedding-Berechnung für alle bestehenden Skills, Wiki-Artikel und Epics via Embedding-Service (TASK-3-008). Batch-Verarbeitung mit `HIVEMIND_EMBEDDING_BATCH_SIZE`. Falls Ollama nicht verfügbar: Daten-Migration überspringen mit Warnung (Embeddings werden nachgeholt sobald Ollama erreichbar). Phase-Gate-Check: Migration prüft `app_settings.current_phase >= 3`.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Alembic-Migration erstellt `embedding vector(768)` Spalten auf skills, wiki_articles, epics",
+      "HNSW-Indexes mit `vector_cosine_ops` angelegt",
+      "pgvector Extension aktiviert (`CREATE EXTENSION IF NOT EXISTS vector`)",
+      "Daten-Migration berechnet Initial-Embeddings für bestehende Entitäten",
+      "Batch-Verarbeitung mit konfigurierbarer Batch-Size",
+      "Ollama nicht verfügbar → Migration-Warnung, kein Fehler (Embeddings nachgeholt)",
+      "Phase-Gate: Migration nur bei `current_phase >= 3`",
+      "Integration-Test: Migration erzeugt Spalten + Indexes; Embedding-Berechnung für Test-Daten"
+    ]
+  },
+  "tags": ["backend", "database", "embeddings"],
+  "subtasks": [],
+  "pinned_skills": ["alembic-migration", "ollama-embedding"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-3.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-3-008"]
+}

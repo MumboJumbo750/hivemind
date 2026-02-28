@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-1B-011",
+  "epic_ref": "EPIC-PHASE-1B",
+  "title": "Projekt-Anlegen-Dialog (ProjectCreateDialog)",
+  "description": "`src/components/domain/ProjectCreateDialog.vue` implementieren — Domain-Komponente (Layer 3, kennt Hivemind-Konzepte). Basiert auf `HivemindModal`. Felder: (1) Name (text input, required, max 100 Zeichen), (2) Slug (text input, auto-generiert aus Name via `name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')`, editierbar, validiert: nur `[a-z0-9-]`, unique-Validierung erst nach Submit), (3) Beschreibung (textarea, optional, max 500 Zeichen). Submit-Button `[PROJEKT ANLEGEN]` ruft `createProject({ name, slug, description })` auf. Bei Erfolg: Modal schließen, Pinia-Store mit neuem Projekt aktualisieren, neues Projekt als aktiv setzen. Bei Fehler (z.B. slug-Konflikt 409): Fehlermeldung inline unter dem Slug-Feld anzeigen. Loading-State während API-Call (Button disabled, Spinner). Komponent ist aufrufbar aus: (a) Prompt Station (Leer-State CTA), (b) System Bar (Plus-Button). Beide Aufruf-Punkte nutzen v-model für `open`-State.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "`src/components/domain/ProjectCreateDialog.vue` existiert und öffnet als HivemindModal",
+      "Slug wird automatisch aus dem Namen generiert und aktualisiert sich bei Name-Änderung",
+      "Slug-Feld ist editierbar und validiert `[a-z0-9-]` Format",
+      "Submit ruft `createProject()` auf und setzt das neue Projekt als aktives Projekt im Store",
+      "409-Fehler zeigt sprechende Fehlermeldung unter dem Slug-Feld",
+      "Loading-State während API-Call: Button disabled, optionaler Spinner",
+      "Komponente ist aus Prompt Station und System Bar heraus aufrufbar via v-model"
+    ]
+  },
+  "tags": ["frontend", "domain", "vue-component", "modal"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-1.md#phase-1b",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-1B-007", "TASK-1B-009"]
+}

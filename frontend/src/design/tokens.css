@@ -1,0 +1,124 @@
+:root {
+  /* Farb-Primitiven */
+  --primitive-blue-50: #eff6ff;
+  --primitive-blue-100: #dbeafe;
+  --primitive-blue-200: #bfdbfe;
+  --primitive-blue-300: #93c5fd;
+  --primitive-blue-400: #60a5fa;
+  --primitive-blue-500: #3b82f6;
+  --primitive-blue-600: #2563eb;
+  --primitive-blue-700: #1d4ed8;
+  --primitive-blue-800: #1e40af;
+  --primitive-blue-900: #1e3a8a;
+
+  --primitive-gray-50: #f9fafb;
+  --primitive-gray-100: #f3f4f6;
+  --primitive-gray-200: #e5e7eb;
+  --primitive-gray-300: #d1d5db;
+  --primitive-gray-400: #9ca3af;
+  --primitive-gray-500: #6b7280;
+  --primitive-gray-600: #4b5563;
+  --primitive-gray-700: #374151;
+  --primitive-gray-800: #1f2937;
+  --primitive-gray-900: #111827;
+
+  --primitive-green-50: #f0fdf4;
+  --primitive-green-100: #dcfce7;
+  --primitive-green-200: #bbf7d0;
+  --primitive-green-300: #86efac;
+  --primitive-green-400: #4ade80;
+  --primitive-green-500: #22c55e;
+  --primitive-green-600: #16a34a;
+  --primitive-green-700: #15803d;
+  --primitive-green-800: #166534;
+  --primitive-green-900: #14532d;
+
+  --primitive-yellow-50: #fefce8;
+  --primitive-yellow-100: #fef9c3;
+  --primitive-yellow-200: #fef08a;
+  --primitive-yellow-300: #fde047;
+  --primitive-yellow-400: #facc15;
+  --primitive-yellow-500: #eab308;
+  --primitive-yellow-600: #ca8a04;
+  --primitive-yellow-700: #a16207;
+  --primitive-yellow-800: #854d0e;
+  --primitive-yellow-900: #713f12;
+
+  --primitive-red-50: #fef2f2;
+  --primitive-red-100: #fee2e2;
+  --primitive-red-200: #fecaca;
+  --primitive-red-300: #fca5a5;
+  --primitive-red-400: #f87171;
+  --primitive-red-500: #ef4444;
+  --primitive-red-600: #dc2626;
+  --primitive-red-700: #b91c1c;
+  --primitive-red-800: #991b1b;
+  --primitive-red-900: #7f1d1d;
+
+  --primitive-pink-50: #fdf2f8;
+  --primitive-pink-100: #fce7f3;
+  --primitive-pink-200: #fbcfe8;
+  --primitive-pink-300: #f9a8d4;
+  --primitive-pink-400: #f472b6;
+  --primitive-pink-500: #ec4899;
+  --primitive-pink-600: #db2777;
+  --primitive-pink-700: #be185d;
+  --primitive-pink-800: #9d174d;
+  --primitive-pink-900: #831843;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Font Sizes */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* Shadows (dark-theme-optimized) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.5);
+
+  /* Z-Index */
+  --z-tooltip: 100;
+  --z-modal: 200;
+  --z-overlay: 300;
+
+  /* Transitions */
+  --transition-duration: 200ms;
+  --animation-duration: 300ms;
+
+  /* Font Families */
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Focus Ring */
+  --focus-ring-color: #20e3ff;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-duration: 0ms;
+    --animation-duration: 0ms;
+  }
+}

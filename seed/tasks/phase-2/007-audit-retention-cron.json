@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-2-007",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Audit-Retention-Cron (Payload-Cleanup)",
+  "description": "Täglicher Cleanup-Job: `input_payload` und `output_payload` in `mcp_invocations` auf NULL setzen für Einträge älter als `AUDIT_RETENTION_DAYS` (Default: 90, aus Settings). Implementierung als APScheduler-Job innerhalb von FastAPI oder als eigenes Script im bestehenden Cron-Sidecar (`backend/cron/`). Job läuft 1x täglich (z.B. 03:00 UTC). Loggt Anzahl der bereinigten Einträge. Config `AUDIT_RETENTION_DAYS` bereits in `config.py` vorhanden.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Cron-Job/Scheduler setzt input_payload + output_payload auf NULL für Einträge älter als AUDIT_RETENTION_DAYS",
+      "Job läuft täglich automatisch",
+      "AUDIT_RETENTION_DAYS aus Config gelesen (Default: 90)",
+      "Anzahl bereinigter Einträge wird geloggt",
+      "Meta-Daten (tool_name, actor_id, duration_ms etc.) bleiben erhalten",
+      "Test: Einträge älter als Retention werden bereinigt, neuere bleiben unverändert"
+    ]
+  },
+  "tags": ["backend", "audit", "cron"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "small",
+  "depends_on": ["TASK-2-006"]
+}

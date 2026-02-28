@@ -1,0 +1,29 @@
+{
+  "external_id": "TASK-3-008",
+  "epic_ref": "EPIC-PHASE-3",
+  "title": "Embedding-Service mit Circuit-Breaker",
+  "description": "Provider-abstrahierten Embedding-Service implementieren (`app/services/embedding_service.py`). Core: `EmbeddingProvider` ABC mit `embed(text)` und `embed_batch(texts)` Methoden. Default-Provider `OllamaProvider`: httpx-Client gegen `HIVEMIND_OLLAMA_URL/api/embeddings` mit Modell `nomic-embed-text` (768-dimensionale Vektoren). Circuit-Breaker: Nach `HIVEMIND_EMBEDDING_CB_THRESHOLD` (Default: 3) aufeinanderfolgenden Timeouts → OPEN-State, Requests werden sofort mit `embedding=NULL` beantwortet. Adaptiver Cooldown Half-Open: Exponentieller Backoff 60s → 120s → 240s → max 600s (`HIVEMIND_EMBEDDING_CB_BACKOFF_BASE`, `HIVEMIND_EMBEDDING_CB_BACKOFF_MAX`). Reset nach 10min stabilem CLOSED. Priority-Queue: Prio 1 (lokal on-write), Prio 2 (Kartograph-Bootstrap Batch), Prio 3 (Federation Re-Embeddings). On-write-Hook: bei Skill-Merge, Wiki-Create, Epic-Create automatisch Embedding berechnen. `NULL`-Embedding = Feature-Degradation (semantische Suche deaktiviert), kein Fehler.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "`EmbeddingProvider` ABC mit `embed()` und `embed_batch()` Methoden",
+      "`OllamaProvider` implementiert Provider-Interface via httpx",
+      "Circuit-Breaker: 3 Timeouts → OPEN → sofort NULL-Embedding",
+      "Adaptiver Backoff: 60s → 120s → 240s → max 600s; Reset nach 10min CLOSED",
+      "Priority-Queue: on-write > batch > federation",
+      "On-write-Hook: Skill-Merge, Wiki-Create, Epic-Create triggern Embedding-Berechnung",
+      "NULL-Embedding → semantische Suche deaktiviert, alle anderen Features funktional",
+      "Provider austauschbar ohne fachliche Datenmigration",
+      "Config: `HIVEMIND_EMBEDDING_CB_THRESHOLD`, `CB_BACKOFF_BASE`, `CB_BACKOFF_MAX` in Settings",
+      "Unit-Test: Provider-Aufruf, Circuit-Breaker-States (CLOSED→OPEN→HALF_OPEN→CLOSED), NULL-Fallback"
+    ]
+  },
+  "tags": ["backend", "ai", "embeddings"],
+  "subtasks": [],
+  "pinned_skills": ["ollama-embedding", "fastapi-endpoint", "api-test"],
+  "linked_wiki": ["tech-stack", "system-architektur"],
+  "source_doc": "docs/phases/phase-3.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-3-007"]
+}

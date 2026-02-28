@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-3-001",
+  "epic_ref": "EPIC-PHASE-3",
+  "title": "MCP-Server Setup (stdio + HTTP/SSE Transport)",
+  "description": "FastAPI-basierter MCP-Server aufsetzen mit Dual-Transport: stdio für lokale Clients (Claude Desktop, Cursor) und HTTP/SSE für Web-Clients und Remote-Instanzen. MCP-Server als eigenes Modul `app/mcp/` mit `server.py` als Entrypoint. Tool-Registrierung über `@server.list_tools()` und `@server.call_tool()`. Transport-Auswahl via `HIVEMIND_TRANSPORT` Env-Variable (`stdio` default, `http` für Team-Setup). HTTP/SSE-Transport über dedizierte FastAPI-Route (`/api/mcp/sse`). AuthN/AuthZ-Integration: stdio nutzt lokalen API-Key, HTTP nutzt JWT aus Phase 2. Jeder Tool-Call wird im Audit-Log protokolliert (tool_name, actor_id, input, output, timestamp). MCP-konforme Error-Responses mit `code` + `message`. Namespace: `hivemind/` für alle Tools.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "MCP-Server-Modul `app/mcp/server.py` existiert mit Tool-Registrierung",
+      "stdio-Transport funktioniert: lokaler Client kann `list_tools` aufrufen",
+      "HTTP/SSE-Transport über `/api/mcp/sse` verfügbar",
+      "`HIVEMIND_TRANSPORT` Env-Variable steuert aktiven Transport (default: stdio)",
+      "AuthN via JWT (HTTP) bzw. API-Key (stdio) integriert",
+      "Jeder Tool-Call schreibt Audit-Log-Eintrag (tool_name, actor_id, input, output)",
+      "MCP-konforme Error-Responses bei ungültigen Tool-Calls",
+      "Unit-Test: Tool-Registrierung gibt korrektes Schema zurück; Auth-Verweigerung bei fehlenden Credentials"
+    ]
+  },
+  "tags": ["backend", "mcp", "infrastructure"],
+  "subtasks": [],
+  "pinned_skills": ["mcp-tool", "fastapi-endpoint", "api-test"],
+  "linked_wiki": ["system-architektur", "tech-stack"],
+  "source_doc": "docs/phases/phase-3.md",
+  "estimated_complexity": "large",
+  "depends_on": []
+}

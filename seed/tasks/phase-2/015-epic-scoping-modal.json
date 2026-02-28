@@ -1,0 +1,28 @@
+{
+  "external_id": "TASK-2-015",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Epic Scoping Modal",
+  "description": "`src/components/domain/EpicScopingModal.vue` implementieren. Modaler Dialog zum Scopen eines Epics (Transition `incoming → scoped`). Felder: Owner (Dropdown mit Users aus `GET /api/projects/{id}/members`), SLA-Deadline (Datepicker), Priority (Dropdown: low/medium/high/critical), DoD-Rahmen (Textarea mit `[+ Kriterium]`-Button zum dynamischen Hinzufügen von DoD-Einträgen). Submit ruft `PATCH /api/epics/{id}` auf mit neuen Feldern + State-Transition. Schließt Modal nach Erfolg und refresht Epic-Liste im Command Deck. Cancel-Button schließt ohne Änderung. Validierung: Owner und Priority sind Pflichtfelder.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "EpicScopingModal.vue unter src/components/domain/ erstellt",
+      "Owner-Dropdown lädt Users aus project_members API",
+      "SLA-Deadline via Date-Input wählbar",
+      "Priority-Dropdown mit low/medium/high/critical",
+      "DoD-Textarea mit dynamischem [+ Kriterium]-Button",
+      "Submit sendet PATCH /api/epics/{id} mit State-Transition incoming→scoped",
+      "Validierung: Owner und Priority sind Pflichtfelder",
+      "Modal schließt nach Erfolg und refresht Epic-Liste",
+      "Cancel schließt ohne Änderung"
+    ]
+  },
+  "tags": ["frontend", "vue-component", "domain", "command-deck"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component"],
+  "linked_wiki": ["state-machine-guide"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-2-014"]
+}

@@ -1,0 +1,28 @@
+{
+  "external_id": "TASK-3-013",
+  "epic_ref": "EPIC-PHASE-3",
+  "title": "SSE-Infrastruktur (Kanäle, Stream-Token, Heartbeat)",
+  "description": "Vollständige SSE-Infrastruktur aufbauen (erweitert den Phase-F Event-Bus). Drei dedizierte Kanäle: `/events/notifications` (allgemeine Notifications), `/events/tasks` (Task-State-Changes), `/events/triage` (Triage-Events). Stream-Token-Handshake: `POST /api/auth/stream-token` — generiert kurzlebigen Token (60s TTL) für SSE-Verbindung, verhindert Session-Hijacking. SSE-Endpoint validiert Stream-Token vor Verbindungsaufbau. Heartbeat: alle 15 Sekunden `:keepalive\\n\\n` an verbundene Clients (verhindert Proxy-Timeouts). Kanonische Event-Typen: `task_state_changed`, `task_assigned`, `notification_created`, `triage_routed`, `triage_ignored`, `node_status`, `federation_skill`. Event-Format: `event: {type}\\ndata: {json}\\nid: {event_id}\\n\\n` mit monoton steigender ID für Client-Reconnect via `Last-Event-ID`. Client-Disconnect: Queue aufräumen (kein Memory Leak). Voraussetzung für: Notification Tray Live-Updates, Command Deck State-Sync, Triage-Echtzeit.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "Drei SSE-Kanäle verfügbar: `/events/notifications`, `/events/tasks`, `/events/triage`",
+      "`POST /api/auth/stream-token` generiert kurzlebigen Token (60s TTL)",
+      "SSE-Endpoint validiert Stream-Token vor Verbindungsaufbau",
+      "Heartbeat alle 15s als `:keepalive` Comment gesendet",
+      "Kanonische Event-Typen konsistent über alle Kanäle",
+      "Event-ID monoton steigend für `Last-Event-ID` Reconnect-Support",
+      "Client-Disconnect → Queue wird aufgeräumt (kein Memory Leak)",
+      "Bestehender Phase-F Event-Bus wird erweitert, nicht ersetzt",
+      "Unit-Test: Stream-Token-Generierung/-Validierung, Event-Broadcast, Heartbeat, Client-Disconnect"
+    ]
+  },
+  "tags": ["backend", "infrastructure", "sse"],
+  "subtasks": [],
+  "pinned_skills": ["sse-event-stream", "fastapi-endpoint", "jwt-auth", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-3.md",
+  "estimated_complexity": "large",
+  "depends_on": []
+}

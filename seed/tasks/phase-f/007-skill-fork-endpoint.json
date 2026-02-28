@@ -1,0 +1,28 @@
+{
+  "external_id": "TASK-F-007",
+  "epic_ref": "EPIC-PHASE-F",
+  "title": "POST /skills/fork — Federierten Skill forken",
+  "description": "Neuer REST-Endpoint `POST /api/skills/{skill_id}/fork` der einen federierten Skill lokal als Draft forkt. Validierung: Quell-Skill muss `federation_scope='federated'` haben. Erstellt neuen Skill mit: `title` = Original-Title + ' (Fork)', `lifecycle='draft'`, `federation_scope='local'`, `origin_skill_id` = Original-Skill-ID, `origin_node_id` = eigener Node. Eintrag in `skill_parents`-Tabelle: `child_id` = neuer Skill, `parent_id` = Original-Skill. Response: 201 Created mit neuem Skill-Objekt. HTTP 404 wenn Quell-Skill nicht existiert. HTTP 409 wenn bereits ein lokaler Fork existiert (Check via `origin_skill_id`). Kein MCP-Wrapping (kommt Phase 3) — reiner REST-Endpoint. Pydantic-Response-Schema in `app/schemas/federation.py` oder `app/schemas/skills.py` ergänzen.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "`POST /api/skills/{skill_id}/fork` Endpoint implementiert",
+      "Neuer Skill wird als Draft mit `federation_scope='local'` angelegt",
+      "`origin_skill_id` zeigt auf den Original-Skill",
+      "Eintrag in `skill_parents`-Tabelle korrekt gesetzt",
+      "HTTP 404 wenn Quell-Skill nicht existiert",
+      "HTTP 409 wenn bereits ein Fork des gleichen Skills existiert",
+      "HTTP 400 wenn Quell-Skill nicht `federation_scope='federated'` hat",
+      "Response-Schema dokumentiert und als Pydantic-Modell vorhanden",
+      "Unit-Test: Fork erstellt; Doppel-Fork gibt 409; nicht-federierter Skill gibt 400"
+    ]
+  },
+  "tags": ["backend", "federation", "api"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "api-test"],
+  "linked_wiki": ["federation-konzept"],
+  "source_doc": "docs/phases/phase-f.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-F-004"]
+}

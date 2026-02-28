@@ -1,0 +1,28 @@
+{
+  "external_id": "TASK-2-019",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Spotlight-Suche (Frontend)",
+  "description": "`src/components/domain/Spotlight.vue` implementieren. `Ctrl+K` öffnet modales Overlay. Freitext-Input mit Debounce (300ms). Sucht gegen `GET /api/search?q=&type=tasks,epics`. Ergebnisse gruppiert: Tasks-Sektion und Epics-Sektion. Jedes Ergebnis zeigt Titel + Subtitle (Epic-Titel bei Tasks). Keyboard-Navigation: Pfeiltasten zum Navigieren, Enter zum Auswählen, ESC zum Schließen. Auswahl navigiert zur entsprechenden View (Task → Command Deck mit Task-Fokus, Epic → Command Deck mit Epic-Fokus). RBAC-gefiltert (Backend liefert nur zugängliche Items). Leer-State: 'Keine Ergebnisse' Nachricht. Loading-State während Suche.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Spotlight.vue unter src/components/domain/ erstellt",
+      "Ctrl+K öffnet Spotlight-Modal global",
+      "Freitext-Suche mit 300ms Debounce",
+      "Ergebnisse gruppiert nach Tasks und Epics",
+      "Keyboard-Navigation: Pfeiltasten, Enter, ESC",
+      "Auswahl navigiert zur entsprechenden View",
+      "Loading-State und Leer-State korrekt angezeigt",
+      "RBAC-gefiltert (Backend filtert)",
+      "Styles via Design-Tokens"
+    ]
+  },
+  "tags": ["frontend", "vue-component", "domain", "search"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": [],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-2-010", "TASK-2-012"]
+}

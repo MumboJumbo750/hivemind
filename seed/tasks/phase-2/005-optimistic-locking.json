@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-2-005",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Optimistic Locking + Idempotenz",
+  "description": "Auf allen mutierenden Endpoints `expected_version` und `idempotency_key` als Pflichtfelder einführen. Optimistic Locking: bei jedem Write wird `version` in der DB inkrementiert. Wenn `expected_version` nicht mit aktuellem DB-Stand übereinstimmt → HTTP 409 Conflict. Idempotenz-Cache: `idempotency_key` wird in `mcp_invocations`-Tabelle geprüft — wenn bereits vorhanden, wird das gespeicherte `output_payload` zurückgegeben statt erneut auszuführen. MCP-Write-Pflichtfelder-Schema erstellen: `request_id`, `actor_id`, `actor_role`, `epic_id` (optional), `idempotency_key`, `expected_version`. Bestehende PATCH/POST Endpoints in projects, epics, tasks Routern anpassen.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Alle PATCH/POST Endpoints akzeptieren `expected_version` und `idempotency_key`",
+      "HTTP 409 bei version mismatch (Optimistic Locking)",
+      "Idempotenz: doppelter Request mit gleicher `idempotency_key` gibt gecachtes Ergebnis zurück",
+      "`version`-Feld wird bei jedem Write inkrementiert",
+      "MCP-Write-Pflichtfelder-Schema als Pydantic BaseModel definiert",
+      "Bestehende Endpoints (projects, epics, tasks) integriert",
+      "Tests: Version-Conflict, Idempotenz-Replay, normaler Write"
+    ]
+  },
+  "tags": ["backend", "api", "consistency"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "api-test", "optimistic-locking"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-2-003"]
+}

@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-2-018",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Focus Mode (Composable + CSS)",
+  "description": "`src/composables/useFocusMode.ts` implementieren + CSS-Integration. Focus Mode blendet Nav Sidebar und Status Bar temporär aus. Trigger: Keyboard-Shortcut `F` (nur wenn kein Input/Textarea fokussiert) oder expliziter Button in Prompt Station. State: `isFocusMode` ref, wird als CSS-Klasse auf `<body>` oder App-Root gesetzt. CSS: `.focus-mode .nav-sidebar, .focus-mode .status-bar { display: none; }`. Kritische Alerts (danger-Level Notifications) bleiben sichtbar via CSS-Override. Composable exportiert: `isFocusMode`, `toggleFocusMode()`, `exitFocusMode()`. ESC-Taste beendet Focus Mode.",
+  "state": "incoming",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "useFocusMode.ts Composable unter src/composables/ erstellt",
+      "Exportiert isFocusMode, toggleFocusMode(), exitFocusMode()",
+      "Keyboard-Shortcut F toggled Focus Mode (nicht in Input/Textarea)",
+      "ESC beendet Focus Mode",
+      "Nav Sidebar + Status Bar werden ausgeblendet",
+      "Kritische Alerts (danger-Level) bleiben sichtbar",
+      "CSS-Klasse .focus-mode auf App-Root gesetzt",
+      "Focus-Mode-Button in Prompt Station integriert"
+    ]
+  },
+  "tags": ["frontend", "composable", "ux"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component"],
+  "linked_wiki": [],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

@@ -1,0 +1,29 @@
+{
+  "external_id": "TASK-F-004",
+  "epic_ref": "EPIC-PHASE-F",
+  "title": "Federation Protocol API — REST-Endpoints",
+  "description": "Neuer Router `app/routers/federation.py` mit folgenden Endpoints:\n\n1. `GET /federation/ping` — Liveness + Handshake. Gibt eigene `node_id`, `node_name`, `public_key`, App-Version zurück. Kein Auth nötig (wird für initialen Handshake genutzt).\n\n2. `POST /federation/skill/publish` — Eingehenden federierten Skill empfangen. Pydantic-Schema validieren. Skill in `skills`-Tabelle speichern mit `federation_scope='federated'`, `origin_node_id` = sendender Node. Upsert via `origin_node_id` + `external_id`. HTTP 201 bei Neuanlage, 200 bei Update.\n\n3. `POST /federation/wiki/publish` — Eingehenden Wiki-Artikel empfangen. Analoges Pattern wie Skill-Publish. Speichern mit `federation_scope='federated'`, `origin_node_id`.\n\n4. `POST /federation/epic/share` — Epic-Spec + zugehörige Tasks empfangen. Lokal als gespiegeltes Epic anlegen mit `origin_node_id`. Tasks mit `assigned_node_id` (eigener Node) als lokale Tasks anlegen.\n\n5. `POST /federation/task/update` — Eingehende Task-State-Updates von Peer verarbeiten. Task via `external_id` + `origin_node_id` finden, State + Result aktualisieren.\n\n6. `POST /federation/sync` — Bulk-Sync: Array von federierten Ressourcen eines Peers empfangen und lokal spiegeln (Skills, Wiki, Epics, Tasks). Dispatcht intern an die jeweiligen Publish/Update-Handler.\n\nAlle Endpoints außer `/ping` sind durch Ed25519-Middleware geschützt. Pydantic Request/Response-Schemas in `app/schemas/federation.py` anlegen.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "Router `app/routers/federation.py` mit allen 6 Endpoints registriert",
+      "`GET /federation/ping` gibt `node_id`, `node_name`, `public_key` zurück",
+      "`POST /federation/skill/publish` speichert federierten Skill mit Upsert-Logik",
+      "`POST /federation/wiki/publish` speichert federierten Wiki-Artikel mit Upsert-Logik",
+      "`POST /federation/epic/share` legt gespiegeltes Epic + Tasks lokal an",
+      "`POST /federation/task/update` aktualisiert Task-State von Peer",
+      "`POST /federation/sync` dispatcht Bulk-Payload an einzelne Handler",
+      "Pydantic-Schemas in `app/schemas/federation.py` für alle Request/Response-Typen",
+      "Alle Endpoints außer `/ping` durch Signatur-Middleware geschützt",
+      "Integration-Test: Skill-Publish → Skill in DB mit korrektem `origin_node_id`"
+    ]
+  },
+  "tags": ["backend", "federation", "api"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "api-test"],
+  "linked_wiki": ["federation-konzept", "system-architektur"],
+  "source_doc": "docs/phases/phase-f.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-F-003"]
+}

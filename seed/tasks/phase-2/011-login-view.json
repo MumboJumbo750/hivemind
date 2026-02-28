@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-2-011",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Login-Screen (LoginView)",
+  "description": "`src/views/Auth/LoginView.vue` implementieren. Sci-Fi-minimales Design (kein generisches Bootstrap-Form). Username + Password Felder, Submit-Button. Ruft `POST /api/auth/login` auf. Speichert Access-Token in Pinia Auth-Store (`src/stores/authStore.ts`). Refresh-Token kommt automatisch als HttpOnly Cookie. Auth-Store: `user` (CurrentActor), `accessToken`, `isAuthenticated` (computed), `login()`, `logout()`, `refreshToken()`. Axios/Fetch-Interceptor für automatisches Token-Refresh bei 401. Vue-Router Guard: unauthentifizierte User werden auf `/login` redirected. Nach erfolgreichem Login: Redirect auf Prompt Station (`/`). Registrierungslink optional (Phase 2 hat kein Self-Registration-UI; User werden via Seed oder Admin angelegt).",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "LoginView.vue unter src/views/Auth/ mit Sci-Fi-Design",
+      "Pinia Auth-Store mit user, accessToken, isAuthenticated, login(), logout(), refreshToken()",
+      "Login ruft POST /api/auth/login auf und speichert Token",
+      "Automatischer Token-Refresh bei 401 via Interceptor",
+      "Vue-Router Guard redirected unauthentifizierte User auf /login",
+      "Nach Login: Redirect auf Prompt Station",
+      "Error-Handling: falsche Credentials zeigen Fehlermeldung",
+      "Styles via Design-Tokens — keine hardcodierten Farben"
+    ]
+  },
+  "tags": ["frontend", "auth", "vue-component"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component"],
+  "linked_wiki": ["system-architektur", "tech-stack"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-2-002"]
+}

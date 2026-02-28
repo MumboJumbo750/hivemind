@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-2-017",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Settings: Solo/Team Modus-Toggle",
+  "description": "`app_settings`-API anbinden in der bestehenden Settings-View (`src/views/Settings/SettingsView.vue` aus Phase 1b). Toggle-Component für Solo/Team-Modus: saved via `PATCH /api/settings`. Zeigt aktiven Modus mit visuell unterschiedlichem State — Solo: Einzelspieler-Icon (User-Icon), Team: Netz-Icon (Network-Icon). Liest aktuellen Modus via `GET /api/settings` beim Mount. Notification-Mode Anzeige (read-only, informativ): 'client' oder 'backend'. Pinia Settings-Store anlegen oder erweitern: `mode`, `notification_mode`, `fetchSettings()`, `updateMode()`.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Solo/Team Toggle in SettingsView integriert",
+      "Toggle sendet PATCH /api/settings mit mode solo|team",
+      "Aktueller Modus wird via GET /api/settings beim Mount geladen",
+      "Solo-Icon (User) und Team-Icon (Network) visuell unterschiedlich",
+      "Notification-Mode Anzeige (read-only)",
+      "Pinia Settings-Store mit mode, notification_mode, fetchSettings(), updateMode()",
+      "Optimistic UI Update mit Rollback bei Fehler"
+    ]
+  },
+  "tags": ["frontend", "vue-component", "settings"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "small",
+  "depends_on": ["TASK-2-009", "TASK-2-012"]
+}

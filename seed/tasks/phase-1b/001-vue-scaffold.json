@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-1B-001",
+  "epic_ref": "EPIC-PHASE-1B",
+  "title": "Vue 3 + Vite + TypeScript + Reka UI Scaffold installieren",
+  "description": "Fehlende npm-Abhängigkeiten im bestehenden Frontend-Scaffold installieren und konfigurieren. `@reka-ui/core` als komponentenbibliothek hinzufügen. Schriftarten `@fontsource/space-grotesk`, `@fontsource/inter`, `@fontsource/jetbrains-mono` installieren. `vue-router@^4` und `pinia@^2` sind bereits in package.json gelistet, müssen aber verifiziert und ggf. initialisiert werden. `main.ts` mit Router und Pinia bootstrappen. `App.vue` als minimaler Einstiegspunkt mit `<RouterView />` aufsetzen. Devtool-Plugin `@vue/devtools` optional.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "`npm install` läuft ohne Fehler durch",
+      "`@reka-ui/core` ist in package.json als Dependency gelistet und importierbar",
+      "Alle drei @fontsource-Pakete sind installiert und in main.ts oder App.vue importiert",
+      "`createApp(App).use(router).use(pinia).mount('#app')` funktioniert in main.ts",
+      "`vite dev` startet ohne Fehler, Browser zeigt leere Seite ohne Konsolenfehler",
+      "TypeScript-Compilation (`tsc --noEmit`) gibt keine Fehler aus"
+    ]
+  },
+  "tags": ["frontend", "setup", "scaffold"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component"],
+  "linked_wiki": ["tech-stack", "system-architektur"],
+  "source_doc": "docs/phases/phase-1.md#phase-1b",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

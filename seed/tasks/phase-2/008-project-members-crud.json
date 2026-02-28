@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-2-008",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "project_members CRUD-Endpoints",
+  "description": "CRUD-Endpoints für `project_members` implementieren: `POST /api/projects/{id}/members` (User zu Projekt hinzufügen mit Rolle), `DELETE /api/projects/{id}/members/{user_id}` (User aus Projekt entfernen), `PATCH /api/projects/{id}/members/{user_id}` (Rolle ändern), `GET /api/projects/{id}/members` (alle Mitglieder eines Projekts listen). `ProjectMember`-Model existiert bereits (project_id, user_id, role). Pydantic-Schemas: `MemberAdd`, `MemberUpdate`, `MemberResponse`. RBAC: nur Admin oder Project-Owner darf Members verwalten. Projekt-Rolle überschreibt globale User-Rolle für RBAC-Checks innerhalb des Projekts.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "POST /api/projects/{id}/members fügt User mit Rolle hinzu (201)",
+      "DELETE /api/projects/{id}/members/{user_id} entfernt User (204)",
+      "PATCH /api/projects/{id}/members/{user_id} ändert Rolle",
+      "GET /api/projects/{id}/members listet alle Mitglieder mit Rollen",
+      "RBAC: nur Admin oder Project-Owner darf Members verwalten",
+      "Pydantic-Schemas MemberAdd, MemberUpdate, MemberResponse vorhanden",
+      "Duplikat-Schutz: User kann nicht doppelt hinzugefügt werden (HTTP 409)",
+      "Integration-Tests für alle 4 Endpoints"
+    ]
+  },
+  "tags": ["backend", "api", "crud", "rbac"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "api-test", "rbac-middleware"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-2-004"]
+}

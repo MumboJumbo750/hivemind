@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-2-010",
+  "epic_ref": "EPIC-PHASE-2",
+  "title": "Spotlight-Search Backend-Endpoint",
+  "description": "`GET /api/search?q=<query>&type=tasks,epics` implementieren. Freitext-Suche via `ILIKE` oder `pg_trgm`-Trigram-Suche über `tasks.title` + `epics.title`. Parameter: `q` (Suchstring, min 2 Zeichen), `type` (kommasepariert: tasks, epics; default: beide), `limit` (default 20). Ergebnisse gruppiert nach Typ zurückgeben. RBAC-gefiltert: nur Items zurückgeben, auf die der Actor Zugriff hat (über project_members oder Admin-Rolle). Im Solo-Modus alle Items zurückgeben. Response-Schema: `SearchResult` mit `type`, `id`, `title`, `subtitle` (Epic-Titel bei Tasks), `url`.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "GET /api/search?q=&type= Endpoint implementiert",
+      "ILIKE-Suche über tasks.title + epics.title funktioniert",
+      "Ergebnisse nach Typ gruppiert (tasks / epics)",
+      "RBAC-Filter: nur zugängliche Items für den Actor",
+      "Solo-Modus: alle Items zurückgeben",
+      "Pydantic-Schema SearchResult mit type, id, title, subtitle, url",
+      "Mindest-Suchlänge 2 Zeichen validiert",
+      "Tests: Suche mit Ergebnissen, leere Suche, RBAC-Filterung"
+    ]
+  },
+  "tags": ["backend", "api", "search"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-2.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-2-004"]
+}

@@ -1,0 +1,28 @@
+{
+  "external_id": "TASK-F-014",
+  "epic_ref": "EPIC-PHASE-F",
+  "title": "Shared Epic Dashboard — Node-Badges + Filter",
+  "description": "Erweiterung des bestehenden Command Deck (Task-Übersicht) um Federation-Informationen:\n\n**Node-Badge:** Tasks mit gesetztem `assigned_node_id` zeigen ein `[◈ node-name]`-Badge neben dem Task-Titel. Badge-Farbe basierend auf Peer-Status: `active` = Standard-Federation-Farbe, `inactive` = gedimmt/grau. Peer-zugewiesene Tasks sind visuell unterscheidbar: leicht abgedimmter Hintergrund + kleines Node-Icon links.\n\n**Node-Filter:** Neues Dropdown in der bestehenden Filter-Bar über der Task-Liste. Optionen: 'Alle Nodes', 'Lokal (eigener Node)', sowie ein Eintrag pro bekanntem Peer. Filterung via `assigned_node_id` Query-Parameter auf `GET /api/tasks`.\n\n**API-Erweiterung:** `GET /api/tasks` muss `assigned_node_id`-Filter als Query-Parameter akzeptieren. Task-Response muss `assigned_node_name` (resolved aus `nodes`-Tabelle) enthalten. Neuer Query-Parameter `?assigned_node_id=<uuid>` auf bestehenden Tasks-Endpoint.\n\n**Backend:** `GET /api/nodes` Endpoint für Dropdown-Daten (falls nicht bereits in TASK-F-012 implementiert).",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Tasks mit `assigned_node_id` zeigen `[◈ node-name]`-Badge im Command Deck",
+      "Badge-Farbe reflektiert Peer-Status (active vs. inactive)",
+      "Peer-zugewiesene Tasks haben visuell unterscheidbaren Hintergrund",
+      "Node-Filter-Dropdown in Filter-Bar mit allen bekannten Peers",
+      "Filterung funktioniert über `assigned_node_id` Query-Parameter",
+      "Task-Response enthält aufgelöstes `assigned_node_name`",
+      "Backend: `GET /api/tasks` akzeptiert `?assigned_node_id` Filter",
+      "Design konsistent mit bestehendem Command Deck",
+      "Responsive Darstellung der Badges auf kleinen Screens"
+    ]
+  },
+  "tags": ["frontend", "backend", "federation", "view"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "fastapi-endpoint", "design-token"],
+  "linked_wiki": ["federation-konzept"],
+  "source_doc": "docs/phases/phase-f.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-F-008", "TASK-F-009"]
+}

@@ -1,0 +1,29 @@
+{
+  "external_id": "TASK-F-013",
+  "epic_ref": "EPIC-PHASE-F",
+  "title": "Gilde-View — Federated Skills anzeigen + forken",
+  "description": "Neue View `src/views/Guild/GuildView.vue` (Route: `/guild`). Zeigt alle federierten Skills (`federation_scope='federated'`) als Read-only-Karten.\n\n**Skill-Karte:** Titel, Beschreibung (truncated), Tags, Lifecycle-Badge, `[von: node-name]`-Badge (Node-Name des `origin_node_id`). Kein Edit-Button (read-only). `[ÜBERNEHMEN]`-Button pro Karte.\n\n**`[ÜBERNEHMEN]`-Flow:** Button ruft `POST /api/skills/{id}/fork` auf. Bei Erfolg (201): Success-Toast mit Text 'Draft erstellt — im Skill Lab bearbeitbar ab Phase 4'. Bei Fehler (409 = bereits geforkt): Warning-Toast 'Skill bereits als lokaler Draft vorhanden'. Button wird nach erfolgreichem Fork disabled + Text ändert sich zu `[ÜBERNOMMEN ✓]`.\n\n**Layout:** Grid-Layout (3 Spalten Desktop, 1 Spalte Mobile). Suchfeld oben für Skill-Titel-Filter. Node-Filter-Dropdown zum Filtern nach Origin-Node.\n\n**API:** `GET /api/skills?federation_scope=federated` zum Laden der Karten. Navigation: In Sidebar als 'Gilde'-Eintrag mit Gilde-Icon hinzufügen. View ist in Phase F vollständig nutzbar (kein Teaser/Lock).",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "View unter `/guild` erreichbar und in Sidebar-Navigation eingetragen",
+      "Federated Skills werden als Read-only-Karten im Grid angezeigt",
+      "Jede Karte zeigt `[von: node-name]`-Badge mit Origin-Node-Name",
+      "`[ÜBERNEHMEN]`-Button ruft `POST /api/skills/{id}/fork` auf",
+      "Erfolgs-Toast: 'Draft erstellt — im Skill Lab bearbeitbar ab Phase 4'",
+      "409-Fehler zeigt Warning-Toast; Button wird nach Fork disabled",
+      "Suchfeld filtert Skills nach Titel",
+      "Node-Filter-Dropdown filtert nach Origin-Node",
+      "Responsive Grid: 3 Spalten Desktop, 1 Spalte Mobile",
+      "Design-Tokens und bestehende Komponenten-Patterns verwendet"
+    ]
+  },
+  "tags": ["frontend", "federation", "view"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": ["federation-konzept"],
+  "source_doc": "docs/phases/phase-f.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-F-004", "TASK-F-007"]
+}
