@@ -34,7 +34,7 @@ linked_epics: ["EPIC-PHASE-1A", "EPIC-PHASE-1B"]
 | --- | --- |
 | **Docker Compose** | Einheitliche Dev-Umgebung, reproduzierbar |
 | **Ollama** | Self-Hosted LLM + Embeddings, keine API-Key-Pflicht |
-| **MCP (stdio + HTTP/SSE)** | Standard-Protokoll für AI-Tool-Integration |
+| **MCP 1.0 (SSE/JSON-RPC 2.0 + REST + stdio)** | Standard-Protokoll für AI-Tool-Integration — externe Clients verbinden via `/api/mcp/sse` |
 
 ## Bewusst NICHT gewählt
 

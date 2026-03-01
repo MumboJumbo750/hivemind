@@ -10,12 +10,16 @@ Hivemind ist selbst ein MCP-Server. Alle Tools folgen demselben Sicherheitsmodel
 
 ## Transports
 
-| Transport | Einsatz | Konfiguration |
-| --- | --- | --- |
-| **stdio** | Lokale Clients (Claude Desktop, Cursor, etc.) | Standard |
-| **HTTP/SSE** | Web-Clients, Remote-Instanzen, Team-Setup | `HIVEMIND_TRANSPORT=http` |
+Hivemind implementiert den **MCP 1.0 Standard** (JSON-RPC 2.0 über SSE).
 
-Beide Transports über denselben FastAPI-Service.
+| Transport | Endpoints | Einsatz |
+| --- | --- | --- |
+| **MCP Standard (SSE)** | `GET /api/mcp/sse` + `POST /api/mcp/message` | Externe MCP-Clients (Cursor, Claude Desktop, Continue) — JSON-RPC 2.0 mit `initialize` Handshake |
+| **Convenience REST** | `GET /api/mcp/tools` + `POST /api/mcp/call` | Hivemind-Frontend — einfaches JSON ohne JSON-RPC Overhead |
+| **Status** | `GET /api/mcp/status` | Verbindungsstatus, Tool-Count, aktive Sessions |
+| **stdio** | Lokaler Prozess | Lokale AI-Clients (optional via `HIVEMIND_TRANSPORT=stdio`) |
+
+Die SSE- und REST-Endpoints sind immer aktiv über denselben FastAPI-Service. Der SDK-basierte `SseServerTransport` aus dem `mcp` Python-Paket (v1.0) wird als raw ASGI-App gemountet.
 
 ---
 
@@ -103,8 +107,8 @@ hivemind/get_audit_log      { "epic_id":   "EPIC-12",   -- optional (epic_key)
 
 | Entität | Identifier | Beispiel | Verwendung in MCP-Tools |
 | --- | --- | --- | --- |
-| Task | `task_key` (TEXT) | `"TASK-88"` | `task_id`-Parameter in allen Tools |
-| Epic | `epic_key` (TEXT) | `"EPIC-12"` | `epic_id`-Parameter in allen Tools |
+| Task | `task_key` (TEXT) | `"TASK-88"` | `task_key`-Parameter in allen Tools (Alias `task_id` wird akzeptiert) |
+| Epic | `epic_key` (TEXT) | `"EPIC-12"` | `epic_key`-Parameter in allen Tools (Alias `epic_id` wird akzeptiert) |
 | Skill | UUID | `"550e8400-e29b..."` | `skill_id`-Parameter |
 | Guard | UUID | `"550e8400-e29b..."` | `guard_id`-Parameter |
 | User | UUID | `"550e8400-e29b..."` | `actor_id`-Parameter |
@@ -150,20 +154,20 @@ hivemind/update_epic_proposal { "proposal_id": "uuid", "title": "...", "descript
 ```text
 hivemind/create_epic          { "project_id": "uuid", "title": "...", "description": "..." }
                                 -- Erstellt neues Epic mit state='incoming'; developer in eigenen Projekten, admin überall
-hivemind/decompose_epic       { "epic_id": "EPIC-12", "tasks": [...] }
-                                -- Tasks werden im State 'scoped' erstellt
-hivemind/create_task          { "epic_id": "EPIC-12", "title": "...", "description": "..." }
-                                -- Task wird im State 'scoped' erstellt
-hivemind/create_subtask       { "parent_task_id": "TASK-88", "title": "..." }
-hivemind/link_skill           { "task_id": "TASK-88", "skill_id": "uuid" }
-hivemind/set_context_boundary { "task_id": "TASK-88", "allowed_skills": [...], ... }
-hivemind/assign_task          { "task_id": "TASK-88", "user_id": "uuid",
+hivemind/decompose_epic       { "epic_key": "EPIC-12", "tasks": [...] }
+                                -- Tasks werden im State 'incoming' erstellt
+hivemind/create_task          { "epic_key": "EPIC-12", "title": "...", "description": "..." }
+                                -- Task wird im State 'incoming' erstellt
+hivemind/create_subtask       { "parent_task_key": "TASK-88", "title": "..." }
+hivemind/link_skill           { "task_key": "TASK-88", "skill_id": "uuid" }
+hivemind/set_context_boundary { "task_key": "TASK-88", "allowed_skills": [...], ... }
+hivemind/assign_task          { "task_key": "TASK-88", "user_id": "uuid",
                                 "assigned_node_id": "uuid" }   -- optional (Phase F): Peer-Node für Delegation
                                 -- Setzt assigned_to; löst task_assigned-Notification aus
                                 -- Wenn assigned_node_id angegeben: Task.assigned_node_id wird gesetzt,
                                 --   Backend broadcastet task_delegated-Event an Peer-Node
                                 -- Architekt kann innerhalb eigener Epics zuweisen; Admin überall
-hivemind/update_task_state    { "task_id": "TASK-88", "state": "ready" }
+hivemind/update_task_state    { "task_key": "TASK-88", "target_state": "ready" }
                                 -- Architekt: scoped → ready (abschließender Schritt nach assign + boundary)
                                 -- Backend prüft: assigned_to gesetzt → sonst 422
                                 -- Hinweis: derselbe Tool-Name wie in Worker-Writes (s.u.);
@@ -177,22 +181,22 @@ hivemind/update_task_state    { "task_id": "TASK-88", "state": "ready" }
 ## Worker-Writes
 
 ```text
-hivemind/submit_result           { "task_id": "TASK-88", "result": "...", "artifacts": [...] }
+hivemind/submit_result           { "task_key": "TASK-88", "result": "...", "artifacts": [...] }
                                    -- Speichert Ergebnis + Artefakte; ändert State NICHT
                                    -- Kann jederzeit in in_progress aufgerufen werden
 
-hivemind/update_task_state       { "task_id": "TASK-88", "state": "in_review" }
+hivemind/update_task_state       { "task_key": "TASK-88", "target_state": "in_review" }
                                    -- Setzt State auf in_review NUR wenn:
                                    --   (1) submit_result wurde aufgerufen (result vorhanden)
                                    --   (2) Phase 1–4: Keine Guard-Prüfung — Guards dienen als Checkliste, blockieren aber nicht
                                    --   (3) Ab Phase 5: alle Guards status = passed|skipped — sonst 422 mit Liste der offenen Guards
                                    -- Siehe state-machine.md für Phase-basierte Guard-Enforcement-Regeln
 
-hivemind/create_decision_request { "task_id": "TASK-88", "blocker": "...", "options": [...] }
+hivemind/create_decision_request { "task_key": "TASK-88", "question": "...", "options": [...] }
                                    -- Atomar: erstellt decision_request (state='open')
                                    -- und setzt Task in derselben Transaktion von in_progress -> blocked
                                    -- Falls Task nicht in_progress: 409 Conflict
-hivemind/report_guard_result     { "task_id": "TASK-88", "guard_id": "uuid",
+hivemind/report_guard_result     { "task_key": "TASK-88", "guard_id": "uuid",
                                    "status": "passed|failed|skipped",
                                    "result": "..." }    -- Pflicht, nicht-leer für alle Status;
                                                         -- mindestens relevanter Command-Output oder Begründung
@@ -203,7 +207,7 @@ hivemind/report_guard_result     { "task_id": "TASK-88", "guard_id": "uuid",
 ```text
 1. Worker: hivemind/report_guard_result  → alle Guards auf passed|skipped setzen
 2. Worker: hivemind/submit_result        → Ergebnis + Artefakte speichern
-3. Worker: hivemind/update_task_state { "state": "in_review" }
+3. Worker: hivemind/update_task_state { "target_state": "in_review" }
              → Backend prüft: Result vorhanden?
              → Phase 1–4: Ja → State → in_review (Guards nicht enforced)
              → Ab Phase 5: Guards vollständig? Result vorhanden?
@@ -250,7 +254,7 @@ hivemind/propose_epic_restructure { "restructure_type": "split|merge|task_move",
                                     "payload": { ... },         -- Typ-spezifisch: Split/Merge/Task-Move-Spec
                                     -- Split:     { "source_epic_id": "EPIC-5", "resulting_epics": [...] }
                                     -- Merge:     { "source_epic_ids": ["EPIC-8", "EPIC-9"], "resulting_epic": {...} }
-                                    -- Task-Move: { "moves": [{ "task_id": "TASK-15", "from_epic_id": "EPIC-5", "to_epic_id": "EPIC-6" }] }
+                                    -- Task-Move: { "moves": [{ "task_key": "TASK-15", "from_epic_key": "EPIC-5", "to_epic_key": "EPIC-6" }] }
                                     "rationale": "string",
                                     "code_node_refs": ["uuid", "..."] }
                                     -- → Vollständige Payload-Specs: docs/features/epic-restructure.md#proposal-typen
@@ -358,7 +362,7 @@ hivemind/graduate_memory        { "summary_id": "uuid",
 
 ```text
 hivemind/submit_review_recommendation
-                         { "task_id": "TASK-88",
+                         { "task_key": "TASK-88",
                            "recommendation": "approve|reject|needs_human_review",
                            "confidence": 0.92,
                            "summary": "Alle DoD-Kriterien erfüllt, Guards passed, Code-Qualität gut",
@@ -382,13 +386,13 @@ hivemind/submit_review_recommendation
 ## Review-Writes (Owner/Admin)
 
 ```text
-hivemind/approve_review  { "task_id": "TASK-88" }
+hivemind/approve_review  { "task_key": "TASK-88" }
                            -- in_review → done
                            -- Erfordert: Epic-Owner oder Admin
                            -- Erzeugt Notification: task_done → Assignee + Owner
                            -- Nach done: Gaertner-Prompt wird in Prompt Station bereitgestellt
 
-hivemind/reject_review   { "task_id": "TASK-88",
+hivemind/reject_review   { "task_key": "TASK-88",
                            "comment": "..." }
                            -- in_review → qa_failed
                            -- Schreibt task.review_comment; qa_failed_count++
@@ -399,14 +403,16 @@ hivemind/reject_review   { "task_id": "TASK-88",
 ```
 
 > `approve_review` und `reject_review` sind die einzigen Wege aus `in_review`. Kein direktes `done` ohne Review-Gate.
-> `reject_review` setzt `qa_failed` — der Worker muss den Kommentar lesen und aktiv `update_task_state { "state": "in_progress" }` aufrufen, um die Arbeit fortzusetzen.
+> `reject_review` setzt `qa_failed` — der Worker muss den Kommentar lesen und aktiv `update_task_state { "target_state": "in_progress" }` aufrufen, um die Arbeit fortzusetzen.
+
+> **Param-Alias-Toleranz:** Das Backend akzeptiert gängige Alias-Parameter automatisch: `task_id` → `task_key`, `epic_id` → `epic_key`, `state` → `target_state`, `assignee_id` → `user_id`, `result_text` → `result`, `blocker` → `question`, `chosen_option` → `decision`, `id` → `decision_request_id`. Die kanonischen Namen (links der Tabelle) sind bevorzugt.
 
 ---
 
 ## Decision-Writes (Owner/Admin)
 
 ```text
-hivemind/resolve_decision_request { "id": "uuid", "chosen_option": "A", "comment": "..." }
+hivemind/resolve_decision_request { "decision_request_id": "uuid", "decision": "A", "rationale": "..." }
                                     -- Setzt zugehörigen Task automatisch von blocked → in_progress
                                     -- Erlaubt für: Epic-Owner, Backup-Owner oder admin
 ```
@@ -452,9 +458,9 @@ hivemind/reject_epic_proposal     { "proposal_id": "uuid",     -- epic_proposals
                                     -- Notification an Proposer mit Begründung
                                     -- Wenn andere Proposals depends_on dieses Proposal referenzieren:
                                     --   Warnung an Proposer: "Abhängiges Proposal abgelehnt"
-hivemind/reassign_epic_owner      { "epic_id": "EPIC-12", "new_owner_id": "uuid" }
-hivemind/cancel_task              { "task_id": "TASK-88", "reason": "..." }
-hivemind/resolve_escalation       { "task_id": "TASK-88", "comment": "..." }
+hivemind/reassign_epic_owner      { "epic_key": "EPIC-12", "owner_id": "uuid" }
+hivemind/cancel_task              { "task_key": "TASK-88", "reason": "..." }
+hivemind/resolve_escalation       { "task_key": "TASK-88", "comment": "..." }
                                     -- escalated → in_progress (Admin only)
                                     -- Gilt für beide Eskalationsquellen:
                                     --   (a) 3x qa_failed → escalated

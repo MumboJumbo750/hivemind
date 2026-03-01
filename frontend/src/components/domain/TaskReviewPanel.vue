@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { api } from '../../api'
 import type { Task } from '../../api/types'
 
@@ -17,6 +17,63 @@ const reviewComment = ref('')
 const showRejectComment = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// ─── Guard Provenance (TASK-5-020) ─────────────────────────────────────────
+interface GuardInfo {
+  name: string
+  type: string
+  status: string
+  source: 'self-reported' | 'system-executed'
+  checked_at: string | null
+  output: string | null
+  skippable: boolean
+}
+
+const guards = ref<GuardInfo[]>([])
+const guardsLoading = ref(false)
+
+async function loadGuards() {
+  guardsLoading.value = true
+  try {
+    const result = await api.callMcpTool('hivemind/get_task', { task_key: props.task.task_key })
+    const parsed = JSON.parse(result[0]?.text || '{}')
+    const taskData = parsed.data
+    if (taskData?.guards) {
+      guards.value = taskData.guards.map((g: Record<string, unknown>) => ({
+        name: g.guard_name || g.name || 'Guard',
+        type: String(g.type || 'manual'),
+        status: String(g.status || 'pending'),
+        source: deriveSource(String(g.type || '')),
+        checked_at: g.checked_at ? String(g.checked_at) : null,
+        output: g.result ? String(g.result) : null,
+        skippable: !!g.skippable,
+      }))
+    }
+  } catch {
+    // Guards loading is non-critical
+  } finally {
+    guardsLoading.value = false
+  }
+}
+
+function deriveSource(guardType: string): 'self-reported' | 'system-executed' {
+  const systemTypes = ['ci', 'test', 'lint', 'typecheck', 'build', 'command']
+  return systemTypes.some(t => guardType.toLowerCase().includes(t))
+    ? 'system-executed'
+    : 'self-reported'
+}
+
+const guardsSummary = computed(() => {
+  const total = guards.value.length
+  const passed = guards.value.filter(g => g.status === 'passed').length
+  const failed = guards.value.filter(g => g.status === 'failed').length
+  const pending = guards.value.filter(g => g.status === 'pending').length
+  return { total, passed, failed, pending }
+})
+
+const emptySelfReported = computed(() =>
+  guards.value.filter(g => g.source === 'self-reported' && g.status === 'passed' && !g.output)
+)
 
 // Hard Gates (informative only in Phase 2)
 const hardGates = computed(() => [
@@ -66,6 +123,8 @@ async function handleReject() {
     loading.value = false
   }
 }
+
+onMounted(() => loadGuards())
 </script>
 
 <template>
@@ -93,6 +152,56 @@ async function handleReject() {
           <span class="gate-badge" :class="`gate-badge--${gate.status}`">
             {{ gate.status }}
           </span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Guard Provenance (TASK-5-020) -->
+    <section v-if="guards.length || guardsLoading" class="review-section">
+      <h4 class="review-section__title">
+        Guard Provenance
+        <span v-if="guardsSummary.total" class="guard-summary">
+          {{ guardsSummary.passed }}/{{ guardsSummary.total }} passed
+        </span>
+      </h4>
+
+      <div v-if="guardsLoading" class="review-empty">Lade Guards...</div>
+
+      <!-- Warning: empty self-reported output -->
+      <div v-if="emptySelfReported.length" class="guard-warning">
+        ⚠ {{ emptySelfReported.length }} self-reported Guard(s) ohne Ausgabe — Ergebnis nicht verifizierbar.
+      </div>
+
+      <ul class="guard-list">
+        <li
+          v-for="guard in guards"
+          :key="guard.name"
+          class="guard-item"
+          :class="`guard-item--${guard.status}`"
+        >
+          <div class="guard-item__header">
+            <span class="guard-icon">
+              {{ guard.status === 'passed' ? '✓' : guard.status === 'failed' ? '✗' : '○' }}
+            </span>
+            <span class="guard-name">{{ guard.name }}</span>
+            <span class="source-badge" :class="`source-badge--${guard.source}`">
+              {{ guard.source === 'system-executed' ? '⚙ System' : '✋ Self' }}
+            </span>
+            <span class="guard-status-badge" :class="`guard-status-badge--${guard.status}`">
+              {{ guard.status }}
+            </span>
+          </div>
+          <div class="guard-item__meta">
+            <span v-if="guard.checked_at" class="guard-time">
+              {{ new Date(guard.checked_at).toLocaleString('de-DE') }}
+            </span>
+            <span v-if="guard.skippable" class="guard-skippable">überspringbar</span>
+          </div>
+          <!-- Warning for self-reported without output -->
+          <div v-if="guard.source === 'self-reported' && guard.status === 'passed' && !guard.output" class="guard-output-warning">
+            ⚠ Kein Output — Self-Reported-Ergebnis nicht validiert
+          </div>
+          <pre v-if="guard.output" class="guard-output">{{ guard.output }}</pre>
         </li>
       </ul>
     </section>
@@ -332,4 +441,122 @@ async function handleReject() {
   font-weight: 600;
 }
 .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Guard Provenance (TASK-5-020) */
+.guard-summary {
+  font-weight: 400;
+  color: var(--color-text-muted);
+  font-size: 9px;
+  margin-left: var(--space-2);
+}
+
+.guard-warning {
+  background: rgba(249, 168, 37, 0.12);
+  border: 1px solid rgba(249, 168, 37, 0.3);
+  color: var(--color-warning, #f9a825);
+  font-size: var(--font-size-xs);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.guard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.guard-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  border-left: 3px solid transparent;
+}
+.guard-item--passed { border-left-color: var(--color-success); }
+.guard-item--failed { border-left-color: var(--color-danger); }
+.guard-item--pending { border-left-color: var(--color-text-muted); }
+.guard-item--skipped { border-left-color: var(--color-warning, #f9a825); }
+
+.guard-item__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.guard-icon { font-size: var(--font-size-sm); flex-shrink: 0; }
+.guard-item--passed .guard-icon { color: var(--color-success); }
+.guard-item--failed .guard-icon { color: var(--color-danger); }
+.guard-item--pending .guard-icon { color: var(--color-text-muted); }
+
+.guard-name {
+  flex: 1;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--color-text);
+}
+
+.source-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+.source-badge--system-executed {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+.source-badge--self-reported {
+  background: var(--color-warning, #f9a825);
+  color: #1a1a1a;
+}
+
+.guard-status-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.guard-status-badge--passed { background: var(--color-success); color: var(--color-bg); }
+.guard-status-badge--failed { background: var(--color-danger); color: white; }
+.guard-status-badge--pending { background: var(--color-text-muted); color: var(--color-bg); }
+.guard-status-badge--skipped { background: var(--color-warning, #f9a825); color: #1a1a1a; }
+
+.guard-item__meta {
+  display: flex;
+  gap: var(--space-2);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  padding-left: var(--space-4);
+}
+
+.guard-skippable {
+  font-style: italic;
+}
+
+.guard-output-warning {
+  font-size: 10px;
+  color: var(--color-warning, #f9a825);
+  padding-left: var(--space-4);
+}
+
+.guard-output {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  margin: 0;
+  white-space: pre-wrap;
+  max-height: 80px;
+  overflow-y: auto;
+  margin-left: var(--space-4);
+}
 </style>

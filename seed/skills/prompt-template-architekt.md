@@ -32,3 +32,30 @@ Für jeden neuen Task:
 - **DoD**: Mindestens 3 prüfbare Kriterien
 - **Abhängigkeiten**: Welche Tasks müssen vorher fertig sein
 - **Geschätzte Komplexität**: small | medium | large
+
+### Wichtig: Task-Benennung & Lifecycle
+`decompose_epic` generiert automatisch **phasen-spezifische Task-Keys** nach dem Muster `TASK-{prefix}-NNN`.
+- `EPIC-PHASE-5` → `TASK-5-001`, `TASK-5-002`, …
+- `EPIC-PHASE-1A` → `TASK-1A-001`, `TASK-1A-002`, …
+- Jeder Task bekommt `external_id = task_key` (idempotent mit Seed-Import)
+
+Tasks starten mit **state=incoming**. Danach:
+1. `set_context_boundary` + `link_skill` + `assign_task` pro Task
+2. `update_task_state` → `scoped` (1. Transition)
+3. `update_task_state` → `ready` (2. Transition, benötigt assigned_to!)
+
+### MCP-Tools (exakte Parameternamen!)
+
+| Tool | Required | Optional |
+|------|----------|----------|
+| `hivemind/decompose_epic` | `epic_key` (str!), `tasks` (array) | — |
+| `hivemind/set_context_boundary` | `task_key` (str!) | `allowed_skills` (uuid[]), `allowed_docs` (uuid[]), `max_token_budget` (int) |
+| `hivemind/link_skill` | `task_key` (str!), `skill_id` (uuid-str) | `pinned_version_id` (uuid-str) |
+| `hivemind/assign_task` | `task_key` (str!), `user_id` (uuid-str) | — |
+| `hivemind/update_task_state` | `task_key` (str!), `target_state` (str!) | `comment` (str) |
+
+**Achtung Feldnamen:**
+- `epic_key` NICHT `epic_id`
+- `task_key` NICHT `task_id`
+- `target_state` NICHT `state`
+- `user_id` NICHT `assigned_to`

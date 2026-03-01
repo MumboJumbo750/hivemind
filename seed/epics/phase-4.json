@@ -2,11 +2,19 @@
   "external_id": "EPIC-PHASE-4",
   "title": "Phase 4 — Planer-Writes (Stratege & Architekt)",
   "description": "Stratege erstellt Epic-Proposals via MCP, Architekt zerlegt Epics in Tasks mit Context Boundaries. Skill Lab UI.",
-  "state": "scoped",
+  "state": "done",
   "priority": "high",
   "sla_deadline": null,
   "definition_of_done": "propose_epic + decompose_epic + set_context_boundary funktionieren, Skill Lab zeigt Skills mit Lifecycle-Filter und Diff-Ansicht, Triage zeigt Epic-Proposals.",
-  "tags": ["backend", "frontend", "mcp", "planning", "phase-4"],
-  "depends_on": ["EPIC-PHASE-3"],
+  "tags": [
+    "backend",
+    "frontend",
+    "mcp",
+    "planning",
+    "phase-4"
+  ],
+  "depends_on": [
+    "EPIC-PHASE-3"
+  ],
   "source_doc": "docs/phases/phase-4.md"
 }

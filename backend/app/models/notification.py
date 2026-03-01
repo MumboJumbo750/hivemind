@@ -1,4 +1,4 @@
-"""Notification model."""
+"""Notification model — Phase 6 DB-backed notifications."""
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -26,6 +26,8 @@ class Notification(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     body: Mapped[Optional[str]] = mapped_column(Text)
     link: Mapped[Optional[str]] = mapped_column(Text)
+    entity_type: Mapped[Optional[str]] = mapped_column(Text)
+    entity_id: Mapped[Optional[str]] = mapped_column(Text)
     read: Mapped[bool] = mapped_column(Boolean, server_default="false")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

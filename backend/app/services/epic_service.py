@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select, text
@@ -67,7 +68,11 @@ class EpicService:
         if data.description is not None:
             epic.description = data.description
         if data.state is not None:
+            old_state = epic.state
             epic.state = data.state
+            # Epic-Cancel: expire open decision_requests + stop SLA processing
+            if data.state == "cancelled" and old_state != "cancelled":
+                await self._expire_epic_decision_requests(epic.id)
         if data.owner_id is not None:
             epic.owner_id = data.owner_id
         if data.backup_owner_id is not None:
@@ -82,3 +87,24 @@ class EpicService:
         await self.db.flush()
         await self.db.refresh(epic)
         return epic
+
+    async def _expire_epic_decision_requests(self, epic_id: uuid.UUID) -> int:
+        """Expire all open decision_requests for a cancelled epic (TASK-6 acceptance criterion)."""
+        from app.models.decision import DecisionRequest
+
+        result = await self.db.execute(
+            select(DecisionRequest).where(
+                DecisionRequest.epic_id == epic_id,
+                DecisionRequest.state == "open",
+            )
+        )
+        count = 0
+        now = datetime.now(timezone.utc)
+        for dr in result.scalars().all():
+            dr.state = "expired"
+            dr.resolved_at = now
+            dr.version += 1
+            count += 1
+        if count:
+            await self.db.flush()
+        return count

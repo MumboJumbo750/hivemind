@@ -59,6 +59,11 @@ class Skill(Base):
     origin_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("nodes.id")
     )
+    token_count: Mapped[Optional[int]] = mapped_column(Integer)
+    proposed_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id")
+    )
+    rejection_rationale: Mapped[Optional[str]] = mapped_column(Text)
     federation_scope: Mapped[str] = mapped_column(
         Text, nullable=False, server_default="local"
     )
@@ -103,6 +108,7 @@ class SkillVersion(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     parent_versions: Mapped[Optional[list]] = mapped_column(JSONB, server_default="[]")
     token_count: Mapped[Optional[int]] = mapped_column(Integer)
+    diff_from_previous: Mapped[Optional[str]] = mapped_column(Text)
     changed_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )

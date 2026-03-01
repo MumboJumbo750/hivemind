@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-5-002",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Guard-Enforcement in update_task_state (Phase 5)",
+  "description": "update_task_state erweitern: Bei in_progress nach in_review prüft Backend (1) result vorhanden, (2) alle task_guards passed|skipped. Bei pending/failed Guards: 422 mit Liste offener Guards. Phase-Erkennung via HIVEMIND_CURRENT_PHASE. Guard-Reset bei qa_failed nach in_progress: alle task_guards auf pending.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "in_review gibt 422 wenn Guards pending/failed (Phase>=5)",
+      "422-Response enthaelt Liste offener Guards",
+      "in_review gibt 422 wenn result fehlt",
+      "Phase<5: Guards nicht enforced",
+      "Guard-Reset bei qa_failed nach in_progress",
+      "Tests mit mindestens 90% Coverage"
+    ]
+  },
+  "tags": ["backend", "mcp", "guards", "state-machine", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["guard-enforcement", "state-machine-transition", "mcp-write-tool", "api-test"],
+  "linked_wiki": ["system-architektur", "state-machine-guide"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-5-001"]
+}

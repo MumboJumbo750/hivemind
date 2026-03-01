@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-5-020",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Guard-Provenance im Review Panel (Frontend)",
+  "description": "Review Panel: source pro Guard (self-reported|system-executed), checked_at, Warnhinweis bei leerer self-reported Ausgabe. Guard-Status-Uebersicht.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "source Badge pro Guard",
+      "checked_at Zeitstempel",
+      "Warnhinweis bei leerer Ausgabe",
+      "Guard-Status-Uebersicht",
+      "Visuelle Unterscheidung"
+    ]
+  },
+  "tags": ["frontend", "review", "guards", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-5-002"]
+}

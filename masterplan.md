@@ -138,5 +138,5 @@ DB:         PostgreSQL 16 + pgvector
 Embeddings: Ollama nomic-embed-text (ab Phase 3)
 Frontend:   Vue 3 + Vite + TypeScript + Reka UI + Design Tokens (CSS Variables)
 Runtime:    Docker Compose
-MCP:        stdio (lokal) + HTTP/SSE (team/remote)
+MCP:        MCP 1.0 Standard (SSE/JSON-RPC 2.0) + Convenience REST + stdio (lokal)
 ```

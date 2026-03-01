@@ -17,6 +17,7 @@ export interface Epic {
   dod_framework?: { criteria: string[] } | null
   version: number
   owner_id?: string | null
+  backup_owner_id?: string | null
 }
 
 export interface Task {
@@ -35,6 +36,20 @@ export interface Task {
   assigned_node_name?: string | null
 }
 
+// ─── Context Boundary ──────────────────────────────────────────────────────
+
+export interface ContextBoundary {
+  id: string
+  task_id: string
+  allowed_skills: string[] | null
+  allowed_docs: string[] | null
+  external_access: string[] | null
+  max_token_budget: number | null
+  version: number
+  set_by: string
+  created_at: string
+}
+
 // ─── Skills ────────────────────────────────────────────────────────────────
 
 export interface Skill {
@@ -44,11 +59,36 @@ export interface Skill {
   service_scope: string[]
   stack: string[]
   skill_type: 'system' | 'domain'
-  lifecycle: 'draft' | 'active' | 'deprecated'
+  lifecycle: 'draft' | 'active' | 'pending_merge' | 'rejected' | 'deprecated'
   federation_scope: 'local' | 'federated'
+  confidence: number
+  token_count: number | null
+  version: number
+  owner_id: string | null
+  proposed_by: string | null
+  proposed_by_username: string | null
+  rejection_rationale: string | null
   origin_node_id: string | null
   origin_node_name: string | null
   created_at: string
+  updated_at: string | null
+}
+
+export interface SkillVersion {
+  id: string
+  skill_id: string
+  version: number
+  content: string
+  token_count: number | null
+  diff_from_previous: string | null
+  changed_by: string
+  created_at: string
+}
+
+export interface SkillListResponse {
+  data: Skill[]
+  total_count: number
+  has_more: boolean
 }
 
 export interface SkillForkResponse {
@@ -57,6 +97,31 @@ export interface SkillForkResponse {
   origin_node_id: string | null
   federation_scope: string
   created: boolean
+}
+
+// ─── Epic Proposals ────────────────────────────────────────────────────────
+
+export interface EpicProposal {
+  id: string
+  project_id: string
+  proposed_by: string
+  proposed_by_username: string | null
+  title: string
+  description: string
+  rationale: string | null
+  state: 'proposed' | 'accepted' | 'rejected'
+  depends_on: string[] | null
+  resulting_epic_id: string | null
+  rejection_reason: string | null
+  version: number
+  created_at: string
+  updated_at: string
+}
+
+export interface EpicProposalListResponse {
+  data: EpicProposal[]
+  total_count: number
+  has_more: boolean
 }
 
 // ─── Federation ────────────────────────────────────────────────────────────
@@ -117,4 +182,61 @@ export interface McpStatus {
   transport: string
   connected: boolean
   last_check: string
+}
+
+export interface AuditEntry {
+  id: string
+  actor_id: string
+  actor_username: string | null
+  actor_role: string
+  tool_name: string
+  epic_id: string | null
+  target_id: string | null
+  input_snapshot: Record<string, unknown> | null
+  input_truncated: boolean
+  output_snapshot: Record<string, unknown> | null
+  output_truncated: boolean
+  duration_ms: number | null
+  status: string
+  created_at: string
+}
+
+export interface AuditListResponse {
+  data: AuditEntry[]
+  total_count: number
+  has_more: boolean
+  page: number
+  page_size: number
+}
+
+// ─── Notifications (Phase 6) ───────────────────────────────────────────────
+
+export interface HivemindNotification {
+  id: string
+  user_id: string
+  type: string
+  priority: 'action_now' | 'soon' | 'fyi'
+  title: string
+  body: string | null
+  link: string | null
+  entity_type: string | null
+  entity_id: string | null
+  read: boolean
+  created_at: string
+}
+
+// ─── Decision Requests ─────────────────────────────────────────────────────
+
+export interface DecisionRequest {
+  id: string
+  task_id: string | null
+  epic_id: string | null
+  owner_id: string | null
+  backup_owner_id: string | null
+  state: 'open' | 'resolved' | 'expired'
+  sla_due_at: string | null
+  payload: Record<string, unknown> | null
+  resolved_by: string | null
+  resolved_at: string | null
+  created_at: string
 }

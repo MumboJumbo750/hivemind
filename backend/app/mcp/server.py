@@ -1,12 +1,16 @@
-"""Hivemind MCP Server — stdio + HTTP/SSE Transport (TASK-3-001).
+"""Hivemind MCP Server — MCP 1.0 Standard (TASK-3-001).
 
 Provides Model Context Protocol tools under the ``hivemind/`` namespace.
-Transport selection via ``HIVEMIND_TRANSPORT`` env variable:
-  - ``stdio``  (default) — for local AI clients (Claude Desktop, Cursor)
-  - ``http``   — HTTP/SSE for web clients / remote instances
 
-Tool registration happens via :func:`register_all_tools`.
-Auth: stdio uses local API-Key, HTTP uses JWT from Phase 2.
+Transports (always available via FastAPI):
+  - **SSE** (standard): ``GET /api/mcp/sse`` + ``POST /api/mcp/message``
+    JSON-RPC 2.0 over SSE — for external MCP clients (Cursor, Claude Desktop, Continue)
+  - **Convenience REST**: ``GET /api/mcp/tools`` + ``POST /api/mcp/call``
+    Simple JSON — for the Hivemind frontend
+  - **stdio**: for local AI clients when started with ``HIVEMIND_TRANSPORT=stdio``
+
+Tool registration via :func:`register_tool` in ``app/mcp/tools/``.
+Auth: SSE/REST uses JWT/solo-token from Phase 2, stdio uses local API-Key.
 Every tool call is audited to ``mcp_invocations``.
 """
 from __future__ import annotations

@@ -1,9 +1,15 @@
 import time
+import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Depends, status
+from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.models.context_boundary import ContextBoundary
+from app.models.task import Task
 from app.routers.deps import get_current_actor
 from app.schemas.auth import CurrentActor
 from app.schemas.task import TaskResponse, TaskReview, TaskStateTransition, TaskUpdate
@@ -97,3 +103,51 @@ async def review_task(
         duration_ms=duration,
     )
     return task  # type: ignore[return-value]
+
+
+# ── Context Boundary ──────────────────────────────────────────────────────────
+
+class ContextBoundaryResponse(BaseModel):
+    id: uuid.UUID
+    task_id: uuid.UUID
+    allowed_skills: Optional[list[uuid.UUID]] = None
+    allowed_docs: Optional[list[uuid.UUID]] = None
+    external_access: Optional[list[str]] = None
+    max_token_budget: Optional[int] = None
+    version: int
+    set_by: uuid.UUID
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/{task_key}/context-boundary", response_model=Optional[ContextBoundaryResponse])
+async def get_context_boundary(
+    task_key: str,
+    db: AsyncSession = Depends(get_db),
+) -> Optional[ContextBoundaryResponse]:
+    """Return the context boundary for a task, or null if none is set."""
+    # resolve task_key → task.id
+    result = await db.execute(select(Task.id).where(Task.task_key == task_key))
+    task_id = result.scalar_one_or_none()
+    if task_id is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Task {task_key} not found")
+
+    result2 = await db.execute(
+        select(ContextBoundary).where(ContextBoundary.task_id == task_id)
+    )
+    cb = result2.scalar_one_or_none()
+    if cb is None:
+        return None
+    return ContextBoundaryResponse(
+        id=cb.id,
+        task_id=cb.task_id,
+        allowed_skills=cb.allowed_skills,
+        allowed_docs=cb.allowed_docs,
+        external_access=cb.external_access,
+        max_token_budget=cb.max_token_budget,
+        version=cb.version,
+        set_by=cb.set_by,
+        created_at=cb.created_at.isoformat(),
+    )

@@ -21,7 +21,7 @@ Du implementierst den Prompt-Generator-Service — das Herzstück der Agent-Prom
 
 ### Konventionen
 - Service in `app/services/prompt_generator.py`
-- MCP-Tool: `hivemind/get_prompt { "type": "<agent>", "task_id": "TASK-88" }`
+- MCP-Tool: `hivemind/get_prompt { "type": "<agent>", "task_id": "TASK-88" }` (task_id accepts task_key values)
 - Prompt-Templates sind Skills mit `lifecycle='active'` — versioniert und austauschbar
 - Jeder `get_prompt`-Aufruf schreibt einen `prompt_history`-Eintrag:
   - `agent_type`, `prompt_type`, `prompt_text`, `token_count`, `generated_by`

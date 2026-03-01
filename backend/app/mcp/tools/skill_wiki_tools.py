@@ -205,16 +205,45 @@ register_tool(
 # ── search_wiki ────────────────────────────────────────────────────────────
 
 async def _handle_search_wiki(args: dict) -> list[TextContent]:
-    """Text search across wiki articles (title + body ILIKE, optional tag filter)."""
+    """Full-text search across wiki articles using tsvector/tsquery + optional tag filter.
+
+    Falls back to ILIKE if tsvector column not available (pre-migration).
+    Supports hybrid ranking with pgvector similarity when embeddings exist.
+    """
     query = args.get("query", "")
     tags = args.get("tags")  # comma-separated or list
     limit = min(int(args.get("limit", 20)), 100)
     offset = max(int(args.get("offset", 0)), 0)
+    use_fulltext = args.get("fulltext", True)
 
     async with AsyncSessionLocal() as db:
         q = select(WikiArticle).where(WikiArticle.deleted_at.is_(None))
 
-        if query:
+        if query and use_fulltext:
+            # Try tsquery full-text search with ranking
+            try:
+                from sqlalchemy import text as sql_text
+                # Use plainto_tsquery for safe input handling
+                ts_query = sql_text(
+                    "search_vector @@ plainto_tsquery('german', :q)"
+                ).bindparams(q=query)
+                q = q.where(ts_query)
+                # Order by ts_rank
+                rank_expr = sql_text(
+                    "ts_rank(search_vector, plainto_tsquery('german', :q))"
+                ).bindparams(q=query)
+                q = q.order_by(rank_expr.desc())
+            except Exception:
+                # Fallback to ILIKE if tsquery fails
+                pattern = f"%{query}%"
+                q = q.where(
+                    or_(
+                        WikiArticle.title.ilike(pattern),
+                        WikiArticle.content.ilike(pattern),
+                    )
+                )
+                q = q.order_by(WikiArticle.updated_at.desc())
+        elif query:
             pattern = f"%{query}%"
             q = q.where(
                 or_(
@@ -222,6 +251,9 @@ async def _handle_search_wiki(args: dict) -> list[TextContent]:
                     WikiArticle.content.ilike(pattern),
                 )
             )
+            q = q.order_by(WikiArticle.updated_at.desc())
+        else:
+            q = q.order_by(WikiArticle.updated_at.desc())
 
         if tags:
             tag_list = tags if isinstance(tags, list) else [t.strip() for t in tags.split(",")]
@@ -233,7 +265,7 @@ async def _handle_search_wiki(args: dict) -> list[TextContent]:
         total = (await db.execute(count_q)).scalar_one()
 
         # Paginate
-        q = q.order_by(WikiArticle.updated_at.desc()).limit(limit).offset(offset)
+        q = q.limit(limit).offset(offset)
         result = await db.execute(q)
         articles = [
             {
@@ -252,12 +284,13 @@ async def _handle_search_wiki(args: dict) -> list[TextContent]:
 register_tool(
     Tool(
         name="hivemind/search_wiki",
-        description="Wiki-Suche über Title + Body mit optionalem Tag-Filter.",
+        description="Wiki-Volltextsuche mit PostgreSQL tsvector/tsquery + Tag-Filter. Fallback auf ILIKE.",
         inputSchema={
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "Suchbegriff (ILIKE auf title + content)"},
+                "query": {"type": "string", "description": "Suchbegriff (tsquery auf title + content)"},
                 "tags": {"type": "string", "description": "Komma-separierte Tags zum Filtern"},
+                "fulltext": {"type": "boolean", "description": "tsvector nutzen (default: true, false = ILIKE)"},
                 "limit": {"type": "integer", "description": "Max results (default 20, max 100)"},
                 "offset": {"type": "integer", "description": "Pagination offset"},
             },

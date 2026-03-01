@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-5-008",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Review-Prompt-Generator",
+  "description": "get_prompt type=review task_id: DoD-Kriterien, Guard-Status mit Provenance (source, checked_at), Task-Result+Artifacts, qa_failed_count. Warnhinweis bei self-reported mit leerer Ausgabe. Jinja2-Template.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Review-Prompt mit DoD als Checkliste",
+      "Guard-Status mit Provenance",
+      "Warnhinweis bei leerer self-reported Ausgabe",
+      "Task-Result und Artifacts",
+      "Tests"
+    ]
+  },
+  "tags": ["backend", "prompts", "review", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["prompt-generator", "prompt-template-review", "guard-enforcement"],
+  "linked_wiki": ["agent-konzept", "byoai-workflow"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-5-004"]
+}

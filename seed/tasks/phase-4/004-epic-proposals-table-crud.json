@@ -1,0 +1,28 @@
+{
+  "external_id": "TASK-4-004",
+  "epic_ref": "EPIC-PHASE-4",
+  "title": "epic_proposals Tabelle + CRUD-Endpoints",
+  "description": "Neues Datenmodell für Epic-Proposals anlegen: Alembic-Migration für `epic_proposals`-Tabelle (id UUID PK, project_id FK, proposed_by FK, title, description, rationale, state [proposed|accepted|rejected], depends_on UUID[], resulting_epic_id FK nullable, rejection_reason, created_at, updated_at, version INT). Pydantic-Schemas: EpicProposalCreate, EpicProposalUpdate, EpicProposalResponse. REST-CRUD-Endpoints: `GET /api/epic-proposals?project_id=&state=` (paginated, triage/admin/developer), `POST /api/epic-proposals` (developer+), `PATCH /api/epic-proposals/{id}` (Proposer oder admin, Optimistic Locking), `POST /api/epic-proposals/{id}/accept` (triage/admin), `POST /api/epic-proposals/{id}/reject` (triage/admin, body: {reason}). Service-Layer in `app/services/epic_service.py` ergänzen. Audit-Log für alle mutierende Operationen. Index: `(project_id, state)` für schnelle Triage-Abfragen.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "Alembic-Migration erstellt epic_proposals-Tabelle mit allen Spalten und Indexes",
+      "GET /api/epic-proposals filtert korrekt nach project_id und state",
+      "POST /api/epic-proposals erstellt Proposal mit state='proposed'",
+      "PATCH /api/epic-proposals/{id} prüft Optimistic Lock (Version-Mismatch → 409)",
+      "POST /api/epic-proposals/{id}/accept erstellt Epic und setzt resulting_epic_id",
+      "POST /api/epic-proposals/{id}/reject setzt state='rejected' mit Begründung",
+      "RBAC korrekt: propose ohne write_epics → 403; accept/reject ohne manage_proposals → 403",
+      "Audit-Log-Eintrag für jede Mutation",
+      "Unit-Test: CRUD, Accept→Epic erstellt, Reject→Notification, Optimistic Lock"
+    ]
+  },
+  "tags": ["backend", "api", "database"],
+  "subtasks": [],
+  "pinned_skills": ["alembic-migration", "fastapi-endpoint", "pydantic-model", "rbac-middleware", "optimistic-locking", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-4.md",
+  "estimated_complexity": "large",
+  "depends_on": []
+}

@@ -42,7 +42,8 @@ const filteredSkills = computed(() => {
 async function loadSkills() {
   loading.value = true
   try {
-    skills.value = await api.getSkills('federated')
+    const res = await api.getSkills({ lifecycle: 'active' })
+    skills.value = res.data.filter(s => s.federation_scope === 'federated')
   } catch {
     toast.danger('Federated Skills konnten nicht geladen werden.')
   } finally {

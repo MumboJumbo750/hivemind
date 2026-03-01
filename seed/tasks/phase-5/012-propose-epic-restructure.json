@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-5-012",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "propose_epic_restructure MCP-Tool",
+  "description": "hivemind/propose_epic_restructure: Typen split|merge|task_move. Payload-Validierung. state=proposed. Notification restructure_proposal an Admins. code_node_refs.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Proposal fuer split/merge/task_move",
+      "Payload-Validierung alle Typen",
+      "state=proposed",
+      "Notification an Admins",
+      "code_node_refs gespeichert",
+      "Tests"
+    ]
+  },
+  "tags": ["backend", "mcp", "kartograph", "restructure", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["mcp-write-tool", "epic-restructure-proposal", "notification-dispatch", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-5-010"]
+}

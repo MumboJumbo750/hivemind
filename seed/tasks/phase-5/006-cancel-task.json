@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-5-006",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "cancel_task MCP-Tool (Admin)",
+  "description": "hivemind/cancel_task: Admin cancelt Task aus incoming|scoped|ready|in_progress|blocked|escalated. Nicht aus done/in_review (ausser force). Force-Cancel nur bei in_review+epic cancelled+owner_inactive>=72h. Offene decision_requests auf expired. Epic-Auto-Transition.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Cancel aus erlaubten States",
+      "422 bei done/in_review (ohne force)",
+      "Force-Cancel Bedingungen geprueft",
+      "decision_requests auf expired",
+      "Epic-Auto-Transition",
+      "Audit-Log mit force_cancel-Flag",
+      "Tests"
+    ]
+  },
+  "tags": ["backend", "mcp", "admin", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["mcp-write-tool", "state-machine-transition", "rbac-middleware", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-5-003"]
+}

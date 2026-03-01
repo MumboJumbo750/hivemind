@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-5-005",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "qa_failed-Flow & Worker-Re-entry-Eskalation",
+  "description": "qa_failed nach in_progress: Worker via update_task_state. Guard-Reset: alle task_guards auf pending. Eskalation: qa_failed_count>=3 setzt System escalated statt in_progress. Fehler-Response mit Eskalations-Hinweis.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Worker kann qa_failed nach in_progress setzen",
+      "Guard-Reset: alle task_guards auf pending",
+      "qa_failed_count>=3: escalated statt in_progress",
+      "Eskalation-Response mit Hinweis",
+      "Tests fuer beide Pfade"
+    ]
+  },
+  "tags": ["backend", "mcp", "escalation", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["review-workflow", "guard-enforcement", "state-machine-transition", "api-test"],
+  "linked_wiki": ["system-architektur", "state-machine-guide"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-5-004"]
+}

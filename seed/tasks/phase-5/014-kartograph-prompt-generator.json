@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-5-014",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Kartograph-Prompt-Generator",
+  "description": "get_prompt type=kartograph: Unerkundete Code-Nodes, zuletzt kartierte Bereiche, Wiki-Uebersicht. Write-Tools: create_wiki_article etc. Kein task/epic Kontext noetig. Jinja2-Template.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Kartograph-Prompt ohne task/epic Pflicht",
+      "Unerkundete Code-Nodes",
+      "Write-Tools",
+      "Tests"
+    ]
+  },
+  "tags": ["backend", "prompts", "kartograph", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["prompt-generator", "prompt-template-kartograph"],
+  "linked_wiki": ["agent-konzept"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-5-010"]
+}

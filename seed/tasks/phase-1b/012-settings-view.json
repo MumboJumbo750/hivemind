@@ -1,8 +1,8 @@
 {
   "external_id": "TASK-1B-012",
   "epic_ref": "EPIC-PHASE-1B",
-  "title": "Settings View — Theme, Solo/Team, MCP-Transport",
-  "description": "`src/views/Settings/SettingsView.vue` vollständig implementieren (ersetzt den Platzhalter aus TASK-1B-008). Drei Einstellungsbereiche: (1) Theme-Auswahl: drei Theme-Cards oder Radio-Buttons für `space-neon`, `industrial-amber`, `operator-mono`. Jede Option zeigt eine kleine Farbpaletten-Vorschau. Bei Auswahl wird `useTheme().setTheme(selected)` aufgerufen — Live-Vorschau sofort sichtbar (das gesamte Layout wechselt das Theme). Aktives Theme ist visuell hervorgehoben. (2) Solo/Team-Toggle: `<Toggle>` (Reka UI) zwischen `solo` und `team`. In Phase 1 wird der Wert nur im Pinia-Store `src/stores/settingsStore.ts` gespeichert (localStorage), kein Backend-Write. Label und Beschreibungstext erklären den Unterschied. (3) MCP-Transport-Auswahl: Dropdown (`HivemindDropdown`) mit Optionen `stdio`, `http`, `sse`. In Phase 1 ohne Backend-Anbindung — Wert wird im settingsStore gespeichert. Hinweis-Text: 'MCP-Backend-Anbindung ab Phase 2'. `src/stores/settingsStore.ts` anlegen mit `theme`, `mode` (`solo | team`), `mcpTransport`-State, persistiert in localStorage via defineStore + watch.",
+  "title": "Settings View — Theme, Solo/Team, MCP-Status",
+  "description": "`src/views/Settings/SettingsView.vue` vollständig implementieren (ersetzt den Platzhalter aus TASK-1B-008). Drei Einstellungsbereiche: (1) Theme-Auswahl: drei Theme-Cards oder Radio-Buttons für `space-neon`, `industrial-amber`, `operator-mono`. Jede Option zeigt eine kleine Farbpaletten-Vorschau. Bei Auswahl wird `useTheme().setTheme(selected)` aufgerufen — Live-Vorschau sofort sichtbar (das gesamte Layout wechselt das Theme). Aktives Theme ist visuell hervorgehoben. (2) Solo/Team-Toggle: `<Toggle>` (Reka UI) zwischen `solo` und `team`. In Phase 1 wird der Wert nur im Pinia-Store `src/stores/settingsStore.ts` gespeichert (localStorage), kein Backend-Write. Label und Beschreibungstext erklären den Unterschied. (3) MCP-Verbindungsstatus: Read-only Anzeige des MCP-Protokolls (MCP 1.0), Transport (SSE), Tool-Count und aktiven Sessions via `GET /api/mcp/status`. Kein Dropdown mehr — der Transport ist immer SSE/JSON-RPC 2.0 (Standard). `src/stores/settingsStore.ts` anlegen mit `theme`, `mode` (`solo | team`)-State, persistiert in localStorage via defineStore + watch.",
   "state": "incoming",
   "priority": "medium",
   "definition_of_done": {
@@ -11,7 +11,7 @@
       "Theme-Auswahl wechselt das Theme live via `useTheme().setTheme()` — visuell sofort sichtbar",
       "Aktives Theme ist in der Auswahl hervorgehoben",
       "Solo/Team-Toggle speichert den Wert im `settingsStore` und überlebt Page-Reload",
-      "MCP-Transport-Dropdown zeigt `stdio`, `http`, `sse` und speichert Wahl im `settingsStore`",
+      "MCP-Verbindungsstatus zeigt Protokoll (MCP 1.0), Transport (SSE), Tool-Count und aktive Sessions (read-only aus `/api/mcp/status`)",
       "`src/stores/settingsStore.ts` existiert und persistiert alle Settings in localStorage"
     ]
   },

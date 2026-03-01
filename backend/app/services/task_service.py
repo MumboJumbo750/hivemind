@@ -154,6 +154,10 @@ class TaskService:
         task.version += 1
         await self.db.flush()
 
+        # ── TASK-6-003: Escalation notification on 3x qa_failed ──────
+        if effective_state == "escalated" and current_state == "qa_failed":
+            await self._notify_escalation(task)
+
         # Federation: notify peer if task is delegated
         if task.assigned_node_id:
             from app.services.federation_service import notify_peer_task_update
@@ -224,3 +228,59 @@ class TaskService:
 
         await self.db.refresh(task)
         return task
+
+    async def _notify_escalation(self, task: Task) -> None:
+        """Send escalation notification to epic owner + admins (TASK-6-003)."""
+        try:
+            from app.services.notification_service import (
+                create_notification,
+                get_admin_user_ids,
+                notify_users,
+            )
+            from app.services.audit import write_audit
+
+            epic = await _get_epic(self.db, task.epic_id)
+            entity_id = str(task.id)
+            body = (
+                f"Task '{task.title}' ({task.task_key}) wurde nach 3x qa_failed "
+                f"automatisch eskaliert."
+            )
+
+            # Notify epic owner
+            if epic.owner_id:
+                await create_notification(
+                    self.db,
+                    user_id=epic.owner_id,
+                    notification_type="escalation",
+                    body=body,
+                    link=f"/tasks/{task.task_key}",
+                    entity_type="task",
+                    entity_id=entity_id,
+                )
+
+            # Notify all admins (deduplicate with owner)
+            admin_ids = await get_admin_user_ids(self.db)
+            owner_set = {epic.owner_id} if epic.owner_id else set()
+            other_admins = [uid for uid in admin_ids if uid not in owner_set]
+            if other_admins:
+                await notify_users(
+                    self.db,
+                    user_ids=other_admins,
+                    notification_type="escalation",
+                    body=body,
+                    link=f"/tasks/{task.task_key}",
+                    entity_type="task",
+                    entity_id=entity_id,
+                )
+
+            # Audit log
+            await write_audit(
+                tool_name="auto_escalation_3x_qa_failed",
+                actor_id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
+                actor_role="system",
+                input_payload={"task_key": task.task_key, "qa_failed_count": task.qa_failed_count},
+                target_id=str(task.id),
+            )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("_notify_escalation failed (non-critical)")

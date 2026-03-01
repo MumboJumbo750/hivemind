@@ -464,18 +464,23 @@ def import_skills(
         skill_id = str(uuid.uuid4())
         vr_jsonb: str | None = json.dumps(version_range) if version_range is not None else None
 
+        lifecycle: str = str(meta.get("lifecycle") or "active")  # seed skills are pre-approved
+        skill_type_val: str = str(meta.get("skill_type") or "domain")
+
         cur.execute(
             """
             INSERT INTO skills (
                 id, project_id, title, content,
                 service_scope, stack,
                 version_range, confidence,
-                source_epics, owner_id
+                source_epics, owner_id,
+                lifecycle, skill_type
             ) VALUES (
                 %s, %s, %s, %s,
                 %s::text[], %s::text[],
                 %s::jsonb, %s,
-                %s::text[], %s
+                %s::text[], %s,
+                %s, %s
             )
             """,
             (
@@ -489,6 +494,8 @@ def import_skills(
                 confidence,
                 source_epics,
                 admin_id,
+                lifecycle,
+                skill_type_val,
             ),
         )
 
@@ -503,6 +510,122 @@ def import_skills(
         )
 
         print(f"  ✓ Skill importiert: {title}")
+        ok += 1
+
+    print(f"  → {ok} neu importiert, {skipped} übersprungen.")
+
+
+# ─── Docs ─────────────────────────────────────────────────────────────────────
+
+def import_docs(
+    cur: psycopg2.extensions.cursor,
+    epic_map: dict[str, str],
+    admin_id: str,
+) -> None:
+    """
+    Importiert seed/docs/*.md → docs-Tabelle.
+    Frontmatter-Felder: epic_ref (external_id), title
+    Dedup via title + epic_id.
+    """
+    docs_dir = SEED_DIR / "docs"
+    if not docs_dir.exists():
+        print("  WARNUNG: seed/docs/ nicht gefunden, übersprungen.")
+        return
+
+    ok = skipped = 0
+
+    for f in sorted(docs_dir.glob("*.md")):
+        raw = f.read_text(encoding="utf-8")
+        meta, body = parse_frontmatter(raw)
+
+        title:    str       = str(meta.get("title") or f.stem)
+        epic_ref: str | None = meta.get("epic_ref")
+
+        if not epic_ref:
+            print(f"  WARNUNG: {f.name}: kein epic_ref — übersprungen.")
+            skipped += 1
+            continue
+
+        epic_id = epic_map.get(epic_ref)
+        if not epic_id:
+            print(f"  WARNUNG: {f.name}: epic_ref '{epic_ref}' nicht gefunden — übersprungen.")
+            skipped += 1
+            continue
+
+        # Dedup via title + epic_id
+        cur.execute(
+            "SELECT id FROM docs WHERE title = %s AND epic_id = %s",
+            (title, epic_id),
+        )
+        if cur.fetchone():
+            print(f"  ✓ Doc bereits vorhanden: {title}")
+            skipped += 1
+            continue
+
+        doc_id = str(uuid.uuid4())
+        cur.execute(
+            """
+            INSERT INTO docs (id, title, content, epic_id, updated_by)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (doc_id, title, body, epic_id, admin_id),
+        )
+        print(f"  ✓ Doc importiert: {title} → Epic {epic_ref}")
+        ok += 1
+
+    print(f"  → {ok} neu importiert, {skipped} übersprungen.")
+
+
+# ─── Decision Records ─────────────────────────────────────────────────────────
+
+def import_decisions(
+    cur: psycopg2.extensions.cursor,
+    epic_map: dict[str, str],
+    admin_id: str,
+) -> None:
+    """
+    Importiert seed/decisions/*.json → decision_records-Tabelle.
+    Felder: decision_key (Dedup-Key), epic_ref, decision, rationale
+    """
+    dec_dir = SEED_DIR / "decisions"
+    if not dec_dir.exists():
+        print("  WARNUNG: seed/decisions/ nicht gefunden, übersprungen.")
+        return
+
+    ok = skipped = 0
+
+    for f in sorted(dec_dir.glob("*.json")):
+        data: dict[str, Any] = json.loads(f.read_text(encoding="utf-8"))
+        decision_key: str = data.get("decision_key", f.stem)
+        epic_ref: str | None = data.get("epic_ref")
+        decision: str = data.get("decision", "")
+        rationale: str = data.get("rationale", "")
+
+        epic_id = epic_map.get(epic_ref) if epic_ref else None
+        if not epic_id and epic_ref:
+            print(f"  WARNUNG: {decision_key}: epic_ref '{epic_ref}' nicht gefunden — übersprungen.")
+            skipped += 1
+            continue
+
+        # Dedup via decision text + epic_id
+        cur.execute(
+            "SELECT id FROM decision_records WHERE decision = %s AND epic_id = %s",
+            (decision, epic_id),
+        )
+        if cur.fetchone():
+            print(f"  ✓ Decision bereits vorhanden: {decision_key}")
+            skipped += 1
+            continue
+
+        dr_id = str(uuid.uuid4())
+        cur.execute(
+            """
+            INSERT INTO decision_records (id, epic_id, decision, rationale, decided_by)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (dr_id, epic_id, decision, rationale, admin_id),
+        )
+        print(f"  ✓ Decision importiert: {decision_key}")
         ok += 1
 
     print(f"  → {ok} neu importiert, {skipped} übersprungen.")
@@ -526,28 +649,37 @@ def main() -> None:
 
     try:
         with conn.cursor() as cur:
-            print("\n[1/6] Bootstrap Admin-User")
+            print("\n[1/8] Bootstrap Admin-User")
             admin_id = upsert_admin_user(cur)
 
-            print("\n[2/6] Project")
+            print("\n[2/8] Project")
             project_id = import_project(cur, admin_id)
 
-            print("\n[3/6] Epics")
+            print("\n[3/8] Epics")
             epic_map = import_epics(cur, project_id, admin_id)
             if not epic_map:
                 print("  WARNUNG: Keine Epics importiert — Task-Import wird übersprungen.")
 
-            print("\n[4/6] Tasks")
+            print("\n[4/8] Tasks")
             if epic_map:
                 import_tasks(cur, epic_map)
             else:
                 print("  Übersprungen (kein epic_map).")
 
-            print("\n[5/6] Wiki")
+            print("\n[5/8] Wiki")
             import_wiki(cur, project_id, admin_id, epic_map)
 
-            print("\n[6/6] Skills")
+            print("\n[6/8] Skills")
             import_skills(cur, project_id, admin_id)
+
+            print("\n[7/8] Docs")
+            import_docs(cur, epic_map, admin_id)
+
+            print("\n[8/8] Decisions")
+            if epic_map:
+                import_decisions(cur, epic_map, admin_id)
+            else:
+                print("  Übersprungen (kein epic_map).")
 
         conn.commit()
         print("\n" + "=" * 60)

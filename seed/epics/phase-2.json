@@ -2,11 +2,20 @@
   "external_id": "EPIC-PHASE-2",
   "title": "Phase 2 — Identity & RBAC",
   "description": "User-Registrierung, JWT-Auth, Rollenbasierte Zugriffskontrolle, Audit-Log, Solo/Team-Modus, Command Deck, Notifications.",
-  "state": "scoped",
+  "state": "done",
   "priority": "high",
   "sla_deadline": null,
   "definition_of_done": "Login/Registration funktioniert, RBAC auf allen Write-Endpoints aktiv, Optimistic Locking + Idempotenz auf allen Writes, Solo/Team-Toggle funktional, Command Deck zeigt Epics/Tasks.",
-  "tags": ["backend", "frontend", "auth", "rbac", "phase-2"],
-  "depends_on": ["EPIC-PHASE-1A", "EPIC-PHASE-1B"],
+  "tags": [
+    "backend",
+    "frontend",
+    "auth",
+    "rbac",
+    "phase-2"
+  ],
+  "depends_on": [
+    "EPIC-PHASE-1A",
+    "EPIC-PHASE-1B"
+  ],
   "source_doc": "docs/phases/phase-2.md"
 }

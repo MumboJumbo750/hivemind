@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-5-018",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Wiki View (Frontend)",
+  "description": "Vue 3: Artikel-Reader (Markdown), Suchleiste, Tag-Filter, Mit-Epic-verknuepfen-Dialog, Versions-History. Reka UI.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Markdown-Renderer + Code-Highlighting",
+      "Suchleiste mit debounced Input",
+      "Tag-Filter Mehrfach-Selektion",
+      "Epic-Verknuepfungs-Dialog",
+      "Versions-History",
+      "Responsive Layout"
+    ]
+  },
+  "tags": ["frontend", "wiki", "vue", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-5-015"]
+}

@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-5-015",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Wiki-Such-Backend: Volltextsuche + Tag-Filterung",
+  "description": "PostgreSQL tsvector/tsquery ueber title+content. GIN-Index. Tag-Filterung vor Textsuche. Hybrid mit pgvector falls Embedding vorhanden. REST: GET /api/wiki/search + MCP: search_wiki.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Volltextsuche via tsvector/tsquery",
+      "GIN-Index (Alembic-Migration)",
+      "Tag-Filterung (Array-Overlap)",
+      "Hybrid-Ranking bei Embedding",
+      "REST + MCP nutzen gleichen Service",
+      "Tests"
+    ]
+  },
+  "tags": ["backend", "wiki", "search", "postgresql", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["wiki-fulltext-search", "fastapi-endpoint", "alembic-migration", "api-test"],
+  "linked_wiki": ["system-architektur", "tech-stack"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-5-010"]
+}

@@ -1,0 +1,28 @@
+{
+  "external_id": "TASK-4-005",
+  "epic_ref": "EPIC-PHASE-4",
+  "title": "Skill Lab Backend: Skills CRUD & Lifecycle-Transitions",
+  "description": "Vollständige Backend-Unterstützung für den Skill Lab: REST-Endpoints für Skill CRUD (`GET /api/skills` mit lifecycle-Filter, `GET /api/skills/{id}`, `GET /api/skills/{id}/versions`, `POST /api/skills` als draft, `PATCH /api/skills/{id}` für draft-Skills). Lifecycle-Transition-Endpoints: `POST /api/skills/{id}/submit` (draft → pending_merge, developer), `POST /api/skills/{id}/merge` (pending_merge → active, admin), `POST /api/skills/{id}/reject` (pending_merge → rejected, admin, body: {rationale}). State-Machine-Enforcement: ungültige Transition → 422 mit INVALID_STATE_TRANSITION. skill_versions-Einträge bei jeder Content-Änderung und bei merge. Token-Count automatisch berechnen (tiktoken) bei skill create/update. Notification-Events: SkillMergedEvent, SkillRejectedEvent via event_bus → Notification an proposed_by. Audit-Log für alle Transitions. Query-Filter: `GET /api/skills?lifecycle=active|draft|pending_merge|rejected&service_scope=backend&stack=python`.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "GET /api/skills mit lifecycle-Filter gibt korrekt gefilterte Skills zurück",
+      "POST /api/skills erstellt Skill mit lifecycle='draft'",
+      "PATCH /api/skills/{id} nur für draft-Skills des Anfragenden (admin: alle)",
+      "POST /api/skills/{id}/submit: draft → pending_merge, ungültige Transition → 422",
+      "POST /api/skills/{id}/merge: pending_merge → active, erstellt skill_versions-Eintrag",
+      "POST /api/skills/{id}/reject: pending_merge → rejected, Notification an proposed_by",
+      "Token-Count wird bei create/update automatisch berechnet und gespeichert",
+      "RBAC: merge/reject ohne admin → 403",
+      "Unit-Test: Lifecycle-Transitions, ungültige Transition, Token-Count, Notification"
+    ]
+  },
+  "tags": ["backend", "api", "skills"],
+  "subtasks": [],
+  "pinned_skills": ["skill-lifecycle", "fastapi-endpoint", "state-machine-transition", "rbac-middleware", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-4.md",
+  "estimated_complexity": "large",
+  "depends_on": []
+}

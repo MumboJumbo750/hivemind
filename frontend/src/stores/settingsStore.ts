@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
 type AppMode = 'solo' | 'team'
-type McpTransport = 'stdio' | 'http' | 'sse'
+type McpTransport = 'sse' | 'stdio'
 
 const STORAGE_KEY = 'hivemind-settings'
 
@@ -14,7 +14,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const saved = _load()
   const mode = ref<AppMode>(saved.mode ?? 'solo')
   const notification_mode = ref<string>(saved.notification_mode ?? 'client')
-  const mcpTransport = ref<McpTransport>(saved.mcpTransport ?? 'stdio')
+  const mcpTransport = ref<McpTransport>(saved.mcpTransport ?? 'sse')
   const loading = ref(false)
   const error = ref<string | null>(null)
 

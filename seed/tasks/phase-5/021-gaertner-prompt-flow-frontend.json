@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-5-021",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Gaertner-Prompt-Flow (Frontend)",
+  "description": "Prompt Station: Task done zeigt Jetzt: Gaertner. SSE task_done triggert. Gaertner-Prompt laden via get_prompt. Copy-to-Clipboard.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Prompt Station zeigt Gaertner bei Task done",
+      "SSE-Event Trigger",
+      "Prompt laden und anzeigen",
+      "Task-Kontext sichtbar",
+      "Copy-to-Clipboard"
+    ]
+  },
+  "tags": ["frontend", "prompts", "gaertner", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "sse-event-stream", "design-token"],
+  "linked_wiki": ["agent-konzept", "byoai-workflow"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-5-013"]
+}

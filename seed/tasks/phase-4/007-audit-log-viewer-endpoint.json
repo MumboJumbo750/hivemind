@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-4-007",
+  "epic_ref": "EPIC-PHASE-4",
+  "title": "Audit-Log-Viewer Endpoint",
+  "description": "REST-Endpoint für den Audit-Log-Viewer implementieren: `GET /api/audit` mit Filteroptionen und Paginierung. Filter: `actor_id` (UUID), `entity_type` (task/skill/epic/proposal), `entity_id` (UUID), `action` (create_task/merge_skill/etc.), `from` + `to` (ISO-Timestamp-Range), `tool_name` (MCP-Tool-Name). Paginierung: `page` + `page_size` (max 100), Response inkl. `total_count` und `has_more`. Sortierung: `created_at DESC` default. Response-Schema: Audit-Entry mit id, actor_id, actor_username, action, entity_type, entity_id, tool_name, input_snapshot, output_snapshot, created_at. RBAC: admin sieht alle Einträge; developer sieht nur eigene (`actor_id = requester.id`); kein anonymer Zugriff. Performance: Index auf `(entity_type, entity_id)` und `(actor_id, created_at DESC)` — Diese sollten bereits aus Phase 1 existieren, ggf. ergänzen. Response-Limit: input_snapshot/output_snapshot auf 2000 Zeichen truncaten falls zu groß (mit `truncated: true` Flag).",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "GET /api/audit ohne Filter gibt letzte 50 Einträge zurück (admin) oder eigene (developer)",
+      "Filter entity_type + entity_id gibt korrekt gefilterte Einträge zurück",
+      "Filter from/to filtert nach Zeitraum korrekt",
+      "Paginierung: page/page_size, total_count im Response",
+      "RBAC: developer sieht nur eigene Einträge; ohne Auth → 401",
+      "input_snapshot/output_snapshot werden auf 2000 Zeichen truncated mit truncated-Flag",
+      "Unit-Test: Admin sieht alle; developer nur eigene; Filter und Paginierung korrekt"
+    ]
+  },
+  "tags": ["backend", "api", "audit"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "rbac-middleware", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-4.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

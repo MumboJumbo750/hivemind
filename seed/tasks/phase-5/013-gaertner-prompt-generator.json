@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-5-013",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Gaertner-Prompt-Generator",
+  "description": "get_prompt type=gaertner task_id|epic_id: Abgeschlossene Task-Details, Epic-Kontext, bestehende Skills, Memory-Entries. Write-Tools: propose_skill etc. Jinja2-Template.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Gaertner-Prompt mit Task/Epic-Kontext",
+      "Bestehende Skills zum Vergleich",
+      "Verfuegbare Write-Tools",
+      "Tests mit task_id und epic_id"
+    ]
+  },
+  "tags": ["backend", "prompts", "gaertner", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["prompt-generator", "prompt-template-gaertner"],
+  "linked_wiki": ["agent-konzept", "byoai-workflow"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-5-009"]
+}

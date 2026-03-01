@@ -17,6 +17,54 @@ const showCreateDialog = ref(false)
 const tokenCount = ref(0)
 const tokenMax = ref(8000)
 
+// Gaertner Prompt Flow (TASK-5-021)
+const showGaertnerPrompt = ref(false)
+const gaertnerPrompt = ref('')
+const gaertnerLoading = ref(false)
+const gaertnerCopied = ref(false)
+const gaertnerTaskKey = ref('')
+
+// SSE listener for task_done → trigger Gaertner prompt
+let sseSource: EventSource | null = null
+
+function startSSE() {
+  const base = (import.meta.env.VITE_API_URL as string) ?? 'http://localhost:8000'
+  sseSource = new EventSource(`${base}/api/events`)
+  sseSource.addEventListener('task_done', (evt) => {
+    try {
+      const data = JSON.parse(evt.data)
+      gaertnerTaskKey.value = data.task_key || ''
+      showGaertnerPrompt.value = true
+      loadGaertnerPrompt(data.task_key)
+    } catch { /* ignore parse errors */ }
+  })
+}
+
+async function loadGaertnerPrompt(taskKey?: string) {
+  gaertnerLoading.value = true
+  gaertnerCopied.value = false
+  try {
+    const result = await api.getPrompt(
+      'gaertner',
+      taskKey || gaertnerTaskKey.value || undefined,
+      projectStore.activeEpic?.id,
+      projectStore.activeProject?.id,
+    )
+    const parsed = JSON.parse(result[0]?.text || '{}')
+    gaertnerPrompt.value = parsed.data?.prompt || parsed.prompt || 'Kein Prompt verfügbar.'
+  } catch {
+    gaertnerPrompt.value = 'Fehler beim Laden des Gaertner-Prompts.'
+  } finally {
+    gaertnerLoading.value = false
+  }
+}
+
+async function copyGaertnerPrompt() {
+  await navigator.clipboard.writeText(gaertnerPrompt.value)
+  gaertnerCopied.value = true
+  setTimeout(() => { gaertnerCopied.value = false }, 2000)
+}
+
 // Inline-Review state
 const checkedCriteria = ref<boolean[]>([])
 const reviewComment = ref('')
@@ -103,10 +151,12 @@ async function handleScope() {
 onMounted(() => {
   projectStore.loadProjects()
   mcpStore.startPolling()
+  startSSE()
 })
 
 onUnmounted(() => {
   mcpStore.stopPolling()
+  if (sseSource) { sseSource.close(); sseSource = null }
 })
 </script>
 
@@ -230,6 +280,25 @@ onUnmounted(() => {
       <div v-if="!projectStore.activeTask && projectStore.activeProject" class="prompt-station__no-task">
         <p class="empty-text">Kein aktiver Task in diesem Epic.</p>
       </div>
+
+      <!-- Gaertner Prompt Flow (TASK-5-021) -->
+      <HivemindCard v-if="showGaertnerPrompt" class="prompt-station__gaertner">
+        <div class="gaertner-header">
+          <h3 class="panel-title">🌱 Gaertner — Nächster Schritt</h3>
+          <button class="gaertner-close" @click="showGaertnerPrompt = false">✕</button>
+        </div>
+        <p v-if="gaertnerTaskKey" class="gaertner-context">
+          Task <strong>{{ gaertnerTaskKey }}</strong> abgeschlossen — Gaertner-Prompt bereit.
+        </p>
+        <div v-if="gaertnerLoading" class="gaertner-loading">Lade Gaertner-Prompt...</div>
+        <pre v-else class="gaertner-prompt-text">{{ gaertnerPrompt }}</pre>
+        <div class="gaertner-actions">
+          <button class="btn-primary" @click="copyGaertnerPrompt" :disabled="gaertnerLoading">
+            {{ gaertnerCopied ? '✓ Kopiert!' : '📋 In Zwischenablage kopieren' }}
+          </button>
+          <button class="btn-secondary" @click="loadGaertnerPrompt()">↻ Neu laden</button>
+        </div>
+      </HivemindCard>
     </template>
   </div>
 </template>
@@ -456,5 +525,57 @@ onUnmounted(() => {
   background: color-mix(in srgb, var(--color-accent) 15%, transparent);
   border-color: var(--color-accent);
   color: var(--color-accent);
+}
+
+/* Gaertner Prompt Flow (TASK-5-021) */
+.prompt-station__gaertner {
+  border-left: 3px solid var(--color-success);
+}
+
+.gaertner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.gaertner-close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+.gaertner-context {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-3);
+}
+
+.gaertner-loading {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  padding: var(--space-4) 0;
+}
+
+.gaertner-prompt-text {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 0 0 var(--space-3);
+  line-height: 1.5;
+}
+
+.gaertner-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 </style>

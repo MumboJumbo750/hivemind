@@ -72,7 +72,7 @@
   - Button: `[EPIC SCOPEN → scoped ▶]`
   - Ab Phase 2 delegiert die Prompt Station an den Command Deck (Scoping-Modal dort)
 - [ ] Projekt-Anlegen-Dialog (minimal): Name, Slug, Beschreibung — erreichbar aus Prompt Station und System Bar
-- [ ] Settings-Seite (Solo/Team-Toggle, MCP-Transport-Auswahl, Theme-Auswahl — noch ohne Backend-Anbindung)
+- [ ] Settings-Seite (Solo/Team-Toggle, MCP-Verbindungsstatus, Theme-Auswahl — noch ohne Backend-Anbindung)
 - [ ] Routing (Vue Router — alle Views als Platzhalter angelegt)
 
 ### Technische Details

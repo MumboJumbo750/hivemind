@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-5-019",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Nexus Grid 2D (Cytoscape.js)",
+  "description": "Force-directed Graph (Cytoscape.js cose-Layout). Fog-of-War-Overlay. Click auf Node oeffnet Detail-Panel. Projekt-Filter. Backend: GET /api/nexus/graph.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Cytoscape.js cose-Layout",
+      "Fog-of-War (unerkundete Nodes dunkel)",
+      "Kartierte Nodes hervorgehoben",
+      "Click auf Node Detail-Panel",
+      "Projekt-Filter",
+      "Backend-Endpoint",
+      "Performance bis 500 Nodes"
+    ]
+  },
+  "tags": ["frontend", "backend", "nexus-grid", "cytoscape", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["cytoscape-graph", "vue-component", "fastapi-endpoint", "design-token"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-5-010"]
+}

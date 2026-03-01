@@ -65,6 +65,54 @@ async def _prompt_history_retention_job() -> None:
             )
 
 
+async def _notification_retention_job() -> None:
+    """Delete old notifications (TASK-6-009).
+
+    - Read notifications older than NOTIFICATION_RETENTION_DAYS (default: 90)
+    - Unread notifications older than NOTIFICATION_UNREAD_RETENTION_DAYS (default: 365)
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import and_, text
+
+    from app.db import AsyncSessionLocal
+
+    now = datetime.now(timezone.utc)
+    read_cutoff = now - timedelta(days=settings.notification_retention_days)
+    unread_cutoff = now - timedelta(days=settings.notification_unread_retention_days)
+
+    async with AsyncSessionLocal() as db:
+        # Delete old read notifications
+        result_read = await db.execute(
+            text("""
+                DELETE FROM notifications
+                WHERE read = true AND created_at < :cutoff
+            """),
+            {"cutoff": read_cutoff},
+        )
+
+        # Delete very old unread notifications
+        result_unread = await db.execute(
+            text("""
+                DELETE FROM notifications
+                WHERE read = false AND created_at < :cutoff
+            """),
+            {"cutoff": unread_cutoff},
+        )
+
+        await db.commit()
+        read_count = result_read.rowcount
+        unread_count = result_unread.rowcount
+        if read_count or unread_count:
+            logger.info(
+                "Notification-Retention: %d gelesene (>%dd) + %d ungelesene (>%dd) gelöscht",
+                read_count,
+                settings.notification_retention_days,
+                unread_count,
+                settings.notification_unread_retention_days,
+            )
+
+
 def start_scheduler() -> None:
     """Scheduler mit täglichem Audit-Retention-Job und PromptHistory-Retention-Job registrieren und starten."""
     scheduler.add_job(
@@ -84,6 +132,43 @@ def start_scheduler() -> None:
         id="prompt_history_cleanup",
         replace_existing=True,
     )
+
+    # Notification Retention Cron — TASK-6-009
+    scheduler.add_job(
+        _notification_retention_job,
+        trigger="cron",
+        hour=3,
+        minute=10,
+        id="notification_retention",
+        replace_existing=True,
+    )
+
+    # SLA Cron Job — checks epic deadlines and triggers notifications
+    from app.services.sla_cron import sla_cron_job
+
+    scheduler.add_job(
+        sla_cron_job,
+        trigger="interval",
+        seconds=settings.hivemind_sla_cron_interval,
+        id="sla_cron",
+        replace_existing=True,
+    )
+    logger.info(
+        "SLA cron registriert — alle %ds",
+        settings.hivemind_sla_cron_interval,
+    )
+
+    # Decision-Request SLA Enforcement — checks open DRs for 24h/48h/72h
+    from app.services.decision_sla_cron import decision_sla_cron_job
+
+    scheduler.add_job(
+        decision_sla_cron_job,
+        trigger="interval",
+        seconds=settings.hivemind_sla_cron_interval,
+        id="decision_sla_cron",
+        replace_existing=True,
+    )
+    logger.info("Decision-SLA cron registriert")
 
     # Federation Outbox Consumer — process peer_outbound entries
     if settings.hivemind_federation_enabled:

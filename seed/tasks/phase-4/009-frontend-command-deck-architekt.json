@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-4-009",
+  "epic_ref": "EPIC-PHASE-4",
+  "title": "Frontend: Command Deck — Architekt-Button, Task-Dialog, Context Boundary",
+  "description": "Command Deck (`/command-deck`) um Architekt-Workflow-Features erweitern. Drei Ergänzungen: (1) Architekt-Prompt-Button auf Epic-Cards die `state='scoped'` haben: `[Architekt starten ▶]`-Button → ruft `hivemind/get_prompt { type: 'architekt', epic_id }` auf → zeigt Prompt in Prompt Station Modal. Der Button erscheint nur wenn das Epic `state='scoped'` hat und noch Tasks fehlen. (2) Task-Erstellungs-Dialog: `[+ Task hinzufügen]`-Button am Epic (admin/developer) → Modal mit Feldern: Titel, Beschreibung, Priorität, Assign-To (User-Select). Ruft `POST /api/tasks` auf. Neu erstellte Tasks erscheinen sofort in der Epic-Task-Liste (optimistic UI oder SSE). (3) Context Boundary anzeigen (read-only) auf Task-Detail-Panel: zeigt `allowed_skills`, `allowed_docs`, `max_token_budget` falls eine Context Boundary für den Task gesetzt wurde. Label: 'Context Boundary (vom Architekt)' mit Info-Icon-Tooltip. Alle API-Calls aus OpenAPI-Client.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Architekt-Button erscheint auf Epic-Cards mit state='scoped'",
+      "Architekt-Button ruft get_prompt type='architekt' auf und öffnet Prompt in Prompt Station Modal",
+      "Task-Erstellungs-Dialog öffnet sich via [+ Task hinzufügen]-Button auf Epic (admin/developer only)",
+      "Neu erstellte Tasks erscheinen in Epic-Task-Liste ohne Page-Reload",
+      "Context Boundary Panel auf Task-Detail zeigt allowed_skills, allowed_docs, max_token_budget",
+      "Context Boundary ist read-only (kein Edit-Interface in Phase 4)",
+      "Vue-tsc: no errors"
+    ]
+  },
+  "tags": ["frontend", "command-deck", "ui"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token", "http-client"],
+  "linked_wiki": ["system-architektur", "agent-konzept"],
+  "source_doc": "docs/phases/phase-4.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-4-002", "TASK-4-003"]
+}

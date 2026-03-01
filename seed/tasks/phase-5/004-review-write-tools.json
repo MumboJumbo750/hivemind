@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-5-004",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Review-Write-Tools: approve_review & reject_review",
+  "description": "MCP-Write-Tools: (1) hivemind/approve_review — in_review nach done + Epic-Auto-Transition + Notification task_done + EXP-Trigger. (2) hivemind/reject_review — in_review nach qa_failed + review_comment + qa_failed_count++. Beide: Task muss in_review sein, Actor=Owner/Admin.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "approve_review: in_review nach done",
+      "Epic-Auto-Transition wenn alle Tasks done/cancelled",
+      "task_done Notification",
+      "reject_review: in_review nach qa_failed + review_comment",
+      "qa_failed_count inkrementiert",
+      "422 wenn Task nicht in_review",
+      "Audit-Logging",
+      "Tests mindestens 90% Coverage"
+    ]
+  },
+  "tags": ["backend", "mcp", "review", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["mcp-write-tool", "review-workflow", "notification-dispatch", "gamification-engine", "api-test"],
+  "linked_wiki": ["system-architektur", "state-machine-guide"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-5-002"]
+}

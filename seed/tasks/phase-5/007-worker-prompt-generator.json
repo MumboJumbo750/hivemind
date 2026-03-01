@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-5-007",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Worker-Prompt-Generator",
+  "description": "get_prompt type=worker task_id: Task-Details, gepinnte Skills, Guard-Checkliste, Write-Tools. Phase-5-Hinweis zu Guard-Enforcement. Review-Kommentar bei Re-entry nach qa_failed. Jinja2-Template.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Worker-Prompt mit Task-Details Skills Guards",
+      "Phase-5-Guard-Enforcement-Hinweis",
+      "Review-Kommentar bei Re-entry",
+      "Write-Tools mit Beispielen",
+      "Tests"
+    ]
+  },
+  "tags": ["backend", "prompts", "worker", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["prompt-generator", "prompt-template-worker", "guard-enforcement"],
+  "linked_wiki": ["agent-konzept", "byoai-workflow"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-5-002"]
+}

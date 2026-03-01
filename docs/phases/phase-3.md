@@ -13,7 +13,7 @@
 ## Deliverables
 
 ### Backend
-- [ ] MCP-Server via FastAPI (stdio + HTTP/SSE Transport)
+- [x] MCP-Server via FastAPI (MCP 1.0 Standard: SSE/JSON-RPC 2.0 + Convenience REST + stdio)
 - [ ] Read-Tools implementiert:
   - `hivemind/get_epic`
   - `hivemind/get_task`

@@ -32,6 +32,11 @@ incoming → scoped → ready → in_progress → in_review → done
 | `escalated` | 3x qa_failed oder SLA-Überschreitung | Admin greift ein |
 | `cancelled` | Abgebrochen | — |
 
+> **Wichtig:** `decompose_epic` erstellt Tasks immer als `incoming`.
+> Der Architekt muss Tasks manuell **zwei Schritte** transitionieren:
+> `incoming → scoped → ready` (direktes `incoming → ready` ist nicht erlaubt).
+> `scoped → ready` erfordert, dass `assigned_to` gesetzt ist (sonst 422).
+
 ## Epic-States
 
 ```

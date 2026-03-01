@@ -187,7 +187,7 @@ Frontend und Backend kommunizieren Echtzeitdaten via **Server-Sent Events (SSE)*
 | `/events/tasks` | State-Transitions, Guard-Updates | Command Deck, Prompt Station |
 | `/events/triage` | Neue `[UNROUTED]`-Items, Proposals | Triage Station |
 
-SSE wurde gewählt weil: (1) bereits für MCP HTTP-Transport verwendet, (2) simpler als WebSocket für unidirektionale Server→Client-Push, (3) automatische Reconnection durch Browser. Polling-Fallback: 30 Sekunden für Clients die SSE nicht unterstützen.
+SSE wurde gewählt weil: (1) bereits für MCP 1.0 Standard-Transport verwendet (`/api/mcp/sse` — JSON-RPC 2.0 über SSE), (2) simpler als WebSocket für unidirektionale Server→Client-Push, (3) automatische Reconnection durch Browser. Polling-Fallback: 30 Sekunden für Clients die SSE nicht unterstützen.
 
 ### SSE-Verbindungsmanagement & Event-Catch-Up
 

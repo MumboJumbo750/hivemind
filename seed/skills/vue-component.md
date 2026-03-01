@@ -73,3 +73,26 @@ const emit = defineEmits<{
 - Spacing: `--space-xs` bis `--space-2xl`
 - Radii: `--radius-sm`, `--radius-md`, `--radius-lg`
 - Fonts: `--font-mono`, `--font-sans`
+
+### API-Aufrufe — häufige Fehler
+
+**MCP-Tool-Calls:** `POST /api/mcp/call` gibt `{ result: [...] }` zurück (Wrapper-Objekt). Das Array muss mit `.result` extrahiert werden:
+
+```typescript
+// FALSCH — result ist ein Objekt, kein Array
+const result = await api.callMcpTool('hivemind/get_prompt', { type: 'architekt', epic_id: epicKey })
+result.map(r => r.text) // ❌ result.map is not a function
+
+// RICHTIG — api.callMcpTool unwrappt .result intern
+// → gibt McpToolResponse[] zurück
+```
+
+**Identifier:** Epics und Tasks werden in MCP-Tools per **Key** referenziert (`epic.epic_key`, `task.task_key`), **nicht** per UUID (`epic.id`). Beispiel:
+
+```typescript
+// FALSCH
+await api.getPrompt('architekt', undefined, epic.id)        // UUID → 404
+
+// RICHTIG
+await api.getPrompt('architekt', undefined, epic.epic_key)  // "EPIC-PHASE-4" → ✅
+```

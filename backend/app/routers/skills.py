@@ -1,83 +1,278 @@
-"""Skills Router — TASK-F-007 / F-013.
+"""Skills Router — TASK-4-005.
 
-REST endpoints for skill management.
+Full REST endpoints for Skill Lab: CRUD + lifecycle transitions.
+Preserves the existing fork endpoint from TASK-F-007.
 """
+import time
 import uuid
-from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models.federation import Node, NodeIdentity
 from app.models.skill import Skill, SkillParent
+from app.routers.deps import get_current_actor, require_role
+from app.schemas.auth import CurrentActor
 from app.schemas.federation import FederatedSkillResponse
+from app.schemas.skill import (
+    SkillCreate,
+    SkillListResponse,
+    SkillReject,
+    SkillResponse,
+    SkillUpdate,
+    SkillVersionResponse,
+)
+from app.services.audit import write_audit
+from app.services.skill_service import SkillService
 
 router = APIRouter(prefix="/skills", tags=["skills"])
 
 
-# ─── List Schema ──────────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
-class SkillListItem(BaseModel):
-    id: uuid.UUID
-    title: str
-    content: str
-    service_scope: list[str] = []
-    stack: list[str] = []
-    skill_type: str
-    lifecycle: str
-    federation_scope: str
-    origin_node_id: Optional[uuid.UUID] = None
-    origin_node_name: Optional[str] = None
-    created_at: datetime
+def _skill_to_response(
+    skill: Skill, username_map: dict[uuid.UUID, str] | None = None
+) -> SkillResponse:
+    umap = username_map or {}
+    return SkillResponse(
+        id=skill.id,
+        project_id=skill.project_id,
+        title=skill.title,
+        content=skill.content,
+        service_scope=skill.service_scope or [],
+        stack=skill.stack or [],
+        version_range=skill.version_range,
+        owner_id=skill.owner_id,
+        proposed_by=skill.proposed_by,
+        proposed_by_username=umap.get(skill.proposed_by) if skill.proposed_by else None,
+        confidence=skill.confidence,
+        skill_type=skill.skill_type,
+        lifecycle=skill.lifecycle,
+        version=skill.version,
+        token_count=skill.token_count,
+        rejection_rationale=skill.rejection_rationale,
+        federation_scope=skill.federation_scope,
+        origin_node_id=skill.origin_node_id,
+        created_at=skill.created_at,
+        updated_at=skill.updated_at,
+    )
 
-    model_config = {"from_attributes": True}
 
+# ── List Skills ───────────────────────────────────────────────────────────────
 
-# ─── List Skills ──────────────────────────────────────────────────────────────
-
-@router.get("", response_model=list[SkillListItem])
+@router.get("", response_model=SkillListResponse)
 async def list_skills(
-    federation_scope: Optional[str] = Query(None, description="Filter by federation_scope (local|federated)"),
+    project_id: Optional[uuid.UUID] = Query(None),
+    lifecycle: Optional[str] = Query(None, description="draft|pending_merge|active|rejected"),
+    service_scope: Optional[str] = Query(None, description="Filter by service_scope element"),
+    stack: Optional[str] = Query(None, description="Filter by stack element"),
+    skill_type: Optional[str] = Query(None, description="system|domain"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-) -> list[SkillListItem]:
-    """List skills, optionally filtered by federation_scope."""
-    query = select(Skill).where(Skill.deleted_at.is_(None))
-    if federation_scope:
-        query = query.where(Skill.federation_scope == federation_scope)
-    query = query.order_by(Skill.title)
+    actor: CurrentActor = Depends(get_current_actor),
+) -> SkillListResponse:
+    svc = SkillService(db)
+    skills, total = await svc.list_skills(
+        project_id=project_id,
+        lifecycle=lifecycle,
+        service_scope=service_scope,
+        stack=stack,
+        skill_type=skill_type,
+        limit=limit,
+        offset=offset,
+    )
+    umap = await svc.resolve_usernames(skills)
+    return SkillListResponse(
+        data=[_skill_to_response(s, umap) for s in skills],
+        total_count=total,
+        has_more=(offset + limit) < total,
+    )
 
-    result = await db.execute(query)
-    skills = result.scalars().all()
 
-    # Resolve node names
-    node_ids = {s.origin_node_id for s in skills if s.origin_node_id}
-    node_map: dict[uuid.UUID, str] = {}
-    if node_ids:
-        node_result = await db.execute(select(Node).where(Node.id.in_(node_ids)))
-        for n in node_result.scalars().all():
-            node_map[n.id] = n.node_name
+# ── Get Skill ─────────────────────────────────────────────────────────────────
 
+@router.get("/{skill_id}", response_model=SkillResponse)
+async def get_skill(
+    skill_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(get_current_actor),
+) -> SkillResponse:
+    svc = SkillService(db)
+    skill = await svc.get_by_id(skill_id)
+    if not skill:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill nicht gefunden")
+    umap = await svc.resolve_usernames([skill])
+    return _skill_to_response(skill, umap)
+
+
+# ── Get Skill Versions ───────────────────────────────────────────────────────
+
+@router.get("/{skill_id}/versions", response_model=list[SkillVersionResponse])
+async def get_skill_versions(
+    skill_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(get_current_actor),
+) -> list[SkillVersionResponse]:
+    svc = SkillService(db)
+    # Verify skill exists
+    skill = await svc.get_by_id(skill_id)
+    if not skill:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill nicht gefunden")
+    versions = await svc.get_versions(skill_id)
+    # Resolve usernames
+    from app.models.user import User
+    user_ids = {v.changed_by for v in versions}
+    umap: dict[uuid.UUID, str] = {}
+    if user_ids:
+        result = await db.execute(select(User).where(User.id.in_(user_ids)))
+        umap = {u.id: u.username for u in result.scalars().all()}
     return [
-        SkillListItem(
-            id=s.id,
-            title=s.title,
-            content=s.content,
-            service_scope=s.service_scope or [],
-            stack=s.stack or [],
-            skill_type=s.skill_type,
-            lifecycle=s.lifecycle,
-            federation_scope=s.federation_scope,
-            origin_node_id=s.origin_node_id,
-            origin_node_name=node_map.get(s.origin_node_id) if s.origin_node_id else None,
-            created_at=s.created_at,
+        SkillVersionResponse(
+            id=v.id,
+            skill_id=v.skill_id,
+            version=v.version,
+            content=v.content,
+            token_count=v.token_count,
+            changed_by=v.changed_by,
+            changed_by_username=umap.get(v.changed_by),
+            created_at=v.created_at,
         )
-        for s in skills
+        for v in versions
     ]
 
+
+# ── Create Skill (draft) ─────────────────────────────────────────────────────
+
+@router.post("", response_model=SkillResponse, status_code=status.HTTP_201_CREATED)
+async def create_skill(
+    body: SkillCreate,
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(get_current_actor),
+) -> SkillResponse:
+    t0 = time.perf_counter()
+    svc = SkillService(db)
+    skill = await svc.create(body, actor)
+    await db.commit()
+    duration = int((time.perf_counter() - t0) * 1000)
+    await write_audit(
+        tool_name="create_skill",
+        actor_id=actor.id,
+        actor_role=actor.role,
+        input_payload=body.model_dump(mode="json"),
+        output_payload={"skill_id": str(skill.id), "title": skill.title},
+        duration_ms=duration,
+    )
+    umap = await svc.resolve_usernames([skill])
+    return _skill_to_response(skill, umap)
+
+
+# ── Update Skill (draft only) ────────────────────────────────────────────────
+
+@router.patch("/{skill_id}", response_model=SkillResponse)
+async def update_skill(
+    skill_id: uuid.UUID,
+    body: SkillUpdate,
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(get_current_actor),
+) -> SkillResponse:
+    t0 = time.perf_counter()
+    svc = SkillService(db)
+    skill = await svc.update(skill_id, body, actor)
+    await db.commit()
+    duration = int((time.perf_counter() - t0) * 1000)
+    await write_audit(
+        tool_name="update_skill",
+        actor_id=actor.id,
+        actor_role=actor.role,
+        input_payload={"skill_id": str(skill_id), **body.model_dump(mode="json")},
+        output_payload={"skill_id": str(skill.id), "version": skill.version},
+        duration_ms=duration,
+    )
+    umap = await svc.resolve_usernames([skill])
+    return _skill_to_response(skill, umap)
+
+
+# ── Submit (draft → pending_merge) ───────────────────────────────────────────
+
+@router.post("/{skill_id}/submit", response_model=SkillResponse)
+async def submit_skill(
+    skill_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(get_current_actor),
+) -> SkillResponse:
+    t0 = time.perf_counter()
+    svc = SkillService(db)
+    skill = await svc.submit(skill_id, actor)
+    await db.commit()
+    duration = int((time.perf_counter() - t0) * 1000)
+    await write_audit(
+        tool_name="submit_skill",
+        actor_id=actor.id,
+        actor_role=actor.role,
+        input_payload={"skill_id": str(skill_id)},
+        output_payload={"skill_id": str(skill.id), "lifecycle": skill.lifecycle},
+        duration_ms=duration,
+    )
+    umap = await svc.resolve_usernames([skill])
+    return _skill_to_response(skill, umap)
+
+
+# ── Merge (pending_merge → active) — Admin only ─────────────────────────────
+
+@router.post("/{skill_id}/merge", response_model=SkillResponse)
+async def merge_skill(
+    skill_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(require_role("admin", "triage")),
+) -> SkillResponse:
+    t0 = time.perf_counter()
+    svc = SkillService(db)
+    skill = await svc.merge(skill_id, actor)
+    await db.commit()
+    duration = int((time.perf_counter() - t0) * 1000)
+    await write_audit(
+        tool_name="merge_skill",
+        actor_id=actor.id,
+        actor_role=actor.role,
+        input_payload={"skill_id": str(skill_id)},
+        output_payload={"skill_id": str(skill.id), "lifecycle": skill.lifecycle},
+        duration_ms=duration,
+    )
+    umap = await svc.resolve_usernames([skill])
+    return _skill_to_response(skill, umap)
+
+
+# ── Reject (pending_merge → rejected) — Admin only ──────────────────────────
+
+@router.post("/{skill_id}/reject", response_model=SkillResponse)
+async def reject_skill(
+    skill_id: uuid.UUID,
+    body: SkillReject,
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(require_role("admin", "triage")),
+) -> SkillResponse:
+    t0 = time.perf_counter()
+    svc = SkillService(db)
+    skill = await svc.reject(skill_id, body, actor)
+    await db.commit()
+    duration = int((time.perf_counter() - t0) * 1000)
+    await write_audit(
+        tool_name="reject_skill",
+        actor_id=actor.id,
+        actor_role=actor.role,
+        input_payload={"skill_id": str(skill_id), "rationale": body.rationale},
+        output_payload={"skill_id": str(skill.id), "lifecycle": skill.lifecycle},
+        duration_ms=duration,
+    )
+    umap = await svc.resolve_usernames([skill])
+    return _skill_to_response(skill, umap)
+
+
+# ── Fork (federated → local draft) — Existing from TASK-F-007 ───────────────
 
 @router.post(
     "/{skill_id}/fork",
@@ -94,7 +289,6 @@ async def fork_skill(
     - Creates new local draft skill with extends link
     - Returns 409 if a fork already exists
     """
-    # Load source skill
     result = await db.execute(select(Skill).where(Skill.id == skill_id))
     source = result.scalar_one_or_none()
     if source is None:
@@ -106,7 +300,6 @@ async def fork_skill(
             detail="Nur federierte Skills können geforkt werden.",
         )
 
-    # Check if a fork already exists (same origin_skill via SkillParent)
     existing_fork = await db.execute(
         select(SkillParent).where(SkillParent.parent_id == skill_id)
     )
@@ -116,12 +309,10 @@ async def fork_skill(
             detail="Skill bereits als lokaler Draft vorhanden.",
         )
 
-    # Get our own node_id
     identity_result = await db.execute(select(NodeIdentity))
     identity = identity_result.scalar_one_or_none()
     own_node_id = identity.node_id if identity else None
 
-    # Create the forked skill
     forked = Skill(
         title=f"{source.title} (Fork)",
         content=source.content,
@@ -136,7 +327,6 @@ async def fork_skill(
     db.add(forked)
     await db.flush()
 
-    # Create parent link
     parent_link = SkillParent(child_id=forked.id, parent_id=source.id)
     db.add(parent_link)
     await db.flush()

@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-5-016",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Gamification-Engine: EXP-Trigger, Badge-Check, Level-Up",
+  "description": "EXP-Trigger in approve_review(+50,+20 Clean-Run), merge_skill(+30), create_wiki_article(+15), merge_guard(+30), create_decision_record(+10). Anti-Spam 1x/Entity. Badge-Check gegen badge_definitions. Level-Up gegen level_thresholds. SSE-Events. GET /api/users/me/achievements.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "EXP-Trigger in allen spezifizierten Tools",
+      "Anti-Spam 1x pro Entity",
+      "Badge-Check nach EXP-Event",
+      "Level-Up-Check",
+      "SSE-Events badge_earned/level_up",
+      "GET /api/users/me/achievements",
+      "Seed-Daten",
+      "Tests"
+    ]
+  },
+  "tags": ["backend", "gamification", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["gamification-engine", "fastapi-endpoint", "sse-event-stream", "alembic-migration", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-5-004"]
+}

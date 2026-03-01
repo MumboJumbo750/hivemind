@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-4-003",
+  "epic_ref": "EPIC-PHASE-4",
+  "title": "Stratege & Architekt Prompt-Generator",
+  "description": "Zwei neue Prompt-Typen im bestehenden Prompt-Generator-Service (`app/services/prompt_generator.py`) ergänzen: `stratege` (Pflicht-Parameter: `project_id` — assembliert alle Epics des Projekts + offene Proposals + Wiki-Overview + aktuelle Roadmap-Situation → Plan-Analyse-Prompt) und `architekt` (Pflicht-Parameter: `epic_id` — assembliert Epic-Detail + alle vorhandenen Tasks im Epic + aktive Skills mit Relevanz-Score + Epic-Docs → Decomposition-Prompt). Beide Typen schreiben `prompt_history`-Einträge (wie alle anderen Prompt-Typen). Token-Budget: stratege nutzt `app_settings.token_budget_default`, architekt nutzt `context_boundaries.max_token_budget` falls gesetzt. Stratege-Prompt enthält Anleitung zur Nutzung von `hivemind/propose_epic`. Architekt-Prompt enthält Anleitung zur Nutzung von `hivemind/decompose_epic`, `hivemind/set_context_boundary`, `hivemind/link_skill`, `hivemind/assign_task`. Ergänzende MCP-Tool-Registrierung: `hivemind/get_prompt { type: 'stratege', project_id }` und `{ type: 'architekt', epic_id }` korrekt routen.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "`hivemind/get_prompt { type: 'stratege', project_id: 'uuid' }` gibt Strategie-Prompt zurück (Markdown)",
+      "Stratege-Prompt enthält Epics des Projekts, offene Proposals, Nutzungsanleitung für propose_epic",
+      "`hivemind/get_prompt { type: 'architekt', epic_id: 'uuid' }` gibt Architektur-Prompt zurück",
+      "Architekt-Prompt enthält Epic-Detail, vorhandene Tasks, relevante Skills, Decompose-Anleitung",
+      "Fehlende Pflicht-Parameter → 422 mit erklärender Fehlermeldung",
+      "Beide Prompt-Typen schreiben prompt_history-Einträge mit korrektem token_count",
+      "Unit-Test: stratege-Prompt enthält project Epics; architekt-Prompt enthält Epic-Tasks und Skills"
+    ]
+  },
+  "tags": ["backend", "mcp", "ai", "prompts"],
+  "subtasks": [],
+  "pinned_skills": ["prompt-generator", "mcp-tool", "api-test"],
+  "linked_wiki": ["agent-konzept", "system-architektur"],
+  "source_doc": "docs/phases/phase-4.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-3-005"]
+}

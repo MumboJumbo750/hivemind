@@ -1,0 +1,6 @@
+{
+  "decision_key": "DR-003",
+  "epic_ref": "EPIC-PHASE-7",
+  "decision": "DLQ-Requeue setzt attempts auf 0 (frischer Retry-Zyklus) statt Weiterzählen",
+  "rationale": "Ein Requeue ist eine bewusste Admin-Aktion (z.B. nach Bug-Fix oder Netzwerk-Recovery). Weiterzählen der attempts würde den Eintrag sofort wieder in die DLQ schieben wenn der erste Retry fehlschlägt. Reset auf 0 gibt dem Eintrag einen vollständigen frischen Zyklus (5 Versuche mit Exponential Backoff)."
+}

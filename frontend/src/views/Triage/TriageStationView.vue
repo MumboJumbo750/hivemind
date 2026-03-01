@@ -3,10 +3,15 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useTriageStore } from '../../stores/triageStore'
 import HivemindCard from '../../components/ui/HivemindCard.vue'
 import HivemindModal from '../../components/ui/HivemindModal.vue'
+import SlaCountdown from '../../components/ui/SlaCountdown.vue'
+import DecisionRequestDialog from '../../components/domain/DecisionRequestDialog.vue'
 import { api } from '../../api'
-import type { Epic } from '../../api/types'
+import type { Epic, EpicProposal, Task, DecisionRequest } from '../../api/types'
+import { useAuthStore } from '../../stores/authStore'
 
 const store = useTriageStore()
+const authStore = useAuthStore()
+const isTriageAdmin = computed(() => authStore.user?.role === 'admin')
 
 // SSE connection
 let eventSource: EventSource | null = null
@@ -38,8 +43,13 @@ const tabs = [
   { key: 'unrouted' as const, label: 'Unrouted' },
   { key: 'routed' as const, label: 'Routed' },
   { key: 'ignored' as const, label: 'Ignored' },
+  { key: 'escalated' as const, label: 'Escalated' },
+  { key: 'decisions' as const, label: 'Decisions' },
+  { key: 'proposals' as const, label: 'Epic Proposals' },
   { key: 'all' as const, label: 'All' },
 ]
+
+const activeTriageTab = ref<string>('unrouted')
 
 function getSourceIcon(system: string) {
   switch (system) {
@@ -112,6 +122,173 @@ async function confirmIgnore() {
   }
 }
 
+// ── Epic Proposals (TASK-4-010) ──────────────────────────────────────────────
+const proposals = ref<EpicProposal[]>([])
+const proposalsLoading = ref(false)
+const proposalsError = ref<string | null>(null)
+const proposalCount = ref(0)
+
+// Proposal detail
+const selectedProposal = ref<EpicProposal | null>(null)
+const showProposalDetail = ref(false)
+
+// Reject modal
+const showProposalRejectModal = ref(false)
+const proposalRejectReason = ref('')
+const proposalRejectLoading = ref(false)
+const proposalAcceptLoading = ref(false)
+
+// ── Escalated Tasks (TASK-6-011) ─────────────────────────────────────────────
+const escalatedTasks = ref<Task[]>([])
+const escalatedLoading = ref(false)
+const escalatedError = ref<string | null>(null)
+const resolveLoading = ref<string | null>(null) // task_key being resolved
+
+async function loadEscalatedTasks() {
+  escalatedLoading.value = true
+  escalatedError.value = null
+  try {
+    const result = await api.callMcpTool('hivemind/list_tasks', { state: 'escalated' })
+    const text = result[0]?.text
+    if (text) {
+      const parsed = JSON.parse(text)
+      escalatedTasks.value = Array.isArray(parsed.data) ? parsed.data : (Array.isArray(parsed) ? parsed : [])
+    }
+  } catch (e: unknown) {
+    escalatedError.value = (e as Error).message
+  } finally {
+    escalatedLoading.value = false
+  }
+}
+
+async function resolveEscalation(task: Task) {
+  if (!confirm(`Task "${task.task_key}" de-eskalieren?`)) return
+  resolveLoading.value = task.task_key
+  try {
+    await api.callMcpTool('hivemind/resolve_escalation', { task_key: task.task_key })
+    await loadEscalatedTasks()
+  } catch (e: unknown) {
+    escalatedError.value = (e as Error).message
+  } finally {
+    resolveLoading.value = null
+  }
+}
+
+// ── Decision Requests (TASK-6-011) ───────────────────────────────────────────
+const decisionRequests = ref<DecisionRequest[]>([])
+const decisionsLoading = ref(false)
+const decisionsError = ref<string | null>(null)
+const selectedDecisionRequest = ref<DecisionRequest | null>(null)
+const showDecisionDialog = ref(false)
+
+async function loadDecisionRequests() {
+  decisionsLoading.value = true
+  decisionsError.value = null
+  try {
+    const result = await api.callMcpTool('hivemind/list_decision_requests', { state: 'open' })
+    const text = result[0]?.text
+    if (text) {
+      const parsed = JSON.parse(text)
+      decisionRequests.value = Array.isArray(parsed.data) ? parsed.data : (Array.isArray(parsed) ? parsed : [])
+    }
+  } catch (e: unknown) {
+    decisionsError.value = (e as Error).message
+  } finally {
+    decisionsLoading.value = false
+  }
+}
+
+function openDecisionDialog(dr: DecisionRequest) {
+  selectedDecisionRequest.value = dr
+  showDecisionDialog.value = true
+}
+
+async function onDecisionResolved() {
+  showDecisionDialog.value = false
+  selectedDecisionRequest.value = null
+  await loadDecisionRequests()
+}
+
+// Helper to check if any dependency is rejected
+function getDependencyWarnings(proposal: EpicProposal): EpicProposal[] {
+  if (!proposal.depends_on?.length) return []
+  return proposals.value.filter(
+    p => proposal.depends_on!.includes(p.id) && p.state === 'rejected'
+  )
+}
+
+function truncate(text: string, len: number): string {
+  return text.length > len ? text.slice(0, len) + '…' : text
+}
+
+function proposalStateBadgeClass(state: string): string {
+  switch (state) {
+    case 'proposed': return 'badge-proposed'
+    case 'accepted': return 'badge-accepted'
+    case 'rejected': return 'badge-rejected'
+    default: return ''
+  }
+}
+
+async function loadProposals() {
+  proposalsLoading.value = true
+  proposalsError.value = null
+  try {
+    const res = await api.getEpicProposals({ state: 'proposed' })
+    proposals.value = res.data
+    proposalCount.value = res.total_count
+  } catch (e: unknown) {
+    proposalsError.value = (e as Error).message
+  } finally {
+    proposalsLoading.value = false
+  }
+}
+
+function openProposalDetail(p: EpicProposal) {
+  selectedProposal.value = p
+  showProposalDetail.value = true
+}
+
+async function acceptProposal(p: EpicProposal) {
+  if (!confirm(`Proposal "${p.title}" akzeptieren?`)) return
+  proposalAcceptLoading.value = true
+  try {
+    await api.acceptEpicProposal(p.id)
+    showProposalDetail.value = false
+    selectedProposal.value = null
+    await loadProposals()
+  } catch (e: unknown) {
+    proposalsError.value = (e as Error).message
+  } finally {
+    proposalAcceptLoading.value = false
+  }
+}
+
+function openProposalRejectModal() {
+  proposalRejectReason.value = ''
+  showProposalRejectModal.value = true
+}
+
+async function confirmRejectProposal() {
+  if (!selectedProposal.value || !proposalRejectReason.value.trim()) return
+  proposalRejectLoading.value = true
+  try {
+    await api.rejectEpicProposal(selectedProposal.value.id, proposalRejectReason.value)
+    showProposalRejectModal.value = false
+    showProposalDetail.value = false
+    selectedProposal.value = null
+    await loadProposals()
+  } catch (e: unknown) {
+    proposalsError.value = (e as Error).message
+  } finally {
+    proposalRejectLoading.value = false
+  }
+}
+
+function formatProposalDate(iso: string) {
+  return new Date(iso).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+}
+
 function connectSSE() {
   const baseUrl = (import.meta.env.VITE_API_URL as string) ?? 'http://localhost:8000'
   eventSource = new EventSource(`${baseUrl}/api/events/triage`)
@@ -123,10 +300,14 @@ function connectSSE() {
       store.addItem(data)
     } catch { /* ignore */ }
   })
+  eventSource.addEventListener('epic_proposal_created', () => loadProposals())
 }
 
 onMounted(() => {
   store.loadItems()
+  loadProposals()
+  loadEscalatedTasks()
+  loadDecisionRequests()
   connectSSE()
 })
 
@@ -147,18 +328,134 @@ onUnmounted(() => {
       <button
         v-for="tab in tabs"
         :key="tab.key"
-        :class="['tab-btn', { active: store.filter === tab.key }]"
-        @click="store.filter = tab.key; page = 1"
+        :class="['tab-btn', { active: activeTriageTab === tab.key }]"
+        @click="activeTriageTab = tab.key; if (tab.key !== 'proposals' && tab.key !== 'escalated' && tab.key !== 'decisions') { store.filter = tab.key as 'unrouted' | 'routed' | 'ignored' | 'all'; } page = 1"
       >
         {{ tab.label }}
+        <span v-if="tab.key === 'proposals' && proposalCount > 0" class="proposal-badge-count">
+          {{ proposalCount }}
+        </span>
+        <span v-if="tab.key === 'escalated' && escalatedTasks.length > 0" class="escalated-badge-count">
+          {{ escalatedTasks.length }}
+        </span>
+        <span v-if="tab.key === 'decisions' && decisionRequests.length > 0" class="decision-badge-count">
+          {{ decisionRequests.length }}
+        </span>
       </button>
     </nav>
 
     <!-- Loading -->
-    <div v-if="store.loading" class="triage-loading">Loading...</div>
-    <div v-else-if="store.error" class="triage-error">{{ store.error }}</div>
+    <div v-if="activeTriageTab !== 'proposals' && activeTriageTab !== 'escalated' && activeTriageTab !== 'decisions' && store.loading" class="triage-loading">Loading...</div>
+    <div v-else-if="activeTriageTab !== 'proposals' && activeTriageTab !== 'escalated' && activeTriageTab !== 'decisions' && store.error" class="triage-error">{{ store.error }}</div>
 
-    <!-- Item list -->
+    <!-- ─── Proposals Tab ─────────────────────────────────────────────────── -->
+    <div v-else-if="activeTriageTab === 'proposals'" class="proposals-section">
+      <div v-if="proposalsLoading" class="triage-loading">Lade Proposals…</div>
+      <div v-else-if="proposalsError" class="triage-error">{{ proposalsError }}</div>
+      <div v-else-if="!proposals.length" class="triage-empty">Keine offenen Proposals.</div>
+      <div v-else class="proposals-list">
+        <HivemindCard
+          v-for="p in proposals"
+          :key="p.id"
+          class="proposal-card"
+          @click="openProposalDetail(p)"
+        >
+          <div class="proposal-row">
+            <div class="proposal-main">
+              <h3 class="proposal-title">{{ p.title }}</h3>
+              <div class="proposal-meta">
+                <span class="proposal-proposer">{{ p.proposed_by_username || '–' }}</span>
+                <span :class="['proposal-state', proposalStateBadgeClass(p.state)]">{{ p.state }}</span>
+              </div>
+              <p class="proposal-rationale" v-if="p.rationale">
+                {{ truncate(p.rationale, 100) }}
+              </p>
+            </div>
+            <div class="proposal-tags" v-if="p.depends_on?.length">
+              <span v-for="depId in p.depends_on" :key="depId" class="dep-tag">
+                {{ proposals.find(x => x.id === depId)?.title || depId.slice(0, 8) }}
+              </span>
+            </div>
+          </div>
+          <!-- Dependency Warning -->
+          <div v-if="getDependencyWarnings(p).length" class="dep-warning">
+            ⚠ Abhängigkeit abgelehnt: {{ getDependencyWarnings(p).map(d => d.title).join(', ') }}
+          </div>
+        </HivemindCard>
+      </div>
+    </div>
+
+    <!-- ─── Escalated Tasks Tab (TASK-6-011) ─────────────────────────────── -->
+    <div v-else-if="activeTriageTab === 'escalated'" class="escalated-section">
+      <div v-if="escalatedLoading" class="triage-loading">Lade eskalierte Tasks…</div>
+      <div v-else-if="escalatedError" class="triage-error">{{ escalatedError }}</div>
+      <div v-else-if="!escalatedTasks.length" class="triage-empty">Keine eskalierten Tasks.</div>
+      <div v-else class="escalated-list">
+        <HivemindCard
+          v-for="task in escalatedTasks"
+          :key="task.id"
+          class="escalated-card"
+        >
+          <div class="escalated-row">
+            <div class="escalated-main">
+              <div class="escalated-header">
+                <span class="escalated-key">{{ task.task_key }}</span>
+                <span class="routing-badge state-escalated">ESCALATED</span>
+                <span v-if="task.qa_failed_count > 0" class="qa-badge">
+                  QA failed {{ task.qa_failed_count }}×
+                </span>
+              </div>
+              <h3 class="escalated-title">{{ task.title }}</h3>
+              <p v-if="task.description" class="escalated-desc">{{ task.description?.slice(0, 120) }}</p>
+            </div>
+            <div class="escalated-actions" v-if="isTriageAdmin">
+              <button
+                class="btn btn-primary"
+                :disabled="resolveLoading === task.task_key"
+                @click="resolveEscalation(task)"
+              >
+                {{ resolveLoading === task.task_key ? 'Resolving…' : 'De-eskalieren' }}
+              </button>
+            </div>
+          </div>
+        </HivemindCard>
+      </div>
+    </div>
+
+    <!-- ─── Decision Requests Tab (TASK-6-011) ────────────────────────────── -->
+    <div v-else-if="activeTriageTab === 'decisions'" class="decisions-section">
+      <div v-if="decisionsLoading" class="triage-loading">Lade Decision Requests…</div>
+      <div v-else-if="decisionsError" class="triage-error">{{ decisionsError }}</div>
+      <div v-else-if="!decisionRequests.length" class="triage-empty">Keine offenen Decision Requests.</div>
+      <div v-else class="decisions-list">
+        <HivemindCard
+          v-for="dr in decisionRequests"
+          :key="dr.id"
+          class="decision-card"
+          @click="openDecisionDialog(dr)"
+        >
+          <div class="decision-row">
+            <div class="decision-main">
+              <div class="decision-header">
+                <span :class="['dr-state', `dr-state--${dr.state}`]">{{ dr.state }}</span>
+                <SlaCountdown :sla_due_at="dr.sla_due_at" />
+              </div>
+              <h3 class="decision-title">
+                {{ (dr.payload?.question as string) || (dr.payload?.title as string) || dr.id.slice(0, 8) }}
+              </h3>
+              <p v-if="dr.payload?.context" class="decision-context">
+                {{ (dr.payload.context as string).slice(0, 120) }}
+              </p>
+            </div>
+            <div class="decision-meta">
+              <span class="decision-time">{{ formatTime(dr.created_at) }}</span>
+            </div>
+          </div>
+        </HivemindCard>
+      </div>
+    </div>
+
+    <!-- ─── Standard Triage List ──────────────────────────────────────────── -->
     <div v-else class="triage-list">
       <HivemindCard
         v-for="item in paginatedItems"
@@ -226,6 +523,84 @@ onUnmounted(() => {
         </button>
       </template>
     </HivemindModal>
+
+    <!-- Proposal Detail Modal -->
+    <HivemindModal v-model="showProposalDetail" :title="selectedProposal?.title || 'Proposal'" size="lg">
+      <template v-if="selectedProposal">
+        <div class="proposal-detail">
+          <div class="proposal-detail__meta">
+            <span :class="['proposal-state', proposalStateBadgeClass(selectedProposal.state)]">
+              {{ selectedProposal.state }}
+            </span>
+            <span class="proposal-detail__proposer">Von: {{ selectedProposal.proposed_by_username || '–' }}</span>
+            <span class="proposal-detail__date">{{ formatProposalDate(selectedProposal.created_at) }}</span>
+          </div>
+          <div class="proposal-detail__description">
+            <h4>Beschreibung</h4>
+            <p>{{ selectedProposal.description }}</p>
+          </div>
+          <div v-if="selectedProposal.rationale" class="proposal-detail__rationale">
+            <h4>Begründung</h4>
+            <p>{{ selectedProposal.rationale }}</p>
+          </div>
+          <div v-if="selectedProposal.depends_on?.length" class="proposal-detail__deps">
+            <h4>Abhängigkeiten</h4>
+            <div class="dep-list">
+              <span
+                v-for="depId in selectedProposal.depends_on"
+                :key="depId"
+                :class="['dep-tag', { 'dep-tag--rejected': proposals.find(x => x.id === depId)?.state === 'rejected' }]"
+              >
+                {{ proposals.find(x => x.id === depId)?.title || depId.slice(0, 8) }}
+                <span v-if="proposals.find(x => x.id === depId)" class="dep-state">
+                  ({{ proposals.find(x => x.id === depId)?.state }})
+                </span>
+              </span>
+            </div>
+          </div>
+          <div v-if="getDependencyWarnings(selectedProposal).length" class="dep-warning">
+            ⚠ Abhängigkeit abgelehnt: {{ getDependencyWarnings(selectedProposal).map(d => d.title).join(', ') }}
+          </div>
+        </div>
+      </template>
+      <template #footer v-if="isTriageAdmin && selectedProposal?.state === 'proposed'">
+        <button class="btn" @click="showProposalDetail = false">Schließen</button>
+        <button
+          class="btn btn-danger"
+          @click="openProposalRejectModal"
+        >
+          Ablehnen
+        </button>
+        <button
+          class="btn btn-primary"
+          :disabled="proposalAcceptLoading"
+          @click="selectedProposal && acceptProposal(selectedProposal)"
+        >
+          {{ proposalAcceptLoading ? 'Akzeptiere…' : 'Akzeptieren' }}
+        </button>
+      </template>
+    </HivemindModal>
+
+    <!-- Proposal Reject Modal -->
+    <HivemindModal v-model="showProposalRejectModal" title="Proposal ablehnen">
+      <div class="modal-body">
+        <label class="field-label">Begründung (Pflicht)</label>
+        <textarea v-model="proposalRejectReason" class="field-textarea" rows="3" placeholder="Begründung eingeben…" />
+      </div>
+      <template #footer>
+        <button class="btn" @click="showProposalRejectModal = false">Abbrechen</button>
+        <button class="btn btn-danger" :disabled="!proposalRejectReason.trim() || proposalRejectLoading" @click="confirmRejectProposal">
+          {{ proposalRejectLoading ? 'Wird abgelehnt…' : 'Ablehnen' }}
+        </button>
+      </template>
+    </HivemindModal>
+
+    <!-- Decision Request Dialog (TASK-6-010) -->
+    <DecisionRequestDialog
+      v-model:open="showDecisionDialog"
+      :request="selectedDecisionRequest"
+      @resolved="onDecisionResolved"
+    />
   </div>
 </template>
 
@@ -435,5 +810,267 @@ onUnmounted(() => {
   .item-actions .btn {
     flex: 1;
   }
+}
+
+/* ── Proposals (TASK-4-010) ─────────────────────────────────────────────── */
+.proposal-badge-count {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-radius: 10px;
+  font-size: 10px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  font-weight: 700;
+}
+
+.proposals-section {
+  margin-top: var(--space-2);
+}
+
+.proposals-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.proposal-card {
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.proposal-card:hover {
+  border-color: var(--color-accent);
+}
+
+.proposal-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.proposal-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.proposal-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  margin: 0 0 var(--space-1);
+  color: var(--color-text);
+}
+
+.proposal-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.proposal-proposer {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.proposal-state {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.badge-proposed { background: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
+.badge-accepted { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); }
+.badge-rejected { background: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
+
+.proposal-rationale {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.proposal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.dep-tag {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+.dep-tag--rejected {
+  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+  color: var(--color-danger);
+}
+
+.dep-warning {
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  border: 1px solid var(--color-danger);
+  border-radius: 6px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
+  margin-top: var(--space-2);
+}
+
+/* Proposal Detail */
+.proposal-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.proposal-detail__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.proposal-detail__description h4,
+.proposal-detail__rationale h4,
+.proposal-detail__deps h4 {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-1);
+}
+
+.proposal-detail__description p,
+.proposal-detail__rationale p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.dep-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dep-state {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+/* ── Escalated Tasks (TASK-6-011) ───────────────────────────────────────── */
+.escalated-section, .decisions-section {
+  margin-top: var(--space-2);
+}
+
+.escalated-list, .decisions-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.escalated-card, .decision-card {
+  padding: var(--space-3);
+}
+.decision-card { cursor: pointer; transition: border-color 0.15s ease; }
+.decision-card:hover { border-color: var(--color-accent); }
+
+.escalated-row, .decision-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.escalated-main, .decision-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.escalated-header, .decision-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.escalated-key {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-accent);
+}
+
+.qa-badge {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 77, 109, 0.15);
+  color: var(--color-danger);
+}
+
+.escalated-title, .decision-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  margin: 0 0 var(--space-1);
+  color: var(--color-text);
+}
+
+.escalated-desc, .decision-context {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.escalated-actions {
+  flex-shrink: 0;
+}
+
+.decision-meta {
+  flex-shrink: 0;
+}
+
+.decision-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.dr-state {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.dr-state--open { background: rgba(255, 176, 32, 0.2); color: var(--color-warning); }
+.dr-state--resolved { background: rgba(60, 255, 154, 0.2); color: var(--color-success); }
+.dr-state--expired { background: rgba(255, 77, 109, 0.2); color: var(--color-danger); }
+
+.escalated-badge-count {
+  background: var(--color-danger);
+  color: white;
+  border-radius: 10px;
+  font-size: 10px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  font-weight: 700;
+}
+
+.decision-badge-count {
+  background: var(--color-warning);
+  color: var(--color-bg);
+  border-radius: 10px;
+  font-size: 10px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  font-weight: 700;
 }
 </style>

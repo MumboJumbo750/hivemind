@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     audit_retention_days: int = 90
     hivemind_cors_origins: str = "http://localhost:5173"
     hivemind_prompt_minify: bool = True
+    testing: bool = False
 
     hivemind_node_name: str = "hivemind-node"
     hivemind_node_url: str = "http://localhost:8000"
@@ -24,7 +25,7 @@ class Settings(BaseSettings):
     hivemind_hive_station_url: str = ""
     hivemind_hive_station_token: str = ""
     hivemind_hive_relay_enabled: bool = False
-    hivemind_transport: str = "stdio"
+    hivemind_transport: str = "sse"  # SSE always active; "stdio" adds local stdio loop
     hivemind_mcp_api_key: str = "hivemind-local-key"
 
     # Ollama / Embedding settings (Phase 3)
@@ -45,6 +46,11 @@ class Settings(BaseSettings):
     hivemind_peer_timeout: int = 900
     hivemind_federation_ping_interval: int = 60
     hivemind_federation_offline_threshold: int = 3
+
+    # Phase 6 — SLA & Notification settings
+    hivemind_sla_cron_interval: int = 3600  # seconds, default 1h
+    notification_retention_days: int = 90
+    notification_unread_retention_days: int = 365
 
     jwt_secret_key: str = "changeme-in-production"
     jwt_algorithm: str = "HS256"

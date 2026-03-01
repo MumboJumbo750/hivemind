@@ -20,7 +20,7 @@ Hivemind ist ein hybrides Entwicklungssystem das **Progressive Disclosure** als 
 | Embeddings | Ollama nomic-embed-text (ab Phase 3) |
 | Frontend | Vue 3 + Vite + TypeScript + Reka UI |
 | Runtime | Docker Compose |
-| MCP | stdio (lokal) + HTTP/SSE (team/remote) |
+| MCP | MCP 1.0 Standard (SSE/JSON-RPC 2.0) + Convenience REST + stdio |
 
 ## Architektur-Schichten
 
@@ -33,7 +33,7 @@ Hivemind ist ein hybrides Entwicklungssystem das **Progressive Disclosure** als 
 │         FastAPI + JWT Auth + RBAC                │
 ├─────────────────────────────────────────────────┤
 │            MCP Server (Phase 3+)                 │
-│         stdio + HTTP/SSE Transport               │
+│    MCP 1.0 (SSE/JSON-RPC 2.0) + REST + stdio     │
 ├─────────────────────────────────────────────────┤
 │         Domain Services + State Machine          │
 │        SQLAlchemy 2 + Business Logic             │

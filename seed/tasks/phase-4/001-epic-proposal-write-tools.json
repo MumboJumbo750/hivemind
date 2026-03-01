@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-4-001",
+  "epic_ref": "EPIC-PHASE-4",
+  "title": "Epic-Proposal MCP-Write-Tools (propose, update, accept, reject)",
+  "description": "Vier MCP-Write-Tools implementieren die den Epic-Proposal-Workflow abdecken: `hivemind/propose_epic` (Stratege erstellt Proposal, state='proposed'), `hivemind/update_epic_proposal` (Stratege bessert nach, nur bei state='proposed', Optimistic Locking), `hivemind/accept_epic_proposal` (Triage/Admin akzeptiert → erstellt echtes Epic mit state='incoming', setzt resulting_epic_id), `hivemind/reject_epic_proposal` (Triage/Admin lehnt ab mit Begründung → Notification an Proposer, Warnung an abhängige Proposals). RBAC: propose/update → developer+, accept/reject → triage/admin. Alle Tools schreiben Audit-Log-Einträge. Notification-Events: ProposalAccepted, ProposalRejected, ProposalDependencyRejected via event_bus. Tool-Handler in `app/mcp/tools/write_tools.py`. Idempotenz: propose_epic akzeptiert optionalen `idempotency_key`.",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "`hivemind/propose_epic` erstellt Proposal mit state='proposed' und schreibt Audit-Log",
+      "`hivemind/update_epic_proposal` akzeptiert Optimistic Locking Version, wirft 409 bei Mismatch",
+      "`hivemind/accept_epic_proposal` erstellt Epic (state='incoming') und setzt resulting_epic_id",
+      "`hivemind/reject_epic_proposal` setzt state='rejected', sendet Notification an proposed_by",
+      "Abhängige Proposals erhalten ProposalDependencyRejected-Warning-Event bei Ablehnung",
+      "RBAC-Enforcement: propose ohne 'write_epics' → 403; accept/reject ohne 'manage_proposals' → 403",
+      "Unit-Test: propose → accept → Epic prüfen; reject → Notification; Optimistic Lock Conflict"
+    ]
+  },
+  "tags": ["backend", "mcp", "planning", "proposals"],
+  "subtasks": [],
+  "pinned_skills": ["mcp-write-tool", "epic-proposal", "state-machine-transition", "rbac-middleware", "api-test"],
+  "linked_wiki": ["system-architektur", "agent-konzept"],
+  "source_doc": "docs/phases/phase-4.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-4-004"]
+}

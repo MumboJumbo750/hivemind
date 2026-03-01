@@ -1,0 +1,6 @@
+{
+  "decision_key": "DR-001",
+  "epic_ref": "EPIC-PHASE-7",
+  "decision": "Separate Outbox-Consumer pro Direction statt einem generischen Consumer",
+  "rationale": "Phase F hat bewiesen dass peer_outbound seinen eigenen Consumer braucht (Ed25519-Signing, Hub-Relay-Fallback). Phase 7 ergänzt einen outbound-Consumer mit System-spezifischen Adaptern (YouTrack, Sentry). Ein generischer Consumer wäre zu komplex — jeder Direction-Typ hat eigene Auth, Retry- und Delivery-Logik. Drei separate Jobs: peer_outbound (Phase F), outbound (Phase 7), inbound-routing (Phase 7)."
+}

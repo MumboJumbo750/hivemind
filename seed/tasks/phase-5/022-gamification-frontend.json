@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-5-022",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Gamification-Frontend: Status Bar & Achievements",
+  "description": "Status Bar: EXP-Progress, Level, Titel. Achievements-Page: Badges, Level-History. Level-Up-Animation (SSE). Badge-Toast (SSE). Vue 3 + Reka UI.",
+  "state": "incoming",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "Status Bar mit EXP Level Titel",
+      "Achievements-Page",
+      "Level-Up-Animation",
+      "Badge-Toast",
+      "Daten von /api/users/me/achievements"
+    ]
+  },
+  "tags": ["frontend", "gamification", "vue", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "sse-event-stream", "design-token"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-5-016"]
+}

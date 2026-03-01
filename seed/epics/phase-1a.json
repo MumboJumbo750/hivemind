@@ -2,11 +2,16 @@
   "external_id": "EPIC-PHASE-1A",
   "title": "Phase 1a — Datenfundament Backend",
   "description": "Docker Compose Stack, vollständiges DB-Schema via Alembic, State Machine, API-Skeleton. Kein UI, kein Auth, kein AI.",
-  "state": "scoped",
+  "state": "done",
   "priority": "critical",
   "sla_deadline": null,
   "definition_of_done": "docker compose up startet fehlerfrei, GET /health antwortet 200, alle Tabellen existieren, Task-State-Transitions validiert, Review-Gate blockiert in_progress → done.",
-  "tags": ["backend", "infrastructure", "database", "phase-1"],
+  "tags": [
+    "backend",
+    "infrastructure",
+    "database",
+    "phase-1"
+  ],
   "depends_on": [],
   "source_doc": "docs/phases/phase-1.md#phase-1a"
 }

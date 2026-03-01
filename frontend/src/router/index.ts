@@ -13,6 +13,8 @@ const router = createRouter({
     { path: '/notifications', component: () => import('../views/NotificationTray/NotificationTrayView.vue') },
     { path: '/triage',        component: () => import('../views/Triage/TriageStationView.vue') },
     { path: '/kartograph-bootstrap', component: () => import('../views/KartographBootstrap/KartographBootstrapView.vue') },
+    { path: '/nexus-grid',   component: () => import('../views/NexusGrid/NexusGridView.vue') },
+    { path: '/achievements', component: () => import('../views/Achievements/AchievementsView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })

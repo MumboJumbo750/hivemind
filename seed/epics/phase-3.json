@@ -2,11 +2,20 @@
   "external_id": "EPIC-PHASE-3",
   "title": "Phase 3 — MCP Read-Tools & Bibliothekar",
   "description": "Erster MCP-Server, alle Read-Tools, Prompt-Generator, Ollama-Embeddings, Triage Station, SSE-Infrastruktur.",
-  "state": "scoped",
+  "state": "done",
   "priority": "high",
   "sla_deadline": null,
   "definition_of_done": "MCP-Server antwortet auf stdio + HTTP/SSE, alle Read-Tools liefern korrekte Daten, Prompt-Generator erzeugt Bibliothekar/Worker/Kartograph-Prompts, Ollama erzeugt Embeddings.",
-  "tags": ["backend", "frontend", "mcp", "ai", "embeddings", "phase-3"],
-  "depends_on": ["EPIC-PHASE-2"],
+  "tags": [
+    "backend",
+    "frontend",
+    "mcp",
+    "ai",
+    "embeddings",
+    "phase-3"
+  ],
+  "depends_on": [
+    "EPIC-PHASE-2"
+  ],
   "source_doc": "docs/phases/phase-3.md"
 }

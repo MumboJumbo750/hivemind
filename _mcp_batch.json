@@ -1,0 +1,85 @@
+[
+  {
+    "tool": "hivemind/decompose_epic",
+    "args": {
+      "epic_key": "EPIC-PHASE-6",
+      "tasks": [
+        {
+          "title": "Notification-Service v2: DB-backed notifications",
+          "description": "Refactor notification_service.py to write to the notifications table (not JSONB on user). Support all 13 notification types from Phase 6 spec. Each notification gets priority (action_now/soon/fyi), type, title, body, link. Idempotent: dedup by (user_id, type, entity_id) within 1h window. Fire SSE event on create.",
+          "definition_of_done": {"criteria": ["Notifications written to notifications table", "All 13 notification types supported", "Priority classification (action_now/soon/fyi)", "Idempotent dedup within 1h window", "SSE event fired on create", "Tests for create, dedup, priority"]}
+        },
+        {
+          "title": "SLA-Cron-Job: Deadline-Pruefung + Notifications",
+          "description": "Add SLA cron job to scheduler.py. Runs at HIVEMIND_SLA_CRON_INTERVAL (default 3600s). Checks epics where sla_due_at is approaching: 4h before → sla_warning to owner. SLA breached → sla_breach to backup_owner (skip if NULL, notify admins). 24h after SLA → admin fallback notification. All notifications idempotent.",
+          "definition_of_done": {"criteria": ["Cron job registered in scheduler", "HIVEMIND_SLA_CRON_INTERVAL config setting", "4h warning notification to owner", "SLA breach notification to backup_owner or admins", "24h admin fallback notification", "Idempotent notifications", "Tests for each SLA threshold"]}
+        },
+        {
+          "title": "Eskalations-Logik: 3x qa_failed → escalated",
+          "description": "Enhance state_machine.py validate_qa_failed_count to automatically transition task to escalated after 3x qa_failed. Create escalation notification to epic owner + admins. Write audit log entry for auto-escalation.",
+          "definition_of_done": {"criteria": ["3x qa_failed auto-transitions to escalated", "Escalation notification to owner + admins", "Audit log for auto-escalation", "Tests for escalation trigger"]}
+        },
+        {
+          "title": "Decision-Request-SLA-Enforcement Cron",
+          "description": "Add decision request SLA enforcement to scheduler. Check open decision_requests: 24h → notify owner. 48h → notify backup_owner (skip if NULL). 72h → auto-transition: task blocked→escalated, decision_request state→expired, notify all admins (decision_escalated_admin). All idempotent.",
+          "definition_of_done": {"criteria": ["Decision SLA cron job in scheduler", "24h owner notification", "48h backup_owner notification", "72h auto-escalation and expiry", "Task blocked→escalated on 72h", "Decision request → expired on 72h", "Admin notification on 72h", "Tests for each threshold"]}
+        },
+        {
+          "title": "MCP Tool: hivemind/resolve_decision_request",
+          "description": "MCP write tool to resolve an open decision request. Args: decision_request_id, decision, rationale. Sets DR state=resolved, resolved_by, resolved_at. Creates DecisionRecord. Atomically transitions task blocked→in_progress. Owner or Admin allowed.",
+          "definition_of_done": {"criteria": ["resolve_decision_request MCP tool registered", "Sets DR state=resolved", "Creates DecisionRecord", "Task blocked→in_progress atomically", "Owner or Admin authorization", "409 if DR not open", "Audit logging", "Tests"]}
+        },
+        {
+          "title": "MCP Tool: hivemind/resolve_escalation",
+          "description": "MCP write tool: escalated→in_progress. Admin only. Works for both escalation sources. Resets qa_failed_count to 0. Audit log. Notifies assigned worker.",
+          "definition_of_done": {"criteria": ["resolve_escalation MCP tool registered", "Admin-only", "escalated→in_progress", "Resets qa_failed_count", "Audit logging", "Worker notification", "Tests"]}
+        },
+        {
+          "title": "MCP Tool: hivemind/reassign_epic_owner",
+          "description": "Admin write tool to change epic owner_id and/or backup_owner_id. Validates user exists. Audit logging. Notification to new owner.",
+          "definition_of_done": {"criteria": ["reassign_epic_owner MCP tool registered", "Admin-only", "Can set owner_id and/or backup_owner_id", "User validation", "Audit logging", "Notification to new owner", "Tests"]}
+        },
+        {
+          "title": "Triage-Prompt-Generator for UNROUTED Items",
+          "description": "Add triage prompt enhancement to PromptGenerator. Loads unrouted triage items, available epics, generates routing recommendation prompt with confidence scores.",
+          "definition_of_done": {"criteria": ["Enhanced triage prompt in PromptGenerator", "Loads unrouted items and epic context", "Structured routing recommendations", "Confidence scores", "Prompt history recorded", "Tests"]}
+        },
+        {
+          "title": "Notification-Retention-Cron",
+          "description": "Daily cron job at 03:10 UTC. Deletes read notifications older than NOTIFICATION_RETENTION_DAYS (90). Deletes unread older than NOTIFICATION_UNREAD_RETENTION_DAYS (365). Config in Settings.",
+          "definition_of_done": {"criteria": ["Retention cron in scheduler", "NOTIFICATION_RETENTION_DAYS setting", "NOTIFICATION_UNREAD_RETENTION_DAYS setting", "Deletes read after threshold", "Deletes unread after threshold", "Tests"]}
+        },
+        {
+          "title": "Decision-Request-Dialog (Frontend)",
+          "description": "Vue 3 modal for decision requests. Options A/B/C display, SLA timer, option select + rationale, MCP resolve call. Reka UI Dialog.",
+          "definition_of_done": {"criteria": ["DecisionRequestDialog.vue", "Options from payload", "SLA timer", "Resolve form", "MCP call", "Loading/error states"]}
+        },
+        {
+          "title": "Eskalations-Ansicht in Triage Station (Frontend)",
+          "description": "ESCALATED category in triage station. Priority by SLA breach. Admin resolve button. Escalation reason display.",
+          "definition_of_done": {"criteria": ["ESCALATED category in triage", "SLA breach sorting", "Admin resolve button", "Reason display"]}
+        },
+        {
+          "title": "SLA-Timer Component (Frontend)",
+          "description": "Animated countdown component. Green >4h, amber 1-4h, red <1h/breached. Reusable on epics and DRs.",
+          "definition_of_done": {"criteria": ["SlaTimer.vue", "Color transitions", "Countdown", "Breach display", "Reusable"]}
+        },
+        {
+          "title": "Notification Tray: Action Queue Grouping (Frontend)",
+          "description": "Tray grouped into ACTION NOW/SOON/FYI. Entry: type, time, reason, action. Mark read. Bell badge. SSE updates.",
+          "definition_of_done": {"criteria": ["NotificationTray.vue", "Three groups", "Entry details", "Mark read", "Badge", "SSE"]}
+        },
+        {
+          "title": "Backup-Owner-Anzeige + Edit (Frontend)",
+          "description": "Backup owner on epic cards and DR views. Admin edit via inline select. MCP reassign call.",
+          "definition_of_done": {"criteria": ["Backup owner display", "Admin edit", "MCP call", "Null placeholder"]}
+        },
+        {
+          "title": "Notification REST Endpoints + Router",
+          "description": "GET /api/notifications (paginated, filterable), PATCH /api/notifications/{id}/read, GET /api/notifications/unread-count. Auth required.",
+          "definition_of_done": {"criteria": ["GET list endpoint", "PATCH read endpoint", "GET unread-count", "Auth", "Tests"]}
+        }
+      ]
+    }
+  }
+]

@@ -17,7 +17,7 @@ Du implementierst oder erweiterst eine State-Machine-Transition für Tasks oder 
 
 ### Konventionen
 - State Machine definiert in `app/services/state_machine.py`
-- Erlaubte Transitionen als Dictionary: `ALLOWED_TRANSITIONS: dict[str, list[str]]`
+- Erlaubte Transitionen als Dictionary: `ALLOWED_TRANSITIONS: dict[str, set[str]]`
 - Jede Transition validiert Vorbedingungen (z.B. `assigned_to` gesetzt für `scoped → ready`)
 - Review-Gate: `in_progress → done` ist VERBOTEN — muss über `in_review` gehen
 - Epic-Auto-Transitions atomar in derselben DB-Transaction
@@ -42,8 +42,13 @@ TASK_TRANSITIONS = {
 
 ### Vorbedingungen
 
+> **Wichtig:** `decompose_epic` erstellt Tasks mit **state=incoming**.
+> Der Architekt muss Tasks manuell `incoming → scoped → ready` transitionieren (2 Schritte!).
+> Direktes `incoming → ready` ist **nicht erlaubt**.
+
 | Transition | Bedingung |
 | --- | --- |
+| `incoming → scoped` | Keine Vorbedingung |
 | `scoped → ready` | `assigned_to` muss gesetzt sein |
 | `in_progress → in_review` | `result` muss vorhanden sein; Guards passed/skipped (ab Phase 5) |
 | `in_review → done` | Nur Owner oder Admin |

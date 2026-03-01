@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { api } from '../../api'
-import type { Epic, Task, PeerNode } from '../../api/types'
+import type { Epic, Task, PeerNode, ContextBoundary } from '../../api/types'
 import EpicScopingModal from '../../components/domain/EpicScopingModal.vue'
 import TaskReviewPanel from '../../components/domain/TaskReviewPanel.vue'
 import SlaCountdown from '../../components/ui/SlaCountdown.vue'
+import { HivemindModal } from '../../components/ui'
 import { useProjectStore } from '../../stores/projectStore'
+import { useAuthStore } from '../../stores/authStore'
 
 const store = useProjectStore()
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.user?.role === 'admin')
+const isDeveloper = computed(() => authStore.user?.role === 'developer' || authStore.user?.role === 'admin')
 
 // ── Project selector ────────────────────────────────────────────────────────
 const selectedProjectId = ref<string | null>(null)
@@ -133,6 +138,159 @@ onMounted(async () => {
     peerNodes.value = await api.getNodes()
   } catch { /* federation not configured — that's fine */ }
 })
+
+// ── Architekt Prompt (TASK-4-009) ────────────────────────────────────────────
+const architektLoading = ref<string | null>(null)  // epic_key being loaded
+const architektPrompt = ref<string | null>(null)
+const architektTokenCount = ref<number | null>(null)
+const showArchitektModal = ref(false)
+const copySuccess = ref(false)
+
+function epicHasNoTasks(epicKey: string): boolean {
+  const tasks = tasksByEpic.value[epicKey]
+  return !tasks || tasks.length === 0
+}
+
+// ── Backup Owner Edit (TASK-6-014) ───────────────────────────────────────────
+const editingBackupOwner = ref<Record<string, boolean>>({})
+const backupOwnerInput = ref<Record<string, string>>({})
+const backupOwnerSaving = ref<Record<string, boolean>>({})
+
+function startEditBackupOwner(epic: Epic) {
+  editingBackupOwner.value[epic.epic_key] = true
+  backupOwnerInput.value[epic.epic_key] = epic.backup_owner_id ?? ''
+}
+
+function cancelEditBackupOwner(epicKey: string) {
+  editingBackupOwner.value[epicKey] = false
+  backupOwnerInput.value[epicKey] = ''
+}
+
+async function saveBackupOwner(epic: Epic) {
+  const userId = backupOwnerInput.value[epic.epic_key]?.trim()
+  if (!userId) return
+  backupOwnerSaving.value[epic.epic_key] = true
+  try {
+    await api.callMcpTool('hivemind/reassign_epic_owner', {
+      epic_key: epic.epic_key,
+      backup_owner_id: userId,
+    })
+    epic.backup_owner_id = userId
+    editingBackupOwner.value[epic.epic_key] = false
+  } catch (e: unknown) {
+    epicsError.value = (e as Error).message
+  } finally {
+    backupOwnerSaving.value[epic.epic_key] = false
+  }
+}
+
+async function runArchitekt(epic: Epic) {
+  architektLoading.value = epic.epic_key
+  try {
+    const result = await api.getPrompt('architekt', undefined, epic.epic_key)
+    // result is McpToolResponse[] — each .text is JSON: {"data": {"prompt": "...", "token_count": N}}
+    const raw = result.map(r => r.text ?? '').join('\n')
+    try {
+      const parsed = JSON.parse(raw)
+      architektPrompt.value = parsed?.data?.prompt ?? raw
+      architektTokenCount.value = parsed?.data?.token_count ?? null
+    } catch {
+      // Fallback: display raw text if not JSON
+      architektPrompt.value = raw
+      architektTokenCount.value = null
+    }
+    copySuccess.value = false
+    showArchitektModal.value = true
+  } catch (e: unknown) {
+    epicsError.value = (e as Error).message
+  } finally {
+    architektLoading.value = null
+  }
+}
+
+async function copyPrompt() {
+  if (!architektPrompt.value) return
+  try {
+    await navigator.clipboard.writeText(architektPrompt.value)
+    copySuccess.value = true
+    setTimeout(() => { copySuccess.value = false }, 2000)
+  } catch {
+    // Fallback for non-secure contexts
+    const ta = document.createElement('textarea')
+    ta.value = architektPrompt.value
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    copySuccess.value = true
+    setTimeout(() => { copySuccess.value = false }, 2000)
+  }
+}
+
+// ── Task Creation Dialog (TASK-4-009) ────────────────────────────────────────
+const showTaskDialog = ref(false)
+const taskDialogEpicKey = ref<string>('')
+const newTaskTitle = ref('')
+const newTaskDescription = ref('')
+const newTaskAssignTo = ref<string>('')
+const taskCreateLoading = ref(false)
+const members = ref<{ project_id: string; user_id: string; role: string; username?: string }[]>([])
+
+async function openTaskDialog(epicKey: string) {
+  taskDialogEpicKey.value = epicKey
+  newTaskTitle.value = ''
+  newTaskDescription.value = ''
+  newTaskAssignTo.value = ''
+  showTaskDialog.value = true
+  // Load project members for assignment dropdown
+  if (selectedProjectId.value && !members.value.length) {
+    try {
+      members.value = await api.getMembers(selectedProjectId.value) as typeof members.value
+    } catch { /* ignore */ }
+  }
+}
+
+async function createTask() {
+  if (!newTaskTitle.value.trim()) return
+  taskCreateLoading.value = true
+  try {
+    await api.createTask(taskDialogEpicKey.value, {
+      title: newTaskTitle.value.trim(),
+      description: newTaskDescription.value.trim() || undefined,
+      assigned_to: newTaskAssignTo.value || undefined,
+    })
+    showTaskDialog.value = false
+    await refreshEpicTasks(taskDialogEpicKey.value)
+    // Auto-expand the epic if not already expanded
+    expandedEpics.value.add(taskDialogEpicKey.value)
+  } catch (e: unknown) {
+    epicsError.value = (e as Error).message
+  } finally {
+    taskCreateLoading.value = false
+  }
+}
+
+// ── Context Boundary (TASK-4-009) ────────────────────────────────────────────
+const selectedTaskForBoundary = ref<Task | null>(null)
+const taskBoundary = ref<ContextBoundary | null>(null)
+const boundaryLoading = ref(false)
+
+async function showTaskDetail(task: Task) {
+  selectedTaskForBoundary.value = task
+  boundaryLoading.value = true
+  taskBoundary.value = null
+  try {
+    taskBoundary.value = await api.getContextBoundary(task.task_key)
+  } catch { /* no boundary — fine */ }
+  finally {
+    boundaryLoading.value = false
+  }
+}
+
+function closeTaskDetail() {
+  selectedTaskForBoundary.value = null
+  taskBoundary.value = null
+}
 </script>
 
 <template>
@@ -189,6 +347,9 @@ onMounted(async () => {
           </div>
           <div class="epic-header__right">
             <SlaCountdown :sla_due_at="epic.sla_due_at" />
+            <span v-if="epic.backup_owner_id" class="backup-owner-badge" title="Backup Owner zugewiesen">
+              👤 Backup
+            </span>
             <span class="badge" :class="EPIC_STATE_CLASS[epic.state] ?? 'badge--muted'">
               {{ epic.state }}
             </span>
@@ -198,6 +359,14 @@ onMounted(async () => {
               @click.stop="openScoping(epic)"
             >
               SCOPEN →
+            </button>
+            <button
+              v-if="epic.state === 'scoped' && epicHasNoTasks(epic.epic_key)"
+              class="btn-architekt"
+              :disabled="architektLoading === epic.epic_key"
+              @click.stop="runArchitekt(epic)"
+            >
+              {{ architektLoading === epic.epic_key ? '…' : 'Architekt starten ▶' }}
             </button>
             <span class="expand-icon">{{ expandedEpics.has(epic.epic_key) ? '▲' : '▼' }}</span>
           </div>
@@ -217,6 +386,7 @@ onMounted(async () => {
             v-for="task in tasksByEpic[epic.epic_key]"
             :key="task.task_key"
             class="task-row"
+            @click="showTaskDetail(task)"
           >
             <span class="task-key">{{ task.task_key }}</span>
             <span class="task-title">{{ task.title }}</span>
@@ -247,6 +417,38 @@ onMounted(async () => {
               </button>
             </div>
           </div>
+          <!-- Add Task button -->
+          <div v-if="isDeveloper" class="task-add-row">
+            <button class="btn-add-task" @click.stop="openTaskDialog(epic.epic_key)">
+              + Task hinzufügen
+            </button>
+          </div>
+
+          <!-- Backup Owner Management (TASK-6-014) -->
+          <div v-if="isAdmin" class="backup-owner-row">
+            <span class="backup-owner-label">Backup Owner:</span>
+            <span v-if="epic.backup_owner_id && !editingBackupOwner[epic.epic_key]" class="backup-owner-value">
+              {{ epic.backup_owner_id.slice(0, 8) }}…
+              <button class="btn-inline" @click.stop="startEditBackupOwner(epic)">✎</button>
+            </span>
+            <span v-else-if="!editingBackupOwner[epic.epic_key]" class="backup-owner-value backup-owner-value--empty">
+              Nicht gesetzt
+              <button class="btn-inline" @click.stop="startEditBackupOwner(epic)">+ Zuweisen</button>
+            </span>
+            <div v-else class="backup-owner-edit" @click.stop>
+              <input
+                v-model="backupOwnerInput[epic.epic_key]"
+                class="backup-owner-input"
+                placeholder="User-ID eingeben…"
+              />
+              <button
+                class="btn-inline btn-inline--save"
+                :disabled="backupOwnerSaving[epic.epic_key]"
+                @click.stop="saveBackupOwner(epic)"
+              >✓</button>
+              <button class="btn-inline" @click.stop="cancelEditBackupOwner(epic.epic_key)">✕</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -269,6 +471,105 @@ onMounted(async () => {
             @close="reviewTask = null"
             @done="onReviewDone"
           />
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Architekt Prompt Modal -->
+    <HivemindModal v-model:model-value="showArchitektModal" title="Architekt-Prompt" size="lg">
+      <div class="architekt-prompt-header">
+        <span v-if="architektTokenCount" class="token-badge">~{{ architektTokenCount }} Tokens</span>
+        <button class="btn-copy" @click="copyPrompt">
+          {{ copySuccess ? '✓ Kopiert' : '⎘ Kopieren' }}
+        </button>
+      </div>
+      <pre class="architekt-prompt-content">{{ architektPrompt }}</pre>
+      <template #footer>
+        <button class="btn-close-modal" @click="showArchitektModal = false">Schließen</button>
+      </template>
+    </HivemindModal>
+
+    <!-- Task Creation Dialog -->
+    <HivemindModal v-model:model-value="showTaskDialog" title="Neuen Task erstellen">
+      <div class="task-form">
+        <label class="form-label">
+          Titel *
+          <input v-model="newTaskTitle" type="text" class="form-input" placeholder="Task-Titel…" />
+        </label>
+        <label class="form-label">
+          Beschreibung
+          <textarea v-model="newTaskDescription" class="form-textarea" rows="3" placeholder="Beschreibung (optional)…" />
+        </label>
+        <label class="form-label">
+          Zuweisen an
+          <select v-model="newTaskAssignTo" class="form-select">
+            <option value="">Nicht zugewiesen</option>
+            <option v-for="m in members" :key="m.user_id" :value="m.user_id">
+              {{ m.username || m.user_id }}
+            </option>
+          </select>
+        </label>
+      </div>
+      <template #footer>
+        <button class="btn-close-modal" @click="showTaskDialog = false">Abbrechen</button>
+        <button
+          class="btn-create-task"
+          :disabled="!newTaskTitle.trim() || taskCreateLoading"
+          @click="createTask"
+        >
+          {{ taskCreateLoading ? 'Erstelle…' : 'Task erstellen' }}
+        </button>
+      </template>
+    </HivemindModal>
+
+    <!-- Task Detail with Context Boundary -->
+    <Teleport to="body">
+      <div v-if="selectedTaskForBoundary" class="review-overlay" @click.self="closeTaskDetail">
+        <div class="task-detail-panel">
+          <header class="task-detail-header">
+            <span class="task-key">{{ selectedTaskForBoundary.task_key }}</span>
+            <h3>{{ selectedTaskForBoundary.title }}</h3>
+            <button class="btn-close-x" @click="closeTaskDetail">✕</button>
+          </header>
+          <p v-if="selectedTaskForBoundary.description" class="task-detail-desc">
+            {{ selectedTaskForBoundary.description }}
+          </p>
+          <div class="task-detail-meta">
+            <span class="badge badge--sm" :class="TASK_STATE_CLASS[selectedTaskForBoundary.state] ?? 'badge--muted'">
+              {{ selectedTaskForBoundary.state }}
+            </span>
+            <span v-if="selectedTaskForBoundary.assigned_node_name">
+              ⬡ {{ selectedTaskForBoundary.assigned_node_name }}
+            </span>
+          </div>
+
+          <!-- Context Boundary -->
+          <div v-if="boundaryLoading" class="boundary-loading">Lade Context Boundary…</div>
+          <div v-else-if="taskBoundary" class="context-boundary">
+            <h4 class="boundary-title">
+              Context Boundary (vom Architekt)
+              <span class="boundary-info" title="Vom Architekt gesetzte Einschränkungen für diesen Task">ⓘ</span>
+            </h4>
+            <div class="boundary-grid">
+              <div v-if="taskBoundary.allowed_skills?.length" class="boundary-item">
+                <span class="boundary-label">Erlaubte Skills</span>
+                <span class="boundary-value">{{ taskBoundary.allowed_skills.length }} Skills</span>
+              </div>
+              <div v-if="taskBoundary.allowed_docs?.length" class="boundary-item">
+                <span class="boundary-label">Erlaubte Docs</span>
+                <span class="boundary-value">{{ taskBoundary.allowed_docs.length }} Docs</span>
+              </div>
+              <div v-if="taskBoundary.max_token_budget" class="boundary-item">
+                <span class="boundary-label">Max Token Budget</span>
+                <span class="boundary-value">{{ taskBoundary.max_token_budget.toLocaleString() }}</span>
+              </div>
+              <div v-if="taskBoundary.external_access?.length" class="boundary-item">
+                <span class="boundary-label">External Access</span>
+                <span class="boundary-value">{{ taskBoundary.external_access.join(', ') }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-else class="boundary-none">Keine Context Boundary gesetzt.</div>
         </div>
       </div>
     </Teleport>
@@ -546,4 +847,313 @@ onMounted(async () => {
   border-color: var(--color-border);
   background: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
 }
+
+/* ── Architekt Button ───────────────────────────────────────────────────── */
+.btn-architekt {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xs);
+  padding: 2px var(--space-2);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background var(--transition-duration) ease;
+}
+.btn-architekt:hover { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+.btn-architekt:disabled { opacity: 0.5; cursor: wait; }
+
+.architekt-prompt-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.token-badge {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+.btn-copy {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-copy:hover {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border-color: var(--color-accent);
+}
+.architekt-prompt-content {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  color: var(--color-text);
+  margin: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* ── Add Task ───────────────────────────────────────────────────────────── */
+.task-add-row {
+  padding: var(--space-2) var(--space-5);
+  border-top: 1px dashed var(--color-border);
+}
+
+.btn-add-task {
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-add-task:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* ── Task Form ──────────────────────────────────────────────────────────── */
+.task-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.form-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  padding: var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+}
+
+.form-textarea { resize: vertical; }
+
+.btn-close-modal {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+.btn-create-task {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  border: none;
+  border-radius: 6px;
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+.btn-create-task:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Task Detail Panel ──────────────────────────────────────────────────── */
+.task-detail-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  width: 520px;
+  max-width: calc(100vw - var(--space-8));
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+
+.task-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.task-detail-header h3 {
+  flex: 1;
+  font-family: var(--font-heading);
+  margin: 0;
+}
+
+.btn-close-x {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+}
+
+.task-detail-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  margin: 0 0 var(--space-3);
+  line-height: 1.5;
+}
+
+.task-detail-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+/* ── Context Boundary ───────────────────────────────────────────────────── */
+.context-boundary {
+  background: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: var(--space-4);
+}
+
+.boundary-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  margin: 0 0 var(--space-3);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.boundary-info {
+  font-size: var(--font-size-xs);
+  cursor: help;
+  color: var(--color-text-muted);
+}
+
+.boundary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.boundary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.boundary-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.boundary-value {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.boundary-loading,
+.boundary-none {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  padding: var(--space-3) 0;
+}
+
+.task-row { cursor: pointer; }
+
+/* ── Backup Owner (TASK-6-014) ───────────────────────────────────────────── */
+.backup-owner-badge {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  color: var(--color-accent);
+}
+
+.backup-owner-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+}
+
+.backup-owner-label {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.backup-owner-value {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.backup-owner-value--empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.backup-owner-edit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.backup-owner-input {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  color: var(--color-text);
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  width: 200px;
+}
+
+.btn-inline {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: all 0.15s;
+}
+.btn-inline:hover { color: var(--color-text); background: var(--color-surface-alt); }
+.btn-inline--save { color: var(--color-success); }
+.btn-inline--save:hover { color: var(--color-success); }
 </style>

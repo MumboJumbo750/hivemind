@@ -1,16 +1,17 @@
 {
   "external_id": "TASK-3-001",
   "epic_ref": "EPIC-PHASE-3",
-  "title": "MCP-Server Setup (stdio + HTTP/SSE Transport)",
-  "description": "FastAPI-basierter MCP-Server aufsetzen mit Dual-Transport: stdio für lokale Clients (Claude Desktop, Cursor) und HTTP/SSE für Web-Clients und Remote-Instanzen. MCP-Server als eigenes Modul `app/mcp/` mit `server.py` als Entrypoint. Tool-Registrierung über `@server.list_tools()` und `@server.call_tool()`. Transport-Auswahl via `HIVEMIND_TRANSPORT` Env-Variable (`stdio` default, `http` für Team-Setup). HTTP/SSE-Transport über dedizierte FastAPI-Route (`/api/mcp/sse`). AuthN/AuthZ-Integration: stdio nutzt lokalen API-Key, HTTP nutzt JWT aus Phase 2. Jeder Tool-Call wird im Audit-Log protokolliert (tool_name, actor_id, input, output, timestamp). MCP-konforme Error-Responses mit `code` + `message`. Namespace: `hivemind/` für alle Tools.",
+  "title": "MCP-Server Setup (MCP 1.0 Standard — SSE/JSON-RPC 2.0)",
+  "description": "FastAPI-basierter MCP-Server mit MCP 1.0 Standard-Compliance. Standard-Transport: SDK-basierter `SseServerTransport` aus dem `mcp` Python-Paket — `GET /api/mcp/sse` (SSE-Stream) + `POST /api/mcp/message` (JSON-RPC 2.0 mit `initialize` Handshake, `tools/list`, `tools/call`). Externe MCP-Clients (Cursor, Claude Desktop, Continue) können direkt verbinden. Convenience-Endpoints für das Hivemind-Frontend: `GET /api/mcp/tools` (flache JSON-Liste) + `POST /api/mcp/call` (einfacher Tool-Call ohne JSON-RPC Overhead). MCP-Server als eigenes Modul `app/mcp/` mit `server.py` (Tool-Registry) und `transport.py` (SSE + REST). Tool-Registrierung über `register_tool()` mit `@server.list_tools()` / `@server.call_tool()` Decorators. Standard-Endpoints als raw ASGI-Apps gemountet (Starlette Route), Convenience-Endpoints als FastAPI-Router. AuthN/AuthZ: SSE/REST nutzt JWT/Solo-Token aus Phase 2, stdio nutzt lokalen API-Key. Jeder Tool-Call wird im Audit-Log protokolliert. MCP-konforme Error-Responses. Namespace: `hivemind/` für alle Tools. Status-Endpoint: `GET /api/mcp/status` zeigt Protokoll, Tool-Count, aktive Sessions.",
   "state": "incoming",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [
       "MCP-Server-Modul `app/mcp/server.py` existiert mit Tool-Registrierung",
       "stdio-Transport funktioniert: lokaler Client kann `list_tools` aufrufen",
-      "HTTP/SSE-Transport über `/api/mcp/sse` verfügbar",
-      "`HIVEMIND_TRANSPORT` Env-Variable steuert aktiven Transport (default: stdio)",
+      "MCP 1.0 Standard-Transport: `GET /api/mcp/sse` + `POST /api/mcp/message` funktioniert mit offiziellem MCP SDK Client",
+      "JSON-RPC 2.0 Handshake (`initialize`) + `tools/list` + `tools/call` über SSE verifiziert",
+      "Convenience-Endpoints: `GET /api/mcp/tools` + `POST /api/mcp/call` für Frontend verfügbar",
       "AuthN via JWT (HTTP) bzw. API-Key (stdio) integriert",
       "Jeder Tool-Call schreibt Audit-Log-Eintrag (tool_name, actor_id, input, output)",
       "MCP-konforme Error-Responses bei ungültigen Tool-Calls",

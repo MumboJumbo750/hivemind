@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-5-009",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Gaertner-Write-Tools: propose_skill, propose_skill_change, create_decision_record, update_doc",
+  "description": "MCP-Write-Tools Gaertner: (1) propose_skill — Skill mit lifecycle=draft, Circular-Check, Depth<=3. (2) propose_skill_change — Change-Proposal. (3) create_decision_record — Epic-Entscheidung dokumentieren, max 3x/Tag. (4) update_doc — Epic-Doc mit Optimistic Locking.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "propose_skill: lifecycle=draft Circular-Check Depth<=3",
+      "propose_skill_change: Change-Proposal erstellt",
+      "create_decision_record: max 3x/Tag Anti-Spam",
+      "update_doc: Optimistic Locking",
+      "Audit-Logging",
+      "Tests mindestens 90% Coverage"
+    ]
+  },
+  "tags": ["backend", "mcp", "gaertner", "skills", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["mcp-write-tool", "skill-lifecycle", "optimistic-locking", "api-test"],
+  "linked_wiki": ["agent-konzept", "system-architektur"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "large",
+  "depends_on": []
+}

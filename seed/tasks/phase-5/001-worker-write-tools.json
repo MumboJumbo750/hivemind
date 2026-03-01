@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-5-001",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Worker-Write-Tools: submit_result & report_guard_result",
+  "description": "MCP-Write-Tools für den Worker:\n\n1. hivemind/submit_result — Speichert result (Text) + artifacts (JSON-Array) auf Task. State bleibt in_progress. Idempotent. Validierung: Task muss in_progress sein (409).\n\n2. hivemind/report_guard_result — Setzt task_guards.status auf passed|failed|skipped + result-Text (Pflichtfeld). Bei skippable=false: skipped wird mit 422 abgelehnt. Setzt checked_at, checked_by. Source=self-reported.\n\nDatei: backend/app/mcp/tools/worker_write_tools.py",
+  "state": "incoming",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "submit_result speichert result+artifacts (state bleibt in_progress)",
+      "submit_result gibt 409 wenn Task nicht in_progress",
+      "report_guard_result setzt task_guards.status + result + checked_at",
+      "report_guard_result gibt 422 bei skippable=false und status=skipped",
+      "result-Feld ist Pflicht und nicht-leer fuer alle Status",
+      "Audit-Logging fuer beide Tools",
+      "Tests mit mindestens 90% Coverage"
+    ]
+  },
+  "tags": ["backend", "mcp", "worker", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["mcp-write-tool", "guard-enforcement", "optimistic-locking", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "large",
+  "depends_on": []
+}

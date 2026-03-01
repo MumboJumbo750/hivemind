@@ -14,7 +14,7 @@ export const useMcpStore = defineStore('mcp', () => {
       const tools = await api.getMcpTools()
       connected.value = true
       toolsCount.value = tools.length
-      transport.value = 'HTTP'
+      transport.value = 'MCP 1.0 (SSE)'
       lastCheck.value = new Date().toISOString()
     } catch {
       connected.value = false

@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-5-010",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Kartograph-Write-Tools: Wiki, Epic-Doc, Guard-Proposals",
+  "description": "MCP-Write-Tools Kartograph: create_wiki_article (+ explored_at setzen), update_wiki_article (Versionierung), create_epic_doc, link_wiki_to_epic, propose_guard (lifecycle=draft), propose_guard_change, submit_guard_proposal (draft nach pending_merge).",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "create_wiki_article + WikiVersion + explored_at",
+      "update_wiki_article: neue Version",
+      "create_epic_doc verknuepft mit Epic",
+      "link_wiki_to_epic",
+      "propose_guard: lifecycle=draft",
+      "submit_guard_proposal: draft nach pending_merge",
+      "Audit-Logging",
+      "Tests mindestens 90% Coverage"
+    ]
+  },
+  "tags": ["backend", "mcp", "kartograph", "wiki", "guards", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["mcp-write-tool", "wiki-fulltext-search", "optimistic-locking", "api-test"],
+  "linked_wiki": ["agent-konzept", "system-architektur"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "large",
+  "depends_on": []
+}

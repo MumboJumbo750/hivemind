@@ -3,6 +3,7 @@ import { onMounted, onUnmounted } from 'vue'
 import { RouterView, RouterLink } from 'vue-router'
 import AppShell from './components/layout/AppShell.vue'
 import ActorBadge from './components/domain/ActorBadge.vue'
+import GamificationBar from './components/domain/GamificationBar.vue'
 import NotificationTray from './components/domain/NotificationTray.vue'
 import Spotlight from './components/domain/Spotlight.vue'
 import ToastContainer from './components/ui/ToastContainer.vue'
@@ -39,9 +40,11 @@ onUnmounted(() => window.removeEventListener('keydown', _onKeydown))
         <RouterLink to="/command-deck" class="app-nav__link">Command Deck</RouterLink>
         <RouterLink to="/triage" class="app-nav__link">Triage Station</RouterLink>
         <RouterLink to="/kartograph-bootstrap" class="app-nav__link">Kartograph</RouterLink>
-        <RouterLink to="/skill-lab" class="app-nav__link app-nav__link--locked">Skill Lab 🔒</RouterLink>
-        <RouterLink to="/wiki" class="app-nav__link app-nav__link--locked">Wiki 🔒</RouterLink>
+        <RouterLink to="/skill-lab" class="app-nav__link">Skill Lab</RouterLink>
+        <RouterLink to="/wiki" class="app-nav__link">Wiki</RouterLink>
+        <RouterLink to="/nexus-grid" class="app-nav__link">Nexus Grid</RouterLink>
         <RouterLink to="/guild" class="app-nav__link">Gilde</RouterLink>
+        <RouterLink to="/achievements" class="app-nav__link">Achievements</RouterLink>
         <RouterLink to="/settings" class="app-nav__link">Settings</RouterLink>
       </nav>
     </template>
@@ -52,7 +55,9 @@ onUnmounted(() => window.removeEventListener('keydown', _onKeydown))
       <div style="background: var(--sidebar-bg); height: 100%;" />
     </template>
     <template #status-bar>
-      <div class="statusbar-content" />
+      <div class="statusbar-content">
+        <GamificationBar />
+      </div>
     </template>
   </AppShell>
 
@@ -132,5 +137,8 @@ body.focus-mode .notification--danger   { display: block !important; }
 .statusbar-content {
   height: 100%;
   background: var(--statusbar-bg);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
 }
 </style>

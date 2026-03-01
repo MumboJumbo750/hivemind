@@ -1,4 +1,4 @@
-import type { Project, Epic, Task, Skill, SkillForkResponse, NodeIdentity, PeerNode, FederationSettings, TriageItem, McpToolResponse, PromptResponse } from './types'
+import type { Project, Epic, Task, Skill, SkillForkResponse, SkillListResponse, SkillVersion, ContextBoundary, EpicProposal, EpicProposalListResponse, NodeIdentity, PeerNode, FederationSettings, TriageItem, McpToolResponse, PromptResponse, AuditEntry, AuditListResponse, HivemindNotification } from './types'
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string) ?? 'http://localhost:8000'
 
@@ -32,7 +32,13 @@ async function request<T>(path: string, init?: RequestInit, _retry = true): Prom
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.detail ?? `HTTP ${res.status}: ${path}`)
+    const detail = body.detail
+    const msg = typeof detail === 'string'
+      ? detail
+      : Array.isArray(detail)
+        ? detail.map((d: { msg?: string }) => d.msg ?? JSON.stringify(d)).join('; ')
+        : `HTTP ${res.status}: ${path}`
+    throw new Error(msg)
   }
   return res.json()
 }
@@ -92,6 +98,12 @@ export const api = {
   getTasks: (epicKey: string) =>
     request<Task[]>(`/api/epics/${epicKey}/tasks`),
 
+  createTask: (epicKey: string, data: { title: string; description?: string; assigned_to?: string }) =>
+    request<Task>(`/api/epics/${epicKey}/tasks`, { method: 'POST', body: JSON.stringify(data) }),
+
+  getContextBoundary: (taskKey: string) =>
+    request<ContextBoundary | null>(`/api/tasks/${taskKey}/context-boundary`),
+
   patchTask: (taskKey: string, patch: Partial<Task> & { expected_version?: number }) =>
     request<Task>(`/api/tasks/${taskKey}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 
@@ -106,11 +118,58 @@ export const api = {
     request<{ project_id: string; user_id: string; role: string }[]>(`/api/projects/${projectId}/members`),
 
   // ─── Skills ──────────────────────────────────────────────────────────────
-  getSkills: (federationScope?: string) =>
-    request<Skill[]>(`/api/skills${federationScope ? `?federation_scope=${federationScope}` : ''}`),
+  getSkills: (params?: { lifecycle?: string; limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.lifecycle) qs.set('lifecycle', params.lifecycle)
+    if (params?.limit) qs.set('limit', String(params.limit))
+    if (params?.offset) qs.set('offset', String(params.offset))
+    const q = qs.toString()
+    return request<SkillListResponse>(`/api/skills${q ? `?${q}` : ''}`)
+  },
+
+  getSkill: (skillId: string) =>
+    request<Skill>(`/api/skills/${skillId}`),
+
+  getSkillVersions: (skillId: string) =>
+    request<SkillVersion[]>(`/api/skills/${skillId}/versions`),
+
+  createSkill: (data: { title: string; content: string; service_scope: string[]; stack: string[]; project_id: string }) =>
+    request<Skill>('/api/skills', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateSkill: (skillId: string, data: { title?: string; content?: string; version: number }) =>
+    request<Skill>(`/api/skills/${skillId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  submitSkill: (skillId: string) =>
+    request<Skill>(`/api/skills/${skillId}/submit`, { method: 'POST' }),
+
+  mergeSkill: (skillId: string) =>
+    request<Skill>(`/api/skills/${skillId}/merge`, { method: 'POST' }),
+
+  rejectSkill: (skillId: string, rationale: string) =>
+    request<Skill>(`/api/skills/${skillId}/reject`, { method: 'POST', body: JSON.stringify({ rationale }) }),
 
   forkSkill: (skillId: string) =>
     request<SkillForkResponse>(`/api/skills/${skillId}/fork`, { method: 'POST' }),
+
+  // ─── Epic Proposals ──────────────────────────────────────────────────────
+  getEpicProposals: (params?: { state?: string; project_id?: string; limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.state) qs.set('state', params.state)
+    if (params?.project_id) qs.set('project_id', params.project_id)
+    if (params?.limit) qs.set('limit', String(params.limit))
+    if (params?.offset) qs.set('offset', String(params.offset))
+    const q = qs.toString()
+    return request<EpicProposalListResponse>(`/api/epic-proposals${q ? `?${q}` : ''}`)
+  },
+
+  getEpicProposal: (proposalId: string) =>
+    request<EpicProposal>(`/api/epic-proposals/${proposalId}`),
+
+  acceptEpicProposal: (proposalId: string) =>
+    request<EpicProposal>(`/api/epic-proposals/${proposalId}/accept`, { method: 'POST' }),
+
+  rejectEpicProposal: (proposalId: string, reason: string) =>
+    request<EpicProposal>(`/api/epic-proposals/${proposalId}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
 
   // ─── Search ──────────────────────────────────────────────────────────────
   search: (q: string, type = 'tasks,epics') =>
@@ -149,19 +208,69 @@ export const api = {
   getMcpTools: () =>
     request<{ name: string; description: string }[]>('/api/mcp/tools'),
 
-  callMcpTool: (name: string, args: Record<string, unknown>) =>
-    request<McpToolResponse[]>('/api/mcp/call', {
+  callMcpTool: async (name: string, args: Record<string, unknown>) => {
+    const res = await request<{ result: McpToolResponse[] }>('/api/mcp/call', {
       method: 'POST',
-      body: JSON.stringify({ name, arguments: args }),
+      body: JSON.stringify({ tool: name, arguments: args }),
+    })
+    return res.result
+  },
+
+  // ─── Audit ──────────────────────────────────────────────────────────────
+  getAuditEntries: (params?: {
+    tool_name?: string
+    entity_type?: string
+    from?: string
+    to?: string
+    page?: number
+    page_size?: number
+  }) => {
+    const q = new URLSearchParams()
+    if (params?.tool_name) q.set('tool_name', params.tool_name)
+    if (params?.entity_type) q.set('entity_type', params.entity_type)
+    if (params?.from) q.set('from', params.from)
+    if (params?.to) q.set('to', params.to)
+    if (params?.page) q.set('page', String(params.page))
+    if (params?.page_size) q.set('page_size', String(params.page_size))
+    const qs = q.toString()
+    return request<AuditListResponse>(`/api/audit${qs ? `?${qs}` : ''}`)
+  },
+
+  // ─── Notifications (Phase 6) ─────────────────────────────────────────────
+  getNotifications: (params?: {
+    read?: boolean
+    priority?: string
+    type?: string
+    limit?: number
+    offset?: number
+  }) => {
+    const q = new URLSearchParams()
+    if (params?.read !== undefined) q.set('read', String(params.read))
+    if (params?.priority) q.set('priority', params.priority)
+    if (params?.type) q.set('type', params.type)
+    if (params?.limit) q.set('limit', String(params.limit))
+    if (params?.offset) q.set('offset', String(params.offset))
+    const qs = q.toString()
+    return request<HivemindNotification[]>(`/api/notifications${qs ? `?${qs}` : ''}`)
+  },
+
+  getUnreadCount: () =>
+    request<{ count: number }>('/api/notifications/unread-count'),
+
+  markNotificationRead: (notificationId: string) =>
+    request<{ status: string }>(`/api/notifications/${notificationId}/read`, {
+      method: 'PATCH',
     }),
 
   // ─── Prompt ──────────────────────────────────────────────────────────────
-  getPrompt: (type: string, taskId?: string, epicId?: string, projectId?: string) =>
-    request<McpToolResponse[]>('/api/mcp/call', {
+  getPrompt: async (type: string, taskId?: string, epicId?: string, projectId?: string) => {
+    const res = await request<{ result: McpToolResponse[] }>('/api/mcp/call', {
       method: 'POST',
       body: JSON.stringify({
-        name: 'hivemind/get_prompt',
+        tool: 'hivemind/get_prompt',
         arguments: { type, ...(taskId && { task_id: taskId }), ...(epicId && { epic_id: epicId }), ...(projectId && { project_id: projectId }) },
       }),
-    }),
+    })
+    return res.result
+  },
 }

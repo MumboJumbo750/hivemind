@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-5-017",
+  "epic_ref": "EPIC-PHASE-5",
+  "title": "Notification-Types: guard_proposal & restructure_proposal",
+  "description": "guard_proposal bei submit_guard_proposal an Admins. restructure_proposal bei propose_epic_restructure an Admins. task_done bei approve_review an Assignee+Owner. SSE-Events an Clients.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "guard_proposal Notification",
+      "restructure_proposal Notification",
+      "task_done Notification",
+      "In Tabelle gespeichert",
+      "SSE-Events",
+      "Tests"
+    ]
+  },
+  "tags": ["backend", "notifications", "sse", "phase-5"],
+  "subtasks": [],
+  "pinned_skills": ["notification-dispatch", "sse-event-stream", "api-test"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-5.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-5-004", "TASK-5-010", "TASK-5-012"]
+}

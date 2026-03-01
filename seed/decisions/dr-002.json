@@ -1,0 +1,6 @@
+{
+  "decision_key": "DR-002",
+  "epic_ref": "EPIC-PHASE-7",
+  "decision": "pgvector Cosine-Similarity mit konfigurierbarem Threshold (Default 0.85) für Auto-Routing",
+  "rationale": "Alternative war regelbasiertes Routing (Keyword-Matching). pgvector-Similarity ist flexibler, braucht keine manuellen Regeln und nutzt die seit Phase 3 vorhandene Embedding-Infrastruktur. Threshold ist per API änderbar ohne Neustart. Bei Embedding-Service-Ausfall: Graceful Degradation zu [UNROUTED] statt Fehlschlag."
+}
