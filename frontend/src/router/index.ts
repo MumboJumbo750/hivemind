@@ -14,7 +14,9 @@ const router = createRouter({
     { path: '/triage',        component: () => import('../views/Triage/TriageStationView.vue') },
     { path: '/kartograph-bootstrap', component: () => import('../views/KartographBootstrap/KartographBootstrapView.vue') },
     { path: '/nexus-grid',   component: () => import('../views/NexusGrid/NexusGridView.vue') },
-    { path: '/achievements', component: () => import('../views/Achievements/AchievementsView.vue') },
+    { path: '/achievements',   component: () => import('../views/Achievements/AchievementsView.vue') },
+    { path: '/kpi-dashboard', component: () => import('../views/KpiDashboard/KpiDashboardView.vue') },
+    { path: '/dashboard/kpi', component: () => import('../views/KpiDashboard/KpiDashboardView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })

@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-7-003",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "Inbound-Routing-Aktivierung: sync_outbox inbound → Triage",
+  "description": "Phase 3 schreibt Webhook-Events (Sentry/YouTrack) als `direction='inbound'`, `routing_state='unrouted'` in `sync_outbox`. Bisher manuell getriaged. Phase 7 aktiviert Auto-Routing.\n\n**Semantik für inbound-Entries:**\n- Inbound-Entries sind Audit-Records — sie werden NICHT gelöscht!\n- Routing = `routing_state` setzen: `'unrouted'` → `'routed'` (auto/manuell) oder `'ignored'`\n- `state` bleibt 'pending' für aktive Entries, wird 'dead_letter' nur bei permanentem Fehler\n\n**Neue Funktion `process_inbound()` in `outbox_consumer.py`:**\n1. Query: `direction='inbound'`, `routing_state='unrouted'`, `state='pending'`, `(next_retry_at IS NULL OR next_retry_at <= now())` — max 20 Einträge, `with_for_update(skip_locked=True)`\n2. Dispatch nach `entry.system`:\n   - `'sentry'` → `SentryAggregationService.process_sentry_event(entry.payload)` → erstellt/aktualisiert `node_bug_reports`\n   - `'youtrack'` → YT-Inbound-Handler (Status-Update, Kommentar etc.)\n3. Nach erfolgreicher Verarbeitung: pgvector-Routing (TASK-7-006) für Sentry-Events → setzt `node_bug_reports.epic_id`\n4. Bei Erfolg: `entry.routing_state = 'routed'` (KEIN delete — Audit-Record bleibt!)\n5. Bei Fehler: `entry.attempts += 1`, `entry.next_retry_at = now() + 2^attempts * 60s`, state bleibt 'pending'\n6. Bei max attempts: `_move_to_dlq(db, entry, error)` → `state = 'dead_letter'`\n\n**APScheduler-Job in `app/services/scheduler.py`** registrieren: `'inbound_consumer'`, IntervalTrigger, 30s.\n\nDateien: `app/services/outbox_consumer.py`, `app/services/scheduler.py`",
+  "state": "scoped",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "process_inbound() setzt routing_state='routed' bei Erfolg — Eintrag wird NICHT gelöscht (Audit-Record)",
+      "Query filtert auf routing_state='unrouted' — bereits geroutete Entries werden nie doppelt verarbeitet",
+      "APScheduler-Job 'inbound_consumer' in scheduler.py registriert (nicht main.py), alle 30s",
+      "DLQ-Promotion: state='dead_letter' bei max attempts — identisches Muster wie outbound-Consumer",
+      "Integration-Test: Sentry-Webhook POST → routing_state='unrouted' → consume_inbound → routing_state='routed' + node_bug_reports erstellt"
+    ]
+  },
+  "tags": ["backend", "outbox", "consumer", "triage", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["outbox-consumer", "triage-routing", "scheduled-job"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-7-002"]
+}

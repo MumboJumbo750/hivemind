@@ -1,0 +1,18 @@
+{
+  "external_id": "EPIC-ENV-BOOTSTRAP",
+  "title": "Environment Bootstrap — AI Context & Runtime Skills",
+  "description": "Basisinfrastruktur für AI-Agents in jedem neuen Projekt: AGENTS.md (universeller Laufzeit-Kontext), AI-spezifische Config-Files (CLAUDE.md, .cursorrules), Runtime-Skills (skill_type='runtime') und Erweiterungen der Kartograph/Gärtner/Architekt-Rollen.\n\nDieses Epic ist ein **wiederverwendbares Template** — es wird für jedes neue Hivemind-Projekt instanziiert, in dem die Infrastruktur noch fehlt. Architekt-Agents sollen AGENTS.md als Precondition prüfen und bei Fehlen automatisch TASK-ENV-001 als Stufe-0-Task ergänzen.\n\n**Motivation:** AI-Agents scheitern nicht an Code-Logik, sondern an fehlendem Laufzeit-Kontext (wo laufen Befehle? wie ist MCP erreichbar?). AGENTS.md ist die einmalige Lösung für alle AI-Systeme.",
+  "state": "scoped",
+  "priority": "high",
+  "sla_deadline": null,
+  "definition_of_done": "AGENTS.md existiert und ist aktuell. CLAUDE.md verweist darauf. Runtime-Skills für Container-Operationen vorhanden. Kartograph-, Gärtner- und Architekt-Prompts erweitert. Alle Dev-Befehle sind copy-paste-ready dokumentiert.",
+  "tags": [
+    "devops",
+    "ai-context",
+    "runtime",
+    "documentation",
+    "template"
+  ],
+  "depends_on": [],
+  "source_doc": "docs/architecture/ai-context.md"
+}

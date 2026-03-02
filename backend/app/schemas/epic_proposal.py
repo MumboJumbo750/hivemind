@@ -49,3 +49,19 @@ class EpicProposalListResponse(BaseModel):
     data: list[EpicProposalResponse]
     total_count: int
     has_more: bool
+
+
+# ─── Requirement Draft ────────────────────────────────────────────────────────
+
+class RequirementDraftRequest(BaseModel):
+    project_id: uuid.UUID
+    text: str
+    priority_hint: Optional[str] = None
+    tags: Optional[list[str]] = None
+
+
+class RequirementDraftResponse(BaseModel):
+    prompt: str
+    token_count: int
+    draft_id: uuid.UUID
+    enrichment: dict

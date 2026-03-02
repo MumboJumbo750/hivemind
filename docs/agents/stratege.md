@@ -35,9 +35,20 @@ Der Stratege arbeitet als `developer` (eigene Projekte) oder `admin` (alle Proje
 
 ---
 
-## Typischer Workflow
+## Workflows
 
-```
+Der Stratege hat zwei Eingangskanäle:
+
+| Modus | Auslöser | Entry-Point |
+| --- | --- | --- |
+| **A) Plan-Analyse** | Plan-Dokument im Wiki vorhanden | Prompt Station automatisch |
+| **B) Neue Anforderung** | User hat Idee/Anforderung | "Neue Anforderung"-Button im Command Deck |
+
+---
+
+### A) Plan-Analyse (bisheriger Flow)
+
+```text
 1. Plan-Dokument existiert im Wiki (tags: ["plan","roadmap","architecture"])
    ODER: Kartograph hat Repo kartiert (Wiki + Docs vorhanden)
    → Prompt Station zeigt: "Jetzt: Stratege"
@@ -90,6 +101,39 @@ Der Stratege arbeitet als `developer` (eigene Projekte) oder `admin` (alle Proje
 
 ---
 
+### B) Neue Anforderung (Requirement-Capture Flow)
+
+```text
+1. User klickt "+ Neue Anforderung" im Command Deck oder der Epic-Übersicht
+
+2. Modal öffnet sich:
+   → Freitextfeld: "Beschreibe deine Anforderung..."
+   → Optional: Priorität-Hint, Tags
+   → Button: "Stratege-Prompt generieren"
+
+3. System ruft POST /api/requirements/draft auf:
+   → Enrichment Phase 1–2: Projektname, Phase, alle Epics, Tech-Stack, Kapazität
+   → Enrichment Phase 3+: pgvector Similarity → Top 3 ähnliche Epics, Top 5 Skills
+   → Erstellt epic_proposals-Eintrag (state: draft)
+   → Schreibt prompt_history-Eintrag
+
+4. Prompt-Panel zeigt enriched Stratege-Prompt (Copy-to-Clipboard)
+   → Enrichment-Details ausklappbar: ähnliche Epics, Skills, Kapazität
+   → Hinweis: "Kopiere den Prompt in deinen AI-Client"
+
+5. User führt Prompt in AI-Client aus → AI liefert Epic-Proposal als Markdown
+
+6. User fügt Proposal-Text in zweites Textfeld ein → "Proposal speichern"
+   → epic_proposals-Eintrag wechselt von state: draft → proposed
+   → Proposal landet in Triage Station als [EPIC PROPOSAL]
+
+7. Triage entscheidet: Akzeptieren → Epic (incoming) → Kartograph → Architekt
+```
+
+**Duplikat-Schutz:** Der enriched Prompt enthält immer die Liste ähnlicher Epics (pgvector in Phase 3+, Textsuch-Fallback in Phase 1–2). Der Stratege soll explizit prüfen ob die Anforderung bereits abgedeckt ist.
+
+---
+
 ## MCP-Tools
 
 ```text
@@ -111,6 +155,13 @@ hivemind/propose_epic         { "project_id": "uuid", "title": "...", "descripti
 
 hivemind/update_epic_proposal { "proposal_id": "uuid", "title": "...", "description": "..." }
                                 -- Proposal nachbessern (nur solange state = proposed)
+
+hivemind/draft_requirement    { "text": "...", "priority_hint": "high|medium|low",
+                                "tags": ["string"] }
+                                -- Erzeugt enriched Stratege-Prompt aus Freitext-Anforderung
+                                -- Erstellt epic_proposals-Eintrag (state: draft)
+                                -- Gibt prompt + enrichment + draft_id zurück
+                                -- Phase 3+: pgvector Similar Epics + Relevant Skills
 
 -- Write-Tools (geteilt — Wiki für Roadmap-Dokumentation)
 hivemind/create_wiki_article  { "title": "...", "slug": "...", "content": "...", "tags": [...] }

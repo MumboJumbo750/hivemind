@@ -8,6 +8,7 @@ import DecisionRequestDialog from '../../components/domain/DecisionRequestDialog
 import { api } from '../../api'
 import type { Epic, EpicProposal, Task, DecisionRequest } from '../../api/types'
 import { useAuthStore } from '../../stores/authStore'
+import DeadLetterList from '../../components/domain/DeadLetterList.vue'
 
 const store = useTriageStore()
 const authStore = useAuthStore()
@@ -46,6 +47,7 @@ const tabs = [
   { key: 'escalated' as const, label: 'Escalated' },
   { key: 'decisions' as const, label: 'Decisions' },
   { key: 'proposals' as const, label: 'Epic Proposals' },
+  { key: 'dlq' as const, label: 'Dead Letters' },
   { key: 'all' as const, label: 'All' },
 ]
 
@@ -180,6 +182,7 @@ const decisionsLoading = ref(false)
 const decisionsError = ref<string | null>(null)
 const selectedDecisionRequest = ref<DecisionRequest | null>(null)
 const showDecisionDialog = ref(false)
+const dlqCount = ref(0)
 
 async function loadDecisionRequests() {
   decisionsLoading.value = true
@@ -207,6 +210,19 @@ async function onDecisionResolved() {
   showDecisionDialog.value = false
   selectedDecisionRequest.value = null
   await loadDecisionRequests()
+}
+
+async function loadDlqCount() {
+  try {
+    const res = await api.getDeadLetters({ limit: 1 })
+    dlqCount.value = res.total
+  } catch {
+    // Keep previous badge value if count fetch fails.
+  }
+}
+
+function onDlqCountUpdated(value: number) {
+  dlqCount.value = value
 }
 
 // Helper to check if any dependency is rejected
@@ -294,6 +310,9 @@ function connectSSE() {
   eventSource = new EventSource(`${baseUrl}/api/events/triage`)
   eventSource.addEventListener('triage_routed', () => store.loadItems())
   eventSource.addEventListener('triage_ignored', () => store.loadItems())
+  eventSource.addEventListener('triage_dlq_updated', () => loadDlqCount())
+  eventSource.addEventListener('dlq_requeued', () => loadDlqCount())
+  eventSource.addEventListener('dlq_discarded', () => loadDlqCount())
   eventSource.addEventListener('new_event', (e) => {
     try {
       const data = JSON.parse(e.data)
@@ -308,6 +327,7 @@ onMounted(() => {
   loadProposals()
   loadEscalatedTasks()
   loadDecisionRequests()
+  loadDlqCount()
   connectSSE()
 })
 
@@ -329,7 +349,7 @@ onUnmounted(() => {
         v-for="tab in tabs"
         :key="tab.key"
         :class="['tab-btn', { active: activeTriageTab === tab.key }]"
-        @click="activeTriageTab = tab.key; if (tab.key !== 'proposals' && tab.key !== 'escalated' && tab.key !== 'decisions') { store.filter = tab.key as 'unrouted' | 'routed' | 'ignored' | 'all'; } page = 1"
+        @click="activeTriageTab = tab.key; if (tab.key !== 'proposals' && tab.key !== 'escalated' && tab.key !== 'decisions' && tab.key !== 'dlq') { store.filter = tab.key as 'unrouted' | 'routed' | 'ignored' | 'all'; } page = 1"
       >
         {{ tab.label }}
         <span v-if="tab.key === 'proposals' && proposalCount > 0" class="proposal-badge-count">
@@ -341,12 +361,15 @@ onUnmounted(() => {
         <span v-if="tab.key === 'decisions' && decisionRequests.length > 0" class="decision-badge-count">
           {{ decisionRequests.length }}
         </span>
+        <span v-if="tab.key === 'dlq' && dlqCount > 0" class="dlq-badge-count">
+          {{ dlqCount }}
+        </span>
       </button>
     </nav>
 
     <!-- Loading -->
-    <div v-if="activeTriageTab !== 'proposals' && activeTriageTab !== 'escalated' && activeTriageTab !== 'decisions' && store.loading" class="triage-loading">Loading...</div>
-    <div v-else-if="activeTriageTab !== 'proposals' && activeTriageTab !== 'escalated' && activeTriageTab !== 'decisions' && store.error" class="triage-error">{{ store.error }}</div>
+    <div v-if="activeTriageTab !== 'proposals' && activeTriageTab !== 'escalated' && activeTriageTab !== 'decisions' && activeTriageTab !== 'dlq' && store.loading" class="triage-loading">Loading...</div>
+    <div v-else-if="activeTriageTab !== 'proposals' && activeTriageTab !== 'escalated' && activeTriageTab !== 'decisions' && activeTriageTab !== 'dlq' && store.error" class="triage-error">{{ store.error }}</div>
 
     <!-- ─── Proposals Tab ─────────────────────────────────────────────────── -->
     <div v-else-if="activeTriageTab === 'proposals'" class="proposals-section">
@@ -453,6 +476,14 @@ onUnmounted(() => {
           </div>
         </HivemindCard>
       </div>
+    </div>
+
+    <!-- ─── Dead Letter Queue Tab (TASK-7-015) ──────────────────────────── -->
+    <div
+      v-else-if="activeTriageTab === 'dlq'"
+      class="dlq-section"
+    >
+      <DeadLetterList @count-updated="onDlqCountUpdated" />
     </div>
 
     <!-- ─── Standard Triage List ──────────────────────────────────────────── -->
@@ -963,6 +994,11 @@ onUnmounted(() => {
   opacity: 0.7;
 }
 
+/* ── Dead Letter Queue (TASK-7-015) ─────────────────────────────────────── */
+.dlq-section {
+  margin-top: var(--space-2);
+}
+
 /* ── Escalated Tasks (TASK-6-011) ───────────────────────────────────────── */
 .escalated-section, .decisions-section {
   margin-top: var(--space-2);
@@ -1067,6 +1103,17 @@ onUnmounted(() => {
 .decision-badge-count {
   background: var(--color-warning);
   color: var(--color-bg);
+  border-radius: 10px;
+  font-size: 10px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  font-weight: 700;
+}
+
+.dlq-badge-count {
+  background: color-mix(in srgb, var(--color-success) 30%, transparent);
+  color: var(--color-success);
+  border: 1px solid color-mix(in srgb, var(--color-success) 55%, transparent);
   border-radius: 10px;
   font-size: 10px;
   padding: 1px 6px;

@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-ENV-001",
+  "epic_ref": "EPIC-ENV-BOOTSTRAP",
+  "title": "Basisinfrastruktur: AGENTS.md + CLAUDE.md + Runtime-Skills erstellen",
+  "description": "Erstelle die universelle AI-Kontext-Infrastruktur für das Projekt.\n\n**Lies zuerst `seed/skills/repo-onboarding.md`** — dieser Skill enthält die vollständige Analyse-Checkliste, Stack-Detection-Patterns und den Completeness-Check.\n\n**Was zu erstellen ist:**\n\n1. `AGENTS.md` im Projektroot (universell, AI-agnostisch):\n   - Service-Topologie aus `docker-compose.yml` extrahieren (Container-Namen, Ports, Volumes)\n   - Container-Runtime erkennen (Docker vs. Podman — `podman compose` vs. `docker compose`)\n   - Abschnitte: Runtime Environment, ⚠️ Wo Befehle laufen, Makefile-Referenz, Rebuild-Tabelle, MCP-Server, Projektstruktur, Umgebungsvariablen, Codebase-Konventionen\n   - Venv-Pfad explizit dokumentieren (z.B. `/app/.venv/bin/`)\n   - Alle Befehle müssen copy-paste-ready sein (vollständige Befehle, keine Platzhalter)\n\n2. `CLAUDE.md` im Projektroot:\n   - Dünn halten: `> Vollständiger Laufzeit-Kontext → [AGENTS.md](AGENTS.md)`\n   - Nur Claude-spezifische Ergänzungen (Kommunikationssprache, Workflow-Regeln, Memory-Pfad)\n\n3. `Makefile` prüfen / anlegen:\n   - `make up` / `make down` / `make test` / `make migrate` / `make rebuild-*` / `make help`\n   - Kapselt Container-Kontext — Agents müssen nicht wissen ob Host oder Container\n\n4. `seed/skills/{runtime-name}.md` (z.B. `podman-exec.md` oder `docker-exec.md`):\n   - `skill_type: \"runtime\"` im Frontmatter\n   - Rebuild/Restart-Entscheidungstabelle\n   - Vollständige Container-Befehls-Referenz mit Venv-Pfad\n\n5. Completeness-Check aus `repo-onboarding.md` Phase 4 durchführen — alle ✓ vor done.\n\n**Referenz-Implementierung:** Hivemind-Projekt als Vorlage.",
+  "state": "scoped",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "AGENTS.md enthält vollständige Service-Topologie-Tabelle (alle Services aus docker-compose.yml)",
+      "⚠️-Sektion 'Wo Befehle laufen' ist explizit (Host vs. Container, mit Gegenbeispielen)",
+      "Venv-Pfad dokumentiert (z.B. /app/.venv/bin/) und in allen Befehlen verwendet",
+      "Rebuild vs. Restart Entscheidungstabelle in AGENTS.md vorhanden",
+      "Makefile hat: make up, make test, make migrate, make rebuild-*, make help",
+      "CLAUDE.md existiert und verweist auf AGENTS.md als Primärquelle",
+      "Runtime-Skill (skill_type='runtime') mit Container-Befehls-Referenz vorhanden",
+      "Completeness-Check (repo-onboarding.md Phase 4): alle Punkte ✓"
+    ]
+  },
+  "tags": ["devops", "ai-context", "runtime", "documentation"],
+  "subtasks": [],
+  "pinned_skills": ["repo-onboarding", "runtime-environment", "docker-service"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/architecture/ai-context.md",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

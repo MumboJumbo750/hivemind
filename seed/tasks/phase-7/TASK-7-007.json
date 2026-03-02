@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-7-007",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "Routing-Threshold Runtime-Config: PATCH /api/settings/routing_threshold",
+  "description": "Admin-Endpoint zur Laufzeit-Konfiguration des pgvector Routing-Thresholds ohne Neustart.\n\n**Bestehender Kontext:**\n- `app_settings` Tabelle existiert (Migration 001) mit Bootstrap-Eintrag `('routing_threshold', '0.85')`\n- `AppSettings` SQLAlchemy-Model in `app/models/settings.py` (key TEXT PK, value TEXT, version INT, updated_by, updated_at)\n- `app/routers/settings.py` existiert bereits mit `_get_setting()` Helper und PATCH /api/settings Pattern — DIESES MUSTER ÜBERNEHMEN!\n- `settings.hivemind_routing_threshold = 0.85` in `config.py` — hat Vorrang als ENV-Override\n\n**Neue Endpoints in `app/routers/settings.py`:**\n1. `GET /api/settings/routing-threshold` → liest `app_settings` key='routing_threshold'. Prüft ENV: wenn `HIVEMIND_ROUTING_THRESHOLD` gesetzt → source='env', Wert aus Config. Sonst source='db'.\n2. `PATCH /api/settings/routing-threshold` → persistiert neuen Wert in `app_settings` key='routing_threshold'. RBAC: nur admin. Cache in routing_service.py invalidieren.\n3. Response: `{ current_value: float, source: 'env'|'db', last_updated: timestamp|null, updated_by: uuid|null }`\n4. Validierung: `0.0 <= value <= 1.0` (422 sonst)\n5. Audit-Log-Eintrag bei jeder PATCH-Anfrage\n6. Cache-Invalidierung: `routing_service.py` hat 60s TTL-Cache auf den Threshold-Wert — nach PATCH invalidieren (z.B. `_threshold_cache.clear()`)\n\n**KEINE neue Tabelle anlegen** — `app_settings` ist die richtige Stelle.\n\nDateien: `app/routers/settings.py`, `app/services/routing_service.py` (Cache-Invalidierung)",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "GET /api/settings/routing_threshold gibt aktuellen Threshold + Source zurück",
+      "PATCH /api/settings/routing_threshold persistiert Wert und invalidiert Cache",
+      "RBAC: nur admin-Scope kann PATCH ausführen (403 für andere Rollen)",
+      "ENV-Override HIVEMIND_ROUTING_THRESHOLD wird bevorzugt und in Response als source='env' gekennzeichnet",
+      "Audit-Log-Eintrag wird bei jeder Änderung geschrieben",
+      "Validierung: Wert muss zwischen 0.0 und 1.0 liegen (422 bei ungültigem Wert)"
+    ]
+  },
+  "tags": ["backend", "settings", "routing", "rbac", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["fastapi-endpoint", "pydantic-model", "rbac-middleware"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "small",
+  "depends_on": ["TASK-7-006"]
+}

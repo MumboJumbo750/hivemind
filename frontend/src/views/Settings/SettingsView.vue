@@ -4,14 +4,15 @@ import { useTheme } from '../../composables/useTheme'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useAuthStore } from '../../stores/authStore'
 import FederationSettings from '../../components/domain/FederationSettings.vue'
+import SyncStatusPanel from '../../components/SyncStatusPanel.vue'
 import { api } from '../../api'
-import type { AuditEntry, AuditListResponse } from '../../api/types'
+import type { AuditEntry } from '../../api/types'
 
 const { currentTheme, availableThemes, setTheme } = useTheme()
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
 
-const activeTab = ref<'settings' | 'audit'>('settings')
+const activeTab = ref<'settings' | 'sync' | 'audit'>('settings')
 const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 // ── Audit Log state ──────────────────────────────────────────────────────────
@@ -56,7 +57,7 @@ async function loadAudit() {
     const actions = new Set(actionOptions.value)
     res.data.forEach((e: AuditEntry) => actions.add(e.tool_name))
     actionOptions.value = [...actions].sort()
-  } catch (e: unknown) {
+  } catch {
     auditError.value = 'Fehler beim Laden der Audit-Einträge'
   } finally {
     auditLoading.value = false
@@ -141,13 +142,13 @@ function exportCsv() {
     e.duration_ms ?? '',
   ])
   const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
+  const blob = new globalThis.Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = globalThis.URL.createObjectURL(blob)
+  const a = globalThis.document.createElement('a')
   a.href = url
   a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
   a.click()
-  URL.revokeObjectURL(url)
+  globalThis.URL.revokeObjectURL(url)
 }
 
 watch(activeTab, (tab) => {
@@ -172,6 +173,12 @@ onMounted(() => {
         :class="{ 'settings-tab--active': activeTab === 'settings' }"
         @click="activeTab = 'settings'"
       >Allgemein</button>
+      <button
+        v-if="isAdmin"
+        class="settings-tab"
+        :class="{ 'settings-tab--active': activeTab === 'sync' }"
+        @click="activeTab = 'sync'"
+      >Sync Status</button>
       <button
         class="settings-tab"
         :class="{ 'settings-tab--active': activeTab === 'audit' }"
@@ -253,6 +260,12 @@ onMounted(() => {
     </template>
 
     <!-- ═══ Audit Log Tab ═══ -->
+    <template v-if="activeTab === 'sync' && isAdmin">
+      <section class="settings-section">
+        <SyncStatusPanel />
+      </section>
+    </template>
+
     <template v-if="activeTab === 'audit'">
       <section class="audit-section">
         <!-- Filter Bar -->

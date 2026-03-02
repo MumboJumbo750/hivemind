@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-ENV-006",
+  "epic_ref": "EPIC-ENV-BOOTSTRAP",
+  "title": "Test-Infrastruktur: Dev-Deps im Container + Makefile Test-Targets",
+  "description": "Sicherstellen dass Tests im Container laufen und das Makefile alle nötigen Test-Targets hat.\n\n**Problem:** Das Production-Image installiert nur `requirements.txt`. Test-Dependencies (`pytest`, `testcontainers`, `respx`, `anyio`) sind in `requirements-dev.txt` und müssen explizit im laufenden Container installiert werden.\n\n**Was zu tun ist:**\n\n1. `requirements-dev.txt` prüfen/ergänzen:\n   - `pytest` + `pytest-asyncio` + `pytest-mock` — Unit-Tests\n   - `anyio[trio]` — für pytest-asyncio Async-Mode\n   - `testcontainers[postgres]` — Integration-Tests mit isolierter DB\n   - `respx` — HTTP-Mocking für httpx (YouTrack/Sentry in Integration-Tests)\n\n2. `Makefile` Test-Targets ergänzen:\n   ```\n   make test-install    → pip install -r requirements-dev.txt im Container\n   make test            → test-install + pytest tests/ -v\n   make test-be         → expliziter Alias für test\n   make test-integration → pytest tests/integration/ -v\n   ```\n\n3. `seed/skills/api-test.md` Guard-Befehl aktualisieren:\n   - Von: `pytest tests/ -v` (läuft nicht auf dem Host!)\n   - Auf: `make test-be`\n\n4. `seed/skills/podman-exec.md` um Rebuild/Restart-Tabelle erweitern:\n   - Wann rebuild? Wann restart? Wann nichts?\n   - Venv-Pfad (`/app/.venv/bin/`) explizit dokumentieren\n\n**Hinweis zu testcontainers in Podman:**\nTestcontainers kann in Podman den Podman-Socket verwenden (`DOCKER_HOST=unix:///run/user/1000/podman/podman.sock`). Falls testcontainers nicht konfigurierbar, kann alternativ die bestehende `postgres`-Service als Test-DB verwendet werden (separate `hivemind_test` Database via `docker-compose.test.yml`).\n\nDateien: `backend/requirements-dev.txt`, `Makefile`, `seed/skills/api-test.md`, `seed/skills/podman-exec.md`",
+  "state": "scoped",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "requirements-dev.txt enthält: testcontainers[postgres], respx, anyio[trio]",
+      "make test-install installiert Test-Deps im laufenden Container ohne Fehler",
+      "make test-be führt pytest erfolgreich im Container aus (mindestens ein Test läuft durch)",
+      "make test-integration führt Integration-Tests aus",
+      "api-test.md Guard-Befehl ist 'make test-be' (nicht 'pytest tests/ -v')",
+      "podman-exec.md enthält Rebuild/Restart-Entscheidungstabelle mit Venv-Pfad"
+    ]
+  },
+  "tags": ["devops", "testing", "ci", "backend", "runtime"],
+  "subtasks": [],
+  "pinned_skills": ["podman-exec", "api-test", "runtime-environment"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/architecture/ai-context.md",
+  "estimated_complexity": "small",
+  "depends_on": ["TASK-ENV-001"]
+}

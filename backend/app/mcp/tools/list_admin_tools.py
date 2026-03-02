@@ -296,8 +296,8 @@ async def _handle_get_triage(args: dict) -> list[TextContent]:
 
         if state_filter == "all":
             pass
-        elif state_filter == "dead":
-            q = q.where(SyncOutbox.state == "dead")
+        elif state_filter == "dead_letter":
+            q = q.where(SyncOutbox.state == "dead_letter")
         elif state_filter == "escalated":
             q = q.where(SyncOutbox.routing_state == "escalated")
         else:  # unrouted (default)
@@ -331,7 +331,7 @@ register_tool(
         inputSchema={
             "type": "object",
             "properties": {
-                "state": {"type": "string", "description": "Filter: unrouted|escalated|dead|all", "enum": ["unrouted", "escalated", "dead", "all"]},
+                "state": {"type": "string", "description": "Filter: unrouted|escalated|dead_letter|all", "enum": ["unrouted", "escalated", "dead_letter", "all"]},
                 "limit": {"type": "integer"},
                 "offset": {"type": "integer"},
             },

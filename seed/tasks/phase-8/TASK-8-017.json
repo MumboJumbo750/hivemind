@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-8-017",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "Nexus Grid 3D Backend: Graph-Aggregation API",
+  "description": "Optimierte Graph-Aggregation für die 3D-Visualisierung großer Codebases.\n\n**Dateien:**\n- `app/services/nexus_graph_3d.py` — Graph-Aggregation-Service\n- `app/routers/nexus_grid.py` — Erweiterung um 3D-Endpoint\n\n**API-Endpoint:**\n- `GET /api/nexus-grid/3d?limit=1000&depth=3&center_node=<id>` — 3D-Graph-Daten\n- Response: `{nodes: [...], edges: [...], metadata: {total_nodes, visible_nodes, fog_of_war_count}}`\n\n**Node-Format (3D):**\n```json\n{\n  \"id\": \"uuid\",\n  \"label\": \"UserService\",\n  \"type\": \"class\",\n  \"position\": {\"x\": 0.0, \"y\": 0.0, \"z\": 0.0},\n  \"size\": 1.0,\n  \"explored\": true,\n  \"bug_count\": 3,\n  \"connections\": 12\n}\n```\n\n**Performance-Optimierungen:**\n- Force-Directed Layout serverseitig vorberechnet (NetworkX spring_layout 3D)\n- Node-Positionen cachen (invalidieren nur bei Kartograph-Reindex)\n- Cluster-Aggregation: Bei > 1000 Nodes → Packages als Cluster-Nodes darstellen\n- Nur Nodes im Radius um center_node laden (depth-basiert)\n- Fog-of-War: Unerkundete Nodes haben `explored: false` (keine Details, nur Position)\n\n**Graph-Aggregation:**\n- Basis: bestehende `code_nodes` + `code_edges` Tabellen\n- Aggregation: Package → Module → Class Hierarchie\n- Edge-Weight: Anzahl der Verbindungen zwischen Clusters\n- Bug-Heatmap-Daten: `bug_count` pro Node aus `node_bug_reports`",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "GET /api/nexus-grid/3d gibt Graph-Daten mit x/y/z-Positionen zurück",
+      "Force-Directed 3D Layout wird serverseitig berechnet und gecached",
+      "Performance: < 500ms Response für 1000 Nodes",
+      "Cluster-Aggregation bei > 1000 Nodes",
+      "Fog-of-War: explored=false für unerkundete Nodes",
+      "Bug-Heatmap-Daten (bug_count) integriert",
+      "Unit-Tests für Aggregation + Layout-Caching"
+    ]
+  },
+  "tags": ["backend", "nexus-grid", "3d", "graph", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["cytoscape-nexus-grid"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

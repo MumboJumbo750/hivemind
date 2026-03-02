@@ -1,13 +1,40 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import AsyncSessionLocal
-from app.routers import achievements, audit, auth, code_nodes, epic_proposals, events, guards, health, members, nexus, nodes, notifications, projects, epics, federation, search, settings as settings_router, skills, sync_outbox, tasks, webhooks, wiki
-from app.mcp.transport import router as mcp_router, mcp_standard_routes
+from app.mcp.transport import mcp_standard_routes
+from app.mcp.transport import router as mcp_router
+from app.routers import (
+    achievements,
+    admin,
+    audit,
+    auth,
+    code_nodes,
+    epic_proposals,
+    epics,
+    events,
+    federation,
+    guards,
+    health,
+    kpis,
+    members,
+    nexus,
+    nodes,
+    notifications,
+    projects,
+    search,
+    skills,
+    sync_outbox,
+    tasks,
+    triage,
+    webhooks,
+    wiki,
+)
+from app.routers import settings as settings_router
 from app.services.federation_auth import FederationSignatureMiddleware
 from app.services.node_bootstrap import bootstrap_node
 from app.services.peers_loader import load_peers
@@ -59,6 +86,7 @@ def create_app() -> FastAPI:
     app.include_router(tasks.router, prefix="/api")
     app.include_router(members.router, prefix="/api")
     app.include_router(settings_router.router, prefix="/api")
+    app.include_router(admin.router, prefix="/api")
     app.include_router(search.router, prefix="/api")
     app.include_router(skills.router, prefix="/api")
     app.include_router(nodes.router, prefix="/api")
@@ -73,6 +101,8 @@ def create_app() -> FastAPI:
     app.include_router(audit.router, prefix="/api")
     app.include_router(achievements.router, prefix="/api")
     app.include_router(notifications.router, prefix="/api")
+    app.include_router(triage.router, prefix="/api")
+    app.include_router(kpis.router, prefix="/api")
     app.include_router(federation.router)
     app.include_router(mcp_router, prefix="/api")
 

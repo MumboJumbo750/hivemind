@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-8-008",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "Auto-Review Cron: Grace Period + Auto-Approve Mechanismus",
+  "description": "Cron-Job der abgelaufene Grace Periods erkennt und Auto-Approve ausführt.\n\n**Registrierung:** In `app/services/scheduler.py` → `start_scheduler()` (NIE in main.py!)\n- Intervall: alle 60 Sekunden\n- Nur aktiv wenn mindestens ein Governance-Typ auf 'auto' steht\n\n**Logik:**\n1. `SELECT * FROM review_recommendations WHERE grace_period_until <= now() AND auto_approved = false AND vetoed_at IS NULL`\n2. Für jede abgelaufene Empfehlung:\n   - Wenn recommendation = 'approve': Auto-Approve ausführen\n     - Task-State → `done` (über bestehende State-Machine, NICHT direkt UPDATE)\n     - `review_recommendations.auto_approved = true`\n     - SSE-Event `review_auto_approved`\n   - Wenn recommendation = 'reject' oder 'needs_human_review': SKIP (nie auto-reject!)\n3. Audit-Log für jeden Auto-Approve\n\n**Veto-Endpoint:**\n- `POST /api/reviews/{recommendation_id}/veto` — Mensch kann Grace Period unterbrechen\n- Setzt `vetoed_by = current_user`, `vetoed_at = now()`\n- Nach Veto: kein Auto-Approve mehr für diese Empfehlung\n- SSE-Event `review_vetoed`\n\n**UI-Integration (Info):**\n- Grace-Period-Countdown in AI-Review-Panel sichtbar (Frontend TASK-8-024)\n- 'Eingreifen'-Button ruft Veto-Endpoint auf\n\nDatei: `app/services/auto_review.py`, Registrierung via `scheduler.py`, Veto-Endpoint in `app/routers/reviews.py`",
+  "state": "scoped",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Cron-Job läuft alle 60s und erkennt abgelaufene Grace Periods",
+      "Auto-Approve führt Task über State-Machine auf 'done' (kein direkter DB-UPDATE)",
+      "auto_approved = true wird korrekt gesetzt",
+      "reject/needs_human_review werden NIE auto-approved (Safeguard)",
+      "Veto-Endpoint POST /api/reviews/{id}/veto unterbricht Grace Period",
+      "SSE-Events: review_auto_approved, review_vetoed",
+      "Cron-Job nur aktiv wenn governance.review = 'auto'",
+      "Unit-Tests für Grace-Period-Ablauf, Veto-Race-Condition, Safeguard"
+    ]
+  },
+  "tags": ["backend", "review", "cron", "governance", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["review-recommendation", "scheduled-job", "state-machine-transition"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-8-007"]
+}

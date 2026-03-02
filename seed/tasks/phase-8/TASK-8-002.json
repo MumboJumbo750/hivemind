@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-8-002",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "AI-Provider-Service: Provider-Abstraktion + Implementierungen",
+  "description": "Multi-Provider AI-Service mit ABC-Abstraktion und konkreten Implementierungen.\n\n**Dateien:**\n- `app/services/ai_provider.py` — AIProvider ABC + Provider-Registry\n- `app/services/ai_providers/` — Verzeichnis für Provider-Implementierungen\n- `app/services/ai_providers/anthropic.py` — AnthropicProvider\n- `app/services/ai_providers/openai_provider.py` — OpenAIProvider\n- `app/services/ai_providers/ollama.py` — OllamaProvider\n- `app/services/ai_providers/github_models.py` — GitHubModelsProvider\n- `app/services/ai_providers/custom.py` — CustomProvider (OpenAI-kompatibel)\n\n**AIProvider ABC:**\n- `async def send_prompt(prompt: str, tools: list[dict], model: str | None) -> AIResponse`\n- `async def stream_prompt(prompt: str, tools: list[dict], model: str | None) -> AsyncIterator[AIChunk]`\n- `def supports_tool_calling() -> bool`\n- `def default_model() -> str`\n\n**AIProviderService (Router):**\n- `get_provider(agent_role: str) -> AIProvider` — Lookup-Chain: ai_provider_configs[rolle] → app_settings.ai_provider → raise NeedsManualMode\n- API-Key-Entschlüsselung: AES-256-GCM mit `HIVEMIND_KEY_PASSPHRASE` (selbes Pattern wie Ed25519-Signing)\n- Env-Var-Fallback: `HIVEMIND_AI_API_KEY` als Global-Default\n- Provider-Instanzen cachen (pro agent_role, invalidieren bei Config-Change)\n\n**GitHubModelsProvider:**\n- `base_url = 'https://models.inference.ai.azure.com'`\n- Auth: GitHub PAT aus `HIVEMIND_GITHUB_TOKEN` oder ai_provider_configs\n- OpenAI-kompatibles SDK (`openai` Python-Package)\n- Tool-Name-Konversion: `hivemind/tool_name` → `hivemind__tool_name` (MCP `/` → `__`)\n- Model-Katalog: `GET /models` → cached in ai_provider_configs\n\n**Kein Circuit Breaker** — Exponential Backoff Retry ist ausreichend (implementiert in TASK-8-003).",
+  "state": "scoped",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "AIProvider ABC mit send_prompt, stream_prompt, supports_tool_calling definiert",
+      "AnthropicProvider, OpenAIProvider, OllamaProvider, GitHubModelsProvider, CustomProvider implementiert",
+      "AIProviderService.get_provider() routet korrekt: ai_provider_configs → Global-Fallback → NeedsManualMode",
+      "API-Key-Entschlüsselung mit AES-256-GCM funktioniert (identisch zu Ed25519-Signing-Pattern)",
+      "GitHubModelsProvider nutzt OpenAI-SDK mit GitHub PAT als Bearer-Token",
+      "Tool-Name-Konversion hivemind/foo → hivemind__foo funktioniert bidirektional",
+      "Unit-Tests für jeden Provider (Mock HTTP) + Routing-Logik"
+    ]
+  },
+  "tags": ["backend", "ai-provider", "service", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["ai-provider-service", "github-models-provider", "ed25519-signing"],
+  "linked_wiki": ["system-architektur", "tech-stack"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-8-001"]
+}

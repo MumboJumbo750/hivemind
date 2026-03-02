@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-7-017",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "KPI-Dashboard Frontend: 2×3 Grid mit 6 KPI-Cards",
+  "description": "Frontend-View für das KPI-Dashboard mit 6 KPI-Cards im 2×3 Grid-Layout.\n\nFunktionalität:\n1. Neue View `KpiDashboard.vue` — erreichbar über Settings oder eigene Route `/dashboard/kpi`\n2. **2×3 Grid-Layout** mit 6 KPI-Cards:\n   - Routing-Precision (Ziel ≥85%): Circular Progress + Prozentwert\n   - Median Zeit bis scoped (Ziel ≤4h): Balken + Stunden-Wert\n   - Tasks ohne Reopen (Ziel ≥80%): Circular Progress + Prozentwert\n   - Decision Requests in SLA (Ziel ≥95%): Circular Progress + Prozentwert\n   - Skill-Proposals in 72h (Ziel ≥90%): Circular Progress + Prozentwert\n   - Unauthorized Writes (Ziel 0): Count mit rotem Alert bei > 0\n3. **KPI-Card-States:** ok (grün), warn (gelb, < 80% des Ziels), critical (rot, < 60% des Ziels)\n4. `computed_at`-Timestamp unten rechts: 'Last updated: X minutes ago'\n5. Auto-Refresh alle 60 Sekunden (polling GET /api/kpis/summary)\n6. Skeleton-Loading bei initialer Berechnung\n7. **KpiCard.vue** als wiederverwendbare Komponente\n\nDateien: `frontend/src/views/KpiDashboard.vue`, `frontend/src/components/KpiCard.vue`",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "2×3 Grid mit 6 KPI-Cards wird korrekt dargestellt",
+      "KPI-Card zeigt value, target, status (ok/warn/critical) mit korrekter Farbkodierung",
+      "computed_at-Timestamp zeigt 'Last updated X minutes ago' korrekt",
+      "Auto-Refresh alle 60 Sekunden via polling",
+      "Skeleton-Loading wird bei leerem Cache angezeigt",
+      "KpiCard.vue ist als wiederverwendbare Komponente implementiert (Props: kpi, value, target, status)"
+    ]
+  },
+  "tags": ["frontend", "kpi", "dashboard", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["kpi-aggregation-dashboard-api", "vue-component", "design-token"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-7-013"]
+}

@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-8-016",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "Bibliothekar Auto-Modus: Provider-Routing + Token-Kalibrierung",
+  "description": "Erweiterung des Bibliothekar-Services für den Auto-Modus.\n\n**Bestehend (seit Phase 3):** pgvector-Similarity, Kontext-Assembling, Prompt-Generierung.\n\n**Phase-8-Erweiterungen:**\n\n1. **Per-Agent-Rolle Provider-Routing:**\n   - Bibliothekar liest `ai_provider_configs[agent_role].model` und passt Prompt-Template an\n   - Verschiedene Modelle haben verschiedene Token-Limits → Context-Window anpassen\n   - `get_context_window_size(provider, model) -> int`\n   - Fallback: 4096 Tokens wenn Provider/Modell unbekannt\n\n2. **Provider-spezifische Token-Kalibrierung:**\n   - Nutzt `HIVEMIND_TOKEN_COUNT_CALIBRATION` (aus TASK-8-003)\n   - Prompt-Budget-Berechnung berücksichtigt Kalibrierungs-Faktor\n   - Token Radar / Budget-Warnungen passen sich an\n\n3. **Adaptives Budget:**\n   - Wenn Provider Streaming unterstützt: größeres Kontext-Fenster erlaubt\n   - Bei Rate-Limited Provider: Kontext aggressiver kürzen (weniger Skill-Sections)\n   - Priorität der Kontext-Sections: Skills > Recent Changes > Wiki > Historical\n\n4. **Auto-Modus Prompt-Templates:**\n   - Bestehende Templates (Kartograph, Stratege, etc.) bleiben identisch\n   - Neues Template für Reviewer-Role: `generate_reviewer_prompt(task, dod, guard_results)`\n   - System-Instruktion ergänzt: MCP-Gateway-Tools verfügbar (github/*, gitlab/*)\n\nDatei: Erweiterung von `app/services/bibliothekar.py`",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Bibliothekar passt Context-Window an Provider/Modell an",
+      "Token-Kalibrierung aus HIVEMIND_TOKEN_COUNT_CALIBRATION wird genutzt",
+      "Adaptives Budget: Kontext wird je nach Provider-Limits angepasst",
+      "Reviewer-Prompt-Template generiert korrekte Review-Instruktionen",
+      "System-Instruktion enthält Hinweis auf verfügbare MCP-Gateway-Tools",
+      "Kein Breaking Change für bestehende Phase 1-7 Prompts",
+      "Unit-Tests für Context-Window-Berechnung + Kalibrierung"
+    ]
+  },
+  "tags": ["backend", "bibliothekar", "prompt", "auto-modus", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["prompt-generator", "ai-provider-service"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-8-002", "TASK-8-003"]
+}

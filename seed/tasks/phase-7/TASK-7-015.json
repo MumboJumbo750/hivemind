@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-7-015",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "Triage Station: [DEAD LETTER]-Kategorie mit Requeue-UI",
+  "description": "Neue Kategorie in der Triage Station für Dead-Letter-Einträge.\n\nFunktionalität:\n1. Neuer Tab/Sektion '[DEAD LETTER]' in der Triage Station View (neben bestehenden Kategorien)\n2. Zeigt paginierte Liste aus `GET /api/triage/dead-letters` — Felder: direction, payload_preview, attempts, last_error, created_at\n3. Aktionen pro Eintrag:\n   - **Requeue**: POST /api/triage/dead-letters/{id}/requeue → optimistisches UI-Update, Eintrag verschwindet aus Liste\n   - **Discard**: POST /api/triage/dead-letters/{id}/discard → Bestätigungs-Dialog, dann Eintrag verschwindet\n4. Leerer Zustand: Sci-Fi-Nachricht 'No dead signals in the queue' mit grünem Status-Indikator\n5. SSE-Subscription auf `dlq_requeued` + `dlq_discarded` → Live-Update ohne Reload\n6. Badge-Counter auf Tab: Anzahl nicht-discardeter Dead-Letter-Einträge\n7. Error-State: Wenn Requeue fehlschlägt → Toast-Notification mit Fehlertext\n\nDateien: `frontend/src/views/TriageStation.vue`, `frontend/src/components/DeadLetterList.vue`",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Dead-Letter-Tab zeigt paginierte Liste mit payload_preview, attempts, last_error",
+      "Requeue-Button führt POST aus und entfernt Eintrag optimistisch aus Liste",
+      "Discard-Button zeigt Bestätigungs-Dialog vor der Aktion",
+      "Leerer Zustand zeigt Sci-Fi-Nachricht mit grünem Status-Indikator",
+      "SSE-Events aktualisieren die Liste live (kein manueller Reload nötig)",
+      "Badge-Counter auf Tab zeigt korrekte Anzahl nicht-discardeter Einträge"
+    ]
+  },
+  "tags": ["frontend", "triage", "dlq", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["triage-station-dlq-kategorie-frontend", "vue-component", "sse-event-stream"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-7-009"]
+}

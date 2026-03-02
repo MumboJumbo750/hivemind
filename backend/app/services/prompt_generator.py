@@ -87,6 +87,7 @@ class PromptGenerator:
             "gaertner": self._gaertner,
             "architekt": self._architekt,
             "stratege": self._stratege,
+            "stratege_requirement": self._stratege_requirement,
             "kartograph": self._kartograph,
             "triage": self._triage,
         }
@@ -540,6 +541,135 @@ Nutze folgendes Tool für neue Epic-Vorschläge:
   ```json
   {{"tool": "hivemind/propose_epic", "arguments": {{"project_id": "{project_id}", "title": "...", "description": "...", "rationale": "..."}}}}
   ```"""
+
+    async def _stratege_requirement(
+        self,
+        *,
+        project_id: str | None,
+        requirement_text: str | None = None,
+        priority_hint: str | None = None,
+        **_,
+    ) -> str:
+        """Generate enriched Stratege prompt for a new free-text requirement."""
+        if not project_id:
+            raise ValueError("stratege_requirement benötigt project_id")
+        if not requirement_text:
+            raise ValueError("stratege_requirement benötigt requirement_text")
+        try:
+            pid = uuid.UUID(project_id)
+        except ValueError:
+            raise ValueError(f"Ungültige project_id: {project_id}")
+
+        result = await self.db.execute(select(Project).where(Project.id == pid))
+        project = result.scalar_one_or_none()
+        if not project:
+            raise ValueError(f"Projekt '{project_id}' nicht gefunden")
+
+        # All epics (summary for duplicate check)
+        epics_result = await self.db.execute(
+            select(Epic).where(Epic.project_id == pid).order_by(Epic.created_at.asc())
+        )
+        epics = list(epics_result.scalars().all())
+        epics_lines = []
+        for e in epics:
+            task_count_r = await self.db.execute(
+                select(func.count()).select_from(Task).where(Task.epic_id == e.id)
+            )
+            done_count_r = await self.db.execute(
+                select(func.count()).select_from(Task).where(
+                    Task.epic_id == e.id, Task.state == "done"
+                )
+            )
+            total = task_count_r.scalar_one()
+            done = done_count_r.scalar_one()
+            epics_lines.append(
+                f"- [{e.state}] {e.epic_key}: {e.title} (Prio: {e.priority}, Tasks: {done}/{total})"
+            )
+        epics_text = "\n".join(epics_lines) or "_Keine Epics vorhanden_"
+
+        # Capacity: in_progress + blocked task counts
+        in_progress_r = await self.db.execute(
+            select(func.count()).select_from(Task).join(Epic).where(
+                Epic.project_id == pid, Task.state == "in_progress"
+            )
+        )
+        blocked_r = await self.db.execute(
+            select(func.count()).select_from(Task).join(Epic).where(
+                Epic.project_id == pid, Task.state == "blocked"
+            )
+        )
+        in_progress_count = in_progress_r.scalar_one()
+        blocked_count = blocked_r.scalar_one()
+
+        # Tech stack from project description (or generic)
+        tech_stack = project.description[:200] if project.description else "Siehe AGENTS.md"
+
+        priority_hint_text = f"\n**Prioritäts-Hint vom User:** {priority_hint}" if priority_hint else ""
+
+        capacity_warning = ""
+        if in_progress_count > 5:
+            capacity_warning = (
+                "\n> ⚠ Kapazität: Viele Tasks in-progress. "
+                "Empfehle `suggested_priority: medium` oder spätere Phase, "
+                "außer die Anforderung ist kritisch für laufende Arbeit."
+            )
+
+        return f"""## Rolle: Stratege — Neue Anforderung erfassen
+
+**Projekt:** {project.name}
+**Aktuelle Phase:** Siehe Epics-Liste
+**Tech-Stack:** {tech_stack}
+
+### Bestehende Epics ({len(epics)}) — Duplikat-Check
+
+{epics_text}
+
+### Kapazität
+
+**Tasks in-progress:** {in_progress_count}
+**Blockierte Tasks:** {blocked_count}
+{capacity_warning}
+
+### Neue Anforderung (User-Input)
+{priority_hint_text}
+
+> {requirement_text}
+
+### Auftrag
+
+**Schritt 1 — Duplikat-Check:**
+Prüfe ob die Anforderung bereits durch ein bestehendes Epic abgedeckt ist.
+
+- Falls ja: Empfehle das betroffene Epic zu erweitern, nicht neu anlegen. Begründe warum.
+- Falls nein: Weiter mit Schritt 2.
+
+**Schritt 2 — Epic-Proposal formulieren:**
+
+```
+Titel:              [kurz, präzise, max 60 Zeichen]
+Beschreibung:       [Was genau gebaut wird + warum]
+Rationale:          [Ableitung aus der Anforderung + strategischer Nutzen]
+suggested_priority: critical | high | medium | low
+suggested_phase:    [nächste sinnvolle Phase-Nummer]
+depends_on:         [Epic-Keys die vorher abgeschlossen sein müssen, oder leer]
+```
+
+**Schritt 3 — Risiken & offene Fragen:**
+
+Identifiziere technische oder fachliche Risiken und nenne offene Fragen die vor der Umsetzung geklärt sein müssen.
+
+**Schritt 4 — MCP-Call (wenn verfügbar):**
+
+```
+hivemind/propose_epic {{
+  "project_id": "{project_id}",
+  "title": "...",
+  "description": "...",
+  "rationale": "..."
+}}
+```
+
+Falls nicht verfügbar: Gib den Proposal als Markdown-Block aus."""
 
     async def _kartograph(self, **_) -> str:
         # Load unexplored code nodes count

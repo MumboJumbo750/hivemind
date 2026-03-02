@@ -402,3 +402,93 @@ async def _handle_reject_epic_proposal(args: dict) -> list[TextContent]:
     except Exception as exc:
         logger.exception("reject_epic_proposal failed")
         return _err("INTERNAL_ERROR", str(exc), 500)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# hivemind/draft_requirement
+# ═══════════════════════════════════════════════════════════════════════════════
+
+register_tool(
+    Tool(
+        name="hivemind/draft_requirement",
+        description=(
+            "Generate an enriched Stratege prompt from a free-text requirement. "
+            "Creates an epic_proposals entry with state='draft'. "
+            "Returns the ready-to-paste prompt, token count, and draft_id."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "project_id": {"type": "string", "description": "Project UUID"},
+                "text": {"type": "string", "description": "Raw requirement text from the user"},
+                "priority_hint": {
+                    "type": "string",
+                    "enum": ["critical", "high", "medium", "low"],
+                    "description": "Optional priority hint",
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional tags for the requirement",
+                },
+            },
+            "required": ["project_id", "text"],
+        },
+    ),
+    handler=lambda args: _handle_draft_requirement(args),
+)
+
+
+async def _handle_draft_requirement(args: dict) -> list[TextContent]:
+    from app.models.epic_proposal import EpicProposal
+    from app.services.prompt_generator import PromptGenerator, count_tokens
+
+    try:
+        project_id = uuid.UUID(args["project_id"])
+        text = args["text"].strip()
+        if not text:
+            return _err("VALIDATION_ERROR", "text darf nicht leer sein", 400)
+
+        priority_hint = args.get("priority_hint")
+
+        async with AsyncSessionLocal() as db:
+            gen = PromptGenerator(db)
+            try:
+                prompt = await gen._stratege_requirement(
+                    project_id=str(project_id),
+                    requirement_text=text,
+                    priority_hint=priority_hint,
+                )
+            except ValueError as exc:
+                return _err("VALIDATION_ERROR", str(exc), 422)
+
+            token_count = count_tokens(prompt)
+
+            draft = EpicProposal(
+                project_id=project_id,
+                proposed_by=ADMIN_ID,
+                title=text[:80] + ("…" if len(text) > 80 else ""),
+                description=text,
+                rationale=None,
+                state="draft",
+                raw_requirement=text,
+            )
+            db.add(draft)
+            await db.flush()
+            await db.commit()
+
+            return _ok({
+                "data": {
+                    "prompt": prompt,
+                    "token_count": token_count,
+                    "draft_id": str(draft.id),
+                    "enrichment": {
+                        "priority_hint": priority_hint,
+                        "tags": args.get("tags", []),
+                    },
+                },
+                "meta": {"hint": "Kopiere den Prompt in deinen AI-Client. Speichere den Proposal danach via POST /api/epic-proposals mit state='proposed'."},
+            })
+    except Exception as exc:
+        logger.exception("draft_requirement failed")
+        return _err("INTERNAL_ERROR", str(exc), 500)

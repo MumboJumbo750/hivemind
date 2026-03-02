@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-7-011",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "Audit-Retention-Cron: Row-Deletion + konfigurierbare Retention-Perioden",
+  "description": "ERWEITERUNG des bestehenden `_audit_retention_job` in `app/services/scheduler.py`.\n\n**Was bereits existiert:**\n- `_audit_retention_job()` in `scheduler.py` (Zeilen 16-40) — nullifiziert `input_payload/output_payload` in `mcp_invocations` nach `audit_retention_days` (default: 90)\n- Job ist bereits registriert als `'audit_retention'` (CronTrigger, 03:00 UTC)\n- Config-Wert `audit_retention_days: int = 90` in `config.py`\n- KEINE neue Service-Datei nötig!\n\n**Was fehlt (in _audit_retention_job ergänzen):**\n1. **Row-Deletion**: Nach `audit_row_deletion_days` Tagen (default: 180) werden Rows aus `mcp_invocations` vollständig gelöscht:\n   `DELETE FROM mcp_invocations WHERE created_at < now() - interval ':days days'`\n2. **Konfigurierbare Perioden**: Neues Setting `audit_row_deletion_days: int = 180` in `config.py` hinzufügen (payload_nullify = audit_retention_days, row_delete = audit_row_deletion_days)\n3. **Logging**: Anzahl gelöschter Rows loggen (wie bereits für Nullify)\n\n**Änderungen:**\n- `app/config.py`: `audit_row_deletion_days: int = 180` hinzufügen\n- `app/services/scheduler.py`: `_audit_retention_job()` um DELETE-Query ergänzen\n\n**KEINE neue Datei, KEINE neue Job-Registrierung** — nur Erweiterung der bestehenden Funktion.\n\nDateien: `app/services/scheduler.py`, `app/config.py`",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "DELETE FROM mcp_invocations ist in _audit_retention_job ergänzt (nach audit_row_deletion_days Tagen)",
+      "Neues Config-Setting `audit_row_deletion_days: int = 180` in config.py vorhanden",
+      "Nullify-Phase (audit_retention_days=90) und Delete-Phase (audit_row_deletion_days=180) sind unabhängig konfigurierbar",
+      "Anzahl gelöschter Rows wird geloggt (wie bestehende Nullify-Logik)",
+      "Kein neuer APScheduler-Job — Erweiterung des bestehenden `audit_retention`-Jobs in scheduler.py"
+    ]
+  },
+  "tags": ["backend", "cron", "audit", "maintenance", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["scheduled-job"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

@@ -2,9 +2,11 @@
 
 ← [Phasen-Übersicht](./overview.md) | [Index](../../masterplan.md)
 
-**Ziel:** AI-Client konsumiert Prompts direkt via API-Key. GitLab MCP Consumer. 3D Nexus Grid. **Conductor-Orchestrator, Reviewer-Agent, Governance-Levels.** Kein Architekturbruch.
+**Ziel:** AI-Client konsumiert Prompts direkt via API-Key. GitLab + GitHub Integration. MCP Bridge / Gateway (Meta-MCP). 3D Nexus Grid. **Conductor-Orchestrator, Reviewer-Agent, Governance-Levels.** Kein Architekturbruch.
 
-**AI-Integration:** Per-Agent-Rolle konfigurierbare AI-Provider (→ `ai_provider_configs`-Tabelle). Jede Rolle (Kartograph, Stratege, Architekt, Worker, Gaertner, Triage) kann einen eigenen Provider + Modell + Endpoint nutzen — Cloud-APIs, Self-Hosted Ollama, oder gemischt. Nicht-konfigurierte Rollen fallen auf den Global-Default oder BYOAI zurück.
+**AI-Integration:** Per-Agent-Rolle konfigurierbare AI-Provider (→ `ai_provider_configs`-Tabelle). Jede Rolle (Kartograph, Stratege, Architekt, Worker, Gaertner, Triage) kann einen eigenen Provider + Modell + Endpoint nutzen — Cloud-APIs, Self-Hosted Ollama, GitHub Models, oder gemischt. Nicht-konfigurierte Rollen fallen auf den Global-Default oder BYOAI zurück.
+
+**MCP-Gateway:** Hivemind wird zum **Meta-MCP** — gleichzeitig MCP-Server (für Agents) und MCP-Client (zu externen MCP-Servern wie GitHub MCP, GitLab MCP). Agents erhalten Tools aus allen Quellen über eine einzige Schnittstelle mit zentralem RBAC, Audit und Rate-Limiting.
 
 **Voraussetzung:** Alle Kriterien aus [Definition of Ready](./overview.md#definition-of-ready-für-phase-8-autonomous-mode) erfüllt.
 
@@ -14,7 +16,7 @@
 
 ### Backend
 - [ ] AI-Provider-Service: sendet generierte Prompts direkt an AI-APIs
-  - Provider-Abstraktion: `anthropic`, `openai`, `google`, `ollama` (lokal), `custom` (beliebiger OpenAI-kompatibler Endpoint)
+  - Provider-Abstraktion: `anthropic`, `openai`, `google`, `ollama` (lokal), `github_models` (GitHub Models API), `custom` (beliebiger OpenAI-kompatibler Endpoint)
   - **Per-Agent-Rolle konfigurierbar** via `ai_provider_configs`-Tabelle (→ [Bibliothekar — Agent-Provider-Routing](../agents/bibliothekar.md#agent-provider-routing), [data-model.md](../architecture/data-model.md))
   - Routing-Logik: Prompt-Typ → Agent-Rolle → Lookup `ai_provider_configs` → Provider-spezifischer Client
   - Fallback-Kaskade: `ai_provider_configs[rolle]` → `app_settings.ai_provider` (Global) → BYOAI-Modus
@@ -41,6 +43,66 @@
     | `push` | Kartograph-Trigger (Code-Änderung → Follow-up-Session) |
 
   - **MCP-Tool-Wrapper:** `hivemind/get_gitlab_mr`, `hivemind/get_gitlab_pipeline` — Read-only, für Architekt/Worker-Kontext
+- [ ] **GitHub Webhook Consumer**: GitHub als Datenquelle (Issues, PRs, Actions, Projects V2) — parallel zum GitLab-Consumer
+  - **Auth:** HMAC-SHA256 Signatur-Validierung (`X-Hub-Signature-256` Header) + PAT via `HIVEMIND_GITHUB_TOKEN` oder GitHub App Installation Token
+  - **Ingest-Mechanismus:** Webhook-basiert — schreibt `direction='inbound'` in `sync_outbox` (selber Pfad wie GitLab/Sentry/YouTrack)
+  - **Webhook-Endpoint:** `POST /api/webhooks/github` (dediziert) oder generisch über `/api/webhooks/ingest/<token>`
+  - **Event-Mapping:**
+
+    | GitHub Event | Hivemind-Ziel |
+    | --- | --- |
+    | `issues.opened` / `issues.reopened` | Triage `[UNROUTED]` |
+    | `pull_request.opened` | Task-Artefakt-Link |
+    | `pull_request.merged` | Task-Completion-Trigger |
+    | `check_run.completed` (failure) | Triage `[UNROUTED]` (Bug-Kandidat) |
+    | `push` | Kartograph-Trigger (Code-Änderung → Follow-up-Session) |
+    | `workflow_run.completed` | CI-Status-Sync |
+    | `projects_v2_item.edited` | GitHub Projects Sync (→ s.u.) |
+    | `release.published` | Informational (Wiki/Notification) |
+
+  - **MCP-Tool-Wrapper:** `hivemind/get_github_pr`, `hivemind/get_github_issue`, `hivemind/get_github_check_status` — Read-only, für Architekt/Worker-Kontext
+  - **Env-Vars:** `HIVEMIND_GITHUB_WEBHOOK_SECRET` (HMAC), `HIVEMIND_GITHUB_TOKEN` (PAT), `HIVEMIND_GITHUB_URL` (Default: `https://api.github.com`, für GitHub Enterprise: custom)
+- [ ] **GitHub Models Provider**: GitHub Models API als AI-Provider — Zugang zu GPT-4o, Claude, Llama, Mistral etc. über einen einzigen GitHub PAT
+  - Neuer Provider-Typ `github_models` in `ai_provider_configs`
+  - OpenAI-kompatibles SDK (`openai` Python-Package) mit `base_url="https://models.inference.ai.azure.com"`
+  - Auth: GitHub PAT (`HIVEMIND_GITHUB_TOKEN`) — kein separater AI-API-Key nötig
+  - **Model-Katalog:** Automatisches Laden verfügbarer Modelle via `GET https://models.inference.ai.azure.com/models`
+  - **Rate-Limits:** Free Tier: 15 RPM / 150k TPD — Low Tier: 20 RPM — beachten bei Conductor-Parallelisierung
+  - **Tool-Calling:** GitHub Models API unterstützt Tool-Calling (tool names: `_` statt `/` Konvention)
+  - **Vorteil:** Ein PAT → mehrere Modelle verschiedener Anbieter (Azure-gehostet) — kein Multi-Key-Management
+- [ ] **GitHub Actions Agent**: Hivemind-Agents und Guards in GitHub Actions Pipelines ausführen
+  - **3 Betriebsmodi:**
+    1. **AI-Provider-Modus:** GitHub Actions Workflow ruft GitHub Models API als AI-Provider (günstig, GITHUB_TOKEN nativ verfügbar)
+    2. **Guard-Modus:** CI-Guards (Lint, Test, Security) laufen als GitHub Actions Steps → Ergebnis wird via `hivemind/report_guard_result` zurückgemeldet
+    3. **Agent-in-CI-Modus:** Kompletter Hivemind-Agent läuft im CI-Runner (für Code-Generierung + sofortigen Commit)
+  - **Conductor-Integration:** Neues Feld `execution_mode` in `conductor_dispatches`: `local` (Default, Backend-intern) oder `github_actions` (→ Workflow Dispatch)
+  - **GitHub Actions Workflow Dispatch:** Conductor triggert via `POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches` mit Task-Key als Input
+  - **Ergebnis-Rückmeldung:** Agent im CI ruft `POST /api/mcp/call` mit `hivemind/submit_result` am Ende des Workflow
+  - **Commit Status Checks:** Guard-Ergebnisse werden als GitHub Commit Status (`POST /repos/{owner}/{repo}/statuses/{sha}`) zurückgeschrieben
+  - **Security:** `HIVEMIND_API_TOKEN` als GitHub Actions Secret; Workflow hat `contents: write` + `statuses: write` Permissions
+- [ ] **GitHub Projects V2 Sync**: Bidirektionale Synchronisation Hivemind ↔ GitHub Projects V2
+  - **Sync-Richtung Hivemind→GitHub:** Via `sync_outbox` (`direction='outbound'`, `system='github'`) — Task-State-Changes aktualisieren GitHub Board
+  - **Sync-Richtung GitHub→Hivemind:** Via Webhooks (`projects_v2_item.*` Events) — Board-Änderungen als `[UNROUTED]` ingestiert
+  - **State-Mapping:** `incoming→Backlog`, `scoped/ready→Todo`, `in_progress→In Progress`, `in_review→In Review`, `done→Done`
+  - **WICHTIG:** GitHub Board-Änderungen erzeugen NIE automatische State-Changes in Hivemind (Review-Gate-Schutz) — Triage entscheidet
+  - **API:** GitHub Projects V2 = ausschließlich GraphQL (`POST /graphql`) — kein REST
+  - **Konfiguration:** Per Project in `project_integrations`-Tabelle (Repo, Project-ID, Field-Mapping)
+  - **Rate-Limit:** GitHub GraphQL: 5000 Points/h — Batch-Operationen beachten
+- [ ] **MCP Bridge / Gateway (Meta-MCP)**: Hivemind als zentraler MCP-Proxy für externe MCP-Server
+  - **Konzept:** Hivemind ist MCP-Server (für Agents) UND MCP-Client (zu GitHub MCP, GitLab MCP, Slack MCP, etc.)
+  - **Namespace-Isolation:** Tools unter `hivemind/*` (lokal), `github/*` (proxied), `gitlab/*` (proxied), etc.
+  - **Proxy-Layer:** Jeder Tool-Call durchläuft RBAC → Audit → Rate-Limiting → Forward an externen MCP-Server
+  - **Transport:** stdio, SSE, HTTP — konfigurierbar pro Bridge
+  - **Datenmodell:** `mcp_bridge_configs`-Tabelle (Name, Namespace, Transport, Command/URL, Env-Vars encrypted, Tool Allow/Blocklist)
+  - **Tool-Discovery:** Beim Connect werden verfügbare Tools vom externen MCP-Server geladen und unter Namespace registriert
+  - **Agent-Workflow:** Worker kann `github/create_branch`, `github/push_files`, `github/create_pull_request` nutzen — transparent über den Hivemind MCP-Server
+  - **Security:**
+    - Agents sehen NIE Credentials — alle externen API-Calls laufen durch den Backend-Proxy
+    - Tool-Blocklist für gefährliche Operationen (z.B. `delete_repository` IMMER blockiert)
+    - Env-Vars AES-256-GCM encrypted (selbes Pattern wie `ai_provider_configs`)
+    - Namespace `hivemind` ist reserviert — kann nicht als Bridge-Namespace verwendet werden
+  - **Graceful Degradation:** Wenn eine Bridge ausfällt, funktionieren lokale Tools + andere Bridges weiterhin
+  - **Admin-API:** `GET/POST /api/admin/mcp-bridges`, `POST .../test`, `GET .../tools`
 - [ ] Bibliothekar-Erweiterung für Auto-Modus: Per-Agent-Rolle Provider-Routing + provider-spezifische Token-Kalibrierung + adaptives Budget (pgvector-Similarity läuft bereits seit Phase 3; Phase 8 ergänzt Provider-Integration → [Agent-Provider-Routing](../agents/bibliothekar.md#agent-provider-routing))
 - [ ] Nexus Grid 3D Backend: Graphdaten-Aggregation optimiert für große Codebases
 - [ ] Auto-Escalation (Erweiterung): Phase 6 hat bereits SLA-basierte Escalation via Cron-Job (Decision-SLA > 72h → `escalated`). Phase 8 ergänzt **AI-gestützte proaktive Escalation** — der AI-Provider analysiert blockierte Tasks und entscheidet autonom über Eskalations-Zeitpunkt und Backup-Owner-Auswahl, ohne auf den Cron-Zyklus zu warten.
@@ -74,12 +136,19 @@
 
 ### Frontend
 - [ ] AI-Provider-Config in Settings:
-  - Per-Agent-Rolle: Provider-Auswahl, Modell, Endpoint (Single oder Pool), API-Key, Token-Budget, RPM-Limit
+  - Per-Agent-Rolle: Provider-Auswahl (inkl. `github_models`), Modell, Endpoint (Single oder Pool), API-Key, Token-Budget, RPM-Limit
+  - GitHub Models: Modell-Katalog-Browser — verfügbare Modelle werden vom API geladen
   - Endpoint-Pool-Editor: Endpoints hinzufügen/entfernen, Weight pro Endpoint, Pool-Strategie wählen
   - Global-Fallback: Ein Default-Provider für nicht einzeln konfigurierte Rollen
   - Hybrid-Modus: Einzelne Rollen manuell (BYOAI), andere automatisiert
   - Test-Button pro Rolle (Ping + Token-Count-Validierung)
   - Schrittweise Migration: Erst eine Rolle automatisieren, dann weitere hinzufügen
+- [ ] **MCP Bridge Config** in Settings (Admin-only):
+  - Bridge-Liste: Name, Namespace, Transport, Status (connected/disconnected/error)
+  - Bridge hinzufügen/bearbeiten: Transport wählen (stdio/SSE), Command/URL, Env-Vars (sicher)
+  - Tool-Katalog: Verfügbare Tools pro Bridge anzeigen, Allow/Blocklist konfigurieren
+  - Test-Button pro Bridge (Connect + Tool-Discovery)
+  - Health-Status: Active connections, error rate, last call timestamp
 - [ ] Prompt Station: Auto-Modus
   - Kein Prompt-Card mehr sichtbar
   - Stattdessen: Monitoring-Ansicht (aktive Agenten, Token-Verbrauch, Status)
@@ -118,10 +187,12 @@ Phase 1-7 (Manuell):
 Phase 8 (Auto-Modus — per Agent-Rolle konfigurierbar):
   Event/State-Transition → Conductor dispatcht Agent
     → Lookup ai_provider_configs[agent_role]
-    → Konfiguriert: sendet an Provider (Claude/OpenAI/Gemini/Ollama)
+    → Konfiguriert: sendet an Provider (Claude/OpenAI/Gemini/Ollama/GitHub Models)
+    → execution_mode: 'local' (Backend) oder 'github_actions' (CI-Runner)
     → Nicht konfiguriert: Fallback auf app_settings.ai_provider
     → Kein Provider: BYOAI-Modus (Prompt Station zeigt Prompt)
-  AI-Provider → ruft MCP-Tools auf → schreibt Ergebnis
+  AI-Provider → ruft MCP-Tools auf (lokal hivemind/* + proxied github/*, gitlab/*)
+    → MCP Gateway proxied externe Tools transparent (RBAC + Audit)
   State-Transition → Conductor dispatcht nächsten Agent
     → z.B. Task done → Gaertner, Task in_review → Reviewer
   Governance-Level entscheidet bei Gate-Points:
@@ -131,7 +202,7 @@ Phase 8 (Auto-Modus — per Agent-Rolle konfigurierbar):
   User → sieht Monitoring, greift nur bei Bedarf ein
 ```
 
-**Kein Architekturbruch:** Gleicher Prompt, gleiche MCP-Calls, gleiche Validierung. Nur der manuelle Copy-Paste-Schritt entfällt — und jede Rolle kann ihren optimalen Provider nutzen.
+**Kein Architekturbruch:** Gleicher Prompt, gleiche MCP-Calls, gleiche Validierung. Nur der manuelle Copy-Paste-Schritt entfällt — und jede Rolle kann ihren optimalen Provider nutzen. Der MCP Gateway erweitert das Tool-Ökosystem transparent um externe MCP-Server (GitHub, GitLab, etc.) — Agents merken keinen Unterschied zwischen lokalen und proxied Tools.
 
 ### Token-Counting im Auto-Modus
 
@@ -143,8 +214,9 @@ In Phase 1–7 verwendet Hivemind `tiktoken cl100k_base` als universelle Approxi
 | `openai` (GPT-4/4o) | `tiktoken cl100k_base` (exakt) | Exakt |
 | `google` (Gemini) | `tiktoken cl100k_base` (Approximation) | Ausreichend |
 | `ollama` (lokal) | `tiktoken cl100k_base` (Approximation) | Ausreichend |
+| `github_models` (Azure-hosted) | `tiktoken cl100k_base` (Approximation, Modell-abhängig) | Ausreichend |
 
-**Phase-8-Verhalten:** Das Backend wählt den Tokenizer automatisch basierend auf `ai_provider_configs[agent_role].provider`. Für Anthropic wird `cl100k_base` beibehalten (Anthropic veröffentlicht keinen offiziellen öffentlichen Tokenizer; `cl100k_base` ist de-facto Standard). Eine Provider-spezifische Token-Count-Kalibrierung (Offset-Faktor pro Provider) kann via `HIVEMIND_TOKEN_COUNT_CALIBRATION` Env-Var eingestellt werden (JSON: `{"anthropic": 1.05, "openai": 1.0, "google": 1.1, "ollama": 1.0}`).
+**Phase-8-Verhalten:** Das Backend wählt den Tokenizer automatisch basierend auf `ai_provider_configs[agent_role].provider`. Für Anthropic wird `cl100k_base` beibehalten (Anthropic veröffentlicht keinen offiziellen öffentlichen Tokenizer; `cl100k_base` ist de-facto Standard). Eine Provider-spezifische Token-Count-Kalibrierung (Offset-Faktor pro Provider) kann via `HIVEMIND_TOKEN_COUNT_CALIBRATION` Env-Var eingestellt werden (JSON: `{"anthropic": 1.05, "openai": 1.0, "google": 1.1, "ollama": 1.0, "github_models": 1.0}`).
 
 > **Kein Breaking Change:** `tiktoken cl100k_base` bleibt der Default — Phase 8 ergänzt nur die Kalibrierungsoption. Token Radar und Budget-Warnungen funktionieren unverändert.
 
@@ -171,6 +243,16 @@ In Phase 1–7 verwendet Hivemind `tiktoken cl100k_base` als universelle Approxi
 - [ ] "Manuell eingreifen"-Button schaltet zurück auf manuelle Prompt Station
 - [ ] Nexus Grid 3D lädt und navigierbar für Codebases > 1000 Nodes
 - [ ] GitLab Issues werden als neue Epics/Tasks ingestiert
+- [ ] GitHub Issues/PRs werden via Webhooks korrekt ingestiert (HMAC-SHA256 validiert)
+- [ ] GitHub Models Provider funktioniert als AI-Provider (Tool-Calling + Streaming)
+- [ ] GitHub Actions Workflow Dispatch triggert korrekt auf Conductor-Befehl
+- [ ] GitHub Actions Guard-Ergebnisse werden via `report_guard_result` zurückgemeldet
+- [ ] GitHub Projects V2 Sync: Task-State-Changes reflektieren sich im GitHub Board
+- [ ] GitHub Projects V2 Sync: Board-Änderungen landen als `[UNROUTED]` in Triage (kein auto State-Change)
+- [ ] MCP Bridge: Externe MCP-Server können verbunden und Tools genutzt werden
+- [ ] MCP Bridge: Tool-Blocklist verhindert gefährliche Operationen (`delete_repository`)
+- [ ] MCP Bridge: Audit-Log erfasst alle proxied Tool-Calls (inkl. Arguments + Result)
+- [ ] MCP Bridge: Agents erhalten NIE Credentials — nur Backend-Proxy hat Zugriff
 - [ ] Conductor dispatcht Agenten korrekt auf State-Transitions (12 Trigger getestet)
 - [ ] Conductor Cooldown verhindert doppeltes Dispatching (Idempotenz-Test)
 - [ ] Reviewer-Agent gibt korrekte Empfehlungen mit Confidence-Score ab
@@ -195,3 +277,8 @@ In Phase 1–7 verwendet Hivemind `tiktoken cl100k_base` als universelle Approxi
 - Nexus Grid: Diff-Ansicht (welche Nodes haben sich seit letztem Kartograph-Run verändert)
 - Skill-Empfehlungs-System: AI schlägt proaktiv Skills vor ohne Gaertner-Run
 - Worker-Pool Auto-Scaling: Endpoints dynamisch hinzufügen/entfernen basierend auf Queue-Tiefe
+- GitHub Copilot CLI Integration: `gh copilot suggest` / `gh copilot explain` als ergänzende Agent-Werkzeuge
+- GitHub App statt PAT: Finer-grained Permissions, Installation Tokens, höhere Rate-Limits
+- MCP Bridge: Weitere Server anbinden (Slack MCP, Jira MCP, Notion MCP, etc.)
+- MCP Bridge: Tool-Composability — ein Master-Tool das mehrere Bridge-Tools orchestriert
+- GitHub Actions: Self-Hosted Runner für höhere Parallelisierung und GPU-Zugriff

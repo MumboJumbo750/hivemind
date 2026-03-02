@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-8-025",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "Frontend: Nexus Grid 3D (Three.js WebGL)",
+  "description": "3D-Visualisierung des Nexus Grid mit Three.js WebGL.\n\n**Dateien:**\n- `frontend/src/components/nexus/NexusGrid3D.vue` — 3D-Container-Komponente\n- `frontend/src/composables/useNexusGrid3D.ts` — Three.js Renderer-Composable\n- `frontend/src/shaders/fogOfWar.glsl` — Fog-of-War Shader\n\n**Toggle:**\n- Button in Nexus Grid Toolbar: [2D] ↔ [3D]\n- 2D = bestehendes Cytoscape (unverändert)\n- 3D = Three.js Scene (dieser Task)\n\n**Three.js Scene:**\n- Orbit-Controls: Fly-Through-Navigation (Rotation, Zoom, Pan)\n- Nodes: `THREE.InstancedMesh` — ein Draw-Call pro Node-Typ (class, module, package)\n  - Explored: Solid-Farbe nach Typ\n  - Unexplored: Transparente Sphären (Fog of War)\n  - Bug-Heatmap: Rote Farbintensität basierend auf `bug_count`\n- Edges: `THREE.LineSegments` mit Buffer Geometry (nicht individuelle Lines)\n- LOD: Nodes außerhalb Viewport → 8-Polygon statt 32-Polygon Sphäre\n- Fog-of-War: GLSL Shader-Material auf flacher Plane über der Szene (kein DOM-Element)\n\n**Performance-Ziel:**\n- 1000 Nodes @ 30 FPS auf Mid-Range-GPU (GTX 1060 / RX 580)\n- Instanced Rendering für Draw-Call-Reduktion\n- Frustum Culling: Three.js default\n- Vue-Reaktivität AUSSERHALB des Render-Loops (keine reaktiven Refs im Animation-Frame)\n\n**Node-Interaktion:**\n- Hover → Tooltip mit Node-Info (Label, Type, Bug-Count)\n- Click → Node-Detail-Panel (selbes Panel wie 2D-Grid)\n- Raycasting für 3D-Picking\n\n**API-Integration:**\n- `GET /api/nexus-grid/3d` (TASK-8-017) für Graph-Daten mit 3D-Positionen\n- SSE: `code_nodes_updated` → Scene aktualisieren\n\n**Packages:**\n- `three` (Three.js)\n- `@types/three` (TypeScript-Defs)\n- Kein OrbitControls Import via three/examples — eigene minimal Controls",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "2D↔3D Toggle funktioniert — 3D Scene rendert neben bestehendem 2D Cytoscape",
+      "1000 Nodes @ 30 FPS auf Mid-Range-GPU (InstancedMesh, Buffer Geometry)",
+      "Orbit-Controls: Rotation, Zoom, Pan funktionieren flüssig",
+      "Fog-of-War: Unerkundete Nodes als transparente Sphären (GLSL Shader)",
+      "Bug-Heatmap: Rote Farbintensität nach bug_count",
+      "Node-Interaktion: Hover-Tooltip + Click-Detail via Raycasting",
+      "Vue-Reaktivität außerhalb des Render-Loops",
+      "LOD-Reduction für Nodes außerhalb des Viewports"
+    ]
+  },
+  "tags": ["frontend", "nexus-grid", "3d", "three.js", "webgl", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["nexus-grid-3d", "vue-component"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-8-017"]
+}

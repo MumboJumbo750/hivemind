@@ -21,12 +21,9 @@ import time
 import uuid
 from typing import Any
 
+from app.services.audit import write_audit
 from mcp.server import Server
 from mcp.types import TextContent, Tool
-
-from app.config import settings
-from app.db import AsyncSessionLocal
-from app.services.audit import write_audit
 
 logger = logging.getLogger(__name__)
 
@@ -63,10 +60,18 @@ async def call_tool(name: str, arguments: dict | None = None) -> list[TextConten
             text=json.dumps({"error": {"code": "tool_not_found", "message": f"Unknown tool: {name}"}})
         )]
 
-    args = arguments or {}
+    args = dict(arguments or {})
     t0 = time.perf_counter()
-    actor_id = args.pop("_actor_id", None) or uuid.UUID("00000000-0000-0000-0000-000000000001")
-    actor_role = args.pop("_actor_role", "admin")
+    actor_id_raw = args.pop("_actor_id", None) or uuid.UUID("00000000-0000-0000-0000-000000000001")
+    actor_role = str(args.pop("_actor_role", "admin"))
+    actor_id = actor_id_raw if isinstance(actor_id_raw, uuid.UUID) else uuid.UUID(str(actor_id_raw))
+
+    # Keep audit payload free from transport metadata.
+    audit_input_payload = dict(args)
+
+    # Handlers can use actor context for RBAC decisions if needed.
+    args["_actor_id"] = str(actor_id)
+    args["_actor_role"] = actor_role
 
     try:
         result = await handler(args)
@@ -75,9 +80,9 @@ async def call_tool(name: str, arguments: dict | None = None) -> list[TextConten
         # Non-blocking audit
         await write_audit(
             tool_name=name,
-            actor_id=actor_id if isinstance(actor_id, uuid.UUID) else uuid.UUID(str(actor_id)),
+            actor_id=actor_id,
             actor_role=actor_role,
-            input_payload=args,
+            input_payload=audit_input_payload,
             output_payload={"preview": result[0].text[:500] if result else ""},
             duration_ms=duration_ms,
         )
@@ -89,9 +94,9 @@ async def call_tool(name: str, arguments: dict | None = None) -> list[TextConten
 
         await write_audit(
             tool_name=name,
-            actor_id=actor_id if isinstance(actor_id, uuid.UUID) else uuid.UUID(str(actor_id)),
+            actor_id=actor_id,
             actor_role=actor_role,
-            input_payload=args,
+            input_payload=audit_input_payload,
             output_payload={"error": str(exc)},
             duration_ms=duration_ms,
         )

@@ -45,6 +45,7 @@ class EpicProposal(Base):
     )
     review_reason: Mapped[Optional[str]] = mapped_column(Text)
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    raw_requirement: Mapped[Optional[str]] = mapped_column(Text)
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

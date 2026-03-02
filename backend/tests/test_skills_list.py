@@ -1,4 +1,4 @@
-"""Tests for skills list endpoint — TASK-F-013."""
+"""Tests for skills list endpoint."""
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
@@ -8,81 +8,110 @@ import pytest
 from app.routers.skills import list_skills
 
 
-def _make_skill(title="Test Skill", scope="federated", node_id=None):
-    s = MagicMock()
-    s.id = uuid.uuid4()
-    s.title = title
-    s.content = "Skill content"
-    s.service_scope = ["backend"]
-    s.stack = ["python"]
-    s.skill_type = "domain"
-    s.lifecycle = "active"
-    s.federation_scope = scope
-    s.origin_node_id = node_id or uuid.uuid4()
-    s.deleted_at = None
-    s.created_at = datetime.now(timezone.utc)
-    return s
+def _make_skill(*, title: str = "Test Skill", scope: str = "federated") -> MagicMock:
+    skill = MagicMock()
+    skill.id = uuid.uuid4()
+    skill.project_id = None
+    skill.title = title
+    skill.content = "Skill content"
+    skill.service_scope = ["backend"]
+    skill.stack = ["python"]
+    skill.version_range = None
+    skill.owner_id = None
+    skill.proposed_by = None
+    skill.confidence = None
+    skill.skill_type = "domain"
+    skill.lifecycle = "active"
+    skill.version = 1
+    skill.token_count = 42
+    skill.rejection_rationale = None
+    skill.federation_scope = scope
+    skill.origin_node_id = uuid.uuid4()
+    skill.created_at = datetime.now(timezone.utc)
+    skill.updated_at = datetime.now(timezone.utc)
+    return skill
 
 
-def _make_node(node_id, name="alpha"):
-    n = MagicMock()
-    n.id = node_id
-    n.node_name = name
-    return n
+def _result_with_count(value: int) -> MagicMock:
+    result = MagicMock()
+    result.scalar.return_value = value
+    return result
+
+
+def _result_with_rows(rows: list[MagicMock]) -> MagicMock:
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = rows
+    return result
 
 
 @pytest.mark.asyncio
-async def test_list_skills_federated():
-    node_id = uuid.uuid4()
-    skill = _make_skill(node_id=node_id)
-    node = _make_node(node_id, "alpha-node")
+async def test_list_skills_returns_items() -> None:
+    skill = _make_skill(scope="federated")
 
     db = AsyncMock()
-    call_count = 0
-    async def fake_execute(stmt):
-        nonlocal call_count
-        call_count += 1
-        r = MagicMock()
-        if call_count == 1:
-            r.scalars.return_value.all.return_value = [skill]
-        else:
-            r.scalars.return_value.all.return_value = [node]
-        return r
-    db.execute = AsyncMock(side_effect=fake_execute)
+    db.execute = AsyncMock(side_effect=[_result_with_count(1), _result_with_rows([skill])])
 
-    result = await list_skills(federation_scope="federated", db=db)
-    assert len(result) == 1
-    assert result[0].title == "Test Skill"
-    assert result[0].origin_node_name == "alpha-node"
+    actor = MagicMock()
+    response = await list_skills(
+        project_id=None,
+        lifecycle=None,
+        service_scope=None,
+        stack=None,
+        skill_type=None,
+        limit=50,
+        offset=0,
+        db=db,
+        actor=actor,
+    )
+
+    assert response.total_count == 1
+    assert len(response.data) == 1
+    assert response.data[0].title == "Test Skill"
+    assert response.data[0].federation_scope == "federated"
 
 
 @pytest.mark.asyncio
-async def test_list_skills_empty():
+async def test_list_skills_empty() -> None:
     db = AsyncMock()
-    r = MagicMock()
-    r.scalars.return_value.all.return_value = []
-    db.execute.return_value = r
+    db.execute = AsyncMock(side_effect=[_result_with_count(0), _result_with_rows([])])
 
-    result = await list_skills(federation_scope="federated", db=db)
-    assert result == []
+    actor = MagicMock()
+    response = await list_skills(
+        project_id=None,
+        lifecycle=None,
+        service_scope=None,
+        stack=None,
+        skill_type=None,
+        limit=50,
+        offset=0,
+        db=db,
+        actor=actor,
+    )
+
+    assert response.total_count == 0
+    assert response.data == []
+    assert response.has_more is False
 
 
 @pytest.mark.asyncio
-async def test_list_skills_no_filter():
+async def test_list_skills_no_filter_includes_local() -> None:
     skill = _make_skill(scope="local")
 
     db = AsyncMock()
-    call_count = 0
-    async def fake_execute(stmt):
-        nonlocal call_count
-        call_count += 1
-        r = MagicMock()
-        if call_count == 1:
-            r.scalars.return_value.all.return_value = [skill]
-        else:
-            r.scalars.return_value.all.return_value = []
-        return r
-    db.execute = AsyncMock(side_effect=fake_execute)
+    db.execute = AsyncMock(side_effect=[_result_with_count(1), _result_with_rows([skill])])
 
-    result = await list_skills(federation_scope=None, db=db)
-    assert len(result) == 1
+    actor = MagicMock()
+    response = await list_skills(
+        project_id=None,
+        lifecycle=None,
+        service_scope=None,
+        stack=None,
+        skill_type=None,
+        limit=50,
+        offset=0,
+        db=db,
+        actor=actor,
+    )
+
+    assert len(response.data) == 1
+    assert response.data[0].federation_scope == "local"

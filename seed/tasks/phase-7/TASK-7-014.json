@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-7-014",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "Bug-Heatmap: Nexus Grid Layer mit Knotengröße/-farbe",
+  "description": "Frontend-Erweiterung des Nexus Grid (Cytoscape.js) um einen Bug-Heatmap-Layer.\n\n**Wichtiger Kontext:**\n- `node_bug_reports.node_id` ist FK auf `code_nodes.id` (NICHT auf epics!)\n- Die Heatmap färbt/skaliert CODE-KNOTEN im Graph — jeder code_node hat N Bug-Reports\n- Cytoscape-Knoten entsprechen code_nodes (id = code_node.id)\n- Bestehender Endpoint `GET /api/nexus/graph` liefert nodes+edges — muss um Bug-Count erweitert werden\n\n**Backend-Dependency (in diesem Task mit umsetzen):**\n- `GET /api/nexus/bug-counts?project_id=...` — neuer Endpoint in `app/routers/nexus.py`\n- Response: `[{ node_id: str, bug_count: int, sentry_issues: [{ sentry_issue_id, count, last_seen, stack_trace_hash }] }]`\n- Query: `SELECT node_id, COUNT(*), json_agg(...) FROM node_bug_reports GROUP BY node_id`\n\n**Frontend-Logik:**\n1. Neuer Toggle 'Bug-Heatmap' im Nexus Grid UI (an/aus, Standard: aus)\n2. Bei Aktivierung: Fetch `GET /api/nexus/bug-counts?project_id=...`\n3. Mapping auf Cytoscape-Knoten (Abgleich über `cy.getElementById(node_id)`):\n   - Knotengröße: linear skaliert nach `bug_count` (min: 30px, max: 80px, Props-konfigurierbar)\n   - Knotenfarbe: neutral (0) → orange (mid) → rot (≥10) — Design Token\n   - Knoten ohne Bug-Reports: unverändert\n4. Hover-Panel: zeigt `sentry_issues` Array (issue_id, count, last_seen, stack_trace_hash Prefix)\n5. SSE-Subscription auf `bug_aggregated` → `useBugHeatmap` composable re-fetcht/updated betroffenen Knoten\n6. Performance: Knotenupdate via `cy.batch()` für < 500 Knoten in < 16ms\n\nDateien: `frontend/src/components/NexusGrid/BugHeatmapLayer.vue`, `frontend/src/composables/useBugHeatmap.ts`, `app/routers/nexus.py`",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Bug-Heatmap-Toggle aktiviert/deaktiviert den Layer ohne Seiten-Reload",
+      "Knotengröße skaliert korrekt nach Bug-Count (min/max konfigurierbar)",
+      "Knotenfarbe wechselt von neutral über orange zu rot (Design Token verwendet)",
+      "Hover-Panel zeigt Bug-Details (count, last_seen, stack_trace_hash-Preview)",
+      "SSE-Live-Update aktualisiert Heatmap bei neuen bug_aggregated-Events",
+      "cy.batch() wird für Knotenupdate verwendet (Performance)"
+    ]
+  },
+  "tags": ["frontend", "nexus-grid", "visualization", "cytoscape", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["nexus-grid-bug-heatmap-layer", "cytoscape-graph", "vue-component"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-7-005"]
+}

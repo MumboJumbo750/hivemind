@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { api } from '../../api'
 import type { Epic, Task, PeerNode, ContextBoundary } from '../../api/types'
 import EpicScopingModal from '../../components/domain/EpicScopingModal.vue'
+import RequirementCaptureModal from '../../components/domain/RequirementCaptureModal.vue'
 import TaskReviewPanel from '../../components/domain/TaskReviewPanel.vue'
 import SlaCountdown from '../../components/ui/SlaCountdown.vue'
 import { HivemindModal } from '../../components/ui'
@@ -227,6 +228,15 @@ async function copyPrompt() {
   }
 }
 
+// ── Requirement Capture Modal ────────────────────────────────────────────────
+const showRequirementModal = ref(false)
+
+function openRequirementModal() { showRequirementModal.value = true }
+
+function onProposalSaved() {
+  showRequirementModal.value = false
+}
+
 // ── Task Creation Dialog (TASK-4-009) ────────────────────────────────────────
 const showTaskDialog = ref(false)
 const taskDialogEpicKey = ref<string>('')
@@ -319,6 +329,15 @@ function closeTaskDetail() {
           {{ peer.node_name }}
         </option>
       </select>
+
+      <!-- Requirement Capture -->
+      <button
+        v-if="selectedProjectId"
+        class="btn-new-requirement"
+        @click="openRequirementModal"
+      >
+        + Neue Anforderung
+      </button>
     </div>
 
     <!-- Loading / Error -->
@@ -573,6 +592,13 @@ function closeTaskDetail() {
         </div>
       </div>
     </Teleport>
+
+    <!-- Requirement Capture Modal -->
+    <RequirementCaptureModal
+      v-model="showRequirementModal"
+      :project-id="selectedProjectId"
+      @proposal-saved="onProposalSaved"
+    />
   </div>
 </template>
 
@@ -1156,4 +1182,23 @@ function closeTaskDetail() {
 .btn-inline:hover { color: var(--color-text); background: var(--color-surface-alt); }
 .btn-inline--save { color: var(--color-success); }
 .btn-inline--save:hover { color: var(--color-success); }
+
+.btn-new-requirement {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  color: var(--color-accent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.btn-new-requirement:hover {
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
 </style>

@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-ENV-002",
+  "epic_ref": "EPIC-ENV-BOOTSTRAP",
+  "title": "Kartograph-Erweiterung: Environment Discovery Capability",
+  "description": "Erweitere den Kartograph-Prompt um systematische Environment-Discovery.\n\n**Was zu ergänzen ist in `seed/skills/prompt-template-kartograph.md`:**\n\n1. Neuer Abschnitt A) 'Environment Discovery (Priorität 0)' vor der bisherigen Code-Analyse:\n   - Precondition-Check: Existiert AGENTS.md? Ist es aktueller als docker-compose.yml?\n   - Discovery-Algorithmus: docker-compose.yml → Services/Ports/Volumes extrahieren\n   - Makefile / package.json scripts → Dev-Befehle dokumentieren\n   - .env.example → Umgebungsvariablen erfassen\n   - AGENTS.md erstellen/aktualisieren\n   - Runtime-Skills mit skill_type='runtime' anlegen\n\n2. Bisherige Code-Analyse wird zu Abschnitt B)\n\n3. Prioritäten-Liste anpassen: Environment Discovery als Prio 1 (blockiert andere AI-Agents)\n\n**Monorepo-Support:**\n- Kartograph soll bei Monorepos pro Package eine AGENTS.md erstellen\n- Scope-Parameter: global (root) vs. package-scoped (z.B. packages/backend/)\n\nDatei: `seed/skills/prompt-template-kartograph.md`",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "prompt-template-kartograph.md enthält Abschnitt 'Environment Discovery' als explizite Aufgabe",
+      "Precondition-Check (AGENTS.md existiert?) ist im Auftrag dokumentiert",
+      "Discovery-Algorithmus beschreibt welche Config-Files analysiert werden",
+      "Monorepo-Support (per-Package AGENTS.md) ist erwähnt",
+      "Prioritäten-Liste: Environment Discovery ist Prio 1"
+    ]
+  },
+  "tags": ["devops", "ai-context", "kartograph", "prompt-engineering"],
+  "subtasks": [],
+  "pinned_skills": ["runtime-environment", "prompt-template-kartograph"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/architecture/ai-context.md",
+  "estimated_complexity": "small",
+  "depends_on": ["TASK-ENV-001"]
+}

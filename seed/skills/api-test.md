@@ -7,7 +7,7 @@ confidence: 0.5
 source_epics: ["EPIC-PHASE-1A"]
 guards:
   - title: "Tests"
-    command: "pytest tests/ -v"
+    command: "make test-be"
 ---
 
 ## Skill: API Endpoint testen

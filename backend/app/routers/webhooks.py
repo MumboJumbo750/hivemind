@@ -68,16 +68,60 @@ def _normalize_youtrack(raw: dict) -> dict:
 
 def _normalize_sentry(raw: dict) -> dict:
     """Normalize Sentry webhook payload to internal format."""
-    data_obj = raw.get("data") or {}
-    event = data_obj.get("event") or data_obj.get("issue") or {}
+    data_obj = raw.get("data") if isinstance(raw.get("data"), dict) else {}
+    event = data_obj.get("event") if isinstance(data_obj.get("event"), dict) else {}
+    issue = data_obj.get("issue") if isinstance(data_obj.get("issue"), dict) else {}
+
+    issue_id = issue.get("id") or issue.get("shortId") or event.get("groupID") or event.get("group_id")
+    event_id = event.get("event_id") or event.get("id")
+
+    project_obj = raw.get("project")
+    if isinstance(project_obj, dict):
+        project = project_obj.get("slug") or project_obj.get("name")
+    else:
+        project = project_obj
+
+    if not project:
+        event_project = event.get("project")
+        if isinstance(event_project, dict):
+            project = event_project.get("slug") or event_project.get("name")
+        elif isinstance(event_project, str):
+            project = event_project
+
+    exception = event.get("exception")
+    stacktrace = event.get("stacktrace")
+    entries = event.get("entries")
+    if not exception and isinstance(entries, list):
+        for entry in entries:
+            if not isinstance(entry, dict) or entry.get("type") != "exception":
+                continue
+            data = entry.get("data")
+            if isinstance(data, dict):
+                exception = data
+                break
+
+    if not stacktrace and isinstance(exception, dict):
+        values = exception.get("values")
+        if isinstance(values, list) and values and isinstance(values[0], dict):
+            stacktrace = values[0].get("stacktrace")
+
     return {
         "source": "sentry",
-        "external_id": event.get("event_id") or event.get("id"),
-        "summary": event.get("title") or event.get("message"),
-        "level": event.get("level"),
-        "project": (raw.get("project") or event.get("project", {}) or {}).get("slug"),
-        "url": event.get("web_url") or event.get("url"),
-        "timestamp": event.get("timestamp") or raw.get("timestamp"),
+        "external_id": issue_id or event_id,
+        "issue_id": issue_id,
+        "event_id": event_id,
+        "summary": issue.get("title") or event.get("title") or event.get("message"),
+        "title": issue.get("title") or event.get("title"),
+        "message": event.get("message"),
+        "culprit": event.get("culprit") or issue.get("culprit"),
+        "level": event.get("level") or issue.get("level"),
+        "project": project,
+        "url": issue.get("web_url") or issue.get("url") or event.get("web_url") or event.get("url"),
+        "timestamp": event.get("timestamp") or issue.get("lastSeen") or raw.get("timestamp"),
+        "first_seen": issue.get("firstSeen") or issue.get("first_seen"),
+        "fingerprint": event.get("fingerprint") or issue.get("fingerprint"),
+        "exception": exception,
+        "stacktrace": stacktrace,
     }
 
 

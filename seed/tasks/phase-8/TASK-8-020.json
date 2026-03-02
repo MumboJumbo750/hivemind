@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-8-020",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "Frontend: AI-Provider-Config Settings UI",
+  "description": "Settings-View für Per-Agent-Rolle AI-Provider-Konfiguration.\n\n**Dateien:**\n- `frontend/src/components/settings/AIProviderSettings.vue` — Hauptkomponente\n- `frontend/src/components/settings/ProviderRoleCard.vue` — Karte pro Agent-Rolle\n- `frontend/src/components/settings/EndpointPoolEditor.vue` — Pool-Editor\n- `frontend/src/composables/useAIProviders.ts` — API-Composable\n\n**Layout:**\n```\n┌─────────────────────────────────────────┐\n│ AI-Provider Konfiguration               │\n│ ┌─────────┐ ┌─────────┐ ┌─────────┐    │\n│ │Kartograph│ │Stratege │ │Architekt│... │\n│ │ ▼ Ollama │ │ ▼ Claude│ │ ▼ GPT-4o│    │\n│ │ llama3.1 │ │ sonnet  │ │ (GitHub)│    │\n│ │ [Pool]   │ │         │ │         │    │\n│ │ [Test ✓] │ │ [Test ✓]│ │ [Test ✓]│    │\n│ └─────────┘ └─────────┘ └─────────┘    │\n│                                         │\n│ Global-Fallback: [▼ BYOAI (kein Auto)] │\n└─────────────────────────────────────────┘\n```\n\n**ProviderRoleCard:**\n- Provider-Dropdown: anthropic, openai, google, ollama, github_models, custom\n- Bei `github_models`: Modell-Katalog-Browser (lädt Modelle von API)\n- Modell-Input (Text oder Dropdown je nach Provider)\n- Endpoint-URL (nur bei ollama/custom)\n- API-Key-Input (Passwort-Feld, wird über HTTPS gesendet → Backend verschlüsselt)\n- Token-Budget (daily), RPM-Limit\n- Test-Button: Ping + Token-Count-Validierung → grüner Haken oder Fehlermeldung\n\n**EndpointPoolEditor:**\n- Nur bei ollama/custom sichtbar\n- Endpoints hinzufügen/entfernen (URL + Weight)\n- Pool-Strategie: round_robin | weighted | least_busy\n- Health-Status pro Endpoint (live aus Backend)\n\n**GitHub Models Modell-Katalog-Browser:**\n- Lädt verfügbare Modelle von `GET /api/admin/ai-providers/github-models/catalog`\n- Zeigt: Modell-Name, Publisher, Typ (Chat/Completion), Limits\n- Klick → wählt Modell für diese Rolle\n\n**Hybrid-Modus:**\n- Einzelne Rollen können auf 'Nicht konfiguriert' stehen → BYOAI für diese Rolle\n- Schrittweise Migration: erst eine Rolle automatisieren, dann weitere\n\n**API-Integration:**\n- `GET /api/admin/ai-providers` — alle Konfigurationen laden\n- `PUT /api/admin/ai-providers/{agent_role}` — Konfiguration speichern\n- `POST /api/admin/ai-providers/{agent_role}/test` — Provider testen\n- `DELETE /api/admin/ai-providers/{agent_role}` — Zurück auf BYOAI",
+  "state": "scoped",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Settings-Tab 'AI-Provider' zeigt alle 7 Agent-Rollen als Karten",
+      "Provider-Dropdown inkl. github_models Option",
+      "GitHub Models Modell-Katalog-Browser lädt und zeigt verfügbare Modelle",
+      "API-Key wird als Passwort-Feld angezeigt und über HTTPS gesendet",
+      "Endpoint-Pool-Editor für ollama/custom mit Health-Status",
+      "Test-Button gibt Feedback (Erfolg/Fehler)",
+      "Global-Fallback konfigurierbar",
+      "Hybrid-Modus: einzelne Rollen können BYOAI bleiben"
+    ]
+  },
+  "tags": ["frontend", "settings", "ai-provider", "vue", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["ai-provider-settings-ui", "vue-component", "design-token"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-8-002"]
+}

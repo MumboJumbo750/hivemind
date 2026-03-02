@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.models.federation import Node, NodeIdentity
 from app.models.skill import Skill, SkillParent
+from app.models.user import User
 from app.routers.deps import get_current_actor, require_role
 from app.schemas.auth import CurrentActor
 from app.schemas.federation import FederatedSkillResponse
@@ -123,8 +124,6 @@ async def get_skill_versions(
     if not skill:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill nicht gefunden")
     versions = await svc.get_versions(skill_id)
-    # Resolve usernames
-    from app.models.user import User
     user_ids = {v.changed_by for v in versions}
     umap: dict[uuid.UUID, str] = {}
     if user_ids:

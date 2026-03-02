@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-7-006",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "pgvector Auto-Routing: Inbound Events → Epic via Cosine-Similarity",
+  "description": "Automatische Epic-Zuordnung für eingehende Bug-Reports und Triage-Events via Embedding-Ähnlichkeit.\n\nFunktionalität:\n1. `RoutingService` in `app/services/routing_service.py`\n2. Methode `route_to_epic(text: str, bug_report_id: uuid) -> RoutingResult`:\n   a. Embedding für `text` (Titel + Stack-Trace-Zusammenfassung) via `embedding_service.embed(text)`\n   b. Cosine-Similarity gegen Epic-Embeddings: `SELECT id, title, 1 - (embedding <=> :vec) AS score FROM epics WHERE embedding IS NOT NULL ORDER BY score DESC LIMIT 5`\n   c. Bester Match >= threshold → epic_id setzen auf `node_bug_reports.epic_id`, SSE `bug_routed`\n   d. Bester Match < threshold → node_bug_reports bleibt `[UNROUTED]` (epic_id=NULL), SSE `bug_unrouted`\n3. Threshold aus `routing_threshold_config` lesen (mit 60s Cache)\n4. Aufruf nach `SentryAggregationService.process_sentry_event()` in consume_inbound\n5. Ebenfalls: epic_embeddings sicherstellen — beim Epic-State-Wechsel nach 'scoped' Embedding berechnen (Hook in Epic-State-Machine)\n\nDateien: `app/services/routing_service.py`, Integration in Outbox-Consumer + Epic State-Machine",
+  "state": "scoped",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "route_to_epic() berechnet Cosine-Similarity gegen alle Epics mit gesetztem Embedding",
+      "Bei Score >= threshold wird epic_id auf node_bug_reports gesetzt und SSE `bug_routed` gefeuert",
+      "Bei Score < threshold bleibt epic_id NULL und SSE `bug_unrouted` mit Score-Details gefeuert",
+      "Threshold wird aus DB/Config gelesen (nicht hardcoded), 60s Cache",
+      "Epic-Embeddings werden beim Wechsel nach 'scoped' automatisch berechnet",
+      "Unit-Tests für Routing-Logik mit Mock-Embeddings (Score above/below threshold)"
+    ]
+  },
+  "tags": ["backend", "routing", "pgvector", "embeddings", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["pgvector-auto-routing-event-epic-zuordnung", "ollama-embedding", "triage-routing"],
+  "linked_wiki": ["system-architektur", "tech-stack"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-7-001", "TASK-7-005"]
+}

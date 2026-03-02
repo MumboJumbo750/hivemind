@@ -32,6 +32,9 @@ EVENT_TYPES = {
     "notification_created",
     "triage_routed",
     "triage_ignored",
+    "triage_dlq_updated",
+    "dlq_requeued",
+    "dlq_discarded",
     "node_status",
     "federation_skill",
 }

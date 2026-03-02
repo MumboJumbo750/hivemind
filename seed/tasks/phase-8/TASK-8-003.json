@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-8-003",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "AI-Provider-Service: Rate-Limiting, Retry + Token-Kalibrierung",
+  "description": "Ergänzt den AI-Provider-Service (TASK-8-002) um Rate-Limiting, Retry-Logik und Token-Kalibrierung.\n\n**Rate-Limiter:**\n- `app/services/ai_rate_limiter.py`\n- Sliding-Window pro Provider-Instanz (nicht global)\n- Konfigurierbar via `ai_provider_configs.rpm_limit` und `ai_provider_configs.tpm_limit`\n- Env-Var-Fallbacks: `HIVEMIND_AI_RPM_LIMIT`, `HIVEMIND_AI_TPM_LIMIT`\n- Bei Überschreitung: `RateLimitExceeded` Exception → Queue-Eintrag bleibt `agent_required`\n- Prompt Station zeigt `RATE LIMITED — Retry in Xs` (SSE-Event)\n\n**Retry-Logik:**\n- Exponential Backoff: 1s → 2s → 4s → max 60s\n- Max 3 Versuche bei HTTP 429 (Rate Limit) und 503 (Service Unavailable)\n- Andere HTTP-Fehler: sofort fehlschlagen (kein Retry bei 400, 401, 403)\n- Retry-Counter im `conductor_dispatches` Audit-Log\n\n**Token-Kalibrierung:**\n- Provider-spezifische Offset-Faktoren\n- Env-Var: `HIVEMIND_TOKEN_COUNT_CALIBRATION` (JSON: `{\"anthropic\": 1.05, \"openai\": 1.0, \"google\": 1.1, \"ollama\": 1.0, \"github_models\": 1.0}`)\n- `get_calibrated_token_count(raw_count, provider) -> int`\n- Default: `cl100k_base` bleibt universeller Tokenizer\n- Token Radar + Budget-Warnungen funktionieren unverändert (kein Breaking Change)\n\n**Tägliches Token-Budget:**\n- `ai_provider_configs.token_budget_daily` — pro Rolle\n- Verbrauch tracken (aggregiert aus conductor_dispatches result → token_usage)\n- Bei Überschreitung: Dispatch pausieren, SSE-Event `token_budget_exceeded`",
+  "state": "scoped",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Rate-Limiter (Sliding-Window) begrenzt RPM und TPM pro Provider-Instanz",
+      "RateLimitExceeded Exception wird korrekt geworfen und als SSE-Event propagiert",
+      "Exponential Backoff: 3 Retries bei 429/503, sofortiger Abort bei 400/401/403",
+      "Token-Kalibrierung: HIVEMIND_TOKEN_COUNT_CALIBRATION Env-Var wird korrekt geparst",
+      "Token-Budget: Dispatch wird pausiert bei Überschreitung des täglichen Limits",
+      "Unit-Tests für Rate-Limiter (Sliding-Window-Edge-Cases) und Retry-Logik"
+    ]
+  },
+  "tags": ["backend", "ai-provider", "rate-limiting", "retry", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["ai-provider-service", "scheduled-job"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-8-002"]
+}

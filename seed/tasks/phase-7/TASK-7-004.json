@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-7-004",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "YouTrack Status-Rücksync: Bidirektionale State-Updates",
+  "description": "Handler für outbound YouTrack-Events im `consume_outbound`-Consumer (TASK-7-002).\n\nFunktionalität:\n1. `YouTrackSyncService` in `app/services/youtrack_sync.py`\n2. Methode `sync_task_state(outbox_entry)`: Liest Task aus DB, mappt Hivemind-State → YouTrack-State (z.B. in_progress→'In Progress', done→'Resolved'), PATCH an YouTrack REST API `/api/issues/{externalId}`\n3. Methode `sync_assignee(outbox_entry)`: Setzt Assignee in YouTrack basierend auf assigned_to\n4. Authentifizierung: Bearer Token aus `HIVEMIND_YOUTRACK_TOKEN` env\n5. Base-URL aus `HIVEMIND_YOUTRACK_URL` env\n6. httpx AsyncClient mit Timeout (10s), Connection-Reuse\n7. Fehlerbehandlung: 4xx → log + permanent_failure (kein Retry), 5xx → raise (Consumer macht Retry)\n8. State-Mapping-Tabelle konfigurierbar (ENV oder YAML)\n\nDateien: `app/services/youtrack_sync.py`, `app/services/outbox_consumer.py` (Integration)",
+  "state": "scoped",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "YouTrackSyncService.sync_task_state() sendet korrekten State via YouTrack REST API",
+      "YouTrackSyncService.sync_assignee() aktualisiert Assignee in YouTrack",
+      "4xx-Fehler führen zu permanent_failure (kein Retry), 5xx zu Retry via Outbox",
+      "HIVEMIND_YOUTRACK_TOKEN und HIVEMIND_YOUTRACK_URL werden aus ENV gelesen",
+      "State-Mapping (Hivemind→YouTrack) ist dokumentiert und testbar",
+      "Unit-Tests mit gemocktem httpx-Client für Success + 4xx + 5xx-Cases"
+    ]
+  },
+  "tags": ["backend", "sync", "youtrack", "http", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["outbound-sync-youtrack-sentry-status-ruecksync", "http-client"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-7-002"]
+}

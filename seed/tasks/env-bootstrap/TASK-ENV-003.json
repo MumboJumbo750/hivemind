@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-ENV-003",
+  "epic_ref": "EPIC-ENV-BOOTSTRAP",
+  "title": "Gärtner-Erweiterung: Runtime-Skill-Maintenance & Staleness-Detection",
+  "description": "Erweitere den Gärtner-Prompt um Runtime-Skill-Wartung.\n\n**Was zu ergänzen ist in `seed/skills/prompt-template-gaertner.md`:**\n\n1. Neuer Abschnitt B) 'Runtime-Skill-Maintenance (Staleness-Detection)':\n   - Gärtner prüft bei jeder Session: Sind Runtime-Skills noch aktuell?\n   - Vergleich: Timestamp von podman-exec.md vs. docker-compose.yml\n   - Neue Services in docker-compose.yml → fehlen sie in AGENTS.md?\n   - Port-Changes → Tabelle in AGENTS.md veraltet?\n   - Bei Staleness: konkreten Update-Patch vorschlagen (diff-Format)\n\n2. Neuer Skill-Typ `skill_type: 'runtime'` in der Skill-Format-Sektion dokumentieren:\n   - Tabelle: implementation | runtime | system\n   - Runtime-Skills werden vom Kartograph entdeckt, vom Gärtner gepflegt\n\n**Trigger für Staleness-Check:**\n- docker-compose.yml geändert → Runtime-Skills prüfen\n- Neuer Service hinzugefügt → AGENTS.md Service-Tabelle ergänzen\n- Port-Mapping geändert → Port-Tabelle aktualisieren\n\nDatei: `seed/skills/prompt-template-gaertner.md`",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "prompt-template-gaertner.md enthält Abschnitt 'Runtime-Skill-Maintenance'",
+      "Staleness-Detection-Logik ist beschrieben (Timestamp-Vergleich)",
+      "skill_type='runtime' ist im Skill-Format dokumentiert",
+      "Skill-Typen-Tabelle (implementation | runtime | system) vorhanden",
+      "Trigger-Liste für Staleness-Check dokumentiert"
+    ]
+  },
+  "tags": ["devops", "ai-context", "gaertner", "prompt-engineering"],
+  "subtasks": [],
+  "pinned_skills": ["runtime-environment", "prompt-template-gaertner"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/architecture/ai-context.md",
+  "estimated_complexity": "small",
+  "depends_on": ["TASK-ENV-001"]
+}

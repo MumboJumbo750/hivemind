@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-7-008",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "DLQ MCP-Tools: requeue_dead_letter + discard_dead_letter",
+  "description": "Zwei MCP-Write-Tools zur Verwaltung von Dead-Letter-Einträgen in `sync_dead_letter`.\n\n**SyncDeadLetter-Schema:** `id, outbox_id (FK sync_outbox), system, entity_type, entity_id, payload, error, failed_at, requeued_by, requeued_at, discarded_by, discarded_at`\n\n**hivemind/requeue_dead_letter:**\n- Input: `{ \"id\": \"<uuid>\" }` — ID aus `sync_dead_letter`\n- Liest Eintrag aus `sync_dead_letter`\n- Erstellt NEUEN `sync_outbox`-Eintrag: kopiert `direction` (vom original outbox_entry über FK), `system`, `entity_type`, `entity_id`, `payload` aus dead_letter; setzt `state='pending'`, `attempts=0`, `next_retry_at=NULL`\n- Setzt `dead_letter.requeued_at=now()`, `dead_letter.requeued_by=actor.id`\n- 409 wenn `dead_letter.requeued_at IS NOT NULL` (bereits requeued)\n- Scope: admin, triage\n\n**hivemind/discard_dead_letter:**\n- Input: `{ \"id\": \"<uuid>\" }` — ID aus `sync_dead_letter`\n- Setzt `dead_letter.discarded_at=now()`, `dead_letter.discarded_by=actor.id`\n- Kein physisches Löschen (Audit-Trail bleibt erhalten)\n- 409 wenn `dead_letter.discarded_at IS NOT NULL` (bereits discarded)\n- Scope: admin, triage\n\nBeide Tools:\n- Geben 404 zurück wenn ID in `sync_dead_letter` nicht gefunden\n- Schreiben Audit-Log via bestehende audit-Infrastruktur\n- Feuern SSE-Event `dlq_requeued` / `dlq_discarded` über event_bus\n\nDateien: `app/mcp/tools/dlq_tools.py`",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "requeue_dead_letter erstellt neuen sync_outbox-Eintrag mit state='pending', attempts=0",
+      "discard_dead_letter setzt discarded_at/by ohne physisches Löschen",
+      "Beide Tools geben 404 zurück wenn ID nicht gefunden",
+      "Beide Tools geben 409 zurück wenn bereits requeued/discarded",
+      "RBAC: nur admin und triage können die Tools aufrufen",
+      "Audit-Log und SSE-Events (dlq_requeued / dlq_discarded) werden korrekt geschrieben"
+    ]
+  },
+  "tags": ["backend", "mcp", "dlq", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["mcp-write-tool", "dlq-management-dead-letter-queue", "rbac-middleware"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-7-002"]
+}

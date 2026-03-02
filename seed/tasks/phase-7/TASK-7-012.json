@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-7-012",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "Embedding-Neuberechnung bei Provider-Wechsel",
+  "description": "Wenn der Embedding-Provider gewechselt wird (z.B. Modell-Upgrade in Ollama), sind bestehende Embeddings inkompatibel. Dieser Task implementiert einen Re-Embedding-Workflow.\n\nFunktionalität:\n1. `GET /api/admin/embeddings/status` → Statistik: Anzahl Entitäten mit/ohne Embedding pro Typ (epics, skills, wiki_articles)\n2. `POST /api/admin/embeddings/recompute` → startet Neuberechnung als Background-Task. Body: `{ \"entity_types\": [\"epics\", \"skills\", \"wiki_articles\"], \"force\": false }`. `force=false` berechnet nur fehlende Embeddings; `force=true` überschreibt alle.\n3. Background-Task iteriert Entitäten in Batches (50), ruft `embedding_service.embed()` auf, speichert Embedding\n4. Progress via SSE-Event `reembedding_progress { entity_type, done, total }`\n5. Bei Fehler: partielle Ergebnisse werden gespeichert, Fehler-Count in SSE-Event\n6. Scope: admin\n7. Sicherstellen: Epic-Embeddings werden auch beim Wechsel nach State 'scoped' automatisch berechnet (Hook prüfen)\n\nDateien: `app/routers/admin.py`, `app/services/embedding_service.py` (Batch-Methode)",
+  "state": "scoped",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "GET /api/admin/embeddings/status gibt korrekte Statistik pro Entity-Typ zurück",
+      "POST /api/admin/embeddings/recompute startet Background-Task und gibt Job-ID zurück",
+      "force=false berechnet nur Embeddings wo embedding IS NULL",
+      "force=true überschreibt alle bestehenden Embeddings",
+      "SSE-Events `reembedding_progress` werden während der Neuberechnung gefeuert",
+      "RBAC: nur admin-Scope"
+    ]
+  },
+  "tags": ["backend", "embeddings", "admin", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["ollama-embedding", "scheduled-job", "fastapi-endpoint"],
+  "linked_wiki": ["system-architektur", "tech-stack"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-7-006"]
+}

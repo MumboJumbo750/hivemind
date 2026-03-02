@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-8-019",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "Auto-Escalation Erweiterung: AI-gestützte proaktive Eskalation",
+  "description": "Ergänzt die Phase-6-SLA-Escalation um AI-gestützte proaktive Eskalation.\n\n**Bestehend (Phase 6):** Cron-Job prüft Decision-SLA > 72h → `escalated`.\n\n**Phase-8-Erweiterung:**\n- AI-Provider analysiert blockierte Tasks und entscheidet autonom über Eskalations-Zeitpunkt\n- Kein Warten auf 72h Cron-Zyklus — KI erkennt Blockaden proaktiv\n\n**Logik:**\n1. Conductor-Regel: Task → `blocked` → Stratege `stratege_unblock` (TASK-8-005, Regel #6)\n2. Stratege analysiert: Warum blockiert? Wer kann helfen?\n3. Bei Ergebnis `needs_escalation`: Governance prüft escalation-Level\n   - `manual`: Notification an Owner\n   - `assisted`: AI schlägt Backup-Owner vor, Mensch bestätigt\n   - `auto`: AI wählt Backup-Owner, Grace Period für Veto\n4. Backup-Owner-Auswahl: basierend auf Skill-Match (pgvector) + Verfügbarkeit (kein aktiver in_progress Task)\n\n**Dateien:**\n- Erweiterung von `app/services/escalation.py` (bestehend aus Phase 6)\n- Integration mit GovernanceService (TASK-8-006)\n- Nutzung des AI-Provider-Service (TASK-8-002) für Stratege-Analyse\n\n**Env-Var:** `HIVEMIND_ESCALATION_AI_ENABLED` (bool, Default false) — separater Kill-Switch",
+  "state": "scoped",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "AI-gestützte Eskalation erkennt Blockaden proaktiv (nicht nur SLA-Timer)",
+      "Governance-Level (manual/assisted/auto) wird bei Eskalation geprüft",
+      "Backup-Owner-Vorschlag basiert auf Skill-Match + Verfügbarkeit",
+      "Grace Period bei auto-Eskalation (Veto möglich)",
+      "Kill-Switch HIVEMIND_ESCALATION_AI_ENABLED respektiert",
+      "Bestehende SLA-Escalation (Phase 6) funktioniert unverändert",
+      "Unit-Tests für proaktive Erkennung + Governance-Gate"
+    ]
+  },
+  "tags": ["backend", "escalation", "ai", "governance", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["ai-provider-service", "governance-level"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-8-002", "TASK-8-006"]
+}

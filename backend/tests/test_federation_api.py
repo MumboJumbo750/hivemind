@@ -188,8 +188,8 @@ async def test_task_update_modifies_task():
 
     body = FederatedTaskUpdate(
         external_id="TASK-F-999",
-        state="done",
-        result="Complete",
+        state="in_review",
+        result="Ready for review",
     )
 
     request = MagicMock()
@@ -209,6 +209,6 @@ async def test_task_update_modifies_task():
 
     resp = await task_update(body, request, db)
 
-    assert task_mock.state == "done"
-    assert task_mock.result == "Complete"
+    assert task_mock.state == "in_review"
+    assert task_mock.result == "Ready for review"
     assert task_mock.version == 2

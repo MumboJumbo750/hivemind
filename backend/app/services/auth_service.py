@@ -6,7 +6,9 @@ from passlib.context import CryptContext
 
 from app.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt in this runtime currently fails during passlib backend self-check.
+# Use a stable passlib hash scheme for deterministic auth behavior.
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:

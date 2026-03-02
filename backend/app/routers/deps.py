@@ -39,6 +39,37 @@ async def _get_app_mode(db: AsyncSession) -> str:
     return row[0] if row else "solo"
 
 
+async def _resolve_solo_actor(db: AsyncSession) -> CurrentActor:
+    """Resolve solo actor to an existing DB user to keep FK writes valid.
+
+    Preferred order:
+    1) username='admin'
+    2) any existing user
+    3) static fallback actor (legacy behavior)
+    """
+    admin_result = await db.execute(
+        select(User).where(User.username == "admin").limit(1)
+    )
+    admin_user = admin_result.scalar_one_or_none()
+    if admin_user:
+        return CurrentActor(
+            id=admin_user.id,
+            username=admin_user.username,
+            role="admin",
+        )
+
+    any_user_result = await db.execute(select(User).limit(1))
+    any_user = any_user_result.scalar_one_or_none()
+    if any_user:
+        return CurrentActor(
+            id=any_user.id,
+            username=any_user.username,
+            role="admin",
+        )
+
+    return _SOLO_ACTOR
+
+
 async def get_current_actor(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
@@ -46,7 +77,7 @@ async def get_current_actor(
     """JWT validieren und CurrentActor zurückgeben. Im Solo-Modus: RBAC übersprungen."""
     mode = await _get_app_mode(db)
     if mode == "solo":
-        return _SOLO_ACTOR
+        return await _resolve_solo_actor(db)
 
     if not credentials:
         raise HTTPException(

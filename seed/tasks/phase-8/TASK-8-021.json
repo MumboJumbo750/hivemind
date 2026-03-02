@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-8-021",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "Frontend: MCP Bridge Config Settings UI (Admin-only)",
+  "description": "Admin-Settings für MCP Bridge Verwaltung.\n\n**Dateien:**\n- `frontend/src/components/settings/MCPBridgeSettings.vue` — Hauptkomponente\n- `frontend/src/components/settings/BridgeCard.vue` — Karte pro Bridge\n- `frontend/src/components/settings/BridgeToolCatalog.vue` — Tool-Liste\n- `frontend/src/composables/useMCPBridges.ts` — API-Composable\n\n**Layout:**\n```\n┌───────────────────────────────────────────┐\n│ MCP Bridge Konfiguration (Admin)          │\n│                                           │\n│ ┌─ GitHub MCP ──────────────────────────┐ │\n│ │ Namespace: github    Transport: stdio │ │\n│ │ Status: ● Connected  Tools: 24        │ │\n│ │ [Tools anzeigen] [Test] [Bearbeiten]  │ │\n│ └───────────────────────────────────────┘ │\n│ ┌─ GitLab MCP ──────────────────────────┐ │\n│ │ Namespace: gitlab    Transport: stdio │ │\n│ │ Status: ● Connected  Tools: 18        │ │\n│ │ [Tools anzeigen] [Test] [Bearbeiten]  │ │\n│ └───────────────────────────────────────┘ │\n│                                           │\n│ [+ Neue Bridge hinzufügen]               │\n└───────────────────────────────────────────┘\n```\n\n**BridgeCard:**\n- Name, Namespace, Transport-Typ\n- Status-Indikator: grün (connected), rot (disconnected), gelb (error)\n- Tool-Count\n- Quick-Actions: Test, Bearbeiten, Löschen\n\n**Bridge-Editor (Modal/Drawer):**\n- Name (unique)\n- Namespace (unique, 'hivemind' nicht erlaubt — Frontend-Validierung)\n- Transport: stdio | SSE (Radio-Buttons)\n- Bei stdio: Command, Args (JSON Array)\n- Bei SSE: URL\n- Env-Vars: Key-Value-Editor (Werte als Passwort-Felder)\n- Tool Allowlist / Blocklist: Multi-Select aus entdeckten Tools\n\n**Tool-Katalog (Expandable Panel):**\n- Liste aller entdeckten Tools der Bridge\n- Pro Tool: Name, Description, Allowed/Blocked Badge\n- Filter/Suche\n\n**Health-Status:**\n- Polling alle 30s: GET /api/admin/mcp-bridges/health\n- Error-Rate, letzte Nutzung, aktive Connections\n\n**Sichtbarkeit:** Nur für Admin-Rolle (RBAC-geprüft)",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Bridge-Liste zeigt alle konfigurierten MCP-Bridges mit Status-Indikator",
+      "Bridge-Editor: Create/Edit mit Transport-Auswahl (stdio/SSE)",
+      "Namespace 'hivemind' wird im Frontend abgelehnt",
+      "Env-Vars als Passwort-Felder (nie als Plaintext sichtbar)",
+      "Tool-Katalog zeigt entdeckte Tools mit Allow/Block-Status",
+      "Test-Button: verbindet und zeigt Ergebnis (Tool-Count oder Fehler)",
+      "Health-Polling alle 30s mit Status-Update",
+      "Nur für Admin-Rolle sichtbar"
+    ]
+  },
+  "tags": ["frontend", "settings", "mcp-bridge", "admin", "vue", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-8-015"]
+}

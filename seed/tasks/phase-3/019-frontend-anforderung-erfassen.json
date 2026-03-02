@@ -1,0 +1,29 @@
+{
+  "external_id": "TASK-3-019",
+  "epic_ref": "EPIC-PHASE-3",
+  "title": "Frontend: Anforderung erfassen — Stratege-Prompt generieren",
+  "description": "UI-Flow 'Neue Anforderung' implementieren: User gibt Freitext ein, System erzeugt enriched Stratege-Prompt via `POST /api/requirements/draft`, User kopiert Prompt in AI-Client.\n\n**Entry-Points (zwei Stellen):**\n1. Command Deck: Button/Chip '+ Neue Anforderung'\n2. Epic-Übersicht: leerer State + Button '+ Neue Anforderung'\n\n**Flow:**\n1. Klick → Modal öffnet sich\n2. Modal enthält:\n   - Freitextfeld (Textarea, min 3 Zeilen): 'Beschreibe deine Anforderung...'\n   - Optionales Prioritäts-Dropdown: critical / high / medium / low\n   - Optionales Tags-Input (Multi-Tag)\n   - Button: 'Stratege-Prompt generieren'\n3. POST /api/requirements/draft → Loading-State\n4. Ergebnis-Panel öffnet sich (zweistufiges Modal oder Side-Panel):\n   - Prompt-Text als Code-Block (readonly, mit Syntax-Highlighting)\n   - Copy-to-Clipboard-Button (prominent)\n   - Enrichment-Details ausklappbar: ähnliche Epics, relevante Skills, Kapazität\n   - Hinweis-Banner: 'Kopiere den Prompt in deinen AI-Client. Füge den Epic-Proposal danach hier ein.'\n5. Zweites Textfeld für AI-Output (Proposal-Text vom AI-Client)\n6. Button 'Proposal speichern' → POST /api/epic-proposals mit state='proposed'\n7. Erfolgsmeldung: 'Proposal in Triage Station eingereicht'\n\n**Route:** `/requirements/new` (oder Modal ohne eigene Route)\n\n**Komponenten:**\n- `RequirementCaptureModal.vue` — der gesamte Flow\n- `PromptResultPanel.vue` — Prompt-Anzeige + Copy + Enrichment-Details\n- `EnrichmentDetails.vue` — ähnliche Epics, Skills, Kapazität (ausklappbar)\n\n**Phase-Hinweis:** pgvector-Enrichment (similar_epics, relevant_skills) ist nur sichtbar wenn Ollama läuft. Graceful Degradation: Enrichment-Sektion ausblenden wenn leer.\n\nSiehe `seed/skills/requirement-capture.md` für vollständige UI-Flow-Beschreibung.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Entry-Points in Command Deck und Epic-Übersicht vorhanden (+ Neue Anforderung)",
+      "Modal mit Freitextfeld, Prioritäts-Dropdown und Tags-Input implementiert",
+      "POST /api/requirements/draft wird aufgerufen, Loading-State korrekt",
+      "Generierter Prompt wird als Code-Block mit Copy-to-Clipboard angezeigt",
+      "Enrichment-Details (similar_epics, skills, capacity) ausklappbar — ausgeblendet wenn leer",
+      "Hinweis-Banner über manuellen Copy-Paste-Schritt sichtbar",
+      "Zweites Textfeld für AI-Output + 'Proposal speichern'-Button implementiert",
+      "POST /api/epic-proposals mit state='proposed' wird aufgerufen",
+      "Erfolgsmeldung nach Proposal-Speicherung mit Link zur Triage Station",
+      "Responsive Layout, Design Tokens verwendet"
+    ]
+  },
+  "tags": ["frontend", "ui", "stratege", "ux"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-token", "requirement-capture"],
+  "linked_wiki": ["agent-konzept", "system-architektur"],
+  "source_doc": "docs/agents/stratege.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-3-018"]
+}

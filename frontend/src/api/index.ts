@@ -1,4 +1,4 @@
-import type { Project, Epic, Task, Skill, SkillForkResponse, SkillListResponse, SkillVersion, ContextBoundary, EpicProposal, EpicProposalListResponse, NodeIdentity, PeerNode, FederationSettings, TriageItem, McpToolResponse, PromptResponse, AuditEntry, AuditListResponse, HivemindNotification } from './types'
+import type { Project, Epic, Task, Skill, SkillForkResponse, SkillListResponse, SkillVersion, ContextBoundary, EpicProposal, EpicProposalListResponse, RequirementDraftResponse, NodeIdentity, PeerNode, FederationSettings, TriageItem, McpToolResponse, AuditListResponse, HivemindNotification, SyncStatusResponse, NodeBugCountItem, KpiSummaryResponse, DeadLetterListResponse } from './types'
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string) ?? 'http://localhost:8000'
 
@@ -75,6 +75,9 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ mode }),
     }),
+
+  getSyncStatus: () =>
+    request<SyncStatusResponse>('/api/admin/sync-status'),
 
   // ─── Projects ────────────────────────────────────────────────────────────
   getProjects: () =>
@@ -171,6 +174,9 @@ export const api = {
   rejectEpicProposal: (proposalId: string, reason: string) =>
     request<EpicProposal>(`/api/epic-proposals/${proposalId}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
 
+  draftRequirement: (data: { project_id: string; text: string; priority_hint?: string; tags?: string[] }) =>
+    request<RequirementDraftResponse>('/api/epic-proposals/draft-requirement', { method: 'POST', body: JSON.stringify(data) }),
+
   // ─── Search ──────────────────────────────────────────────────────────────
   search: (q: string, type = 'tasks,epics') =>
     request<{ tasks?: unknown[]; epics?: unknown[] }>(`/api/search?q=${encodeURIComponent(q)}&type=${type}`),
@@ -261,6 +267,33 @@ export const api = {
     request<{ status: string }>(`/api/notifications/${notificationId}/read`, {
       method: 'PATCH',
     }),
+
+  // ─── Bug-Heatmap (Phase 7) ───────────────────────────────────────────────
+  getBugCounts: (projectId?: string) => {
+    const qs = projectId ? `?project_id=${projectId}` : ''
+    return request<NodeBugCountItem[]>(`/api/nexus/bug-counts${qs}`)
+  },
+
+  // ─── KPI Dashboard (Phase 7) ─────────────────────────────────────────────
+  getKpiSummary: () =>
+    request<KpiSummaryResponse>('/api/kpis/summary'),
+
+  // ─── Dead Letter Queue (Phase 7) ─────────────────────────────────────────
+  getDeadLetters: (params?: { system?: string; direction?: string; cursor?: string; limit?: number }) => {
+    const q = new URLSearchParams()
+    if (params?.system) q.set('system', params.system)
+    if (params?.direction) q.set('direction', params.direction)
+    if (params?.cursor) q.set('cursor', params.cursor)
+    if (params?.limit !== undefined) q.set('limit', String(params.limit))
+    const qs = q.toString()
+    return request<DeadLetterListResponse>(`/api/triage/dead-letters${qs ? `?${qs}` : ''}`)
+  },
+
+  requeueDeadLetter: (id: string) =>
+    request<{ data: unknown }>(`/api/triage/dead-letters/${id}/requeue`, { method: 'POST' }),
+
+  discardDeadLetter: (id: string) =>
+    request<{ data: unknown }>(`/api/triage/dead-letters/${id}/discard`, { method: 'POST' }),
 
   // ─── Prompt ──────────────────────────────────────────────────────────────
   getPrompt: async (type: string, taskId?: string, epicId?: string, projectId?: string) => {

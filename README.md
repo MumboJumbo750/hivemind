@@ -78,8 +78,9 @@ The system is built around a single core principle: **you are always in control*
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- [Podman](https://podman.io/docs/installation) + [podman-compose](https://github.com/containers/podman-compose) (or Docker + Docker Compose)
 - Git
+- `make`
 
 ### Run
 
@@ -87,10 +88,33 @@ The system is built around a single core principle: **you are always in control*
 git clone https://github.com/MumboJumbo750/hivemind.git
 cd hivemind
 cp .env.example .env   # adjust values as needed
-docker compose up -d
+make up
 ```
 
 The backend will be available at `http://localhost:8000` and the frontend at `http://localhost:5173`.
+
+### Common Dev Commands
+
+```bash
+make help              # show all available commands
+
+make up                # start stack
+make up-ai             # start stack + Ollama (Phase 3+, for embeddings)
+make down              # stop stack
+make logs              # stream backend logs
+
+make migrate           # run alembic upgrade head
+make test              # run all backend tests
+make test-integration  # run integration tests only
+make shell-be          # open bash in backend container
+make db                # open psql in postgres container
+
+make rebuild-be        # rebuild backend image (only needed after Dockerfile changes)
+make rebuild-fe        # rebuild frontend image (only needed after Dockerfile changes)
+```
+
+> **Note:** Code changes take effect immediately via hot-reload — no restart needed.
+> `requirements.txt` changes only need `make restart-be`, not a full rebuild.
 
 ### Environment Variables
 

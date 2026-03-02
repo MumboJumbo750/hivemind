@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-8-018",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "Worker-Endpoint-Pool: Multi-Endpoint Load-Balancing",
+  "description": "Mehrere Self-Hosted-Endpoints für eine Agent-Rolle mit Load-Balancing.\n\n**Dateien:**\n- `app/services/endpoint_pool.py` — EndpointPool + EndpointState\n- Erweiterung von `app/services/ai_provider.py` (TASK-8-002)\n\n**EndpointPool:**\n- `endpoints` JSONB-Array in `ai_provider_configs`: `[{\"url\": \"http://gpu1:11434\", \"weight\": 1}, {\"url\": \"http://gpu2:11434\", \"weight\": 2}]`\n- Pool-Strategien:\n  - `round_robin` (Default): zyklisch durch Endpoints\n  - `weighted`: gewichtet nach `weight`-Feld (für unterschiedlich starke GPUs)\n  - `least_busy`: Endpoint mit wenigsten aktiven Dispatches\n- Konfiguriert via `ai_provider_configs.pool_strategy`\n\n**EndpointState:**\n- In-Memory-Tracking pro Endpoint: `{url, healthy, active_dispatches, avg_response_time, last_error, cooldown_until}`\n- Health-Check: HTTP HEAD/GET gegen Endpoint vor Dispatch\n- Unhealthy Endpoints: 60s Cooldown, dann Retry\n- Recovery: nach erfolgreichem Call → healthy = true\n\n**Conductor-Integration:**\n- Bei Pool-Endpoints: Conductor kann parallele Worker-Tasks an verschiedene Endpoints dispatchen\n- RPM-Limit gilt **pro Endpoint** (nicht aggregiert) → höherer Gesamt-Throughput\n- Subtask-Aggregation: Wenn alle Subtasks done → Conductor erzeugt Merge-Prompt (Architekt `merge_subtasks`)\n\n**Einschränkungen:**\n- Nur für `ollama`/`custom`-Provider (Self-Hosted)\n- Cloud-Provider (anthropic, openai, google, github_models) haben eigenes Load-Balancing\n- Kein Pflicht-Feature — Single-Endpoint funktioniert weiterhin",
+  "state": "scoped",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "EndpointPool wählt Endpoint nach konfigurierter Strategie (round_robin, weighted, least_busy)",
+      "Health-Check pro Endpoint mit 60s Cooldown bei Failure",
+      "RPM-Limit wird pro Endpoint gezählt (nicht aggregiert)",
+      "Conductor dispatcht parallele Tasks an verschiedene Pool-Endpoints",
+      "Subtask-Aggregation: Merge-Prompt bei alle Subtasks done",
+      "Single-Endpoint (kein Pool) funktioniert unverändert (Backward-Compat)",
+      "Unit-Tests für alle 3 Pool-Strategien + Health-Check-Recovery"
+    ]
+  },
+  "tags": ["backend", "ai-provider", "pool", "load-balancing", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["worker-endpoint-pool", "ai-provider-service"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-8-002", "TASK-8-004"]
+}

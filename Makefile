@@ -1,4 +1,139 @@
-.PHONY: check lint typecheck arch fix
+.PHONY: help \
+        up up-ai down ps \
+        logs logs-be logs-fe \
+        restart-be restart-fe \
+        rebuild rebuild-be rebuild-fe \
+        test test-be test-integration test-install \
+        migrate shell-be db \
+        check lint typecheck arch fix check-docker
+
+VENV := /app/.venv/bin
+
+# ── Help ──────────────────────────────────────────────────────────────────────
+help:
+	@echo ""
+	@echo "  Hivemind — Dev Commands"
+	@echo ""
+	@echo "  Stack:"
+	@echo "    make up              Start stack (ohne Ollama)"
+	@echo "    make up-ai           Start stack + Ollama (Phase 3+)"
+	@echo "    make down            Stack stoppen"
+	@echo "    make ps              Service-Status"
+	@echo ""
+	@echo "  Logs & Neustart:"
+	@echo "    make logs            Backend-Logs (live)"
+	@echo "    make logs-fe         Frontend-Logs (live)"
+	@echo "    make restart-be      Backend neustarten (dep-check re-installiert Deps)"
+	@echo "    make restart-fe      Frontend neustarten"
+	@echo ""
+	@echo "  Rebuild (nur bei Dockerfile/System-Dep Änderungen):"
+	@echo "    make rebuild-be      Backend-Image neu bauen + starten"
+	@echo "    make rebuild-fe      Frontend-Image neu bauen + starten"
+	@echo "    make rebuild         Alles neu bauen + starten"
+	@echo ""
+	@echo "  Tests:"
+	@echo "    make test-install    Test-Deps im Container installieren (einmalig)"
+	@echo "    make test            Alle Backend-Tests"
+	@echo "    make test-be         Alle Backend-Tests (explizit)"
+	@echo "    make test-integration Nur Integration-Tests"
+	@echo ""
+	@echo "  Datenbank:"
+	@echo "    make migrate         alembic upgrade head"
+	@echo "    make shell-be        bash im Backend-Container"
+	@echo "    make db              psql im Postgres-Container"
+	@echo ""
+	@echo "  Code-Qualität (lokal):"
+	@echo "    make check           Alle Checks (arch + lint + typecheck)"
+	@echo "    make fix             Auto-Fix (ruff + eslint)"
+	@echo "    make check-docker    Alle Checks via Container (ohne lokale Tools)"
+	@echo ""
+
+# ── Stack Management ──────────────────────────────────────────────────────────
+up:
+	podman compose up -d
+
+up-ai:
+	podman compose --profile ai up -d
+
+down:
+	podman compose down
+
+ps:
+	podman compose ps
+
+# ── Logs & Status ─────────────────────────────────────────────────────────────
+logs:
+	podman compose logs -f backend
+
+logs-be:
+	podman compose logs -f backend
+
+logs-fe:
+	podman compose logs -f frontend
+
+# ── Neustart (dep-check.sh re-installiert Deps automatisch) ───────────────────
+#
+#   Wann reicht restart (KEIN rebuild nötig)?
+#     - requirements.txt geändert → dep-check.sh re-installiert beim Neustart
+#     - Konfiguration (.env) geändert
+#     - Code-Änderungen brauchen NICHTS (Hot-Reload via Volume-Mount)
+#
+restart-be:
+	podman compose restart backend
+
+restart-fe:
+	podman compose restart frontend
+
+# ── Rebuild (nur bei Dockerfile oder System-Dep Änderungen) ──────────────────
+#
+#   Wann ist rebuild nötig?
+#     - backend/Dockerfile geändert
+#     - Neue System-Abhängigkeiten (apt-get install)
+#     - Größere Image-Änderungen
+#   Wann NICHT?
+#     - requirements.txt geändert → make restart-be reicht
+#     - Code geändert           → Hot-Reload, nichts nötig
+#
+rebuild-be:
+	podman compose build backend
+	podman compose up -d backend
+
+rebuild-fe:
+	podman compose build frontend
+	podman compose up -d frontend
+
+rebuild:
+	podman compose build
+	podman compose up -d
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+#
+#   Test-Deps (pytest, testcontainers, respx, etc.) sind in requirements-dev.txt,
+#   aber NICHT im Production-Image. test-install installiert sie im laufenden
+#   Container. Dieser Schritt ist idempotent (pip install ist safe to repeat).
+#
+#   Wichtig: Backend muss laufen → `make up` zuerst.
+#
+test-install:
+	podman compose exec backend $(VENV)/pip install -q -r /app/requirements-dev.txt
+
+test-be: test-install
+	podman compose exec backend $(VENV)/pytest tests/ -v
+
+test-integration: test-install
+	podman compose exec backend $(VENV)/pytest tests/integration/ -v --tb=short
+
+test: test-be
+
+# ── Datenbank ─────────────────────────────────────────────────────────────────
+migrate:
+	podman compose exec backend $(VENV)/alembic upgrade head
+
+shell-be:
+	podman compose exec backend bash
+
+db:
+	podman compose exec postgres psql -U hivemind hivemind
 
 # ── Alle Checks in einem Befehl ────────────────────────────────────────────────
 check: arch lint typecheck
@@ -42,10 +177,10 @@ fix-be:
 	@echo "→ ruff format + fix (backend)..."
 	cd backend && ruff format . && ruff check --fix .
 
-# ── Docker-Varianten (wenn Tools nicht lokal installiert sind) ────────────────
+# ── Container-Varianten (wenn Tools nicht lokal installiert sind) ─────────────
 check-docker:
 	podman compose run --rm frontend npm run lint
 	podman compose run --rm frontend npm run typecheck
-	podman compose run --rm backend /app/.venv/bin/ruff check .
-	podman compose run --rm backend /app/.venv/bin/mypy app/
+	podman compose run --rm backend $(VENV)/ruff check .
+	podman compose run --rm backend $(VENV)/mypy app/
 	python scripts/arch-check.py

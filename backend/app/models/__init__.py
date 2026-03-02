@@ -16,3 +16,4 @@ from app.models.doc import Doc  # noqa: F401
 from app.models.prompt_history import PromptHistory  # noqa: F401
 from app.models.epic_proposal import EpicProposal  # noqa: F401
 from app.models.context_boundary import ContextBoundary, TaskSkill  # noqa: F401
+from app.models.node_bug_report import NodeBugReport  # noqa: F401

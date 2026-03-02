@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-7-016",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "Sync-Status-Panel: Settings View mit Queue-Metriken",
+  "description": "Neues Panel in der Settings View für den Sync-Status des Outbox-Systems.\n\nFunktionalität:\n1. Neuer Tab/Sektion 'Sync Status' in Settings\n2. **Queue-Übersicht** (polling alle 30s oder SSE):\n   - Pending outbound: count\n   - Pending inbound: count\n   - Dead Letters (nicht discarded): count\n   - Delivered heute: count\n3. **Letzte Syncs** (Liste der letzten 10 delivered-Einträge): Timestamp, direction, payload_type, duration_ms\n4. **Fehler-Details** (Liste der letzten 5 failed/dead Einträge): Timestamp, attempts, last_error (Preview), link zur DLQ\n5. **Provider-Status** (aus bestehender Infrastruktur): Ollama-Verbindungsstatus, YouTrack-Verbindungsstatus (Ping via Admin-Endpoint)\n6. Refresh-Button für manuelle Aktualisierung\n7. Design: HUD-Style Status-Indikatoren (grün/gelb/rot) für Queue-Gesundheit\n\nBackend-Dependency: `GET /api/admin/sync-status` Endpoint ergänzen (einfache Aggregation aus sync_outbox + sync_dead_letter)\n\nDateien: `frontend/src/components/SyncStatusPanel.vue`, `app/routers/admin.py` (neuer Endpoint)",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Queue-Übersicht zeigt aktuelle Counts für pending/dead/delivered",
+      "Letzte 10 delivered-Syncs werden mit Timestamp und payload_type angezeigt",
+      "Letzte 5 failed/dead Einträge werden mit last_error-Preview angezeigt",
+      "Refresh-Button aktualisiert alle Metriken manuell",
+      "HUD-Style Status-Indikatoren (grün/gelb/rot) zeigen Queue-Gesundheit korrekt",
+      "Backend-Endpoint GET /api/admin/sync-status ist implementiert und gibt alle nötigen Daten zurück"
+    ]
+  },
+  "tags": ["frontend", "settings", "sync", "monitoring", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["sync-status-panel-settings-view", "vue-component", "fastapi-endpoint"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-7-002"]
+}

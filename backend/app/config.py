@@ -1,3 +1,5 @@
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +14,7 @@ class Settings(BaseSettings):
     hivemind_routing_threshold: float = 0.85
     hivemind_dlq_max_attempts: int = 5
     audit_retention_days: int = 90
+    audit_row_deletion_days: int = 180
     hivemind_cors_origins: str = "http://localhost:5173"
     hivemind_prompt_minify: bool = True
     testing: bool = False
@@ -40,6 +43,10 @@ class Settings(BaseSettings):
     # Webhook secrets
     hivemind_youtrack_webhook_secret: str = ""
     hivemind_sentry_webhook_secret: str = ""
+    hivemind_youtrack_url: str = ""
+    hivemind_youtrack_token: str = ""
+    hivemind_sentry_token: str = ""
+    hivemind_youtrack_state_mapping: str = ""
 
     hivemind_outbox_interval: int = 30
     hivemind_heartbeat_interval: int = 300
@@ -63,3 +70,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def has_routing_threshold_env_override() -> bool:
+    """Return True when HIVEMIND_ROUTING_THRESHOLD is explicitly set."""
+    value = os.getenv("HIVEMIND_ROUTING_THRESHOLD")
+    return value is not None and value.strip() != ""

@@ -1,12 +1,12 @@
 {
   "external_id": "EPIC-PHASE-8",
   "title": "Phase 8 — Volle Autonomie",
-  "description": "AI-Provider-Service, Conductor-Orchestrator, Reviewer-Agent, Governance-Levels, GitLab MCP Consumer, 3D Nexus Grid. Kein Architekturbruch.",
+  "description": "AI-Provider-Service (per-Agent-Rolle, inkl. GitHub Models), Conductor-Orchestrator, Reviewer-Agent, Governance-Levels (manual/assisted/auto), GitLab + GitHub Webhook Consumer, GitHub Actions Agent, GitHub Projects V2 Sync, MCP Bridge/Gateway (Meta-MCP), 3D Nexus Grid, Worker-Endpoint-Pool. Kein Architekturbruch.",
   "state": "scoped",
   "priority": "medium",
   "sla_deadline": null,
-  "definition_of_done": "Conductor dispatcht Agenten autonom, Reviewer-Agent prüft Task-Ergebnisse, Governance-Levels (manual/assisted/auto) konfigurierbar, AI-Provider per Agent-Rolle wählbar, 3D Nexus Grid rendert.",
-  "tags": ["backend", "frontend", "autonomy", "conductor", "ai-provider", "phase-8"],
+  "definition_of_done": "Conductor dispatcht Agenten autonom, Reviewer-Agent prüft Task-Ergebnisse, Governance-Levels (manual/assisted/auto) konfigurierbar, AI-Provider per Agent-Rolle wählbar (inkl. GitHub Models), GitHub Webhooks ingestiert, GitHub Projects V2 bidirektional synced, MCP Bridge proxied externe Tools (GitHub/GitLab MCP) mit RBAC+Audit, 3D Nexus Grid rendert.",
+  "tags": ["backend", "frontend", "autonomy", "conductor", "ai-provider", "github", "mcp-bridge", "phase-8"],
   "depends_on": ["EPIC-PHASE-7"],
   "source_doc": "docs/phases/phase-8.md"
 }

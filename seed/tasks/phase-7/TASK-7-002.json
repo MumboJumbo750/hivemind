@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-7-002",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "Outbox-Consumer outbound: Core Consumer-Logik",
+  "description": "Erweiterung von `app/services/outbox_consumer.py` um einen zweiten Consumer für `direction='outbound'`.\n\n**Bestehender Kontext:**\n- `process_outbox()` in `outbox_consumer.py` verarbeitet `direction='peer_outbound'` (Phase F, 167 Zeilen)\n- Muster: SELECT pending, HTTP call, bei Erfolg `db.delete(entry)`, bei Fehler `attempts++`\n- DLQ-Promotion via `_move_to_dlq()` → setzt `entry.state = 'dead_letter'` und fügt `SyncDeadLetter` ein\n- Jobs sind in `app/services/scheduler.py` registriert (NICHT in main.py)\n\n**Neue Funktion `process_outbound()` in `outbox_consumer.py`:**\n1. Query: `direction='outbound'`, `state='pending'`, `(next_retry_at IS NULL OR next_retry_at <= now())` — max 10 Einträge, mit `with_for_update(skip_locked=True)`\n2. Dispatch basierend auf `entry.system`: `'youtrack'` → YouTrackSyncService, `'sentry'` → SentryAggregationService\n3. Bei Erfolg: `await db.delete(entry)` — kein delivered-State vorhanden!\n4. Bei Fehler: `entry.attempts += 1`, `entry.next_retry_at = now() + timedelta(seconds=2**entry.attempts * 60)` (max 4h)\n5. Bei `attempts >= settings.hivemind_dlq_max_attempts`: `_move_to_dlq(db, entry, error)` → `entry.state = 'dead_letter'`\n6. Consumer ist NICHT durch `hivemind_federation_enabled` gegated (YouTrack/Sentry ist unabhängig von Federation)\n\n**APScheduler-Job in `app/services/scheduler.py` registrieren** (in `start_scheduler()`): IntervalTrigger, alle 30s, Job-ID `'outbound_consumer'`.\n\nDateien: `app/services/outbox_consumer.py`, `app/services/scheduler.py`",
+  "state": "scoped",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Consumer verarbeitet pending outbound-Einträge alle 30 Sekunden via APScheduler (in scheduler.py registriert)",
+      "`with_for_update(skip_locked=True)` verhindert Doppelverarbeitung bei parallelen Instanzen",
+      "Bei Erfolg: `db.delete(entry)` — der Outbox-Eintrag wird aus der DB entfernt (kein delivered-State)",
+      "Bei Fehler: `entry.attempts += 1` und `entry.next_retry_at = now() + 2^attempts * 60s` gesetzt (state bleibt 'pending')",
+      "Bei attempts >= settings.hivemind_dlq_max_attempts: `entry.state = 'dead_letter'` und SyncDeadLetter-Eintrag angelegt",
+      "Consumer ist NICHT durch hivemind_federation_enabled gegated",
+      "Unit-Tests für die drei Pfade: Erfolg (delete), Retry (attempts+next_retry_at), DLQ (dead_letter)"
+    ]
+  },
+  "tags": ["backend", "outbox", "consumer", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["outbox-consumer", "scheduled-job"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-7-001"]
+}

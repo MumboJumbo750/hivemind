@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-7-019",
+  "epic_ref": "EPIC-PHASE-7",
+  "title": "Integration-Tests: E2E Outbox→Sync→DLQ Flow",
+  "description": "End-to-End Integration-Tests für den gesamten Phase-7-Sync-Flow.\n\n**Wichtige State-Semantik der Codebase:**\n- Erfolg outbound = `db.delete(entry)` — Eintrag GELÖSCHT (kein 'delivered'-State!)\n- DLQ-Promotion = `entry.state = 'dead_letter'` (NICHT 'dead')\n- Gültige state-Werte: NUR 'pending' und 'dead_letter'\n- Inbound-Erfolg = `routing_state = 'routed'` (Eintrag bleibt als Audit-Record)\n\n**Test-Szenarien:**\n\n1. **Happy Path outbound:** sync_outbox outbound state='pending' → process_outbound() → YouTrack PATCH Mock 200 → Eintrag ist danach NICHT MEHR in sync_outbox vorhanden (db.delete)\n\n2. **Happy Path inbound:** Sentry Webhook POST → sync_outbox inbound routing_state='unrouted' → process_inbound() → node_bug_reports erstellt (count=1) + pgvector routing Mock → epic_id gesetzt + routing_state='routed'\n\n3. **Retry + DLQ-Promotion:** YouTrack-Mock gibt 5× 503 → Jeder Consumer-Lauf: attempts++, next_retry_at gesetzt → nach 5 Fehlern: sync_dead_letter-Eintrag vorhanden, outbox state='dead_letter'\n\n4. **DLQ-Requeue:** Dead-Letter requeuen via MCP/REST → NEUER sync_outbox-Eintrag mit attempts=0, state='pending' → process_outbound() löscht ihn nach Erfolg (kein Eintrag mehr in sync_outbox)\n\n5. **pgvector-Routing Threshold:** Mock-Embeddings Score 0.90 (>= default 0.85) → epic_id gesetzt; Score 0.70 (< 0.85) → epic_id bleibt NULL\n\n6. **Runtime-Threshold-Change:** PATCH /api/settings/routing-threshold auf 0.65 → app_settings-Wert geändert → Score 0.70 wird jetzt als auto-assign gewertet\n\n**Test-Setup:** pytest + AsyncClient + PostgreSQL Testcontainer + respx für YouTrack/Sentry HTTP-Mocks\n\nDateien: `backend/tests/integration/test_phase7_outbox_flow.py`",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Happy-Path outbound: Outbox-Eintrag ist nach erfolgreichem Consumer-Lauf aus sync_outbox GELÖSCHT (kein delivered-State)",
+      "Happy-Path inbound: routing_state='routed' + node_bug_reports.epic_id gesetzt nach Consumer-Lauf",
+      "Retry + DLQ: Nach 5 Fehlern ist Eintrag in sync_dead_letter UND outbox state='dead_letter' (nicht 'dead')",
+      "DLQ-Requeue: Requeueter Eintrag (neuer sync_outbox-Eintrag, attempts=0) wird vom Consumer verarbeitet und aus DB gelöscht",
+      "pgvector-Routing: Score >= threshold → auto-assign, Score < threshold → NULL",
+      "Alle 6 Szenarien laufen in CI durch (kein Netzwerk-Dependency, alle externen Calls gemockt)"
+    ]
+  },
+  "tags": ["backend", "testing", "integration", "phase-7"],
+  "subtasks": [],
+  "pinned_skills": ["api-test", "outbox-consumer", "dlq-management-dead-letter-queue"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-7.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-7-004", "TASK-7-005", "TASK-7-008", "TASK-7-007"]
+}

@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-8-026",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "Frontend: KPI-Dashboard vollständig (7/30-Tage-Zeitreihen)",
+  "description": "KPI-Dashboard komplettieren: alle 6 KPIs mit historischen Graphen.\n\n**Bestehend (Phase 7):** KPI-Aggregation-API + Basis-Dashboard mit aktuellen Werten.\n\n**Phase-8-Erweiterung:**\n\n**6 KPIs mit Zeitreihen-Graphen:**\n1. **Cycle Time** (scoped → done, Median pro Tag)\n2. **Throughput** (Tasks done/Woche)\n3. **Bug Escape Rate** (Bugs post-review / Total reviewed)\n4. **Review Turnaround** (in_review → done/rejected, Median)\n5. **Auto-Mode Utilization** (% der Dispatches die auto-approved wurden)\n6. **Token Efficiency** (Tasks done / Tokens consumed)\n\n**Dateien:**\n- `frontend/src/components/kpi/KPIDashboard.vue` — Erweiterung\n- `frontend/src/components/kpi/KPITimeSeriesChart.vue` — Zeitreihen-Graph\n- `frontend/src/composables/useKPIHistory.ts` — History-API-Composable\n\n**Zeitreihen-Graph:**\n- Toggle: [7 Tage] | [30 Tage]\n- Line-Chart mit Trend-Linie\n- Hover → Tooltip mit exaktem Wert + Datum\n- Kompakte Darstellung: Mini-Sparklines in KPI-Cards, Full-Chart bei Expand\n\n**API-Integration:**\n- `GET /api/kpis/history?metric=cycle_time&days=30` → Array von {date, value}\n- Ergänzende KPIs für Phase 8: Auto-Mode Utilization, Token Efficiency\n\n**Dashboard-Layout:**\n- 3×2 Grid von KPI-Cards (responsiv: 2×3 auf Tablet, 1×6 auf Mobile)\n- Jede Card: Aktueller Wert + Trend-Arrow (↑↓→) + Sparkline\n- Click → expandiert zu Full-Chart",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Alle 6 KPIs werden mit aktuellen Werten und Sparklines angezeigt",
+      "7-Tage und 30-Tage Zeitreihen-Graphen für jedes KPI",
+      "Neue Phase-8 KPIs: Auto-Mode Utilization, Token Efficiency",
+      "Trend-Arrows (↑↓→) basierend auf Vorwoche/Vormonat-Vergleich",
+      "Responsive Layout: 3×2 (Desktop), 2×3 (Tablet), 1×6 (Mobile)",
+      "Click-to-Expand für Detail-Chart"
+    ]
+  },
+  "tags": ["frontend", "kpi", "dashboard", "charts", "vue", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["kpi-aggregation-dashboard-api", "vue-component"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

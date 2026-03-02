@@ -1,0 +1,22 @@
+{
+  "ci": {
+    "collect": {
+      "numberOfRuns": 1,
+      "url": [
+        "http://127.0.0.1:4173/nexus-grid",
+        "http://127.0.0.1:4173/triage",
+        "http://127.0.0.1:4173/kpi-dashboard"
+      ]
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": [
+          "warn",
+          {
+            "minScore": 0.6
+          }
+        ]
+      }
+    }
+  }
+}

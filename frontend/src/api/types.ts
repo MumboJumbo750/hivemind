@@ -109,7 +109,7 @@ export interface EpicProposal {
   title: string
   description: string
   rationale: string | null
-  state: 'proposed' | 'accepted' | 'rejected'
+  state: 'draft' | 'proposed' | 'accepted' | 'rejected'
   depends_on: string[] | null
   resulting_epic_id: string | null
   rejection_reason: string | null
@@ -122,6 +122,18 @@ export interface EpicProposalListResponse {
   data: EpicProposal[]
   total_count: number
   has_more: boolean
+}
+
+// ─── Requirement Draft ──────────────────────────────────────────────────────
+
+export interface RequirementDraftResponse {
+  prompt: string
+  token_count: number
+  draft_id: string
+  enrichment: {
+    priority_hint: string | null
+    tags: string[]
+  }
 }
 
 // ─── Federation ────────────────────────────────────────────────────────────
@@ -163,6 +175,48 @@ export interface TriageItem {
   payload: Record<string, unknown>
   routing_state: 'unrouted' | 'routed' | 'ignored' | 'escalated' | 'dead'
   created_at: string
+}
+
+export type SyncProviderState = 'online' | 'degraded' | 'offline' | 'not_configured'
+
+export interface SyncQueueOverview {
+  pending_outbound: number
+  pending_inbound: number
+  dead_letters: number
+  delivered_today: number
+}
+
+export interface SyncDeliveredItem {
+  id: string
+  timestamp: string
+  direction: string
+  payload_type: string
+  duration_ms: number | null
+}
+
+export interface SyncFailedItem {
+  id: string
+  timestamp: string
+  attempts: number
+  last_error: string
+  dlq_url: string
+}
+
+export interface SyncProviderStatus {
+  state: SyncProviderState
+  detail: string | null
+  checked_at: string
+}
+
+export interface SyncStatusResponse {
+  queue: SyncQueueOverview
+  recent_delivered: SyncDeliveredItem[]
+  recent_failed: SyncFailedItem[]
+  providers: {
+    ollama: SyncProviderStatus
+    youtrack: SyncProviderStatus
+  }
+  checked_at: string
 }
 
 export interface McpToolResponse {
@@ -223,6 +277,60 @@ export interface HivemindNotification {
   entity_id: string | null
   read: boolean
   created_at: string
+}
+
+// ─── Bug-Heatmap (Phase 7) ─────────────────────────────────────────────────
+
+export interface BugIssueDetail {
+  sentry_issue_id: string | null
+  count: number
+  last_seen: string | null
+  stack_trace_hash: string | null
+}
+
+export interface NodeBugCountItem {
+  node_id: string
+  bug_count: number
+  sentry_issues: BugIssueDetail[]
+}
+
+// ─── KPI Dashboard (Phase 7) ───────────────────────────────────────────────
+
+export type KpiStatus = 'ok' | 'warn' | 'critical'
+
+export interface KpiItem {
+  kpi: string
+  value: number
+  target: number
+  status: KpiStatus
+  computed_at: string
+}
+
+export interface KpiSummaryResponse {
+  kpis: KpiItem[]
+  computed_at: string | null
+}
+
+// ─── Dead Letter Queue (Phase 7) ───────────────────────────────────────────
+
+export interface DeadLetterItem {
+  id: string
+  system: string
+  entity_type: string
+  attempts: number
+  last_error: string | null
+  error: string | null
+  failed_at: string | null
+  requeued_at: string | null
+  payload_preview: string | null
+}
+
+export interface DeadLetterListResponse {
+  items: DeadLetterItem[]
+  next_cursor: string | null
+  has_more: boolean
+  total: number
+  limit: number
 }
 
 // ─── Decision Requests ─────────────────────────────────────────────────────

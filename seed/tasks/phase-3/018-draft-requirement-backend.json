@@ -1,0 +1,28 @@
+{
+  "external_id": "TASK-3-018",
+  "epic_ref": "EPIC-PHASE-3",
+  "title": "Backend: draft_requirement Endpoint + Stratege-Prompt-Enrichment",
+  "description": "Neuen Endpoint `POST /api/requirements/draft` implementieren, der einen rohen Anforderungstext in einen vollständigen Stratege-Prompt überführt.\n\n**Endpoint:**\n```\nPOST /api/requirements/draft\n{\n  \"text\": \"string (Pflicht)\",\n  \"priority_hint\": \"critical|high|medium|low (optional)\",\n  \"tags\": [\"string\"] (optional)\n}\n```\n\n**Response:**\n```json\n{\n  \"prompt\": \"vollständiger Stratege-Prompt als Markdown-String\",\n  \"enrichment\": {\n    \"similar_epics\": [{\"id\": \"uuid\", \"title\": \"...\", \"similarity\": 0.87}],\n    \"relevant_skills\": [{\"id\": \"uuid\", \"title\": \"...\", \"similarity\": 0.79}],\n    \"capacity\": {\"in_progress_tasks\": 4, \"blocked_tasks\": 1}\n  },\n  \"draft_id\": \"uuid\"\n}\n```\n\n**Implementierung in `app/services/prompt_generator.py`:**\n- Neuer Prompt-Typ `stratege_requirement` (neben den bestehenden 8 Typen)\n- Enrichment Phase 1–2: Projektname, Phase, alle Epics (ID + Title + State), Tech-Stack aus Projekt-Metadata\n- Enrichment Phase 3 (wenn Ollama verfügbar): pgvector Similarity auf `epics.description_embedding` (Top 3) und `skills.content_embedding` (Top 5)\n- Kapazitäts-Daten: COUNT tasks WHERE state='in_progress' und state='blocked'\n- Schreibt `epic_proposals`-Eintrag mit `state='draft'` und `raw_requirement=text` (neue Felder)\n- Schreibt `prompt_history`-Eintrag (agent_type='stratege', prompt_type='requirement')\n\n**Schema-Änderung `epic_proposals`:**\n- Neues Feld `raw_requirement TEXT` — speichert den Original-User-Text\n- Neuer State `draft` vor `proposed` — wird zu `proposed` wenn User den Stratege-Output einspielt\n\n**Neues MCP-Tool `hivemind/draft_requirement`:**\n- Parameter: `text` (str), `priority_hint` (str, optional), `tags` (list, optional)\n- Delegiert an den neuen Endpoint\n- Gibt Prompt + `draft_id` zurück\n\nSiehe `seed/skills/requirement-capture.md` für vollständige Spezifikation.",
+  "state": "incoming",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "`POST /api/requirements/draft` Endpoint implementiert und per OpenAPI dokumentiert",
+      "Basis-Enrichment (Phase 1–2): Projektname, Phase, Epics-Liste, Kapazität im Prompt enthalten",
+      "pgvector-Enrichment (Phase 3): Similar Epics + Relevant Skills im Prompt wenn Ollama verfügbar (graceful fallback wenn nicht)",
+      "`epic_proposals`-Tabelle um Felder `raw_requirement` und State `draft` erweitert (Alembic-Migration)",
+      "Neuer Prompt-Typ `stratege_requirement` in `prompt_generator.py` implementiert",
+      "`hivemind/draft_requirement` MCP-Tool registriert und aufrufbar",
+      "Prompt verwendet Template aus `prompt-template-stratege.md` Abschnitt B",
+      "`prompt_history`-Eintrag wird geschrieben (agent_type='stratege', prompt_type='requirement')",
+      "Unit-Test: Prompt enthält Epics-Liste + Kapazitätsdaten; draft_id wird zurückgegeben"
+    ]
+  },
+  "tags": ["backend", "mcp", "ai", "stratege"],
+  "subtasks": [],
+  "pinned_skills": ["requirement-capture", "prompt-generator", "mcp-tool", "fastapi-endpoint", "alembic-migration", "api-test"],
+  "linked_wiki": ["agent-konzept", "system-architektur"],
+  "source_doc": "docs/agents/stratege.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-3-005", "TASK-3-009"]
+}

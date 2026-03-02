@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-ENV-004",
+  "epic_ref": "EPIC-ENV-BOOTSTRAP",
+  "title": "Architekt-Erweiterung: AGENTS.md Precondition-Check",
+  "description": "Erweitere den Architekt-Prompt um einen AGENTS.md-Precondition-Check vor jeder Epic-Dekomposition.\n\n**Was zu ergänzen ist in `seed/skills/prompt-template-architekt.md`:**\n\n1. Neuer Block vor dem Auftrag: 'Precondition-Check'\n   - Prüfe: Existiert AGENTS.md im Projektroot?\n   - Falls NEIN → Füge TASK-ENV-001 als Stufe 0 ein (vor allen anderen Tasks)\n   - Referenz: `seed/tasks/env-bootstrap/TASK-ENV-001.json` als Vorlage\n   - Begründung: Ohne AGENTS.md können Worker-Agents keine Befehle korrekt ausführen\n\n2. In der Dependency-Reihenfolge:\n   - TASK-ENV-001 hat keine Abhängigkeiten und blockiert alle Backend-Tasks\n   - Frontend-Tasks können parallel starten (kein Container-Kontext nötig)\n\n**Monorepo-Ergänzung:**\n- Bei Monorepos: Prüfe AGENTS.md pro Package das in diesem Epic berührt wird\n- Package ohne AGENTS.md → TASK-ENV-001 für dieses Package als Stufe 0\n\nDatei: `seed/skills/prompt-template-architekt.md`",
+  "state": "scoped",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "prompt-template-architekt.md enthält Precondition-Check vor dem Auftrag",
+      "Logik: AGENTS.md fehlt → TASK-ENV-001 als Stufe-0-Task einfügen",
+      "Referenz auf seed/tasks/env-bootstrap/TASK-ENV-001.json als Vorlage",
+      "Monorepo-Fall dokumentiert (per-Package Check)"
+    ]
+  },
+  "tags": ["devops", "ai-context", "architekt", "prompt-engineering"],
+  "subtasks": [],
+  "pinned_skills": ["runtime-environment", "prompt-template-architekt"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/architecture/ai-context.md",
+  "estimated_complexity": "small",
+  "depends_on": ["TASK-ENV-001"]
+}

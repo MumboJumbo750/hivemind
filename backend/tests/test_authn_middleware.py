@@ -1,4 +1,4 @@
-"""Unit-Tests für get_current_actor Dependency (TASK-2-003)."""
+"""Unit tests for get_current_actor dependency (TASK-2-003)."""
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -12,9 +12,12 @@ from app.services.auth_service import create_access_token
 
 @pytest.mark.asyncio
 async def test_solo_mode_returns_solo_actor() -> None:
-    """Im Solo-Modus wird RBAC übersprungen."""
+    """In solo mode RBAC is bypassed."""
     db = AsyncMock()
-    # _get_app_mode gibt 'solo' zurück
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = None
+    db.execute = AsyncMock(return_value=result)
+
     with patch("app.routers.deps._get_app_mode", return_value="solo"):
         actor = await get_current_actor(credentials=None, db=db)
 
@@ -24,7 +27,7 @@ async def test_solo_mode_returns_solo_actor() -> None:
 
 @pytest.mark.asyncio
 async def test_valid_token_returns_actor() -> None:
-    """Gültiger Token → CurrentActor mit korrekten Feldern."""
+    """Valid token returns CurrentActor with correct fields."""
     user_id = uuid.uuid4()
     token = create_access_token(str(user_id), "developer")
     credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
@@ -45,7 +48,7 @@ async def test_valid_token_returns_actor() -> None:
 
 @pytest.mark.asyncio
 async def test_missing_token_raises_401() -> None:
-    """Kein Token im Team-Modus → HTTP 401."""
+    """No token in team mode returns HTTP 401."""
     db = AsyncMock()
 
     with patch("app.routers.deps._get_app_mode", return_value="team"):
@@ -57,7 +60,7 @@ async def test_missing_token_raises_401() -> None:
 
 @pytest.mark.asyncio
 async def test_invalid_token_raises_401() -> None:
-    """Ungültiger Token → HTTP 401."""
+    """Invalid token returns HTTP 401."""
     credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="invalid.token")
     db = AsyncMock()
 
@@ -70,13 +73,13 @@ async def test_invalid_token_raises_401() -> None:
 
 @pytest.mark.asyncio
 async def test_deleted_user_raises_401() -> None:
-    """Gültiger Token, aber User nicht mehr in DB → HTTP 401."""
+    """Valid token but deleted user returns HTTP 401."""
     user_id = uuid.uuid4()
     token = create_access_token(str(user_id), "developer")
     credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
     db = AsyncMock()
-    db.get.return_value = None  # User nicht gefunden
+    db.get.return_value = None
 
     with patch("app.routers.deps._get_app_mode", return_value="team"):
         with pytest.raises(HTTPException) as exc:

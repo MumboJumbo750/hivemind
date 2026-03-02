@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-8-006",
+  "epic_ref": "EPIC-PHASE-8",
+  "title": "Governance-Levels: Service + API Endpoints",
+  "description": "Konfigurierbare Autonomie-Stufen pro Entscheidungstyp.\n\n**Dateien:**\n- `app/services/governance.py` — GovernanceService\n- `app/schemas/governance.py` — Pydantic Models\n- `app/routers/governance.py` — API Endpoints\n\n**3 Stufen × 7 Entscheidungstypen:**\n- Stufen: `manual` (Mensch entscheidet), `assisted` (AI empfiehlt, Mensch bestätigt), `auto` (AI entscheidet mit Grace Period)\n- Typen: `review`, `epic_proposal`, `epic_scoping`, `skill_merge`, `guard_merge`, `decision_request`, `escalation`\n\n**GovernanceService:**\n- `get_governance_config() -> GovernanceConfig` — liest aus app_settings.governance\n- `update_governance_config(config: GovernanceConfig)` — schreibt in app_settings\n- `check_auto_allowed(decision_type: str, context: dict) -> AutoDecision` — prüft ob Auto-Modus erlaubt\n- `get_level(decision_type: str) -> str` — gibt 'manual', 'assisted' oder 'auto' zurück\n\n**GovernanceConfig (Pydantic):**\n```python\nclass GovernanceTypeConfig(BaseModel):\n    level: Literal['manual', 'assisted', 'auto'] = 'manual'\n    confidence_threshold: float = 0.85  # für auto\n    grace_period_minutes: int = 30      # für auto\n\nclass GovernanceConfig(BaseModel):\n    review: GovernanceTypeConfig\n    epic_proposal: GovernanceTypeConfig\n    epic_scoping: GovernanceTypeConfig\n    skill_merge: GovernanceTypeConfig\n    guard_merge: GovernanceTypeConfig\n    decision_request: GovernanceTypeConfig\n    escalation: GovernanceTypeConfig\n```\n\n**Safeguards (hardcoded, nicht überschreibbar):**\n- `review`: Nie auto-reject — `reject` erfordert IMMER menschliche Bestätigung\n- `review`: Grace Period mindestens 10 Minuten (kein Wert < 10 erlaubt)\n- `escalation`: Auto nur für nicht-kritische Entscheidungen\n\n**API Endpoints:**\n- `GET /api/settings/governance` — aktuelle Konfiguration\n- `PUT /api/settings/governance` — Konfiguration aktualisieren (Admin-only)\n- RBAC: nur `admin` darf Governance ändern\n\n**Conductor-Integration:**\n- Conductor prüft `governance.get_level(decision_type)` vor Dispatch\n- `manual`: kein Auto-Dispatch, Prompt Station zeigt Prompt\n- `assisted`: Auto-Dispatch, aber Ergebnis wartet auf Bestätigung\n- `auto`: Auto-Dispatch, Ergebnis wird automatisch angewendet (mit Grace Period)",
+  "state": "scoped",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "GovernanceService liest/schreibt Konfiguration korrekt aus/in app_settings",
+      "Alle 7 Entscheidungstypen × 3 Stufen konfigurierbar",
+      "Safeguards: review nie auto-reject, Grace Period >= 10 min, hardcoded und nicht überschreibbar",
+      "API: GET/PUT /api/settings/governance funktioniert, Admin-only RBAC",
+      "Conductor-Integration: get_level() wird vor Dispatch geprüft",
+      "Unit-Tests für alle Safeguard-Regeln + Conductor-Gate-Logik"
+    ]
+  },
+  "tags": ["backend", "governance", "autonomy", "settings", "phase-8"],
+  "subtasks": [],
+  "pinned_skills": ["governance-level", "fastapi-endpoint", "rbac-middleware"],
+  "linked_wiki": ["system-architektur"],
+  "source_doc": "docs/phases/phase-8.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-8-001"]
+}

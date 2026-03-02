@@ -14,41 +14,61 @@ scheduler = AsyncIOScheduler(timezone="UTC")
 
 
 async def _audit_retention_job() -> None:
-    """Setzt input_payload + output_payload auf NULL für Einträge älter als AUDIT_RETENTION_DAYS."""
-    from datetime import datetime, timedelta, timezone
+    """Nullt alte Payloads und löscht sehr alte mcp_invocations-Rows vollständig."""
+    from datetime import UTC, datetime, timedelta
 
     from sqlalchemy import text
 
     from app.db import AsyncSessionLocal
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.audit_retention_days)
+    now = datetime.now(UTC)
+    payload_cutoff = now - timedelta(days=settings.audit_retention_days)
+    delete_cutoff = now - timedelta(days=settings.audit_row_deletion_days)
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
+        nullify_result = await db.execute(
             text("""
                 UPDATE mcp_invocations
                 SET input_payload = NULL,
                     output_payload = NULL
-                WHERE created_at < :cutoff
+                WHERE created_at < :payload_cutoff
                   AND (input_payload IS NOT NULL OR output_payload IS NOT NULL)
             """),
-            {"cutoff": cutoff},
+            {"payload_cutoff": payload_cutoff},
+        )
+        delete_result = await db.execute(
+            text("""
+                DELETE FROM mcp_invocations
+                WHERE created_at < :delete_cutoff
+            """),
+            {"delete_cutoff": delete_cutoff},
         )
         await db.commit()
-        count = result.rowcount
-        if count:
-            logger.info("Audit-Retention: %d Einträge bereinigt (älter als %d Tage)", count, settings.audit_retention_days)
+        nullified_count = nullify_result.rowcount
+        deleted_count = delete_result.rowcount
+        if nullified_count:
+            logger.info(
+                "Audit-Retention: %d Einträge bereinigt (älter als %d Tage)",
+                nullified_count,
+                settings.audit_retention_days,
+            )
+        if deleted_count:
+            logger.info(
+                "Audit-Retention: %d Einträge gelöscht (älter als %d Tage)",
+                deleted_count,
+                settings.audit_row_deletion_days,
+            )
 
 
 async def _prompt_history_retention_job() -> None:
     """Löscht prompt_history-Einträge älter als HIVEMIND_PROMPT_HISTORY_RETENTION_DAYS (Default: 180)."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import UTC, datetime, timedelta
 
     from sqlalchemy import text
 
     from app.db import AsyncSessionLocal
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.hivemind_prompt_history_retention_days)
+    cutoff = datetime.now(UTC) - timedelta(days=settings.hivemind_prompt_history_retention_days)
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -71,13 +91,13 @@ async def _notification_retention_job() -> None:
     - Read notifications older than NOTIFICATION_RETENTION_DAYS (default: 90)
     - Unread notifications older than NOTIFICATION_UNREAD_RETENTION_DAYS (default: 365)
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import UTC, datetime, timedelta
 
-    from sqlalchemy import and_, text
+    from sqlalchemy import text
 
     from app.db import AsyncSessionLocal
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     read_cutoff = now - timedelta(days=settings.notification_retention_days)
     unread_cutoff = now - timedelta(days=settings.notification_unread_retention_days)
 
@@ -169,6 +189,45 @@ def start_scheduler() -> None:
         replace_existing=True,
     )
     logger.info("Decision-SLA cron registriert")
+
+    # KPI cache refresh — stündlich (TASK-7-013)
+    from app.services.kpi_service import refresh_kpi_cache
+
+    scheduler.add_job(
+        refresh_kpi_cache,
+        trigger="interval",
+        seconds=3600,
+        id="kpi_cache",
+        replace_existing=True,
+    )
+    logger.info("KPI cache job registriert — alle 3600s")
+
+    # Inbound/Outbound consumers (YouTrack/Sentry) - independent from federation flag
+    from app.services.outbox_consumer import process_inbound, process_outbound
+
+    scheduler.add_job(
+        process_inbound,
+        trigger="interval",
+        seconds=settings.hivemind_outbox_interval,
+        id="inbound_consumer",
+        replace_existing=True,
+    )
+    logger.info(
+        "Inbound consumer registriert - alle %ds",
+        settings.hivemind_outbox_interval,
+    )
+
+    scheduler.add_job(
+        process_outbound,
+        trigger="interval",
+        seconds=settings.hivemind_outbox_interval,
+        id="outbound_consumer",
+        replace_existing=True,
+    )
+    logger.info(
+        "Outbound consumer registriert - alle %ds",
+        settings.hivemind_outbox_interval,
+    )
 
     # Federation Outbox Consumer — process peer_outbound entries
     if settings.hivemind_federation_enabled:

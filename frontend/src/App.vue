@@ -45,6 +45,7 @@ onUnmounted(() => window.removeEventListener('keydown', _onKeydown))
         <RouterLink to="/nexus-grid" class="app-nav__link">Nexus Grid</RouterLink>
         <RouterLink to="/guild" class="app-nav__link">Gilde</RouterLink>
         <RouterLink to="/achievements" class="app-nav__link">Achievements</RouterLink>
+        <RouterLink to="/dashboard/kpi" class="app-nav__link">KPI Dashboard</RouterLink>
         <RouterLink to="/settings" class="app-nav__link">Settings</RouterLink>
       </nav>
     </template>

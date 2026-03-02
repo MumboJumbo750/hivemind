@@ -1,12 +1,12 @@
 """Epic Proposals Router — TASK-4-004.
 
-REST CRUD for the Epic-Proposal workflow.
+REST CRUD for the Epic-Proposal workflow + requirement-capture draft endpoint.
 """
 import time
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -18,9 +18,12 @@ from app.schemas.epic_proposal import (
     EpicProposalReject,
     EpicProposalResponse,
     EpicProposalUpdate,
+    RequirementDraftRequest,
+    RequirementDraftResponse,
 )
 from app.services.audit import write_audit
 from app.services.epic_proposal_service import EpicProposalService
+from app.services.prompt_generator import PromptGenerator, count_tokens
 
 router = APIRouter(prefix="/epic-proposals", tags=["epic-proposals"])
 
@@ -190,3 +193,65 @@ async def reject_epic_proposal(
         duration_ms=duration,
     )
     return EpicProposalResponse.model_validate(p)
+
+
+# ─── Requirement Draft ────────────────────────────────────────────────────────
+
+@router.post("/draft-requirement", response_model=RequirementDraftResponse, status_code=status.HTTP_200_OK)
+async def draft_requirement(
+    body: RequirementDraftRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(get_current_actor),
+) -> RequirementDraftResponse:
+    """Generate an enriched Stratege prompt from a free-text requirement.
+
+    Creates an epic_proposals entry with state='draft' and returns the
+    ready-to-use prompt together with enrichment metadata.
+    """
+    from app.models.epic_proposal import EpicProposal
+
+    t0 = time.perf_counter()
+
+    # Generate enriched Stratege prompt
+    gen = PromptGenerator(db)
+    try:
+        prompt = await gen._stratege_requirement(
+            project_id=str(body.project_id),
+            requirement_text=body.text,
+            priority_hint=body.priority_hint,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    token_count = count_tokens(prompt)
+
+    # Persist draft proposal so the user can later promote it to 'proposed'
+    draft = EpicProposal(
+        project_id=body.project_id,
+        proposed_by=actor.id,
+        title=body.text[:80] + ("…" if len(body.text) > 80 else ""),
+        description=body.text,
+        rationale=None,
+        state="draft",
+        raw_requirement=body.text,
+    )
+    db.add(draft)
+    await db.flush()
+    await db.commit()
+
+    duration = int((time.perf_counter() - t0) * 1000)
+    await write_audit(
+        tool_name="draft_requirement",
+        actor_id=actor.id,
+        actor_role=actor.role,
+        input_payload={"project_id": str(body.project_id), "text_len": len(body.text)},
+        output_payload={"draft_id": str(draft.id), "token_count": token_count},
+        duration_ms=duration,
+    )
+
+    return RequirementDraftResponse(
+        prompt=prompt,
+        token_count=token_count,
+        draft_id=draft.id,
+        enrichment={"priority_hint": body.priority_hint, "tags": body.tags or []},
+    )

@@ -17,6 +17,8 @@ const reviewComment = ref('')
 const showRejectComment = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const reviewPromptLoading = ref(false)
+const reviewPromptCopied = ref(false)
 
 // ─── Guard Provenance (TASK-5-020) ─────────────────────────────────────────
 interface GuardInfo {
@@ -121,6 +123,31 @@ async function handleReject() {
     error.value = e instanceof Error ? e.message : String(e)
   } finally {
     loading.value = false
+  }
+}
+
+async function copyReviewPrompt() {
+  reviewPromptLoading.value = true
+  error.value = null
+  try {
+    const result = await api.getPrompt('review', props.task.task_key)
+    const parsed = JSON.parse(result[0]?.text || '{}')
+    if (parsed.error) {
+      throw new Error(parsed.error.message || 'Review-Prompt konnte nicht geladen werden.')
+    }
+
+    const prompt: string | undefined = parsed.data?.prompt ?? parsed.prompt
+    if (!prompt) {
+      throw new Error('Review-Prompt ist leer.')
+    }
+
+    await navigator.clipboard.writeText(prompt)
+    reviewPromptCopied.value = true
+    setTimeout(() => { reviewPromptCopied.value = false }, 2000)
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    reviewPromptLoading.value = false
   }
 }
 
@@ -242,6 +269,19 @@ onMounted(() => loadGuards())
 
     <!-- Actions -->
     <div class="review-actions">
+      <button
+        class="btn-secondary"
+        @click="copyReviewPrompt"
+        :disabled="loading || reviewPromptLoading"
+      >
+        {{
+          reviewPromptCopied
+            ? '✓ REVIEW-PROMPT KOPIERT'
+            : reviewPromptLoading
+              ? 'PROMPT...'
+              : 'REVIEW-PROMPT KOPIEREN'
+        }}
+      </button>
       <button
         class="btn-danger"
         @click="handleReject"
@@ -415,6 +455,19 @@ onMounted(() => loadGuards())
   gap: var(--space-3);
   justify-content: flex-end;
 }
+
+.btn-secondary {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+.btn-secondary:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-success {
   background: var(--color-success);
