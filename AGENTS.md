@@ -197,6 +197,81 @@ Alle Variablen haben Defaults in `docker-compose.yml`. Overrides via `.env` im P
 
 ---
 
+## IDE MCP-Integration
+
+Hivemind läuft als MCP-Server — jede IDE die MCP unterstützt bekommt alle `hivemind/*`-Tools.
+
+### VS Code / Copilot Agent Mode
+
+**Automatisch:** `.vscode/mcp.json` ist im Repo eingecheckt. Copilot Agent Mode erkennt den Server beim Öffnen des Projekts.
+
+```json
+// .vscode/mcp.json (bereits vorhanden, kein Setup nötig)
+{
+  "servers": {
+    "hivemind": {
+      "type": "sse",
+      "url": "http://localhost:8000/api/mcp/sse"
+    }
+  }
+}
+```
+
+**Voraussetzung:** Backend muss laufen (`make up`), dann in Copilot Chat → Agent Mode aktivieren.
+
+### Copilot CLI (`gh copilot`)
+
+```json
+// ~/.copilot/mcp-config.json
+{
+  "mcpServers": {
+    "hivemind": {
+      "type": "sse",
+      "url": "http://localhost:8000/api/mcp/sse",
+      "tools": ["*"]
+    }
+  }
+}
+```
+
+Registrierung: `gh copilot mcp add hivemind --type sse --url http://localhost:8000/api/mcp/sse`
+
+### Claude Desktop
+
+```json
+// ~/AppData/Roaming/Claude/claude_desktop_config.json  (Windows)
+// ~/Library/Application Support/Claude/claude_desktop_config.json  (macOS)
+{
+  "mcpServers": {
+    "hivemind": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8000/api/mcp/sse"]
+    }
+  }
+}
+```
+
+### Cursor
+
+```json
+// .cursor/mcp.json
+{
+  "mcpServers": {
+    "hivemind": {
+      "type": "sse",
+      "url": "http://localhost:8000/api/mcp/sse"
+    }
+  }
+}
+```
+
+### Discovery-Endpoint
+
+`GET /api/mcp/discovery` — liefert Config-Snippets für alle IDE-Clients als JSON.
+Nützlich für automatische Einrichtungsskripte.
+
+---
+
 ## Codebase-Konventionen (für AI-Agents)
 
 ### APScheduler
