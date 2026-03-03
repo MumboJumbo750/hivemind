@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-F",
   "title": "Task-Delegation + ausgehende State-Updates",
   "description": "Zwei Richtungen der Task-Delegation implementieren:\n\n**Eingehend (bereits in TASK-F-004 als `/federation/task/update`):** Task-State-Updates von Peer werden lokal gespiegelt. Hier: sicherstellen dass nur Tasks aktualisiert werden die `assigned_node_id` = sendender Node haben (Origin-Authority). State-Transition via bestehende State-Machine validieren.\n\n**Ausgehend:** Service-Layer-Hook in der Task-Update-Logik. Wenn `tasks.assigned_node_id` gesetzt ist und sich der Task-State ändert: Outbox-Eintrag für den betroffenen Peer anlegen mit `direction='peer_outbound'`, `event_type='task_updated'`, `target_node_id` = `assigned_node_id`, `payload` = Task-ID + neuer State + Result. `dedup_key` = `task_update:{task_id}:{new_state}`.\n\nImplementierung als Service-Funktion `notify_peer_task_update(task_id, new_state)` in `app/services/federation.py`. Integration in bestehende Task-State-Machine-Transitions. Nur aktiv wenn `HIVEMIND_FEDERATION_ENABLED=true` und `assigned_node_id` gesetzt.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

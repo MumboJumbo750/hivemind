@@ -29,6 +29,10 @@ services:
       HIVEMIND_OLLAMA_URL: ${HIVEMIND_OLLAMA_URL:-http://ollama:11434}
       HIVEMIND_EMBEDDING_MODEL: ${HIVEMIND_EMBEDDING_MODEL:-nomic-embed-text}
       HIVEMIND_EMBEDDING_BATCH_SIZE: ${HIVEMIND_EMBEDDING_BATCH_SIZE:-50}
+      HIVEMIND_KEY_PASSPHRASE: ${HIVEMIND_KEY_PASSPHRASE:-hivemind-dev-key-2026}
+      HIVEMIND_CONDUCTOR_ENABLED: ${HIVEMIND_CONDUCTOR_ENABLED:-true}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-development}
     ports:
       - "8000:8000"
     depends_on:
@@ -50,6 +54,7 @@ services:
       - frontend_node_modules:/app/node_modules
     environment:
       VITE_API_URL: http://localhost:8000
+      VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
 
   db-backup:
     build: ./backend/cron

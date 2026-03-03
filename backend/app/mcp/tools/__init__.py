@@ -1,6 +1,9 @@
 """MCP tools package: importing modules registers tools at startup."""
 
 import app.mcp.tools.admin_write_tools  # noqa: F401
+import app.mcp.tools.github_tools  # noqa: F401
+import app.mcp.tools.reviewer_tools  # noqa: F401
+import app.mcp.tools.github_actions_tools  # noqa: F401
 import app.mcp.tools.dlq_tools  # noqa: F401
 import app.mcp.tools.routing_tools  # noqa: F401
 import app.mcp.tools.epic_restructure_tools  # noqa: F401

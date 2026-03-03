@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "DB-Schema: Core-Tabellen (users, app_settings, projects, project_members)",
   "description": "Alembic-Migration für die Core-Tabellen: users (mit Gamification-Feldern), app_settings (mit Bootstrap-Eintrag hivemind_mode=solo), projects, project_members.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

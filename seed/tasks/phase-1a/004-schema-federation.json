@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "DB-Schema: Federation-Tabellen (nodes, node_identity)",
   "description": "Alembic-Migration für nodes + node_identity Tabellen. Zuerst erstellen — keine Dependencies außer sich selbst.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

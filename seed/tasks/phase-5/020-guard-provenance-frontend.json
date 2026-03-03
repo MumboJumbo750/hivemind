@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Guard-Provenance im Review Panel (Frontend)",
   "description": "Review Panel: source pro Guard (self-reported|system-executed), checked_at, Warnhinweis bei leerer self-reported Ausgabe. Guard-Status-Uebersicht.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

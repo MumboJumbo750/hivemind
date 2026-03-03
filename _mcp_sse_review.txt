@@ -1,0 +1,5 @@
+event: endpoint
+data: /api/mcp/message?session_id=ed5b6c26dca2408b8248a23094896a16
+
+: ping - 2026-03-02 17:17:42.795122+00:00
+

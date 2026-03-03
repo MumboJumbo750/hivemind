@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-IDE-007",
+  "epic_ref": "EPIC-IDE-AUTOMATION",
+  "title": "MCP-Resources: Workspace-Kontext als MCP-Resourcen exponieren",
+  "description": "Hivemind MCP-Server exponiert strukturierte Ressourcen die Copilot als Kontext nutzen kann.\n\n**Was zu implementieren ist:**\n\n1. **MCP Resource-Capability:**\n   - VS Code zeigt MCP-Ressourcen unter 'Add Context > MCP Resources'\n   - User kann Hivemind-Kontext zum Chat hinzufügen\n\n2. **Ressourcen:**\n   ```\n   hivemind://task/{task_key}          — Task-Details inkl. DoD, Guards, Skills\n   hivemind://epic/{epic_id}           — Epic-Details inkl. Tasks, Dependencies\n   hivemind://wiki/{slug}              — Wiki-Artikel\n   hivemind://skill/{title}            — Skill-Inhalt\n   hivemind://health-report            — Letzter Repo Health Report\n   hivemind://context-boundary/{task}  — Context Boundary für Task\n   hivemind://prompt/{role}            — Generierter Prompt für Rolle\n   ```\n\n3. **Dynamic Resource Discovery:**\n   - MCP-Server liefert Ressourcen-Liste basierend auf aktuellem Projektstatus\n   - Offene Tasks erscheinen prominent\n   - Health Report nur wenn vorhanden\n\n4. **Integration mit Agent Mode:**\n   - Copilot kann Ressourcen automatisch laden wenn relevant\n   - MCP-Prompts referenzieren passende Ressourcen\n   - `/hivemind.worker` lädt automatisch Task-Resource + Skills\n\n**Kontext:** MCP Resources sind in VS Code seit ~1.99 unterstützt.\nDokumentation: https://modelcontextprotocol.io/docs/concepts/resources",
+  "state": "open",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "MCP-Server exponiert Resource-Capability",
+      "Mindestens 5 Resource-Typen implementiert (task, epic, wiki, skill, prompt)",
+      "Resources in VS Code unter 'Add Context > MCP Resources' sichtbar",
+      "Dynamic Resource Discovery basierend auf Projektstatus",
+      "MCP-Prompts referenzieren passende Resources",
+      "Integration-Test für Resource-Listing und Resource-Read"
+    ]
+  },
+  "tags": ["mcp", "vscode", "resources", "context"],
+  "subtasks": [],
+  "pinned_skills": ["mcp-tool"],
+  "linked_wiki": ["mcp-integration"],
+  "source_doc": null,
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-IDE-002"]
+}

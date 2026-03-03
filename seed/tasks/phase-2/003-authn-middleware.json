@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "AuthN-Middleware (get_current_actor)",
   "description": "FastAPI `Depends`-basierte AuthN-Dependency `get_current_actor()` implementieren. Liest `Authorization: Bearer <token>` Header, validiert JWT-Signatur und Expiry, extrahiert `actor_id` (sub) und `actor_role` aus Claims. Gibt ein `CurrentActor`-Objekt zurück (id, username, role). Bei fehlehaftem oder fehlendem Token: HTTP 401 Unauthorized. Optional: `get_optional_actor()` für Endpoints die auch ohne Auth funktionieren. Dependency in `backend/app/routers/deps.py` ergänzen. Validiert zusätzlich, dass der User in der DB existiert (nicht gelöscht).",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

@@ -54,6 +54,7 @@ class Skill(Base):
         Text, nullable=False, server_default="draft"
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    source_slug: Mapped[Optional[str]] = mapped_column(Text, nullable=True, unique=True)
     # embedding column omitted from ORM (managed by raw SQL, pgvector type)
     embedding_model: Mapped[Optional[str]] = mapped_column(Text)
     origin_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
@@ -77,7 +78,7 @@ class Skill(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "skill_type IN ('system', 'domain')",
+            "skill_type IN ('system', 'domain', 'runtime')",
             name="chk_skill_type",
         ),
         CheckConstraint(

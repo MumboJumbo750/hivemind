@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "AuthZ + Scope-Validierung + Solo-Modus",
   "description": "RBAC-Enforcement als FastAPI-Dependency implementieren. Regeln: `admin` darf alles. `developer` darf nur in Projekten schreiben, in denen er `project_member` ist ODER wenn `assigned_to` auf dem Task auf ihn zeigt. `service`-Rolle für System-Agents. Im Solo-Modus (`app_settings.mode = 'solo'`): RBAC komplett deaktiviert, System-User `solo` wird automatisch als Actor eingesetzt. `app_settings`-Tabelle anlegen (Alembic-Migration): `key` (PK, Text), `value` (JSONB). Seed-Wert: `mode = 'solo'`, `notification_mode = 'client'`. Dependency `require_role(*roles)` und `require_project_access(project_id)`. HTTP 403 bei fehlender Berechtigung.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

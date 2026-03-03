@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-F",
   "title": "Federation-Notifications via SSE",
   "description": "Backend SSE-Endpoint + Frontend-Erweiterung des Phase-2-Notification-Moduls für Federation-Events.\n\n**Backend — SSE-Endpoint:** `GET /api/events` als Server-Sent Events Stream. Nutzt `asyncio.Queue` pro verbundenem Client. Event-Typen:\n- `node_status` — wenn `nodes.status` sich ändert (aus Heartbeat-Service TASK-F-010). Payload: `{ node_id, node_name, status, last_seen }`.\n- `federation_skill` — wenn ein neuer federierter Skill empfangen wird (aus `/federation/skill/publish` TASK-F-004). Payload: `{ skill_id, title, origin_node_name }`.\n- `task_assigned` — wenn `assigned_node_id` auf einem Task gesetzt/geändert wird (aus TASK-F-008/009). Payload: `{ task_id, task_title, assigned_node_name }`.\n\nSSE-Events werden über einen In-Memory Event-Bus (`app/services/event_bus.py`) dispatcht. Federation-Endpoints und Heartbeat-Service publishen Events auf den Bus.\n\n**Frontend — Notification-Erweiterung:** EventSource-Client der `GET /api/events` abonniert. Client-calculated Notification-Typen:\n- `peer_online` / `peer_offline` — aus `node_status`-Events abgeleitet. Toast + Badge im Notification-Tray.\n- `federated_skill` — aus `federation_skill`-Events. Toast 'Neuer Skill von [node-name]: [title]'.\n- `task_delegated` — aus `task_assigned`-Events. Toast 'Task [title] an [node-name] delegiert'.\n\nNotification-Tray (aus Phase 2) um diese Typen erweitern. SSE-Reconnect bei Verbindungsabbruch (exponential backoff).",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

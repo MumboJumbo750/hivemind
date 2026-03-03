@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Spotlight-Search Backend-Endpoint",
   "description": "`GET /api/search?q=<query>&type=tasks,epics` implementieren. Freitext-Suche via `ILIKE` oder `pg_trgm`-Trigram-Suche über `tasks.title` + `epics.title`. Parameter: `q` (Suchstring, min 2 Zeichen), `type` (kommasepariert: tasks, epics; default: beide), `limit` (default 20). Ergebnisse gruppiert nach Typ zurückgeben. RBAC-gefiltert: nur Items zurückgeben, auf die der Actor Zugriff hat (über project_members oder Admin-Rolle). Im Solo-Modus alle Items zurückgeben. Response-Schema: `SearchResult` mit `type`, `id`, `title`, `subtitle` (Epic-Titel bei Tasks), `url`.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

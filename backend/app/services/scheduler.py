@@ -260,6 +260,41 @@ def start_scheduler() -> None:
             settings.hivemind_heartbeat_interval,
         )
 
+    # Phase 8 — Conductor + Auto-Review (only when HIVEMIND_CONDUCTOR_ENABLED=true)
+    if settings.hivemind_conductor_enabled:
+        from app.services.conductor import conductor_poll_job
+
+        scheduler.add_job(
+            conductor_poll_job,
+            trigger="interval",
+            seconds=30,
+            id="conductor_poll",
+            replace_existing=True,
+        )
+        logger.info("Conductor poll job registriert — alle 30s")
+
+        from app.services.conductor_ide_timeout import ide_timeout_job
+
+        scheduler.add_job(
+            ide_timeout_job,
+            trigger="interval",
+            seconds=60,
+            id="conductor_ide_timeout",
+            replace_existing=True,
+        )
+        logger.info("Conductor IDE timeout job registriert — alle 60s")
+
+        from app.services.auto_review_cron import auto_review_job
+
+        scheduler.add_job(
+            auto_review_job,
+            trigger="interval",
+            seconds=60,
+            id="auto_review",
+            replace_existing=True,
+        )
+        logger.info("Auto-Review job registriert — alle 60s")
+
     scheduler.start()
     logger.info(
         "Scheduler gestartet — audit_retention 03:00 UTC, prompt_history_cleanup 03:05 UTC"

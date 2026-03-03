@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Notification-Types: guard_proposal & restructure_proposal",
   "description": "guard_proposal bei submit_guard_proposal an Admins. restructure_proposal bei propose_epic_restructure an Admins. task_done bei approve_review an Assignee+Owner. SSE-Events an Clients.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

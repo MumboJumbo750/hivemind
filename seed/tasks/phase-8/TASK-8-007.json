@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-8",
   "title": "Reviewer-Agent: submit_review_recommendation MCP Tool",
   "description": "MCP-Write-Tool für den Reviewer-Agent — speichert AI-Review-Empfehlungen mit Confidence-Score.\n\n**MCP-Tool: `hivemind/submit_review_recommendation`**\n- Input:\n  ```json\n  {\n    \"task_key\": \"TASK-8-007\",\n    \"recommendation\": \"approve\",\n    \"confidence\": 0.92,\n    \"checklist\": [\n      {\"item\": \"DoD: Tests vorhanden\", \"passed\": true, \"comment\": \"3 Unit-Tests\"},\n      {\"item\": \"DoD: Keine Lint-Fehler\", \"passed\": true}\n    ],\n    \"reasoning\": \"Alle DoD-Kriterien erfüllt. Code-Qualität gut.\"\n  }\n  ```\n- Validierung:\n  - task_key muss existieren und in State `in_review` sein (409 sonst)\n  - recommendation: 'approve' | 'reject' | 'needs_human_review'\n  - confidence: 0.0 – 1.0\n  - checklist: optional, Array von {item, passed, comment?}\n- Schreibt in `review_recommendations` Tabelle\n- **Ändert NIE direkt den Task-State** — nur Empfehlung!\n- Bei `governance.review = 'auto'` und recommendation = 'approve' und confidence >= threshold:\n  - Setzt `grace_period_until = now() + grace_period_minutes`\n  - Auto-Approve-Cron (TASK-8-008) übernimmt danach\n- Bei `recommendation = 'reject'`: IMMER needs_human_review (nie auto-reject)\n- Feuert SSE-Event `review_recommendation_submitted`\n- Scope: reviewer (nur Reviewer-Rolle darf dieses Tool nutzen)\n\nDatei: `app/mcp/tools/reviewer_tools.py`\nRegistrierung in `app/mcp/tools/__init__.py`",
-  "state": "scoped",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

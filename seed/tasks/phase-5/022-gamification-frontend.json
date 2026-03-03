@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Gamification-Frontend: Status Bar & Achievements",
   "description": "Status Bar: EXP-Progress, Level, Titel. Achievements-Page: Badges, Level-History. Level-Up-Animation (SSE). Badge-Toast (SSE). Vue 3 + Reka UI.",
-  "state": "incoming",
+  "state": "done",
   "priority": "low",
   "definition_of_done": {
     "criteria": [

@@ -1,0 +1,55 @@
+name: Kartograph Frontend-Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/src/**/*.vue"
+      - "frontend/src/**/*.ts"
+      - "frontend/src/**/*.css"
+  workflow_dispatch:
+    inputs:
+      update_wiki:
+        description: "Wiki-Datei aktualisieren und committen"
+        type: boolean
+        default: true
+
+jobs:
+  kartograph-scan:
+    name: Frontend-Analyse
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # für git push
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Scan ausführen
+        run: |
+          python scripts/kartograph_scan.py --update
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Änderungen prüfen
+        id: changes
+        run: |
+          git diff --quiet seed/wiki/frontend-component-architektur.md \
+            && echo "changed=false" >> $GITHUB_OUTPUT \
+            || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Wiki-Update committen
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add seed/wiki/frontend-component-architektur.md
+          git commit -m "chore(kartograph): update frontend-scan metrics [skip ci]"
+          git push

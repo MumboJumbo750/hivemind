@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-HEALTH-004",
+  "epic_ref": "EPIC-REPO-HEALTH",
+  "title": "Analyzer: Duplicate Detection (Templates, Components, Code-Blöcke)",
+  "description": "Implementiere Analyzer für Code-Duplikate auf verschiedenen Ebenen.\n\n**Was zu implementieren ist:**\n\n`scripts/analyzers/duplicate_detection.py`:\n\n1. **Template/HTML-Duplikate:**\n   - Hash-basierter Vergleich von `<template>` Blöcken in Vue-Files\n   - Similarity-Score (Levenshtein oder Jaccard auf Token-Ebene)\n   - Schwelle konfigurierbar (Default: 80% Ähnlichkeit)\n   - Erkennt Copy-Paste-Komponenten die extrahiert werden sollten\n\n2. **CSS-Block-Duplikate:**\n   - Identische oder nahezu identische `<style>` Blöcke\n   - Gleiche CSS-Klassen mit identischen Properties in verschiedenen Files\n   - Empfehlung: Shared CSS-Klasse oder Utility-Klasse\n\n3. **Code-Block-Duplikate:**\n   - Funktionen/Methoden mit >80% Ähnlichkeit (Token-basiert)\n   - Identische Error-Handler, identische API-Call-Patterns\n   - Schwelle: mindestens 5 Zeilen, >80% Ähnlichkeit\n\n4. **Import-Pattern-Duplikate:**\n   - Gleiche Import-Gruppe in >3 Files → Extract to Barrel/Index\n\n**Algorithmus:**\n- Phase 1: Content-Hashing (schnell, exakte Duplikate)\n- Phase 2: Token-Similarity (langsamer, für Near-Duplicates)\n- Konfigurierbar: Nur Phase 1 für schnelle Checks, Phase 1+2 für tiefe Analyse\n\n**Output:** Paarweise Findings mit Referenz auf beide Dateien + Ähnlichkeits-Score.",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Erkennt exakte Template/HTML-Duplikate via Content-Hashing",
+      "Erkennt Near-Duplicates via Token-Similarity (konfigurierbare Schwelle)",
+      "Erkennt CSS-Block-Duplikate zwischen Dateien",
+      "Erkennt Code-Block-Duplikate (Funktionen >5 Zeilen, >80% ähnlich)",
+      "Paarweise Findings mit File-Referenzen und Similarity-Score",
+      "Performance: <30s für typisches Projekt (1000 Dateien)",
+      "Unit-Tests mit synthetischen Duplikat-Beispielen"
+    ]
+  },
+  "tags": ["tooling", "code-quality", "refactoring"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-HEALTH-001"]
+}

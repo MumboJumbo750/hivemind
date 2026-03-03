@@ -16,6 +16,7 @@
     "test:perf:triage": "vitest run tests/performance/triage.perf.spec.ts"
   },
   "dependencies": {
+    "@sentry/vue": "^9.0.0",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@fontsource/space-grotesk": "^5.2.10",
@@ -23,6 +24,7 @@
     "cytoscape": "^3.33.1",
     "pinia": "^2.3.1",
     "reka-ui": "^2.8.2",
+    "three": "^0.170.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
@@ -30,6 +32,7 @@
     "@eslint/js": "^10.0.1",
     "@hey-api/openapi-ts": "^0.93.1",
     "@types/node": "^25.3.2",
+    "@types/three": "^0.170.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "eslint": "^10.0.2",
     "eslint-plugin-vue": "^10.8.0",

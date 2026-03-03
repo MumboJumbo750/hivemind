@@ -1,0 +1,19 @@
+{
+  "external_id": "EPIC-IDE-AUTOMATION",
+  "title": "IDE-Automation — Copilot Chat Agent Mode als Conductor-Bridge",
+  "description": "Bringt Hivemind-Agenten direkt in die IDE des Entwicklers. Statt Copy-Paste-Workflow (BYOAI) soll Copilot Chat (Agent Mode) als lokaler Executor fungieren: Es hat Filesystem-Zugriff UND Hivemind-MCP-Tools. Der Conductor dispatcht Aufträge, Copilot führt sie sichtbar im Chat-Panel aus.\n\n**Architektur:**\n```\nConductor → SSE-Event → VS Code Extension → Copilot Chat (Agent Mode)\n                                               ↕ lokale Tools (read_file, terminal)\n                                               ↕ Hivemind MCP (transition_task, submit_result)\n```\n\n**Drei Execution-Modi (schon vorhanden + neu):**\n- `local` — Backend ruft AI-Provider-API direkt (Phase 8, existiert)\n- `github_actions` — CI-Runner (Phase 8, existiert)\n- `ide` — NEU: VS Code Extension empfängt Dispatch, delegiert an Copilot Chat\n\n**Copilot CLI-Unterstützung:**\n- `gh copilot` unterstützt MCP nativ (`~/.copilot/mcp-config.json`)\n- Kann als Headless-Alternative zum Chat-Panel dienen\n- Konfiguration: `type: sse`, `url: http://localhost:8000/api/mcp/sse`\n\n**Sofort nutzbar (ohne Extension):**\n- `.vscode/mcp.json` konfiguriert Hivemind als MCP-Server → Copilot Agent Mode hat alle Tools\n- User kopiert Prompt manuell → Copilot führt aus (BYOAI-Verbesserung)\n\n**Motivation:** Der Entwickler sitzt am Rechner mit IDE. Die IDE hat bereits alles: Filesystem, Terminal, Compiler, Lint-Tools. Copilot Agent Mode ist die natürliche Bridge zwischen Hivemind-Orchestrierung und lokaler Ausführung.",
+  "state": "scoped",
+  "priority": "high",
+  "sla_deadline": null,
+  "definition_of_done": ".vscode/mcp.json konfiguriert Hivemind MCP-Server. Copilot CLI MCP-Config dokumentiert. VS Code Extension empfängt Conductor-Dispatches via SSE. Extension zeigt Agent-Aktivität im Sidebar-Panel. execution_mode='ide' im Conductor implementiert. MCP-Prompts für alle Agent-Rollen registriert. End-to-End: Task-Transition → Copilot führt automatisch aus → submit_result.",
+  "tags": [
+    "ide",
+    "vscode",
+    "copilot",
+    "automation",
+    "conductor",
+    "mcp"
+  ],
+  "depends_on": ["EPIC-PHASE-8"],
+  "source_doc": null
+}

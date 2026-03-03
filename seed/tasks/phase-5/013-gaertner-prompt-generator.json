@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Gaertner-Prompt-Generator",
   "description": "get_prompt type=gaertner task_id|epic_id: Abgeschlossene Task-Details, Epic-Kontext, bestehende Skills, Memory-Entries. Write-Tools: propose_skill etc. Jinja2-Template.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

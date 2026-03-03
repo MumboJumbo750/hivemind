@@ -6,4 +6,4 @@ echo "[backend] Running Alembic migrations..."
 echo "[backend] Migrations complete."
 
 echo "[backend] Starting Uvicorn..."
-exec /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+exec /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --timeout-graceful-shutdown 3

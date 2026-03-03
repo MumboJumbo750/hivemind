@@ -43,6 +43,16 @@ Kurzfassung des Ablaufs:
 - Nutze `POST /api/code-nodes` für neue Nodes
 - Ein Node pro signifikanter Code-Einheit (nicht jede Variable)
 
+### Monorepo-Support
+
+Bei Monorepos erstellt der Kartograph **pro Package** ein eigenes `AGENTS.md`:
+
+- **Scope-Parameter:** `global` (Root) vs. `package` (z.B. `packages/backend/`)
+- **Root AGENTS.md:** Gesamt-Topologie, Cross-Package Build-Order, globale Conventions
+- **Package AGENTS.md:** Service-spezifische Befehle, lokaler Dev-Server, package-spezifische Env-Vars
+- Prüfe für jedes Package, ob ein eigenes `AGENTS.md` nötig ist (nur wenn eigener Container/Runtime vorhanden)
+- Hierarchie: Root + nächstes Package-Verzeichnis = kompletter Kontext
+
 ### Prioritäten
 
 1. **Environment Discovery zuerst** — fehlendes AGENTS.md blockiert alle anderen AI-Agents

@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Task Review Panel",
   "description": "`src/components/domain/TaskReviewPanel.vue` implementieren. Wird im Command Deck angezeigt wenn ein Task mit State `in_review` ausgewählt wird. Aufbau: (A) **Hard Gates** (systemische Prüfungen, read-only): `result` vorhanden (nicht NULL/leer), State-Transition gültig, Review-Gate aktiv. Status: passed/failed/skipped. (B) **Owner Judgment** (fachliche DoD-Kriterien): Checkliste aus `definition_of_done.criteria`, manuell abhakbar (nur UI, kein Backend-Write der Checkbox-States). (C) `review_comment`-Textarea: wird bei Ablehnung eingeblendet (Pflichtfeld). (D) Buttons: `[✓ GENEHMIGEN]` → `PATCH /api/tasks/{key}` mit Transition `in_review → done`. `[✗ ABLEHNEN]` → `PATCH /api/tasks/{key}` mit Transition `in_review → in_progress` + `review_comment`. Guard-Enforcement: in Phase 2 rein informativ (keine Blockade).",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

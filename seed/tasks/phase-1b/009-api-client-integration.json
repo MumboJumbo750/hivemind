@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1B",
   "title": "API Client Integration — Adapter-Shim + Typen",
   "description": "`src/api/index.ts` als zentraler Adapter-Shim implementieren, der den generierten `@hey-api`-Client wrapped und für das gesamte Frontend verfügbar macht. Der Shim konfiguriert den Client mit `VITE_API_URL` als Basis-URL (via `import.meta.env.VITE_API_URL`, Fallback: `http://localhost:8000`). Zu wrappende API-Funktionen für Phase 1b (Typen kommen aus `src/api/client/`): `getProjects()`, `createProject(data)`, `getEpics(projectId)`, `patchEpicState(epicId, state)`, `getTasks(epicId)`, `approveTask(taskId)`, `rejectTask(taskId, comment?)`. Jede Funktion gibt ein typisiertes Promise zurück und wirft bei HTTP-Fehler einen sprechenden Error. `vite.config.ts` mit Proxy-Konfiguration für `/api` → `VITE_API_URL` erweitern (für lokale Entwicklung ohne CORS). `.env.example` im frontend/-Verzeichnis mit `VITE_API_URL=http://localhost:8000` anlegen. Hinweis: die generierten Typen in `src/api/client/` existieren erst nach `npm run generate:api`; der Shim kann initial mit `// @ts-ignore` oder Placeholder-Typen arbeiten solange das Backend noch nicht läuft.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

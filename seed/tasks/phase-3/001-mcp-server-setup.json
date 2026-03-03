@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-3",
   "title": "MCP-Server Setup (MCP 1.0 Standard — SSE/JSON-RPC 2.0)",
   "description": "FastAPI-basierter MCP-Server mit MCP 1.0 Standard-Compliance. Standard-Transport: SDK-basierter `SseServerTransport` aus dem `mcp` Python-Paket — `GET /api/mcp/sse` (SSE-Stream) + `POST /api/mcp/message` (JSON-RPC 2.0 mit `initialize` Handshake, `tools/list`, `tools/call`). Externe MCP-Clients (Cursor, Claude Desktop, Continue) können direkt verbinden. Convenience-Endpoints für das Hivemind-Frontend: `GET /api/mcp/tools` (flache JSON-Liste) + `POST /api/mcp/call` (einfacher Tool-Call ohne JSON-RPC Overhead). MCP-Server als eigenes Modul `app/mcp/` mit `server.py` (Tool-Registry) und `transport.py` (SSE + REST). Tool-Registrierung über `register_tool()` mit `@server.list_tools()` / `@server.call_tool()` Decorators. Standard-Endpoints als raw ASGI-Apps gemountet (Starlette Route), Convenience-Endpoints als FastAPI-Router. AuthN/AuthZ: SSE/REST nutzt JWT/Solo-Token aus Phase 2, stdio nutzt lokalen API-Key. Jeder Tool-Call wird im Audit-Log protokolliert. MCP-konforme Error-Responses. Namespace: `hivemind/` für alle Tools. Status-Endpoint: `GET /api/mcp/status` zeigt Protokoll, Tool-Count, aktive Sessions.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

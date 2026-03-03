@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-F",
   "title": "peers.yaml-Loader beim App-Start",
   "description": "Beim App-Start die Datei aus `HIVEMIND_PEERS_CONFIG` (Default: `./peers.yaml`) lesen und Peer-Konfiguration in die `nodes`-Tabelle einlesen. YAML-Schema pro Peer: `name`, `url`, `public_key`. Idempotent: Upsert via `node_url` — existierende Peers werden aktualisiert (Name, Public Key), neue angelegt. Nur ausführen wenn `HIVEMIND_FEDERATION_ENABLED=true`. Fehlende oder ungültige Datei: Warning loggen, kein Crash. Dependency `pyyaml` ist bereits in `requirements.txt`. Neue Env-Variable: `HIVEMIND_PEERS_CONFIG`. Als eigene async-Funktion implementieren die im Startup nach dem Node-Identity-Bootstrap aufgerufen wird.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

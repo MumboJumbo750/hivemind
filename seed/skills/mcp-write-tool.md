@@ -85,6 +85,19 @@ async def update_task(db: AsyncSession, task_key: str, update: TaskUpdate, expec
     return task
 ```
 
+### ⚠️ Zwei-Schritt-Abschluss (häufiger Fehler!)
+
+`hivemind/submit_result` **speichert nur** Ergebnis + Artifacts — der Task bleibt in `in_progress`.
+Der State-Wechsel ist **bewusst getrennt** und muss separat ausgelöst werden:
+
+```
+1. hivemind/submit_result     → result/artifacts speichern (State: in_progress → in_progress)
+2. hivemind/update_task_state → target_state: "in_review"  (State: in_progress → in_review)
+```
+
+Warum getrennt? Damit der Worker das Ergebnis mehrfach überschreiben kann (Idempotenz) bevor
+er den Review-Prozess startet. `submit_result` ist idempotent, der State-Wechsel nicht.
+
 ### Fehler-Typen
 
 | Code | HTTP | Wann |

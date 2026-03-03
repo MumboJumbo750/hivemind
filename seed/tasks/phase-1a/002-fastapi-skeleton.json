@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "FastAPI Projekt-Skeleton",
   "description": "FastAPI-Anwendung mit App-Factory-Pattern, CORS-Middleware, Health-Endpoint, Projektstruktur (app/, routers/, services/, schemas/, db/).",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

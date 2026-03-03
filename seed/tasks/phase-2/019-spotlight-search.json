@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Spotlight-Suche (Frontend)",
   "description": "`src/components/domain/Spotlight.vue` implementieren. `Ctrl+K` öffnet modales Overlay. Freitext-Input mit Debounce (300ms). Sucht gegen `GET /api/search?q=&type=tasks,epics`. Ergebnisse gruppiert: Tasks-Sektion und Epics-Sektion. Jedes Ergebnis zeigt Titel + Subtitle (Epic-Titel bei Tasks). Keyboard-Navigation: Pfeiltasten zum Navigieren, Enter zum Auswählen, ESC zum Schließen. Auswahl navigiert zur entsprechenden View (Task → Command Deck mit Task-Fokus, Epic → Command Deck mit Epic-Fokus). RBAC-gefiltert (Backend liefert nur zugängliche Items). Leer-State: 'Keine Ergebnisse' Nachricht. Loading-State während Suche.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

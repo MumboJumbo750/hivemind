@@ -451,13 +451,28 @@ def import_skills(
         source_epics:  list[str]  = list(meta.get("source_epics") or [])
         version_range: Any        = meta.get("version_range")
 
+        source_slug: str = f.stem  # e.g. "mcp-tool" from "mcp-tool.md"
+
         # Dedup via title + project_id (kein UNIQUE-Constraint auf einzelner Spalte)
         cur.execute(
-            "SELECT id FROM skills WHERE title = %s AND project_id = %s",
+            "SELECT id, source_slug FROM skills WHERE title = %s AND project_id = %s",
             (title, project_id),
         )
-        if cur.fetchone():
-            print(f"  ✓ Skill bereits vorhanden: {title}")
+        existing = cur.fetchone()
+        if existing:
+            # Backfill source_slug wenn noch nicht gesetzt
+            if not existing["source_slug"]:
+                cur.execute(
+                    "UPDATE skills SET source_slug = %s WHERE id = %s",
+                    (source_slug, as_str(existing["id"])),
+                )
+                print(f"  ✓ Skill source_slug gesetzt: {title} → {source_slug}")
+            # Content-Update: immer aktuellen Seed-Inhalt einspielen
+            cur.execute(
+                "UPDATE skills SET content = %s WHERE id = %s",
+                (body, as_str(existing["id"])),
+            )
+            print(f"  ✓ Skill bereits vorhanden (content aktualisiert): {title}")
             skipped += 1
             continue
 
@@ -474,13 +489,13 @@ def import_skills(
                 service_scope, stack,
                 version_range, confidence,
                 source_epics, owner_id,
-                lifecycle, skill_type
+                lifecycle, skill_type, source_slug
             ) VALUES (
                 %s, %s, %s, %s,
                 %s::text[], %s::text[],
                 %s::jsonb, %s,
                 %s::text[], %s,
-                %s, %s
+                %s, %s, %s
             )
             """,
             (
@@ -496,6 +511,7 @@ def import_skills(
                 admin_id,
                 lifecycle,
                 skill_type_val,
+                source_slug,
             ),
         )
 
@@ -631,6 +647,105 @@ def import_decisions(
     print(f"  → {ok} neu importiert, {skipped} übersprungen.")
 
 
+# ─── Code Nodes & Edges (Kartograph) ──────────────────────────────────────────
+
+def import_code_nodes(
+    cur: psycopg2.extensions.cursor,
+    project_id: str,
+    admin_id: str,
+) -> None:
+    """
+    Importiert seed/code_nodes/*.json → code_nodes + code_edges.
+    JSON-Format: { nodes: [...], edges: [...] }
+    Dedup via (project_id, path) für Nodes und (source_id, target_id, edge_type) für Edges.
+    """
+    cn_dir = SEED_DIR / "code_nodes"
+    if not cn_dir.exists():
+        print("  WARNUNG: seed/code_nodes/ nicht gefunden, übersprungen.")
+        return
+
+    node_ok = node_skipped = edge_ok = edge_skipped = 0
+    # Map: path → node UUID (für Edge-Resolution)
+    path_to_id: dict[str, str] = {}
+
+    for f in sorted(cn_dir.glob("*.json")):
+        data: dict[str, Any] = json.loads(f.read_text(encoding="utf-8"))
+        nodes = data.get("nodes", [])
+        edges = data.get("edges", [])
+
+        # ── Nodes ──
+        for node in nodes:
+            path: str = node.get("path", "")
+            node_type: str = node.get("node_type", "module")
+            label: str = node.get("label", path)
+            metadata: dict | None = node.get("metadata")
+
+            if not path:
+                continue
+
+            # Dedup via (project_id, path)
+            cur.execute(
+                "SELECT id FROM code_nodes WHERE project_id = %s AND path = %s",
+                (project_id, path),
+            )
+            existing = cur.fetchone()
+            if existing:
+                path_to_id[path] = str(existing["id"])
+                node_skipped += 1
+                continue
+
+            node_id = str(uuid.uuid4())
+            cur.execute(
+                """
+                INSERT INTO code_nodes
+                    (id, project_id, path, node_type, label, explored_at, explored_by, metadata)
+                VALUES (%s, %s, %s, %s, %s, NOW(), %s, %s)
+                """,
+                (
+                    node_id, project_id, path, node_type, label,
+                    admin_id,
+                    json.dumps(metadata) if metadata else None,
+                ),
+            )
+            path_to_id[path] = node_id
+            node_ok += 1
+
+        # ── Edges ──
+        for edge in edges:
+            source_path: str = edge.get("source", "")
+            target_path: str = edge.get("target", "")
+            edge_type: str = edge.get("edge_type", "dependency")
+
+            source_id = path_to_id.get(source_path)
+            target_id = path_to_id.get(target_path)
+
+            if not source_id or not target_id:
+                continue
+
+            # Dedup via (source_id, target_id, edge_type)
+            cur.execute(
+                """SELECT id FROM code_edges
+                   WHERE source_id = %s AND target_id = %s AND edge_type = %s""",
+                (source_id, target_id, edge_type),
+            )
+            if cur.fetchone():
+                edge_skipped += 1
+                continue
+
+            edge_id = str(uuid.uuid4())
+            cur.execute(
+                """
+                INSERT INTO code_edges (id, project_id, source_id, target_id, edge_type)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (edge_id, project_id, source_id, target_id, edge_type),
+            )
+            edge_ok += 1
+
+    print(f"  → Nodes: {node_ok} neu, {node_skipped} übersprungen.")
+    print(f"  → Edges: {edge_ok} neu, {edge_skipped} übersprungen.")
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -649,37 +764,40 @@ def main() -> None:
 
     try:
         with conn.cursor() as cur:
-            print("\n[1/8] Bootstrap Admin-User")
+            print("\n[1/9] Bootstrap Admin-User")
             admin_id = upsert_admin_user(cur)
 
-            print("\n[2/8] Project")
+            print("\n[2/9] Project")
             project_id = import_project(cur, admin_id)
 
-            print("\n[3/8] Epics")
+            print("\n[3/9] Epics")
             epic_map = import_epics(cur, project_id, admin_id)
             if not epic_map:
                 print("  WARNUNG: Keine Epics importiert — Task-Import wird übersprungen.")
 
-            print("\n[4/8] Tasks")
+            print("\n[4/9] Tasks")
             if epic_map:
                 import_tasks(cur, epic_map)
             else:
                 print("  Übersprungen (kein epic_map).")
 
-            print("\n[5/8] Wiki")
+            print("\n[5/9] Wiki")
             import_wiki(cur, project_id, admin_id, epic_map)
 
-            print("\n[6/8] Skills")
+            print("\n[6/9] Skills")
             import_skills(cur, project_id, admin_id)
 
-            print("\n[7/8] Docs")
+            print("\n[7/9] Docs")
             import_docs(cur, epic_map, admin_id)
 
-            print("\n[8/8] Decisions")
+            print("\n[8/9] Decisions")
             if epic_map:
                 import_decisions(cur, epic_map, admin_id)
             else:
                 print("  Übersprungen (kein epic_map).")
+
+            print("\n[9/9] Code Nodes (Kartograph)")
+            import_code_nodes(cur, project_id, admin_id)
 
         conn.commit()
         print("\n" + "=" * 60)

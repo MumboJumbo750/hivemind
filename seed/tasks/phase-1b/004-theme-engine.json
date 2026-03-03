@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1B",
   "title": "Theme Engine — 3 Themes + useTheme Composable",
   "description": "Theme-System über `data-theme`-Attribut auf dem `<html>`-Element implementieren. (1) `src/design/themes/space-neon.css` — Default-Theme mit den Referenzwerten: `--color-bg: #070b14`, `--color-surface: #101a2b`, `--color-surface-alt: #162238`, `--color-border: #223a63`, `--color-text: #e6f0ff`, `--color-text-muted: #7f92b3`, `--color-accent: #20e3ff`, `--color-accent-2: #ff3fd2`, `--color-success: #3cff9a`, `--color-warning: #ffb020`, `--color-danger: #ff4d6d`. Selektor: `[data-theme='space-neon']` plus `:root` als Default. Fonts: Space Grotesk (headings), Inter (body), JetBrains Mono (mono). (2) `src/design/themes/industrial-amber.css` — dunkles Amber/Braun-Thema: `--color-bg: #0d0a00`, `--color-accent: #ffaa00`, `--color-accent-2: #ff6b00`, etc. Selektor: `[data-theme='industrial-amber']`. (3) `src/design/themes/operator-mono.css` — High-Contrast Monochrom-Thema: `--color-bg: #000000`, `--color-accent: #ffffff`, `--color-text: #f0f0f0`, etc. Selektor: `[data-theme='operator-mono']`. (4) `src/composables/useTheme.ts` — Composable mit `currentTheme` (ref, Typ: `'space-neon' | 'industrial-amber' | 'operator-mono'`), `setTheme(theme)` setzt `document.documentElement.dataset.theme`, `availableThemes` Array, Theme wird in `localStorage` persistiert. Alle Theme-CSS-Dateien in `main.ts` importieren.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

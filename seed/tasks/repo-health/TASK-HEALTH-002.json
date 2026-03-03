@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-HEALTH-002",
+  "epic_ref": "EPIC-REPO-HEALTH",
+  "title": "Analyzer: Hardcoded CSS Values (Colors, Spacing, Fonts)",
+  "description": "Migriere und erweitere die bestehende Hex-Farb-Erkennung aus `scripts/arch-check.py` zu einem vollständigen CSS-Analyzer.\n\n**Was zu implementieren ist:**\n\n`scripts/analyzers/hardcoded_css.py`:\n\n1. **Hardcoded Colors** (aus arch-check.py übernehmen + erweitern):\n   - Hex-Farben: `#fff`, `#333333`, `#00000080`\n   - RGB/RGBA: `rgb(255, 0, 0)`, `rgba(0,0,0,0.5)`\n   - HSL: `hsl(120, 100%, 50%)`\n   - Named Colors in CSS: `color: red`, `background: white` (konfigurierbare Allowlist)\n   - Ausnahmen: Theme-Definition-Files, `var(--)`-Verwendungen, `currentColor`, `transparent`, `inherit`\n\n2. **Hardcoded Spacing** (NEU):\n   - Pixel-Werte: `padding: 12px`, `margin: 8px 16px`, `gap: 24px`\n   - Ausnahmen: `0px`, `1px` (Borders), Definition-Files\n   - Empfehlung: CSS-Custom-Properties oder Spacing-Scale\n\n3. **Hardcoded Font-Sizes** (NEU):\n   - `font-size: 14px`, `font-size: 1.2rem` in Komponenten\n   - Ausnahmen: Typography-Definition-Files\n\n4. **Hardcoded Z-Index** (NEU):\n   - `z-index: 999`, `z-index: 100`\n   - Empfehlung: Z-Index-Scale in Tokens\n\n**Framework-agnostisch:**\n- `.vue` Files: nur `<style>` Blöcke analysieren\n- `.jsx/.tsx` Files: Inline-Styles + styled-components erkennen\n- `.css/.scss` Files: komplett analysieren\n- Konfigurierbare Exclude-Patterns (Theme-Files, Token-Files)\n\n**Stack-Detection:** Nur ausführen wenn Frontend-Code erkannt (`vue`, `react`, `angular`, oder `.css` Files vorhanden).",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Erkennt hardcodierte Hex-Farben, RGB, HSL in Style-Blöcken",
+      "Erkennt hardcodierte Spacing-Werte (px) in Komponenten",
+      "Erkennt hardcodierte font-size und z-index Werte",
+      "Konfigurierbare Ausnahmen (Theme-Files, Token-Files, Allowlist)",
+      "Funktioniert für .vue, .jsx/.tsx, .css, .scss Dateien",
+      "Registriert sich automatisch im AnalyzerRegistry",
+      "Unit-Tests mit Beispiel-Dateien für jede Erkennung",
+      "Zero false-positives in Hivemind Frontend"
+    ]
+  },
+  "tags": ["tooling", "css", "frontend", "code-quality"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": ["frontend-component-architektur"],
+  "source_doc": null,
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-HEALTH-001"]
+}

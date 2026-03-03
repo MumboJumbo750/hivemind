@@ -1,13 +1,16 @@
-"""Prompt-Generator Service — TASK-3-005.
+"""Prompt-Generator Service — TASK-3-005 + TASK-8-016.
 
 Generates context-specific prompts for all agents:
   bibliothekar, worker, review, gaertner, architekt, stratege, kartograph, triage.
 
 Each invocation writes a prompt_history entry with token count.
 Retention: max 500 entries per task (FIFO).
+
+Phase 8 (TASK-8-016): Provider-specific token budget from ai_provider_configs.
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 import uuid
@@ -17,7 +20,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
-from app.models.context_boundary import ContextBoundary
+from app.models.context_boundary import ContextBoundary, TaskSkill
 from app.models.doc import Doc
 
 
@@ -45,6 +48,10 @@ from app.models.wiki import WikiArticle
 
 logger = logging.getLogger(__name__)
 
+
+def _slugify(text: str) -> str:
+    return re.sub(r"[^a-z0-9-]+", "-", text.lower()).strip("-")
+
 # Token counting — use tiktoken when available, fallback to word approximation
 _encoding = None
 try:
@@ -63,12 +70,55 @@ def count_tokens(text: str) -> int:
 
 MAX_HISTORY_PER_TASK = 500
 
+# Default token budget when no DB config is available (fallback to settings)
+_DEFAULT_TOKEN_BUDGET = 8000
+
+
+async def _get_provider_token_budget(db: AsyncSession, agent_role: str, settings: Settings) -> int:
+    """Return the effective token budget for an agent role.
+
+    Lookup chain:
+    1. ai_provider_configs.token_budget_daily for the role
+    2. settings.hivemind_token_budget (global default)
+
+    Applies HIVEMIND_TOKEN_COUNT_CALIBRATION factor if set.
+    """
+    budget = settings.hivemind_token_budget
+    provider_name: str | None = None
+    try:
+        from app.models.ai_provider import AIProviderConfig
+        result = await db.execute(
+            select(AIProviderConfig).where(
+                AIProviderConfig.agent_role == agent_role,
+                AIProviderConfig.enabled.is_(True),
+            )
+        )
+        config = result.scalar_one_or_none()
+        if config and config.token_budget_daily:
+            budget = config.token_budget_daily
+        if config:
+            provider_name = config.provider
+    except Exception:
+        pass  # graceful fallback if table doesn't exist yet
+
+    # Apply calibration factor per provider
+    if provider_name and settings.hivemind_token_count_calibration:
+        try:
+            calibration: dict = json.loads(settings.hivemind_token_count_calibration)
+            factor = float(calibration.get(provider_name, 1.0))
+            budget = int(budget * factor)
+        except Exception:
+            pass
+
+    return budget
+
 
 class PromptGenerator:
     """Generates agent prompts and records them in prompt_history."""
 
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, settings: Settings | None = None) -> None:
         self.db = db
+        self._settings = settings
 
     async def generate(
         self,
@@ -95,7 +145,22 @@ class PromptGenerator:
         if not handler:
             raise ValueError(f"Unbekannter Prompt-Typ: {prompt_type}")
 
-        prompt = await handler(task_id=task_id, epic_id=epic_id, project_id=project_id)
+        # Phase 8: resolve effective token budget for this agent role
+        effective_budget: int | None = None
+        if self._settings and prompt_type in (
+            "bibliothekar", "worker", "review", "gaertner",
+            "architekt", "stratege", "kartograph", "triage",
+        ):
+            effective_budget = await _get_provider_token_budget(
+                self.db, prompt_type, self._settings
+            )
+
+        prompt = await handler(
+            task_id=task_id,
+            epic_id=epic_id,
+            project_id=project_id,
+            token_budget=effective_budget,
+        )
 
         # Save to prompt_history
         task_uuid = None
@@ -138,7 +203,7 @@ class PromptGenerator:
 
     # ── Agent Prompt Generators ────────────────────────────────────────────
 
-    async def _bibliothekar(self, *, task_id: str | None, **_) -> str:
+    async def _bibliothekar(self, *, task_id: str | None, token_budget: int | None = None, **_) -> str:
         if not task_id:
             raise ValueError("bibliothekar benötigt task_id")
         task = await self._load_task(task_id)
@@ -151,12 +216,15 @@ class PromptGenerator:
         skills_text = self._format_skills(skills)
         docs_text = self._format_docs(docs)
 
+        budget = token_budget or _DEFAULT_TOKEN_BUDGET
+        budget_hint = f"\n> **Token-Budget:** ~{budget} Tokens verfügbar (Provider-konfiguriert).\n" if token_budget else ""
+
         return f"""## Rolle: Bibliothekar — Context Assembly
 
 **Task:** {task.task_key} — {task.title}
 **Status:** {task.state}
 **Beschreibung:** {task.description or 'Keine Beschreibung'}
-
+{budget_hint}
 ### Verfügbare aktive Skills ({len(skills)})
 {skills_text}
 
@@ -167,7 +235,8 @@ class PromptGenerator:
 1. Analysiere die Task-Beschreibung und Definition-of-Done.
 2. Wähle 1-3 relevante Skills aus der Liste.
 3. Erkläre kurz, warum diese Skills relevant sind.
-4. Baue daraus den Worker-Prompt zusammen."""
+4. Baue daraus den Worker-Prompt zusammen.
+5. Halte den Prompt innerhalb des Token-Budgets (~{budget} Tokens)."""
 
     async def _worker(self, *, task_id: str | None, **_) -> str:
         if not task_id:
@@ -180,6 +249,24 @@ class PromptGenerator:
         guards_text = self._format_guards(guards)
         dod = task.definition_of_done or {}
         criteria = dod.get("criteria", [])
+        linked_skills = await self._get_task_linked_skills(task)
+        pinned_slugs = list(task.pinned_skills or [])
+        pinned_skills = await self._resolve_pinned_skills(pinned_slugs)
+        skills_overview_text = self._format_task_skill_overview(
+            linked_skills=linked_skills,
+            pinned_slugs=pinned_slugs,
+            pinned_skills=pinned_skills,
+        )
+        pinned_skills_text = self._format_pinned_skills(pinned_skills, pinned_slugs)
+        context_boundary = await self._get_task_context_boundary(task)
+        allowed_boundary_skills = await self._resolve_skills_by_ids(
+            list(context_boundary.allowed_skills or []) if context_boundary else []
+        )
+        context_boundary_text = self._format_task_context_boundary(
+            task=task,
+            boundary=context_boundary,
+            allowed_skills=allowed_boundary_skills,
+        )
 
         # Phase 5 enhancements: review comment on re-entry, write tools list
         review_hint = ""
@@ -189,12 +276,24 @@ class PromptGenerator:
 {task.review_comment}
 """
 
+        mcp_base = "http://localhost:8000"
+        mcp_sse_url = f"{mcp_base}/api/mcp/sse"
+        task_resource_uri = f"hivemind://task/{task.task_key}"
+
         return f"""## Rolle: Worker — Task-Ausführung
 
 **Task:** {task.task_key} — {task.title}
 **Status:** {task.state} (QA-Failed: {task.qa_failed_count or 0})
 **Beschreibung:** {task.description or 'Keine Beschreibung'}
 {review_hint}
+### MCP-Verbindung
+
+MCP-Server: `{mcp_sse_url}`
+Task-Resource: `{task_resource_uri}`
+
+> VS Code/Copilot: `.vscode/mcp.json` ist bereits im Repo — Hivemind-Tools sind automatisch verfügbar.
+> Andere Clients: `GET {mcp_base}/api/mcp/discovery`
+
 ### Definition of Done
 {chr(10).join(f'- [ ] {c}' for c in criteria) if criteria else '- Keine DoD definiert'}
 
@@ -204,11 +303,34 @@ class PromptGenerator:
 > nach `in_review` wechseln kann. Nutze `hivemind/report_guard_result` zum
 > Melden der Guard-Ergebnisse.
 
-### Pinned Skills
-{', '.join(str(s) for s in (task.pinned_skills or [])) or 'Keine'}
+### Context Boundary
+{context_boundary_text}
+
+### Skills
+{skills_overview_text}
+
+### Skills — Volltext (Pinned)
+{pinned_skills_text}
 
 ### Verfügbare Write-Tools
-- `hivemind/submit_result` — Ergebnis + Artifacts speichern
+
+> ⚠️ **Zwei-Schritt-Abschluss — häufiger Fehler:**
+> `submit_result` speichert nur Ergebnis/Artifacts — der Task bleibt in `in_progress`!
+> Danach **muss** `update_task_state` aufgerufen werden.
+
+**Schritt 1 — Ergebnis speichern:**
+- `hivemind/submit_result` — Ergebnis + Artifacts speichern (State bleibt `in_progress`!)
+  ```json
+  {{"tool": "hivemind/submit_result", "arguments": {{"task_key": "{task.task_key}", "result": "...", "artifacts": []}}}}
+  ```
+
+**Schritt 2 — State wechseln:**
+- `hivemind/update_task_state` — Task nach `in_review` schieben (erst nach Schritt 1!)
+  ```json
+  {{"tool": "hivemind/update_task_state", "arguments": {{"task_key": "{task.task_key}", "target_state": "in_review"}}}}
+  ```
+
+**Weitere Tools:**
 - `hivemind/report_guard_result` — Guard-Status melden (passed/failed/skipped)
 - `hivemind/create_decision_request` — Entscheidung anfordern (Task → blocked)
 
@@ -228,6 +350,27 @@ Schreibe das Ergebnis als Markdown und nutze `hivemind/submit_result`."""
         guards_text = self._format_guards_with_provenance(guards)
         dod = task.definition_of_done or {}
         criteria = dod.get("criteria", [])
+        linked_skills = await self._get_task_linked_skills(task)
+        pinned_slugs = list(task.pinned_skills or [])
+        pinned_skills = await self._resolve_pinned_skills(pinned_slugs)
+        skills_overview_text = self._format_task_skill_overview(
+            linked_skills=linked_skills,
+            pinned_slugs=pinned_slugs,
+            pinned_skills=pinned_skills,
+        )
+        context_boundary = await self._get_task_context_boundary(task)
+        allowed_boundary_skills = await self._resolve_skills_by_ids(
+            list(context_boundary.allowed_skills or []) if context_boundary else []
+        )
+        context_boundary_text = self._format_task_context_boundary(
+            task=task,
+            boundary=context_boundary,
+            allowed_skills=allowed_boundary_skills,
+        )
+
+        mcp_base = "http://localhost:8000"
+        mcp_sse_url = f"{mcp_base}/api/mcp/sse"
+        task_resource_uri = f"hivemind://task/{task.task_key}"
 
         return f"""## Rolle: Reviewer — Quality Gate
 
@@ -235,17 +378,61 @@ Schreibe das Ergebnis als Markdown und nutze `hivemind/submit_result`."""
 **Status:** {task.state} (QA-Failed Count: {task.qa_failed_count})
 **Ergebnis:** {task.result or 'Noch kein Ergebnis eingereicht'}
 
+---
+
+### MCP-Verbindung (Pflicht vor Beginn)
+
+Verbinde dich mit dem Hivemind MCP-Server um die Review-Tools nutzen zu können:
+
+| Client | Konfiguration |
+|--------|---------------|
+| VS Code / Copilot | `.vscode/mcp.json` bereits im Repo — kein Setup nötig |
+| Claude Desktop | SSE-URL: `{mcp_sse_url}` (via `mcp-remote`) |
+| Cursor | SSE-URL: `{mcp_sse_url}` |
+| Copilot CLI | `gh copilot mcp add hivemind --type sse --url {mcp_sse_url}` |
+
+**Discovery:** `GET {mcp_base}/api/mcp/discovery` — Config-Snippets für alle Clients.
+
+**Task-Kontext als MCP-Resource laden:**
+```
+Resource URI: {task_resource_uri}
+```
+In VS Code: *Add Context → MCP Resources → {task_resource_uri}*
+
+---
+
+### Skills
+{skills_overview_text}
+
 ### Definition of Done — Checkliste
 {chr(10).join(f'- [ ] {c}' for c in criteria) if criteria else '- Keine DoD definiert'}
 
 ### Guards — Status mit Provenance
 {guards_text}
 
+### Context Boundary
+{context_boundary_text}
+
+---
+
 ### Auftrag
-1. Prüfe ob jedes DoD-Kriterium erfüllt ist.
-2. Prüfe alle Guards — beachte die **Quelle** (self-reported vs. system-executed).
-3. ⚠ **Warnung**: Bei `self-reported` Guards ohne Output besonders kritisch prüfen!
-4. Entscheide: `hivemind/approve_review` oder `hivemind/reject_review` (mit Begründung)."""
+1. Lade Task-Kontext via MCP-Resource `{task_resource_uri}`.
+2. Prüfe ob jedes DoD-Kriterium erfüllt ist.
+3. Prüfe alle Guards — beachte die **Quelle** (self-reported vs. system-executed).
+4. ⚠ **Warnung**: Bei `self-reported` Guards ohne Output besonders kritisch prüfen!
+5. Entscheide und führe einen der folgenden MCP-Calls aus:
+
+**Approve:**
+```json
+{{"tool": "hivemind/approve_review", "arguments": {{"task_key": "{task.task_key}", "comment": "Alle DoD-Kriterien erfüllt. Guards bestanden."}}}}
+```
+
+**Reject (QA Failed):**
+```json
+{{"tool": "hivemind/reject_review", "arguments": {{"task_key": "{task.task_key}", "comment": "Begründung: <was fehlt oder fehlerhaft ist>"}}}}
+```
+
+**Alle verfügbaren Tools:** `GET {mcp_base}/api/mcp/tools`"""
 
     async def _gaertner(self, *, task_id: str | None, epic_id: str | None, **_) -> str:
         if not task_id and not epic_id:
@@ -831,6 +1018,128 @@ Gib für jeden Event zurück:
             ).order_by(Skill.title)
         )
         return list(result.scalars().all())
+
+    async def _resolve_pinned_skills(self, slugs: list[str]) -> list[Skill]:
+        """Resolve pinned_skills slug list to Skill objects via source_slug."""
+        if not slugs:
+            self._unresolved_slugs = []
+            return []
+        result = await self.db.execute(
+            select(Skill).where(
+                Skill.source_slug.in_(slugs),
+                Skill.lifecycle == "active",
+                Skill.deleted_at.is_(None),
+            ).order_by(Skill.title)
+        )
+        found = list(result.scalars().all())
+        # Warn in prompt for slugs that could not be resolved
+        found_slugs = {s.source_slug for s in found}
+        self._unresolved_slugs = [s for s in slugs if s not in found_slugs]
+        return found
+
+    async def _resolve_skills_by_ids(self, skill_ids: list[uuid.UUID]) -> list[Skill]:
+        if not skill_ids:
+            return []
+        result = await self.db.execute(
+            select(Skill)
+            .where(Skill.id.in_(skill_ids), Skill.deleted_at.is_(None))
+            .order_by(Skill.title.asc())
+        )
+        return list(result.scalars().all())
+
+    async def _get_task_linked_skills(self, task: Task) -> list[Skill]:
+        result = await self.db.execute(
+            select(Skill)
+            .join(TaskSkill, TaskSkill.skill_id == Skill.id)
+            .where(TaskSkill.task_id == task.id, Skill.deleted_at.is_(None))
+            .order_by(Skill.title.asc())
+        )
+        return list(result.scalars().all())
+
+    async def _get_task_context_boundary(self, task: Task) -> ContextBoundary | None:
+        result = await self.db.execute(
+            select(ContextBoundary).where(ContextBoundary.task_id == task.id).limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    def _format_pinned_skills(self, skills: list[Skill], raw_slugs: list[str]) -> str:
+        """Render pinned skills as full content blocks for agent consumption."""
+        if not raw_slugs:
+            return "_Keine gepinnten Skills_"
+        if not skills:
+            return (
+                f"_Slug-Liste: {', '.join(raw_slugs)} — Skills konnten nicht aufgelöst werden._\n"
+                "_Führe `make migrate` und `seed_import` aus, um Skills zu indexieren._"
+            )
+        lines = []
+        unresolved = getattr(self, "_unresolved_slugs", [])
+        for skill in skills:
+            lines.append(f"#### {skill.title} (`{skill.source_slug}`)")
+            lines.append(skill.content.strip())
+            lines.append("")
+        if unresolved:
+            lines.append(f"_Nicht aufgelöste Slugs: {', '.join(unresolved)}_")
+        return "\n".join(lines)
+
+    def _format_task_skill_overview(
+        self,
+        *,
+        linked_skills: list[Skill],
+        pinned_slugs: list[str],
+        pinned_skills: list[Skill],
+    ) -> str:
+        lines: list[str] = []
+        if linked_skills:
+            lines.append("**Linked Skills (task_skills):**")
+            for skill in linked_skills:
+                lines.append(f"- {skill.title} (`{skill.source_slug or _slugify(skill.title)}`)")
+        else:
+            lines.append("_Keine linked Skills über `task_skills`._")
+
+        if pinned_slugs:
+            lines.append("")
+            lines.append(f"**Pinned Skill Refs:** {', '.join(pinned_slugs)}")
+            if pinned_skills:
+                lines.append("**Aufgelöste Pinned Skills:**")
+                for skill in pinned_skills:
+                    lines.append(f"- {skill.title}")
+            unresolved = getattr(self, "_unresolved_slugs", [])
+            if unresolved:
+                lines.append(f"_Nicht aufgelöste Pinned Refs: {', '.join(unresolved)}_")
+        else:
+            lines.append("")
+            lines.append("_Keine Pinned Skills gesetzt._")
+
+        return "\n".join(lines)
+
+    def _format_task_context_boundary(
+        self,
+        *,
+        task: Task,
+        boundary: ContextBoundary | None,
+        allowed_skills: list[Skill],
+    ) -> str:
+        if not boundary:
+            return (
+                "_Keine Context Boundary gesetzt._\n"
+                "- Resource URI: "
+                f"`hivemind://context-boundary/{task.task_key}`\n"
+                "- Hinweis: Mit `hivemind/set_context_boundary` kann ein Scope gesetzt werden."
+            )
+
+        allowed_skill_titles = ", ".join(skill.title for skill in allowed_skills) or "_keine_"
+        allowed_docs = ", ".join(str(doc_id) for doc_id in (boundary.allowed_docs or [])) or "_keine_"
+        external_access = ", ".join(boundary.external_access or []) or "_kein externer Zugriff_"
+        max_budget = boundary.max_token_budget or _DEFAULT_TOKEN_BUDGET
+
+        return (
+            f"- Resource URI: `hivemind://context-boundary/{task.task_key}`\n"
+            f"- Max Token Budget: {max_budget}\n"
+            f"- Allowed Skills: {allowed_skill_titles}\n"
+            f"- Allowed Docs: {allowed_docs}\n"
+            f"- External Access: {external_access}\n"
+            f"- Version: {boundary.version}"
+        )
 
     async def _get_epic_docs(self, epic_id: uuid.UUID) -> list[Doc]:
         result = await self.db.execute(

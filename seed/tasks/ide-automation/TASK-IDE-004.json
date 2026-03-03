@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-IDE-004",
+  "epic_ref": "EPIC-IDE-AUTOMATION",
+  "title": "Chat Participant: @hivemind in Copilot Chat",
+  "description": "VS Code Chat Participant der Hivemind-Agenten direkt im Copilot Chat verfügbar macht.\n\n**Was zu implementieren ist:**\n\n1. **Chat Participant Registrierung:**\n   ```typescript\n   const participant = vscode.chat.createChatParticipant('hivemind', handler);\n   participant.iconPath = new vscode.ThemeIcon('beaker');\n   ```\n\n2. **Commands:**\n   - `@hivemind` (ohne Subcommand) → zeigt Status-Übersicht (offene Tasks, letzte Aktivität)\n   - `@hivemind next` → holt nächsten Dispatch und zeigt vollständigen Prompt\n   - `@hivemind task TASK-KEY` → zeigt Task-Details + generiert Worker-Prompt\n   - `@hivemind guard` → führt Guards für aktuellen Task aus, reported Ergebnis\n   - `@hivemind health` → führt `make health` aus und zeigt Findings\n   - `@hivemind kartograph` → startet Kartograph-Session (Bootstrap oder Follow-Up)\n\n3. **Handler-Logik:**\n   - Ruft Hivemind MCP-Tools auf (via HTTP, nicht über MCP-Protokoll)\n   - Nutzt `vscode.lm` API für AI-Antworten wenn nötig\n   - Streamt Fortschritt via `progress.report()`\n   - Zeigt Follow-Up-Buttons (`vscode.ChatFollowup`): 'Task übernehmen', 'Guard ausführen'\n\n4. **Kontext-Enrichment:**\n   - `@hivemind` kann im Chat-Kontext als Teilnehmer erwähnt werden\n   - Andere Prompts können `@hivemind` referenzieren für Hivemind-Kontext\n   - Chat-Variablen: `#hivemind:task`, `#hivemind:epic` für aktiven Kontext\n\n**Wichtig:** Der Chat Participant ersetzt NICHT den Agent Mode. Er ist ein Einstiegspunkt der den User zum richtigen Agent-Mode-Prompt leitet. Der eigentliche Ausführungs-Flow bleibt bei Copilot Agent Mode + MCP-Tools.",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "@hivemind Chat Participant ist in Copilot Chat verfügbar",
+      "Subcommands: next, task, guard, health, kartograph funktionieren",
+      "Handler ruft Hivemind Backend via HTTP auf",
+      "Follow-Up-Buttons für häufige Aktionen",
+      "Chat-Variablen #hivemind:task und #hivemind:epic verfügbar",
+      "Streamt Fortschritt via progress.report()"
+    ]
+  },
+  "tags": ["vscode", "copilot", "chat-participant", "ide"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-IDE-003"]
+}

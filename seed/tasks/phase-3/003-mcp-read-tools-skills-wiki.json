@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-3",
   "title": "MCP Read-Tools: Skills, Wiki & Search",
   "description": "Zweite Gruppe von MCP-Read-Tools: Skill-Browsing und Wiki-Zugriff. Tools: `hivemind/get_skills { task_id }` — Bibliothekar-gefiltert (Phase 1-2: alle aktiven Skills). `hivemind/list_skills { service_scope?, stack?, lifecycle?, limit, offset }` — Browsing aller Skills ohne Task-Bezug, kein Bibliothekar-Filtering. `hivemind/get_wiki_article { id | slug }` — Wiki-Artikel per UUID oder Slug laden. `hivemind/search_wiki { query, tags? }` — Textsuche über Wiki-Artikel (Title + Body ILIKE, Tag-Filter). Ab Phase 3+: pgvector-Similarity-Search wenn Embeddings vorhanden, Fallback auf ILIKE. Paginierung mit `limit`/`offset` wo applicable.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

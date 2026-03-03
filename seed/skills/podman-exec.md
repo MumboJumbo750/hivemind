@@ -2,7 +2,7 @@
 title: "Podman Exec — Hivemind Container-Befehle"
 service_scope: ["backend", "database", "devops"]
 stack: ["podman", "docker-compose"]
-skill_type: "system"
+skill_type: "runtime"
 confidence: 0.95
 source_epics: ["EPIC-ENV-BOOTSTRAP"]
 guards: []

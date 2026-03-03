@@ -5,6 +5,9 @@ import { useSettingsStore } from '../../stores/settingsStore'
 import { useAuthStore } from '../../stores/authStore'
 import FederationSettings from '../../components/domain/FederationSettings.vue'
 import SyncStatusPanel from '../../components/SyncStatusPanel.vue'
+import AiProviderConfigPanel from '../../components/domain/AiProviderConfigPanel.vue'
+import GovernanceConfigPanel from '../../components/domain/GovernanceConfigPanel.vue'
+import McpBridgeConfigPanel from '../../components/domain/McpBridgeConfigPanel.vue'
 import { api } from '../../api'
 import type { AuditEntry } from '../../api/types'
 
@@ -12,7 +15,7 @@ const { currentTheme, availableThemes, setTheme } = useTheme()
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
 
-const activeTab = ref<'settings' | 'sync' | 'audit'>('settings')
+const activeTab = ref<'settings' | 'sync' | 'audit' | 'ai-providers' | 'governance' | 'mcp-bridges'>('settings')
 const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 // ── Audit Log state ──────────────────────────────────────────────────────────
@@ -184,6 +187,22 @@ onMounted(() => {
         :class="{ 'settings-tab--active': activeTab === 'audit' }"
         @click="activeTab = 'audit'"
       >Audit Log</button>
+      <button
+        class="settings-tab"
+        :class="{ 'settings-tab--active': activeTab === 'ai-providers' }"
+        @click="activeTab = 'ai-providers'"
+      >KI-Provider</button>
+      <button
+        class="settings-tab"
+        :class="{ 'settings-tab--active': activeTab === 'governance' }"
+        @click="activeTab = 'governance'"
+      >Governance</button>
+      <button
+        v-if="isAdmin"
+        class="settings-tab"
+        :class="{ 'settings-tab--active': activeTab === 'mcp-bridges' }"
+        @click="activeTab = 'mcp-bridges'"
+      >MCP Bridges</button>
     </nav>
 
     <!-- ═══ General Settings Tab ═══ -->
@@ -388,6 +407,33 @@ onMounted(() => {
             <button class="btn-page" :disabled="!auditHasMore" @click="nextPage">▶</button>
           </div>
         </div>
+      </section>
+    </template>
+
+    <!-- ═══ KI-Provider Tab ═══ -->
+    <template v-if="activeTab === 'ai-providers'">
+      <section class="settings-section">
+        <h2 class="section-title">KI-Provider</h2>
+        <p class="section-desc">Konfiguriere AI-Provider und Modelle pro Agenten-Rolle. Rollenspezifische Einstellungen haben Vorrang vor dem globalen Fallback.</p>
+        <AiProviderConfigPanel />
+      </section>
+    </template>
+
+    <!-- ═══ Governance Tab ═══ -->
+    <template v-if="activeTab === 'governance'">
+      <section class="settings-section">
+        <h2 class="section-title">Governance</h2>
+        <p class="section-desc">Lege fest, wie autonom Hivemind für jeden Governance-Typ entscheiden darf.</p>
+        <GovernanceConfigPanel />
+      </section>
+    </template>
+
+    <!-- ═══ MCP Bridges Tab (Admin only) ═══ -->
+    <template v-if="activeTab === 'mcp-bridges' && isAdmin">
+      <section class="settings-section">
+        <h2 class="section-title">MCP Bridges</h2>
+        <p class="section-desc">Verwalte externe MCP Tool-Server, die Hivemind als zusätzliche Tool-Quellen nutzt.</p>
+        <McpBridgeConfigPanel />
       </section>
     </template>
   </div>

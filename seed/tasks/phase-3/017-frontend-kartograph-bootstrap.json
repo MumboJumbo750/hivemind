@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-3",
   "title": "Frontend: Kartograph-Bootstrap-Flow",
   "description": "Kartograph-Bootstrap UI implementieren: 'Neues Projekt → Kartograph starten'-Flow. Entry-Point: Button in Project-Settings oder Command Deck 'Kartograph-Analyse starten'. Flow: (1) Repo-URL eingeben oder lokalen Pfad wählen. (2) Kartograph-Prompt via `hivemind/get_prompt { type: 'kartograph' }` generieren. (3) Generierter Prompt in Volltext-Modal anzeigen (Copy-to-Clipboard-Button). (4) User kopiert Prompt in AI-Client, führt Analyse durch. (5) Ergebnis-Panel: Textbereich für Kartograph-Output (manuelles Einfügen). Hinweis-Banner: 'Kartograph-Ergebnisse werden ab Phase 5 automatisch gespeichert. Bis dahin: Ergebnisse manuell in Wiki/Code-Graph übertragen.' Write-Einschränkung beachten: Kartograph-Write-Tools kommen erst in Phase 5. In Phase 3-4 ist alles manuelles Copy-Paste. Integration: Route `/kartograph-bootstrap`, Link im Command Deck und Project-Settings.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

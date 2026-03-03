@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1B",
   "title": "Vue Router Setup + View-Platzhalter für alle Routes",
   "description": "`src/router/index.ts` mit `createRouter` und `createWebHistory` anlegen. Alle Views als Platzhalter-Komponenten anlegen — jede Datei zeigt nur ihren Namen als Heading plus einen TODO-Kommentar. Views und ihre Pfade: `PromptStation` → `/` (Default), `CommandDeck` → `/command-deck` (Lock-Teaser: zeigt gesperrtes Icon + Text 'Verfügbar in Phase 2'), `SkillLab` → `/skill-lab` (Lock-Teaser), `Wiki` → `/wiki` (Lock-Teaser), `Settings` → `/settings`, `NotificationTray` → `/notifications`. Verzeichnisstruktur: `src/views/PromptStation/PromptStationView.vue`, `src/views/CommandDeck/CommandDeckView.vue`, `src/views/SkillLab/SkillLabView.vue`, `src/views/Wiki/WikiView.vue`, `src/views/Settings/SettingsView.vue`, `src/views/NotificationTray/NotificationTrayView.vue`. Router in `main.ts` via `app.use(router)` registrieren (bereits in TASK-1B-001 gebootstrappt). Nav-Links in der NavSidebar-Slot des AppShell als `<RouterLink>`-Liste.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

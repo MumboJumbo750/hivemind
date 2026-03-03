@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "Backup-Cron: pg_dump via Cron-Sidecar-Container",
   "description": "Täglicher pg_dump --format=custom via separatem Cron-Sidecar-Container im Docker Compose Stack. Konfigurierbar via HIVEMIND_BACKUP_CRON + HIVEMIND_BACKUP_DIR. Retention: 7 tägliche + 4 wöchentliche + 3 monatliche Backups.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

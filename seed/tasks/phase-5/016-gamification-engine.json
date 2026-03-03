@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Gamification-Engine: EXP-Trigger, Badge-Check, Level-Up",
   "description": "EXP-Trigger in approve_review(+50,+20 Clean-Run), merge_skill(+30), create_wiki_article(+15), merge_guard(+30), create_decision_record(+10). Anti-Spam 1x/Entity. Badge-Check gegen badge_definitions. Level-Up gegen level_thresholds. SSE-Events. GET /api/users/me/achievements.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

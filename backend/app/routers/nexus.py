@@ -2,8 +2,11 @@
 
 Endpoints:
   GET /api/nexus/graph       — Returns code nodes + edges for Cytoscape.js rendering.
+  GET /api/nexus/graph3d     — Returns 3D-optimised graph for Three.js (TASK-8-017).
   GET /api/nexus/bug-counts  — Bug-count aggregation per code_node (TASK-7-014).
 """
+import hashlib
+import random
 import uuid
 from typing import Optional
 
@@ -104,6 +107,125 @@ async def get_nexus_graph(
         total_nodes=len(nodes),
         explored_count=explored,
         unexplored_count=len(nodes) - explored,
+    )
+
+
+# ── Nexus Grid 3D endpoint (TASK-8-017) ───────────────────────────────────────
+
+# Y-layer per node_type (used as stable "depth" hint for Three.js)
+_NODE_TYPE_Y: dict[str, float] = {
+    "file": 0.0,
+    "module": 10.0,
+    "class": 20.0,
+    "function": 30.0,
+}
+
+
+def _stable_coords(node_id: uuid.UUID, node_type: str) -> tuple[float, float, float]:
+    """Return deterministic (x, y, z) coordinates seeded from the node UUID."""
+    seed_int = int(hashlib.md5(node_id.bytes, usedforsecurity=False).hexdigest(), 16)  # noqa: S324
+    rng = random.Random(seed_int)  # noqa: S311
+    x = round(rng.uniform(-50.0, 50.0), 3)
+    y = _NODE_TYPE_Y.get(node_type, 15.0)
+    z = round(rng.uniform(-25.0, 25.0), 3)
+    return x, y, z
+
+
+class Node3DItem(BaseModel):
+    id: str
+    label: str
+    type: str
+    x: float
+    y: float
+    z: float
+    fog_of_war: bool
+    discovery_count: int
+
+
+class Edge3DItem(BaseModel):
+    source: str
+    target: str
+    type: str
+
+
+class NexusGraph3DResponse(BaseModel):
+    nodes: list[Node3DItem]
+    edges: list[Edge3DItem]
+    total_nodes: int
+    page: int
+    page_size: int
+    has_more: bool
+
+
+@router.get("/graph3d", response_model=NexusGraph3DResponse)
+async def get_nexus_graph3d(
+    project_id: Optional[uuid.UUID] = Query(None, description="Filter by project UUID"),
+    page: int = Query(0, ge=0, description="Zero-based page index"),
+    page_size: int = Query(500, ge=1, le=2000, description="Nodes per page"),
+    db: AsyncSession = Depends(get_db),
+) -> NexusGraph3DResponse:
+    """Return 3D-optimised graph payload for Three.js rendering (TASK-8-017).
+
+    Positions are seeded from the node UUID so they are stable across requests.
+    """
+    # Total count for pagination metadata
+    count_stmt = select(func.count()).select_from(CodeNode)
+    if project_id:
+        count_stmt = count_stmt.where(CodeNode.project_id == project_id)
+    total_nodes: int = (await db.execute(count_stmt)).scalar_one()
+
+    # Paginated node query
+    nodes_stmt = select(CodeNode).offset(page * page_size).limit(page_size)
+    if project_id:
+        nodes_stmt = nodes_stmt.where(CodeNode.project_id == project_id)
+    nodes = list((await db.execute(nodes_stmt)).scalars().all())
+    node_ids = {n.id for n in nodes}
+
+    # Edges connected to the returned nodes
+    edges_list: list[CodeEdge] = []
+    if node_ids:
+        edges_result = await db.execute(
+            select(CodeEdge).where(
+                or_(
+                    CodeEdge.source_id.in_(node_ids),
+                    CodeEdge.target_id.in_(node_ids),
+                )
+            )
+        )
+        edges_list = list(edges_result.scalars().all())
+
+    node_items: list[Node3DItem] = []
+    for n in nodes:
+        x, y, z = _stable_coords(n.id, n.node_type)
+        node_items.append(
+            Node3DItem(
+                id=str(n.id),
+                label=n.label,
+                type=n.node_type,
+                x=x,
+                y=y,
+                z=z,
+                fog_of_war=(n.explored_at is None),
+                discovery_count=0,  # extended in future phase
+            )
+        )
+
+    edge_items = [
+        Edge3DItem(
+            source=str(e.source_id),
+            target=str(e.target_id),
+            type=e.edge_type,
+        )
+        for e in edges_list
+    ]
+
+    return NexusGraph3DResponse(
+        nodes=node_items,
+        edges=edge_items,
+        total_nodes=total_nodes,
+        page=page,
+        page_size=page_size,
+        has_more=(page * page_size + len(nodes)) < total_nodes,
     )
 
 

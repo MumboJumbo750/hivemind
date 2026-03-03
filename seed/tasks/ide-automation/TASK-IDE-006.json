@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-IDE-006",
+  "epic_ref": "EPIC-IDE-AUTOMATION",
+  "title": "Auto-Execute: Extension delegiert Dispatches an Copilot Agent Mode",
+  "description": "Die VS Code Extension empfängt Conductor-Dispatches und delegiert sie automatisch an Copilot Agent Mode — der User schaut zu.\n\n**Was zu implementieren ist:**\n\n1. **Dispatch-Empfang → Chat-Delegation:**\n   - Extension empfängt `conductor:dispatch` SSE-Event\n   - Zeigt Notification: 'Hivemind: Worker-Task TASK-HEALTH-001 bereit — Ausführen?'\n   - Bei Bestätigung (oder Auto-Mode): öffnet Copilot Chat mit dem Prompt\n   - Nutzt `vscode.commands.executeCommand('workbench.action.chat.open')` + Chat API\n\n2. **Governance-Stufen:**\n   - **Manual:** Notification + User-Bestätigung vor jeder Ausführung\n   - **Semi-Auto:** Auto-Execute für Worker + Kartograph, Manual für Stratege + Architekt\n   - **Full-Auto:** Alle Dispatches werden automatisch ausgeführt\n   - Konfigurierbar via Extension Settings + Hivemind Governance-Level\n\n3. **Progress-Tracking:**\n   - Extension überwacht Chat-Aktivität\n   - Erkennt Tool-Calls und MCP-Aufrufe\n   - Meldet Fortschritt an Backend: `POST /api/conductor/dispatches/{id}/progress`\n   - Bei `submit_result` MCP-Call → Extension erkennt Completion → meldet an Conductor\n\n4. **Error-Handling:**\n   - Copilot-Fehler → Extension meldet `failed` an Conductor\n   - User-Abbruch → Extension meldet `cancelled`\n   - Timeout → Fallback-Notification\n\n5. **Copilot CLI Alternative:**\n   - Für Headless-Modus: `gh copilot` mit taskfile statt Chat\n   - Extension kann wahlweise Terminal (CLI) oder Chat (GUI) nutzen\n\n**Limitierung (Stand März 2026):** VS Code hat noch kein offizielles API um programmatisch Prompts an Agent Mode zu senden. Die Extension nutzt als Workaround:\n- Chat Participant API (der `@hivemind` Participant empfängt den Prompt)\n- Oder: Language Model API + eigene Tool-Implementierung",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Extension empfängt Conductor-Dispatches und zeigt Notification",
+      "Drei Governance-Stufen: Manual, Semi-Auto, Full-Auto",
+      "Progress-Tracking meldet Fortschritt an Backend",
+      "Error-Handling: failed, cancelled, timeout korrekt an Conductor gemeldet",
+      "submit_result MCP-Call wird als Completion erkannt",
+      "Copilot CLI als Headless-Alternative dokumentiert"
+    ]
+  },
+  "tags": ["vscode", "copilot", "automation", "conductor"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": ["autonomie-loop"],
+  "source_doc": null,
+  "estimated_complexity": "xlarge",
+  "depends_on": ["TASK-IDE-004", "TASK-IDE-005"]
+}

@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Audit-Writer (mcp_invocations Logger)",
   "description": "Nach jedem Write-Endpoint einen Eintrag in `mcp_invocations`-Tabelle schreiben. Felder: `tool_name` (Endpoint-Name), `actor_id`, `epic_id` (falls zutreffend), `input_payload` (Request Body als JSONB), `output_payload` (Response als JSONB), `duration_ms` (Ausführungszeit). Implementierung als Service-Layer-Decorator `@audit_write` oder als FastAPI-Middleware die nur auf mutierende Methoden (POST/PATCH/DELETE) reagiert. Timing via `time.perf_counter()`. `mcp_invocations` existiert bereits im Schema — sicherstellen dass `input_payload` und `output_payload` JSONB-Spalten vorhanden sind.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

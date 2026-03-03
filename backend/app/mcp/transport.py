@@ -24,6 +24,8 @@ from mcp.server.sse import SseServerTransport
 
 from app.mcp.server import server, _tool_definitions, _tool_handlers, call_tool
 import app.mcp.tools  # noqa: F401 — ensure all tools are registered
+import app.mcp.prompts  # noqa: F401 — register MCP prompt capability (TASK-IDE-002)
+import app.mcp.resources  # noqa: F401 — register MCP resource capability (TASK-IDE-007)
 from app.routers.deps import CurrentActor, get_current_actor
 
 logger = logging.getLogger(__name__)
@@ -130,6 +132,65 @@ async def call_mcp_tool(
     return McpCallResponse(result=[{"type": r.type, "text": r.text} for r in result])
 
 
+# ── Discovery Endpoint ─────────────────────────────────────────────────────
+
+@router.get("/discovery")
+async def mcp_discovery():
+    """Return MCP config snippets for all supported IDE clients.
+
+    No auth required — useful for automated setup scripts.
+    """
+    base_url = "http://localhost:8000"
+    sse_url = f"{base_url}/api/mcp/sse"
+    return {
+        "server_name": "hivemind",
+        "sse_url": sse_url,
+        "clients": {
+            "vscode": {
+                "description": "VS Code / Copilot Agent Mode (.vscode/mcp.json — bereits im Repo)",
+                "config_path": ".vscode/mcp.json",
+                "config": {
+                    "servers": {
+                        "hivemind": {"type": "sse", "url": sse_url}
+                    }
+                },
+            },
+            "copilot_cli": {
+                "description": "GitHub Copilot CLI (~/.copilot/mcp-config.json)",
+                "config_path": "~/.copilot/mcp-config.json",
+                "cli_command": f"gh copilot mcp add hivemind --type sse --url {sse_url}",
+                "config": {
+                    "mcpServers": {
+                        "hivemind": {"type": "sse", "url": sse_url, "tools": ["*"]}
+                    }
+                },
+            },
+            "claude_desktop": {
+                "description": "Claude Desktop (claude_desktop_config.json)",
+                "config_path_windows": "~/AppData/Roaming/Claude/claude_desktop_config.json",
+                "config_path_macos": "~/Library/Application Support/Claude/claude_desktop_config.json",
+                "config": {
+                    "mcpServers": {
+                        "hivemind": {
+                            "command": "npx",
+                            "args": ["-y", "mcp-remote", sse_url],
+                        }
+                    }
+                },
+            },
+            "cursor": {
+                "description": "Cursor IDE (.cursor/mcp.json)",
+                "config_path": ".cursor/mcp.json",
+                "config": {
+                    "mcpServers": {
+                        "hivemind": {"type": "sse", "url": sse_url}
+                    }
+                },
+            },
+        },
+    }
+
+
 # ── Status Endpoint ────────────────────────────────────────────────────────
 
 @router.get("/status")
@@ -145,6 +206,7 @@ async def mcp_status(actor: CurrentActor = Depends(get_current_actor)):
             "message": "/api/mcp/message",
             "tools": "/api/mcp/tools",
             "call": "/api/mcp/call",
+            "discovery": "/api/mcp/discovery",
         },
     }
 

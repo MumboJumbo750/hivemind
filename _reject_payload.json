@@ -1,0 +1,7 @@
+{
+  "tool": "hivemind/reject_review",
+  "arguments": {
+    "task_key": "TASK-IDE-003",
+    "comment": "DoD nicht erfüllt: (1) Active Tasks lädt nicht, da Extension /api/tasks?state=... nutzt, Backend hat nur /api/tasks/{task_key}; (2) Guard-Status-Panel fehlt in der Sidebar (nur ActiveTasks/NextPrompts/AgentActivity); (3) SSE-Listener nutzt /api/events/stream, Backend bietet /api/events, /api/events/tasks, /api/events/notifications, /api/events/triage; dadurch keine Live-Events und keine Transition-Notifications; (4) Command 'Run Guard' führt keine Guards aus, sondern zeigt nur ein Info-Popup."
+  }
+}

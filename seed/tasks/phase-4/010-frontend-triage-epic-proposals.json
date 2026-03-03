@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-4",
   "title": "Frontend: Triage Station — [EPIC PROPOSAL] Kategorie",
   "description": "Triage Station um eine neue Kategorie/Tab [EPIC PROPOSALS] erweitern. Tab erscheint in der Triage-Navigation neben [UNROUTED], [ROUTED], [IGNORED]. Proposal-Liste: zeigt alle Proposals mit state='proposed' aus `GET /api/epic-proposals?state=proposed`. List-Items zeigen: Proposal-Titel, Proposer-Name + Avatar, Projekt, State-Badge, rationale (gekürzt auf 100 Zeichen + 'mehr anzeigen'), `depends_on`-Kette als Tag-Badges. Dependency-Warning: wenn ein Proposal ein abgelehntes Proposal in `depends_on` hat → rotes Warning-Banner 'Abhängigkeit abgelehnt: {title}'. Proposal-Detail-Panel (Slide-in oder Modal): Vollständige Beschreibung, rationale, Proposer, Erstellungsdatum, depends_on-Liste mit State-Badges. Admin-Aktionen (nur sichtbar für admin/triage Rolle): `[AKZEPTIEREN]`-Button → Confirmation-Dialog → `POST /api/epic-proposals/{id}/accept` → Triage-Entry verschwindet aus Liste, Erfolgs-Notification. `[ABLEHNEN]`-Button → Modal mit Pflicht-Begründungsfeld → `POST /api/epic-proposals/{id}/reject`. SSE-Echtzeit: neue Proposals via `/events/triage` erscheinen sofort im Tab mit Badge-Increment auf Triage Navigation.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

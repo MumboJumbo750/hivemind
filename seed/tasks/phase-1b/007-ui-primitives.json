@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1B",
   "title": "Layer 2 UI Primitives — HivemindCard, HivemindModal, HivemindDropdown",
   "description": "Drei Reka UI Wrapper-Komponenten in `src/components/ui/` erstellen. Kein Domain-Wissen (keine Begriffe wie Epic, Task, Skill). Alle Styles über Component-Tokens aus `components.css`. (1) `HivemindCard.vue` — wrappter für `<div>` mit `--card-bg`, `--card-border`, `--card-radius`. Props: `variant?: 'default' | 'elevated' | 'outlined'`. Slot: default. (2) `HivemindModal.vue` — Reka UI `Dialog`-Primitive wrappen. Props: `modelValue: boolean` (v-model für open/close), `title?: string`, `size?: 'sm' | 'md' | 'lg'`. Slots: default (body), footer. Backdrop via `--modal-backdrop`, Modal-Box via `--modal-bg`. Fokus-Trap und `Escape`-Key-Close über Reka UI `Dialog`. (3) `HivemindDropdown.vue` — Reka UI `DropdownMenu`-Primitive wrappen. Props: `items: Array<{ label: string, value: string, icon?: string, disabled?: boolean }>`, `modelValue?: string`. Emits: `update:modelValue`. Trigger via `<slot name='trigger'>`. Styled via Component-Tokens. Alle drei Komponenten aus `src/components/ui/index.ts` re-exportieren.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

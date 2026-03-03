@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-F",
   "title": "node_identity-Bootstrap mit Ed25519-Keypair",
   "description": "Beim ersten FastAPI-Start: UUID + Ed25519-Keypair via `cryptography`-Lib generieren und in `node_identity`-Tabelle speichern. Eigenen Node in `nodes`-Tabelle eintragen (node_name aus `HIVEMIND_NODE_NAME`, node_url aus `HIVEMIND_NODE_URL`, public_key als PEM-String). Private Key mit `HIVEMIND_KEY_PASSPHRASE` verschlüsselt in `node_identity.private_key` ablegen. Idempotent: nur ausführen wenn `node_identity`-Tabelle leer ist. Als FastAPI `lifespan`-Event implementieren. Dieser Task überlappt mit TASK-2-001 (Node-Bootstrap aus Phase 2) — prüfen ob bereits implementiert und nur Ed25519-spezifische Teile ergänzen (Keypair-Generierung, Passphrase-Verschlüsselung, PEM-Encoding). Neue Env-Variablen in Settings ergänzen: `HIVEMIND_NODE_NAME`, `HIVEMIND_NODE_URL`, `HIVEMIND_KEY_PASSPHRASE`, `HIVEMIND_FEDERATION_ENABLED`. Dependency `cryptography` in `requirements.txt` falls noch nicht vorhanden.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

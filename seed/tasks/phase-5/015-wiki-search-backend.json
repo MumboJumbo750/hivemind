@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Wiki-Such-Backend: Volltextsuche + Tag-Filterung",
   "description": "PostgreSQL tsvector/tsquery ueber title+content. GIN-Index. Tag-Filterung vor Textsuche. Hybrid mit pgvector falls Embedding vorhanden. REST: GET /api/wiki/search + MCP: search_wiki.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

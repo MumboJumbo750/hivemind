@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { api } from '../../api'
 import type { Task } from '../../api/types'
+import AiReviewPanel from './AiReviewPanel.vue'
 
 const props = defineProps<{
   task: Task
@@ -232,6 +233,14 @@ onMounted(() => loadGuards())
         </li>
       </ul>
     </section>
+
+    <!-- AI Review Recommendations (TASK-8-024) -->
+    <AiReviewPanel
+      :task-key="task.task_key"
+      governance-level="assisted"
+      @approve="emit('done')"
+      @reject="emit('done')"
+    />
 
     <!-- Owner Judgment / DoD Checklist -->
     <section class="review-section">

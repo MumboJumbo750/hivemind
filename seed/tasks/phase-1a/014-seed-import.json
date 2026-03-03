@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "Seed-Import: CLI-Command oder Data-Migration",
   "description": "CLI-Command oder Alembic Data-Migration die den seed/-Ordner liest und die DB mit dem Hivemind-Projekt als erstem Projekt befüllt. Parst JSON (epics, tasks) und Markdown mit Frontmatter (wiki, skills).",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

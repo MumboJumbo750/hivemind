@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "DB-Schema: Epics + Tasks + State Machine Columns",
   "description": "Alembic-Migration für epics (inkl. origin_node_id, qa_failed_count, state-Constraints) und tasks (inkl. assigned_node_id, result, artifacts, review_comment, pinned_skills JSONB).",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

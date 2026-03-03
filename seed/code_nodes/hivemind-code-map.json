@@ -1,0 +1,750 @@
+{
+  "_meta": {
+    "description": "Kartograph Code-Node-Seed: Die initiale Code-Landkarte des Hivemind-Monorepos. Jeder Node repräsentiert ein entdecktes Code-Modul/Verzeichnis/Datei, wie der Kartograph es bei einem Repo-Bootstrap kartieren würde.",
+    "node_types": ["root", "directory", "module", "service", "router", "model", "mcp_tool", "view", "component", "composable"],
+    "explored_by": "admin"
+  },
+  "nodes": [
+    {
+      "path": "/",
+      "node_type": "root",
+      "label": "Hivemind Monorepo",
+      "metadata": {
+        "description": "Monorepo mit Backend (FastAPI/Python), Frontend (Vue 3/TypeScript), Seed-Daten und Dokumentation. Podman Compose als Container-Runtime.",
+        "tech_stack": ["python", "typescript", "vue3", "fastapi", "postgresql", "podman"]
+      }
+    },
+    {
+      "path": "backend/",
+      "node_type": "directory",
+      "label": "Backend — FastAPI App",
+      "metadata": {
+        "description": "Python 3.11 FastAPI-Anwendung mit MCP-Server, SQLAlchemy ORM, Alembic Migrationen. Läuft im backend-Container auf Port 8000.",
+        "language": "python",
+        "framework": "fastapi"
+      }
+    },
+    {
+      "path": "frontend/",
+      "node_type": "directory",
+      "label": "Frontend — Vue 3 App",
+      "metadata": {
+        "description": "Vue 3 + Vite SPA mit Sci-Fi Game HUD Design. Reka UI für Headless-Primitives, Cytoscape.js für Nexus Grid. Läuft im frontend-Container auf Port 5173.",
+        "language": "typescript",
+        "framework": "vue3"
+      }
+    },
+    {
+      "path": "backend/app/models/",
+      "node_type": "directory",
+      "label": "SQLAlchemy Models",
+      "metadata": {
+        "description": "Vollständiges DB-Schema als SQLAlchemy ORM Models. Alle Tabellen seit Phase 1 angelegt — spätere Phasen aktivieren nur Features."
+      }
+    },
+    {
+      "path": "backend/app/models/project.py",
+      "node_type": "model",
+      "label": "Project Model",
+      "metadata": { "table": "projects", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/epic.py",
+      "node_type": "model",
+      "label": "Epic Model",
+      "metadata": { "table": "epics", "phase": "1a", "state_machine": true }
+    },
+    {
+      "path": "backend/app/models/task.py",
+      "node_type": "model",
+      "label": "Task Model",
+      "metadata": { "table": "tasks", "phase": "1a", "state_machine": true }
+    },
+    {
+      "path": "backend/app/models/skill.py",
+      "node_type": "model",
+      "label": "Skill + SkillVersion Model",
+      "metadata": { "tables": ["skills", "skill_versions"], "phase": "1a", "lifecycle": true }
+    },
+    {
+      "path": "backend/app/models/wiki.py",
+      "node_type": "model",
+      "label": "WikiArticle + WikiVersion Model",
+      "metadata": { "tables": ["wiki_articles", "wiki_versions"], "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/user.py",
+      "node_type": "model",
+      "label": "User Model",
+      "metadata": { "table": "users", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/audit.py",
+      "node_type": "model",
+      "label": "MCP Invocation Audit Model",
+      "metadata": { "table": "mcp_invocations", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/guard.py",
+      "node_type": "model",
+      "label": "Guard + GuardResult Model",
+      "metadata": { "tables": ["guards", "guard_results"], "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/sync.py",
+      "node_type": "model",
+      "label": "SyncOutbox + SyncDeadLetter Model",
+      "metadata": { "tables": ["sync_outbox", "sync_dead_letter"], "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/federation.py",
+      "node_type": "model",
+      "label": "Federation Node + NodeIdentity Model",
+      "metadata": { "tables": ["nodes", "node_identity"], "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/code_node.py",
+      "node_type": "model",
+      "label": "CodeNode + CodeEdge Model",
+      "metadata": { "tables": ["code_nodes", "code_edges"], "phase": "1a", "kartograph": true }
+    },
+    {
+      "path": "backend/app/models/notification.py",
+      "node_type": "model",
+      "label": "Notification Model",
+      "metadata": { "table": "notifications", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/decision.py",
+      "node_type": "model",
+      "label": "DecisionRecord + DecisionRequest Model",
+      "metadata": { "tables": ["decision_records", "decision_requests"], "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/doc.py",
+      "node_type": "model",
+      "label": "Doc Model",
+      "metadata": { "table": "docs", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/epic_proposal.py",
+      "node_type": "model",
+      "label": "EpicProposal Model",
+      "metadata": { "table": "epic_proposals", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/prompt_history.py",
+      "node_type": "model",
+      "label": "PromptHistory Model",
+      "metadata": { "table": "prompt_history", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/settings.py",
+      "node_type": "model",
+      "label": "AppSettings Model",
+      "metadata": { "table": "app_settings", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/ai_provider.py",
+      "node_type": "model",
+      "label": "AIProviderConfig Model",
+      "metadata": { "table": "ai_provider_configs", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/conductor.py",
+      "node_type": "model",
+      "label": "ConductorDispatch Model",
+      "metadata": { "table": "conductor_dispatches", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/review.py",
+      "node_type": "model",
+      "label": "ReviewRecommendation Model",
+      "metadata": { "table": "review_recommendations", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/context_boundary.py",
+      "node_type": "model",
+      "label": "ContextBoundary Model",
+      "metadata": { "table": "context_boundaries", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/mcp_bridge.py",
+      "node_type": "model",
+      "label": "MCPBridgeConfig Model",
+      "metadata": { "table": "mcp_bridge_configs", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/models/node_bug_report.py",
+      "node_type": "model",
+      "label": "NodeBugReport Model",
+      "metadata": { "table": "node_bug_reports", "phase": "1a", "fk": "code_nodes.id" }
+    },
+    {
+      "path": "backend/app/models/project_integration.py",
+      "node_type": "model",
+      "label": "ProjectIntegration Model",
+      "metadata": { "table": "project_integrations", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/services/",
+      "node_type": "directory",
+      "label": "Business Logic Services",
+      "metadata": {
+        "description": "Service-Layer: Business Logic getrennt von Routern. Enthält State Machine, Scheduler, Embedding, Triage, Federation etc."
+      }
+    },
+    {
+      "path": "backend/app/services/state_machine.py",
+      "node_type": "service",
+      "label": "State Machine Service",
+      "metadata": { "description": "Task- und Epic-State-Transitions mit Validierung. Review-Gate enforcement.", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/services/scheduler.py",
+      "node_type": "service",
+      "label": "APScheduler Service",
+      "metadata": { "description": "Zentrale Job-Registrierung: SLA-Cron, Audit-Retention, Decision-SLA, Heartbeat etc. Nie Jobs in main.py registrieren!", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/services/embedding_service.py",
+      "node_type": "service",
+      "label": "Embedding Service",
+      "metadata": { "description": "Ollama-Provider mit Circuit-Breaker und adaptivem Backoff. HNSW-Indexes auf skills, wiki, epics.", "phase": "3" }
+    },
+    {
+      "path": "backend/app/services/outbox_consumer.py",
+      "node_type": "service",
+      "label": "Outbox Consumer",
+      "metadata": { "description": "Verarbeitet peer_outbound (Phase F) und outbound (Phase 7) Einträge aus sync_outbox.", "phase": "F" }
+    },
+    {
+      "path": "backend/app/services/triage_service.py",
+      "node_type": "service",
+      "label": "Triage Service",
+      "metadata": { "description": "Event-Routing für unrouted Items. route_event, ignore_event. SSE-Events.", "phase": "3" }
+    },
+    {
+      "path": "backend/app/services/federation_service.py",
+      "node_type": "service",
+      "label": "Federation Service",
+      "metadata": { "description": "Skill/Wiki-Publishing, Epic-Share, Task-Delegation, Peer-Communication.", "phase": "F" }
+    },
+    {
+      "path": "backend/app/services/federation_auth.py",
+      "node_type": "service",
+      "label": "Federation Auth",
+      "metadata": { "description": "Ed25519-Signatur-Validierung für alle /federation/* Requests.", "phase": "F" }
+    },
+    {
+      "path": "backend/app/services/conductor.py",
+      "node_type": "service",
+      "label": "Conductor Orchestrator",
+      "metadata": { "description": "Event-driven Dispatch: State-Transitions → Agent-Dispatch. 12 Regeln, Cooldown, Idempotenz.", "phase": "8" }
+    },
+    {
+      "path": "backend/app/services/ai_provider.py",
+      "node_type": "service",
+      "label": "AI Provider Service",
+      "metadata": { "description": "Sendet Prompts an AI-APIs. Per-Rolle-Routing, Fallback-Kaskade, Rate-Limiting.", "phase": "8" }
+    },
+    {
+      "path": "backend/app/services/notification_service.py",
+      "node_type": "service",
+      "label": "Notification Service",
+      "metadata": { "description": "In-DB Notification-Service. 13 Notification-Typen. Retention-Cron.", "phase": "6" }
+    },
+    {
+      "path": "backend/app/services/sla_cron.py",
+      "node_type": "service",
+      "label": "SLA Cron Job",
+      "metadata": { "description": "Stündlicher SLA-Check: 4h-Warnung, Breach, Admin-Fallback.", "phase": "6" }
+    },
+    {
+      "path": "backend/app/services/decision_sla_cron.py",
+      "node_type": "service",
+      "label": "Decision SLA Cron",
+      "metadata": { "description": "Decision-Request-SLA: 24h→Owner, 48h→Backup, 72h→Admin-Fallback.", "phase": "6" }
+    },
+    {
+      "path": "backend/app/services/kpi_service.py",
+      "node_type": "service",
+      "label": "KPI Service",
+      "metadata": { "description": "6 Kern-KPIs mit stündlichem Cache. Dashboard-API.", "phase": "7" }
+    },
+    {
+      "path": "backend/app/services/routing_service.py",
+      "node_type": "service",
+      "label": "pgvector Auto-Routing",
+      "metadata": { "description": "Inbound Events → Epic via Cosine-Similarity. Schwellwert konfigurierbar.", "phase": "7" }
+    },
+    {
+      "path": "backend/app/services/sentry_aggregation.py",
+      "node_type": "service",
+      "label": "Sentry Bug Aggregation",
+      "metadata": { "description": "Stack-Traces → node_bug_reports. Code-Node-Zuordnung.", "phase": "7" }
+    },
+    {
+      "path": "backend/app/services/prompt_generator.py",
+      "node_type": "service",
+      "label": "Prompt Generator",
+      "metadata": { "description": "Generiert Prompts für alle Agent-Rollen: Bibliothekar, Worker, Stratege, Architekt, Kartograph, Gaertner, Triage.", "phase": "3" }
+    },
+    {
+      "path": "backend/app/services/skill_service.py",
+      "node_type": "service",
+      "label": "Skill Service",
+      "metadata": { "description": "Skill-CRUD, Lifecycle-Transitions, Fork-Workflow.", "phase": "4" }
+    },
+    {
+      "path": "backend/app/services/auth_service.py",
+      "node_type": "service",
+      "label": "Auth Service",
+      "metadata": { "description": "JWT-Auth, Token-Erstellung, Refresh, Actor-Validierung.", "phase": "2" }
+    },
+    {
+      "path": "backend/app/services/heartbeat.py",
+      "node_type": "service",
+      "label": "Heartbeat Service",
+      "metadata": { "description": "Ping an alle bekannten Peers, aktualisiert nodes.last_seen.", "phase": "F" }
+    },
+    {
+      "path": "backend/app/services/governance.py",
+      "node_type": "service",
+      "label": "Governance Service",
+      "metadata": { "description": "3 Stufen (manual/assisted/auto) für 7 Entscheidungstypen.", "phase": "8" }
+    },
+    {
+      "path": "backend/app/services/mcp_bridge.py",
+      "node_type": "service",
+      "label": "MCP Bridge Service",
+      "metadata": { "description": "Meta-MCP: Proxy zu externen MCP-Servern. Namespace-Isolation, Tool-Discovery.", "phase": "8" }
+    },
+    {
+      "path": "backend/app/services/gamification.py",
+      "node_type": "service",
+      "label": "Gamification Engine",
+      "metadata": { "description": "EXP-Trigger, Badge-Check, Level-Up. Achievements-API.", "phase": "5" }
+    },
+    {
+      "path": "backend/app/services/youtrack_sync.py",
+      "node_type": "service",
+      "label": "YouTrack Sync",
+      "metadata": { "description": "Outbound-Sync zu YouTrack. Exponential Backoff.", "phase": "7" }
+    },
+    {
+      "path": "backend/app/services/dlq_service.py",
+      "node_type": "service",
+      "label": "Dead Letter Queue Service",
+      "metadata": { "description": "DLQ-Verwaltung: requeue, discard. Max-Attempts konfigurierbar.", "phase": "7" }
+    },
+    {
+      "path": "backend/app/routers/",
+      "node_type": "directory",
+      "label": "FastAPI Router",
+      "metadata": { "description": "HTTP-Endpoint-Layer. Thin Wrapper um Services." }
+    },
+    {
+      "path": "backend/app/routers/auth.py",
+      "node_type": "router",
+      "label": "Auth Router",
+      "metadata": { "endpoints": ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/stream-token"], "phase": "2" }
+    },
+    {
+      "path": "backend/app/routers/projects.py",
+      "node_type": "router",
+      "label": "Projects Router",
+      "metadata": { "endpoints": ["/api/projects"], "phase": "1a" }
+    },
+    {
+      "path": "backend/app/routers/epics.py",
+      "node_type": "router",
+      "label": "Epics Router",
+      "metadata": { "endpoints": ["/api/epics"], "phase": "1a" }
+    },
+    {
+      "path": "backend/app/routers/tasks.py",
+      "node_type": "router",
+      "label": "Tasks Router",
+      "metadata": { "endpoints": ["/api/tasks"], "phase": "1a" }
+    },
+    {
+      "path": "backend/app/routers/skills.py",
+      "node_type": "router",
+      "label": "Skills Router",
+      "metadata": { "endpoints": ["/api/skills"], "phase": "1a" }
+    },
+    {
+      "path": "backend/app/routers/wiki.py",
+      "node_type": "router",
+      "label": "Wiki Router",
+      "metadata": { "endpoints": ["/api/wiki/articles"], "phase": "3" }
+    },
+    {
+      "path": "backend/app/routers/code_nodes.py",
+      "node_type": "router",
+      "label": "Code Nodes Router",
+      "metadata": { "endpoints": ["/api/code-nodes"], "phase": "3" }
+    },
+    {
+      "path": "backend/app/routers/federation.py",
+      "node_type": "router",
+      "label": "Federation Router",
+      "metadata": { "endpoints": ["/federation/ping", "/federation/skill/publish", "/federation/wiki/publish", "/federation/sync"], "phase": "F" }
+    },
+    {
+      "path": "backend/app/routers/triage.py",
+      "node_type": "router",
+      "label": "Triage Router",
+      "metadata": { "endpoints": ["/api/triage"], "phase": "3" }
+    },
+    {
+      "path": "backend/app/routers/webhooks.py",
+      "node_type": "router",
+      "label": "Webhooks Router",
+      "metadata": { "endpoints": ["/api/webhooks/youtrack", "/api/webhooks/sentry", "/api/webhooks/github"], "phase": "3" }
+    },
+    {
+      "path": "backend/app/routers/events.py",
+      "node_type": "router",
+      "label": "SSE Events Router",
+      "metadata": { "endpoints": ["/events/notifications", "/events/tasks", "/events/triage"], "phase": "3" }
+    },
+    {
+      "path": "backend/app/routers/kpis.py",
+      "node_type": "router",
+      "label": "KPI Dashboard Router",
+      "metadata": { "endpoints": ["/api/kpis"], "phase": "7" }
+    },
+    {
+      "path": "backend/app/routers/settings.py",
+      "node_type": "router",
+      "label": "Settings Router",
+      "metadata": { "endpoints": ["/api/settings"], "phase": "2" }
+    },
+    {
+      "path": "backend/app/routers/conductor.py",
+      "node_type": "router",
+      "label": "Conductor Router",
+      "metadata": { "endpoints": ["/api/conductor"], "phase": "8" }
+    },
+    {
+      "path": "backend/app/routers/mcp_bridges.py",
+      "node_type": "router",
+      "label": "MCP Bridges Router",
+      "metadata": { "endpoints": ["/api/admin/mcp-bridges"], "phase": "8" }
+    },
+    {
+      "path": "backend/app/mcp/",
+      "node_type": "directory",
+      "label": "MCP Server",
+      "metadata": { "description": "MCP 1.0 Server: SSE/JSON-RPC 2.0 + REST. Namespace hivemind/." }
+    },
+    {
+      "path": "backend/app/mcp/server.py",
+      "node_type": "module",
+      "label": "MCP Server Core",
+      "metadata": { "description": "FastAPI-integrierter MCP-Server mit Tool-Registry.", "phase": "3" }
+    },
+    {
+      "path": "backend/app/mcp/transport.py",
+      "node_type": "module",
+      "label": "MCP Transport",
+      "metadata": { "description": "SSE + stdio Transport-Layer.", "phase": "3" }
+    },
+    {
+      "path": "backend/app/mcp/tools/read_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP Read-Tools",
+      "metadata": { "tools": ["get_epic", "get_task", "get_skills", "get_doc", "get_triage", "get_audit_log"], "phase": "3" }
+    },
+    {
+      "path": "backend/app/mcp/tools/write_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP Core Write-Tools",
+      "metadata": { "tools": ["create_epic", "decompose_epic", "create_task", "set_context_boundary"], "phase": "4" }
+    },
+    {
+      "path": "backend/app/mcp/tools/worker_write_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP Worker Write-Tools",
+      "metadata": { "tools": ["submit_result", "update_task_state", "create_decision_request", "report_guard_result"], "phase": "5" }
+    },
+    {
+      "path": "backend/app/mcp/tools/gaertner_write_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP Gaertner Write-Tools",
+      "metadata": { "tools": ["propose_skill", "propose_skill_change", "submit_skill_proposal", "create_decision_record"], "phase": "5" }
+    },
+    {
+      "path": "backend/app/mcp/tools/kartograph_write_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP Kartograph Write-Tools",
+      "metadata": { "tools": ["create_wiki_article", "update_wiki_article", "create_epic_doc", "propose_epic_restructure"], "phase": "5" }
+    },
+    {
+      "path": "backend/app/mcp/tools/review_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP Review-Tools",
+      "metadata": { "tools": ["approve_review", "reject_review"], "phase": "5" }
+    },
+    {
+      "path": "backend/app/mcp/tools/proposal_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP Epic-Proposal-Tools",
+      "metadata": { "tools": ["propose_epic", "accept_epic_proposal", "reject_epic_proposal"], "phase": "4" }
+    },
+    {
+      "path": "backend/app/mcp/tools/dlq_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP DLQ-Tools",
+      "metadata": { "tools": ["requeue_dead_letter", "discard_dead_letter"], "phase": "7" }
+    },
+    {
+      "path": "backend/app/mcp/tools/escalation_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP Escalation-Tools",
+      "metadata": { "tools": ["resolve_decision_request", "resolve_escalation"], "phase": "6" }
+    },
+    {
+      "path": "backend/app/mcp/tools/reviewer_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP Reviewer-Tools",
+      "metadata": { "tools": ["submit_review_recommendation"], "phase": "8" }
+    },
+    {
+      "path": "backend/app/mcp/tools/routing_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP Routing-Tools",
+      "metadata": { "tools": ["route_event", "ignore_event"], "phase": "3" }
+    },
+    {
+      "path": "backend/app/mcp/tools/github_tools.py",
+      "node_type": "mcp_tool",
+      "label": "MCP GitHub-Tools",
+      "metadata": { "tools": ["get_github_pr", "get_github_issue", "get_github_check_status"], "phase": "8" }
+    },
+    {
+      "path": "frontend/src/views/",
+      "node_type": "directory",
+      "label": "Frontend Views",
+      "metadata": { "description": "Router-Views: Eine View pro Hauptansicht." }
+    },
+    {
+      "path": "frontend/src/views/CommandDeck/",
+      "node_type": "view",
+      "label": "Command Deck View",
+      "metadata": { "description": "Epic-Liste, Task-Übersicht, State-Badges, Architekt-Button.", "phase": "2" }
+    },
+    {
+      "path": "frontend/src/views/PromptStation/",
+      "node_type": "view",
+      "label": "Prompt Station View",
+      "metadata": { "description": "Herzstück: Prompt-Queue, Token Radar, MCP-Status, Auto-Modus-Monitoring.", "phase": "1b" }
+    },
+    {
+      "path": "frontend/src/views/Auth/",
+      "node_type": "view",
+      "label": "Auth View",
+      "metadata": { "description": "Login-Screen im Sci-Fi-Stil.", "phase": "2" }
+    },
+    {
+      "path": "frontend/src/views/SkillLab/",
+      "node_type": "view",
+      "label": "Skill Lab View",
+      "metadata": { "description": "Skills browsen, Lifecycle-Filter, Diff-Ansicht, Merge/Reject.", "phase": "4" }
+    },
+    {
+      "path": "frontend/src/views/Wiki/",
+      "node_type": "view",
+      "label": "Wiki View",
+      "metadata": { "description": "Artikel-Reader, Markdown-Renderer, Suchleiste, Tag-Filter, Versionen.", "phase": "5" }
+    },
+    {
+      "path": "frontend/src/views/NexusGrid/",
+      "node_type": "view",
+      "label": "Nexus Grid View",
+      "metadata": { "description": "2D (Cytoscape.js) + 3D (Three.js) Code-Graph. Fog-of-War-Overlay, Bug-Heatmap.", "phase": "5" }
+    },
+    {
+      "path": "frontend/src/views/Triage/",
+      "node_type": "view",
+      "label": "Triage Station View",
+      "metadata": { "description": "Unrouted Events, Epic-Proposals, Escalations. Kategorisierte Queues.", "phase": "3" }
+    },
+    {
+      "path": "frontend/src/views/Settings/",
+      "node_type": "view",
+      "label": "Settings View",
+      "metadata": { "description": "Solo/Team-Toggle, AI-Provider, Federation, MCP Bridges, Governance, Audit-Log.", "phase": "2" }
+    },
+    {
+      "path": "frontend/src/views/KpiDashboard/",
+      "node_type": "view",
+      "label": "KPI Dashboard View",
+      "metadata": { "description": "6 Kern-KPIs mit historischen Graphen (7/30-Tage-Zeitreihe).", "phase": "7" }
+    },
+    {
+      "path": "frontend/src/views/Achievements/",
+      "node_type": "view",
+      "label": "Achievements View",
+      "metadata": { "description": "Gamification: Badges, Levels, EXP-Fortschritt.", "phase": "5" }
+    },
+    {
+      "path": "frontend/src/views/Guild/",
+      "node_type": "view",
+      "label": "Gilde View",
+      "metadata": { "description": "Federated Skills, Peer-Übersicht, Übernehmen-Button.", "phase": "F" }
+    },
+    {
+      "path": "frontend/src/views/KartographBootstrap/",
+      "node_type": "view",
+      "label": "Kartograph Bootstrap View",
+      "metadata": { "description": "Neues Projekt → Repo-Analyse starten. Write-Tools ab Phase 5.", "phase": "3" }
+    },
+    {
+      "path": "frontend/src/views/NotificationTray/",
+      "node_type": "view",
+      "label": "Notification Tray View",
+      "metadata": { "description": "Action Queue: ACTION NOW, SOON, FYI. Badge + Panel.", "phase": "2" }
+    },
+    {
+      "path": "frontend/src/components/layout/",
+      "node_type": "component",
+      "label": "Layout Components",
+      "metadata": { "description": "System Bar, Nav Sidebar, Main Canvas, Context Panel, Status Bar.", "phase": "1b" }
+    },
+    {
+      "path": "frontend/src/components/ui/",
+      "node_type": "component",
+      "label": "UI Primitive Components",
+      "metadata": { "description": "Badge, Button, Card, Dialog, Popover — Reka UI gestylt.", "phase": "1b" }
+    },
+    {
+      "path": "frontend/src/components/domain/",
+      "node_type": "component",
+      "label": "Domain Components",
+      "metadata": { "description": "TaskCard, EpicCard, SkillCard, StateBadge — fachliche UI-Bausteine.", "phase": "1b" }
+    },
+    {
+      "path": "frontend/src/components/SyncStatusPanel.vue",
+      "node_type": "component",
+      "label": "Sync Status Panel",
+      "metadata": { "description": "Outbox-Status, DLQ-Einträge, Federation-Status.", "phase": "7" }
+    },
+    {
+      "path": "frontend/src/composables/useAutoMode.ts",
+      "node_type": "composable",
+      "label": "Auto Mode Composable",
+      "metadata": { "description": "Monitoring-State für Auto-Modus: aktive Agenten, Token-Verbrauch.", "phase": "8" }
+    },
+    {
+      "path": "frontend/src/composables/useFederationSSE.ts",
+      "node_type": "composable",
+      "label": "Federation SSE Composable",
+      "metadata": { "description": "SSE-Events für Federation-State-Changes.", "phase": "F" }
+    },
+    {
+      "path": "frontend/src/composables/useBugHeatmap.ts",
+      "node_type": "composable",
+      "label": "Bug Heatmap Composable",
+      "metadata": { "description": "Nexus Grid Bug-Heatmap-Layer-Daten.", "phase": "7" }
+    },
+    {
+      "path": "frontend/src/composables/useTheme.ts",
+      "node_type": "composable",
+      "label": "Theme Composable",
+      "metadata": { "description": "Theme-Switch: space-neon, industrial-amber, operator-mono.", "phase": "1b" }
+    },
+    {
+      "path": "frontend/src/composables/useClientNotifications.ts",
+      "node_type": "composable",
+      "label": "Client Notifications Composable",
+      "metadata": { "description": "Client-calculated Notifications (Phase 2-5). Cutover zu Backend ab Phase 6.", "phase": "2" }
+    },
+    {
+      "path": "seed/",
+      "node_type": "directory",
+      "label": "Seed-Daten",
+      "metadata": { "description": "Hivemind als eigener erster Anwendungsfall. Dateibasiert modelliert — DB-Import bei Start." }
+    },
+    {
+      "path": "backend/app/main.py",
+      "node_type": "module",
+      "label": "FastAPI Main (Entrypoint)",
+      "metadata": { "description": "App-Factory, Router-Registrierung, Lifespan. KEINE Jobs hier registrieren → scheduler.py!", "phase": "1a" }
+    },
+    {
+      "path": "backend/app/config.py",
+      "node_type": "module",
+      "label": "App Configuration",
+      "metadata": { "description": "Pydantic Settings: DB-URLs, Env-Vars, Feature-Flags.", "phase": "1a" }
+    },
+    {
+      "path": "backend/scripts/seed_import.py",
+      "node_type": "module",
+      "label": "Seed Import Script",
+      "metadata": { "description": "Idempotenter 8-Schritt-Import: Admin, Project, Epics, Tasks, Wiki, Skills, Docs, Decisions.", "phase": "1a" }
+    },
+    {
+      "path": "docker-compose.yml",
+      "node_type": "module",
+      "label": "Podman Compose Stack",
+      "metadata": { "description": "5 Services: backend, postgres, frontend, ollama (optional), db-backup.", "phase": "1a" }
+    }
+  ],
+  "edges": [
+    { "source": "backend/", "target": "backend/app/models/", "edge_type": "contains" },
+    { "source": "backend/", "target": "backend/app/services/", "edge_type": "contains" },
+    { "source": "backend/", "target": "backend/app/routers/", "edge_type": "contains" },
+    { "source": "backend/", "target": "backend/app/mcp/", "edge_type": "contains" },
+
+    { "source": "frontend/", "target": "frontend/src/views/", "edge_type": "contains" },
+    { "source": "frontend/", "target": "frontend/src/components/layout/", "edge_type": "contains" },
+    { "source": "frontend/", "target": "frontend/src/components/ui/", "edge_type": "contains" },
+    { "source": "frontend/", "target": "frontend/src/components/domain/", "edge_type": "contains" },
+
+    { "source": "backend/app/routers/tasks.py", "target": "backend/app/services/state_machine.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/tasks.py", "target": "backend/app/models/task.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/epics.py", "target": "backend/app/models/epic.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/skills.py", "target": "backend/app/services/skill_service.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/wiki.py", "target": "backend/app/models/wiki.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/auth.py", "target": "backend/app/services/auth_service.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/code_nodes.py", "target": "backend/app/models/code_node.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/federation.py", "target": "backend/app/services/federation_service.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/federation.py", "target": "backend/app/services/federation_auth.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/triage.py", "target": "backend/app/services/triage_service.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/kpis.py", "target": "backend/app/services/kpi_service.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/conductor.py", "target": "backend/app/services/conductor.py", "edge_type": "dependency" },
+    { "source": "backend/app/routers/mcp_bridges.py", "target": "backend/app/services/mcp_bridge.py", "edge_type": "dependency" },
+
+    { "source": "backend/app/services/conductor.py", "target": "backend/app/services/ai_provider.py", "edge_type": "dependency" },
+    { "source": "backend/app/services/conductor.py", "target": "backend/app/services/prompt_generator.py", "edge_type": "dependency" },
+    { "source": "backend/app/services/conductor.py", "target": "backend/app/services/governance.py", "edge_type": "dependency" },
+    { "source": "backend/app/services/outbox_consumer.py", "target": "backend/app/services/youtrack_sync.py", "edge_type": "dependency" },
+    { "source": "backend/app/services/outbox_consumer.py", "target": "backend/app/services/dlq_service.py", "edge_type": "dependency" },
+    { "source": "backend/app/services/triage_service.py", "target": "backend/app/services/routing_service.py", "edge_type": "dependency" },
+    { "source": "backend/app/services/routing_service.py", "target": "backend/app/services/embedding_service.py", "edge_type": "dependency" },
+    { "source": "backend/app/services/sentry_aggregation.py", "target": "backend/app/models/node_bug_report.py", "edge_type": "dependency" },
+    { "source": "backend/app/services/sentry_aggregation.py", "target": "backend/app/models/code_node.py", "edge_type": "dependency" },
+    { "source": "backend/app/services/sla_cron.py", "target": "backend/app/services/notification_service.py", "edge_type": "dependency" },
+    { "source": "backend/app/services/decision_sla_cron.py", "target": "backend/app/services/notification_service.py", "edge_type": "dependency" },
+
+    { "source": "backend/app/mcp/tools/read_tools.py", "target": "backend/app/models/epic.py", "edge_type": "dependency" },
+    { "source": "backend/app/mcp/tools/read_tools.py", "target": "backend/app/models/task.py", "edge_type": "dependency" },
+    { "source": "backend/app/mcp/tools/read_tools.py", "target": "backend/app/models/skill.py", "edge_type": "dependency" },
+    { "source": "backend/app/mcp/tools/worker_write_tools.py", "target": "backend/app/services/state_machine.py", "edge_type": "dependency" },
+    { "source": "backend/app/mcp/tools/kartograph_write_tools.py", "target": "backend/app/models/wiki.py", "edge_type": "dependency" },
+    { "source": "backend/app/mcp/tools/kartograph_write_tools.py", "target": "backend/app/models/code_node.py", "edge_type": "dependency" },
+    { "source": "backend/app/mcp/tools/reviewer_tools.py", "target": "backend/app/models/review.py", "edge_type": "dependency" },
+
+    { "source": "backend/app/main.py", "target": "backend/app/services/scheduler.py", "edge_type": "calls" },
+    { "source": "backend/app/services/scheduler.py", "target": "backend/app/services/sla_cron.py", "edge_type": "calls" },
+    { "source": "backend/app/services/scheduler.py", "target": "backend/app/services/decision_sla_cron.py", "edge_type": "calls" },
+    { "source": "backend/app/services/scheduler.py", "target": "backend/app/services/heartbeat.py", "edge_type": "calls" },
+    { "source": "backend/app/services/scheduler.py", "target": "backend/app/services/outbox_consumer.py", "edge_type": "calls" },
+
+    { "source": "backend/scripts/seed_import.py", "target": "seed/", "edge_type": "reads" },
+    { "source": "backend/scripts/seed_import.py", "target": "backend/app/config.py", "edge_type": "dependency" }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-IDE-003",
+  "epic_ref": "EPIC-IDE-AUTOMATION",
+  "title": "VS Code Extension: Hivemind Sidebar + Conductor SSE-Listener",
+  "description": "VS Code Extension die Hivemind-Informationen in der IDE anzeigt und Conductor-Events empfängt.\n\n**Was zu implementieren ist:**\n\n1. **Extension Grundgerüst:**\n   - `vscode-extension/` Ordner im Repo\n   - TypeScript, VS Code Extension API\n   - Extension Name: `hivemind-vscode`\n   - aktiviert sich wenn `.vscode/mcp.json` Hivemind-Server enthält\n\n2. **Sidebar Panel (TreeView):**\n   - **Aktive Tasks:** Zeigt Tasks in `in_progress` mit Titel, Epic, Priority\n   - **Nächste Prompts:** Zeigt anstehende Dispatches aus Prompt Station\n   - **Guard Status:** Zeigt Guard-Ergebnisse des aktuellen Tasks\n   - **Agent Activity:** Live-Feed der letzten Conductor-Dispatches\n   - Click auf Task → öffnet Detail-WebView oder navigiert im Chat\n\n3. **SSE-Listener:**\n   - Verbindet sich mit `GET /api/events/stream` (bestehender SSE-Endpoint)\n   - Live-Updates: Task-Transitions, Guard-Results, Dispatch-Events\n   - Notification-Popups bei wichtigen Events (Task assigned, Review needed)\n\n4. **Quick Actions:**\n   - Command Palette: `Hivemind: Next Prompt` → öffnet Copilot Chat mit `/hivemind.next`\n   - Command Palette: `Hivemind: Run Guard` → führt Guards für aktuellen Task aus\n   - Command Palette: `Hivemind: Submit Result` → öffnet Dialog\n   - Status Bar Item: zeigt aktiven Task + Agent-Rolle\n\n5. **Settings:**\n   - `hivemind.url` (Default: `http://localhost:8000`)\n   - `hivemind.autoConnect` (Default: true)\n   - `hivemind.notifications` (Default: true)",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Extension installierbar via VSIX oder Extension Marketplace",
+      "Sidebar zeigt aktive Tasks, nächste Prompts, Guard Status",
+      "SSE-Listener empfängt Live-Events vom Backend",
+      "Notification-Popups bei Task-Transitions",
+      "Command Palette Commands für Next Prompt, Run Guard, Submit Result",
+      "Status Bar zeigt aktiven Task",
+      "Settings für URL, Auto-Connect, Notifications"
+    ]
+  },
+  "tags": ["vscode", "extension", "ide", "frontend"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-IDE-001", "TASK-IDE-002"]
+}

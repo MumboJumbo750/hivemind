@@ -1,0 +1,19 @@
+{
+  "external_id": "EPIC-REPO-HEALTH",
+  "title": "Repo Health Scanner — Modulares Analyse-Toolkit für Code-Qualität",
+  "description": "Modulares, sprachagnostisches Scanner-Framework das Codebase-Schwächen programmatisch erkennt: hardcodierte CSS-Werte, Magic Numbers, Duplicate-Code, Layer-Violations, Dead Code, Dependency-Freshness, A11y-Basics u.v.m.\n\nDas bestehende `scripts/arch-check.py` wird zum ersten Analyzer in einem pluggbaren Framework erweitert. Output ist ein einheitliches JSON-Report-Schema. Der Kartograph führt den Scanner als Bootstrap-Phase 0.5 (Diagnostics) aus, erstellt einen Wiki-Artikel 'Repo Health Report' und leitet Guard-Proposals ab. Der Stratege liest den Report und plant Cleanup-Epics.\n\n**Fremde Repos:** Das Framework funktioniert zero-dependency (Regex-basierte Analyzer) und erkennt automatisch den Stack, um tooling-basierte Analyzer (ESLint, ruff, tsc) hinzuzuschalten.\n\n**Motivation:** Code-Smells und Best-Practice-Verletzungen systematisch und reproduzierbar aufdecken — als programmatische Guards statt manueller Reviews.",
+  "state": "scoped",
+  "priority": "high",
+  "sla_deadline": null,
+  "definition_of_done": "Scanner-Framework mit Plugin-Architektur existiert. Mindestens 6 Analyzer implementiert (hardcoded-colors, hardcoded-spacing, magic-numbers, file-size, layer-violations, duplicate-detection). JSON-Report-Schema definiert. `make health` führt alle Analyzer aus. Kartograph-Bootstrap um Phase 0.5 (Diagnostics) erweitert. Stratege-Prompt warnt bei fehlendem Health Report. Integration-Tests vorhanden.",
+  "tags": [
+    "code-quality",
+    "tooling",
+    "kartograph",
+    "guards",
+    "automation",
+    "template"
+  ],
+  "depends_on": ["EPIC-ENV-BOOTSTRAP"],
+  "source_doc": null
+}

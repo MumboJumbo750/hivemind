@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "Docker Compose Stack aufsetzen",
   "description": "PostgreSQL 16 + pgvector, FastAPI + Uvicorn, Vue 3 + Vite als Docker Compose Services konfigurieren. Health-Checks, Volume-Mounts, Netzwerk, .env-Template.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Command Deck View",
   "description": "`src/views/CommandDeck/CommandDeckView.vue` implementieren. Hauptansicht für Epic- und Task-Management. Aufbau: (A) Epic-Liste mit State-Badges (incoming/scoped/active/done), SLA-Countdown pro Epic via SlaCountdown-Komponente. (B) Jedes Epic einklappbar/ausklappbar: zeigt zugehörige Tasks mit State-Badge, Assignee, Priority. (C) Action-Buttons RBAC-aware: `[ARCHITEKT STARTEN ▶]` bei Epic-State `scoped` (nur Admin), `[SCOPEN ▶]` bei Epic-State `incoming` (öffnet EpicScopingModal). (D) Task-Zeile: Klick öffnet TaskReviewPanel bei State `in_review`. Daten via API: `GET /api/epics` + `GET /api/tasks?epic_id=`. Pinia-Store für Command-Deck-State oder bestehenden projectStore erweitern.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

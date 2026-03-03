@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-HEALTH-008",
+  "epic_ref": "EPIC-REPO-HEALTH",
+  "title": "Stratege-Integration: Health-Report → Cleanup-Epics",
+  "description": "Erweitere den Stratege-Workflow um automatische Erkennung fehlender Health-Reports und Cleanup-Epic-Ableitung.\n\n**Was zu implementieren ist:**\n\n1. **Stratege-Prompt-Enrichment erweitern** (`backend/app/services/prompt_generator.py`):\n   - Bei Stratege-Prompt-Generierung prüfen:\n     - Existiert ein Wiki-Artikel mit tag 'diagnostics'?\n     - Wenn nein UND code_nodes > 0: Warnung einbauen:\n       ```\n       ⚠ Kein Repo Health Report vorhanden.\n       Empfehlung: Kartograph mit Diagnostics-Phase ausführen bevor Epics geplant werden.\n       ```\n   - Wenn ja: Health-Report-Summary in Enrichment einbauen:\n     ```\n     📊 Repo Health Report (vom {date}):\n     - {n} Errors, {m} Warnings in {k} Kategorien\n     - Top-Kategorien: {category1} ({count}), {category2} ({count})\n     - Empfehlung: Cleanup-Epics für {categories} ableiten\n     ```\n\n2. **Cleanup-Epic-Templates:**\n   - Vordefinierte Epic-Templates pro Analyzer-Kategorie:\n     - `design-token-migration` → aus hardcoded-css Findings\n     - `component-deduplication` → aus duplicate-detection Findings\n     - `layer-refactoring` → aus layer-violations Findings\n     - `constant-extraction` → aus magic-values Findings\n   - Template enthält: Title, Description-Skeleton, DoD-Kriterien, Tags\n\n3. **Programmatische Stratege-Empfehlung:**\n   - Wenn ein Repo kartiert ist aber kein diagnostics-Wiki existiert:\n     - System erstellt automatisch einen Hint in der Prompt Station\n     - 'Nächster Schritt: Repo Health Scan durchführen'\n\n4. **Health-Findings → Guard-Mapping:**\n   - Jeder Analyzer-Typ mappt auf Guard-Typen:\n     - `hardcoded-css` → Guard: `no-hardcoded-colors`, `no-hardcoded-spacing`\n     - `layer-violations` → Guard: `layer-boundaries`\n     - `file-size` → Guard: `max-file-size`\n   - Mapping als konfigurierbare Tabelle",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Stratege-Prompt warnt bei fehlendem diagnostics-Wiki",
+      "Health-Report-Summary wird in Stratege-Enrichment eingebaut",
+      "Cleanup-Epic-Templates für mindestens 4 Kategorien definiert",
+      "Prompt Station zeigt Hint wenn Diagnostics fehlt",
+      "Health-Findings → Guard-Mapping dokumentiert",
+      "Integration-Test: Stratege-Prompt mit/ohne Health-Report"
+    ]
+  },
+  "tags": ["stratege", "automation", "prompt-engineering"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": ["agent-konzept"],
+  "source_doc": "docs/agents/stratege.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-HEALTH-007"]
+}

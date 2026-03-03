@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Gaertner-Prompt-Flow (Frontend)",
   "description": "Prompt Station: Task done zeigt Jetzt: Gaertner. SSE task_done triggert. Gaertner-Prompt laden via get_prompt. Copy-to-Clipboard.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

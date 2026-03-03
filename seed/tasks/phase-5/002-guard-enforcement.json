@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Guard-Enforcement in update_task_state (Phase 5)",
   "description": "update_task_state erweitern: Bei in_progress nach in_review prüft Backend (1) result vorhanden, (2) alle task_guards passed|skipped. Bei pending/failed Guards: 422 mit Liste offener Guards. Phase-Erkennung via HIVEMIND_CURRENT_PHASE. Guard-Reset bei qa_failed nach in_progress: alle task_guards auf pending.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

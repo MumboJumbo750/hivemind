@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "CRUD-Endpoints: Projekte",
   "description": "REST-Endpoints für Projekte: POST /api/projects, GET /api/projects, GET /api/projects/{slug}, PATCH /api/projects/{slug}. Ohne Auth (Phase 1).",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

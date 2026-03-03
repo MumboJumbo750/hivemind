@@ -4,6 +4,8 @@ import cytoscape from 'cytoscape'
 import type { Core, ElementDefinition, EventObjectNode } from 'cytoscape'
 import { HivemindCard } from '../../components/ui'
 import { useBugHeatmap } from '../../composables/useBugHeatmap'
+import NexusGrid3D from '../../components/domain/NexusGrid3D.vue'
+import type { Node3DItem, Edge3DItem } from '../../api/types'
 
 interface GraphNode {
   id: string
@@ -51,6 +53,39 @@ const selectedNode = ref<GraphNode | null>(null)
 const projectFilter = ref('')
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// ── 3D Mode (TASK-8-025) ─────────────────────────────────────────────────
+const viewMode = ref<'2d' | '3d'>('2d')
+const graph3dNodes = ref<Node3DItem[]>([])
+const graph3dEdges = ref<Edge3DItem[]>([])
+const loading3d = ref(false)
+const error3d = ref<string | null>(null)
+
+async function load3DGraph(): Promise<void> {
+  loading3d.value = true
+  error3d.value = null
+  try {
+    const url = projectFilter.value
+      ? `/api/nexus/graph3d?page=0&page_size=500&project_id=${projectFilter.value}`
+      : '/api/nexus/graph3d?page=0&page_size=500'
+    const response = await fetch(`${API_BASE}${url}`)
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const data = await response.json() as { nodes: Node3DItem[]; edges: Edge3DItem[] }
+    graph3dNodes.value = data.nodes ?? []
+    graph3dEdges.value = data.edges ?? []
+  } catch (e: unknown) {
+    error3d.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    loading3d.value = false
+  }
+}
+
+async function switchTo3D(): Promise<void> {
+  viewMode.value = '3d'
+  if (graph3dNodes.value.length === 0) {
+    await load3DGraph()
+  }
+}
 
 const {
   heatmapEnabled,
@@ -447,7 +482,22 @@ onBeforeUnmount(() => {
         <span class="stat stat--unexplored" title="Unexplored">{{ stats.unexplored }} offen</span>
       </div>
 
+      <!-- View mode toggle: 2D / 3D -->
+      <div class="view-mode-toggle">
+        <button
+          class="view-mode-btn"
+          :class="{ 'view-mode-btn--active': viewMode === '2d' }"
+          @click="viewMode = '2d'"
+        >2D</button>
+        <button
+          class="view-mode-btn"
+          :class="{ 'view-mode-btn--active': viewMode === '3d' }"
+          @click="switchTo3D"
+        >3D</button>
+      </div>
+
       <button
+        v-if="viewMode === '2d'"
         class="heatmap-toggle"
         :class="{ 'heatmap-toggle--active': heatmapEnabled }"
         @click="onHeatmapToggle"
@@ -465,27 +515,42 @@ onBeforeUnmount(() => {
 
     <div class="nexus-body">
       <div class="nexus-graph-container">
-        <div v-if="loading" class="graph-loading">Lade Graph...</div>
-        <div v-else-if="error" class="graph-error">{{ error }}</div>
-        <div v-else-if="graphData.nodes.length === 0" class="graph-empty">Keine Code-Nodes vorhanden.</div>
+        <!-- ── 2D Cytoscape View ── -->
+        <template v-if="viewMode === '2d'">
+          <div v-if="loading" class="graph-loading">Lade Graph...</div>
+          <div v-else-if="error" class="graph-error">{{ error }}</div>
+          <div v-else-if="graphData.nodes.length === 0" class="graph-empty">Keine Code-Nodes vorhanden.</div>
 
-        <div v-else ref="cyContainerRef" class="nexus-cy-container" />
+          <div v-else ref="cyContainerRef" class="nexus-cy-container" />
 
-        <div
-          v-if="showHoverPanel && hoveredNode"
-          class="bug-hover-panel"
-          :style="{ left: `${hoverState.x}px`, top: `${hoverState.y}px` }"
-        >
-          <div class="bug-hover-title">{{ hoveredNode.label }}</div>
-          <dl class="bug-hover-list">
-            <dt>Bugs</dt>
-            <dd class="mono">{{ hoveredBugSummary.count }}</dd>
-            <dt>Last Seen</dt>
-            <dd class="mono">{{ formatDateTime(hoveredBugSummary.lastSeen) }}</dd>
-            <dt>Stack Hash</dt>
-            <dd class="mono">{{ hoveredBugSummary.stackTraceHashPreview ?? '-' }}</dd>
-          </dl>
-        </div>
+          <div
+            v-if="showHoverPanel && hoveredNode"
+            class="bug-hover-panel"
+            :style="{ left: `${hoverState.x}px`, top: `${hoverState.y}px` }"
+          >
+            <div class="bug-hover-title">{{ hoveredNode.label }}</div>
+            <dl class="bug-hover-list">
+              <dt>Bugs</dt>
+              <dd class="mono">{{ hoveredBugSummary.count }}</dd>
+              <dt>Last Seen</dt>
+              <dd class="mono">{{ formatDateTime(hoveredBugSummary.lastSeen) }}</dd>
+              <dt>Stack Hash</dt>
+              <dd class="mono">{{ hoveredBugSummary.stackTraceHashPreview ?? '-' }}</dd>
+            </dl>
+          </div>
+        </template>
+
+        <!-- ── 3D Three.js View ── -->
+        <template v-else>
+          <div v-if="loading3d" class="graph-loading">Lade 3D-Graph...</div>
+          <div v-else-if="error3d" class="graph-error">{{ error3d }}</div>
+          <NexusGrid3D
+            v-else
+            :nodes="graph3dNodes"
+            :edges="graph3dEdges"
+            class="nexus-3d-container"
+          />
+        </template>
       </div>
 
       <aside v-if="selectedNode" class="nexus-detail">
@@ -593,6 +658,41 @@ onBeforeUnmount(() => {
   font-size: var(--font-size-xs);
 }
 
+/* ── View mode toggle (2D / 3D) ── */
+.view-mode-toggle {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.view-mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: background var(--transition-duration) ease, color var(--transition-duration) ease;
+  white-space: nowrap;
+}
+
+.view-mode-btn + .view-mode-btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.view-mode-btn--active {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  color: var(--color-accent);
+}
+
+.view-mode-btn:not(.view-mode-btn--active):hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
 .heatmap-toggle {
   margin-left: auto;
   background: color-mix(in srgb, var(--color-border) 30%, transparent);
@@ -626,6 +726,11 @@ onBeforeUnmount(() => {
 }
 
 .nexus-cy-container {
+  width: 100%;
+  height: 100%;
+}
+
+.nexus-3d-container {
   width: 100%;
   height: 100%;
 }

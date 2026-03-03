@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Login-Screen (LoginView)",
   "description": "`src/views/Auth/LoginView.vue` implementieren. Sci-Fi-minimales Design (kein generisches Bootstrap-Form). Username + Password Felder, Submit-Button. Ruft `POST /api/auth/login` auf. Speichert Access-Token in Pinia Auth-Store (`src/stores/authStore.ts`). Refresh-Token kommt automatisch als HttpOnly Cookie. Auth-Store: `user` (CurrentActor), `accessToken`, `isAuthenticated` (computed), `login()`, `logout()`, `refreshToken()`. Axios/Fetch-Interceptor für automatisches Token-Refresh bei 401. Vue-Router Guard: unauthentifizierte User werden auf `/login` redirected. Nach erfolgreichem Login: Redirect auf Prompt Station (`/`). Registrierungslink optional (Phase 2 hat kein Self-Registration-UI; User werden via Seed oder Admin angelegt).",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

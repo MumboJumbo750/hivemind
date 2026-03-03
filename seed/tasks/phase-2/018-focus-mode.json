@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Focus Mode (Composable + CSS)",
   "description": "`src/composables/useFocusMode.ts` implementieren + CSS-Integration. Focus Mode blendet Nav Sidebar und Status Bar temporär aus. Trigger: Keyboard-Shortcut `F` (nur wenn kein Input/Textarea fokussiert) oder expliziter Button in Prompt Station. State: `isFocusMode` ref, wird als CSS-Klasse auf `<body>` oder App-Root gesetzt. CSS: `.focus-mode .nav-sidebar, .focus-mode .status-bar { display: none; }`. Kritische Alerts (danger-Level Notifications) bleiben sichtbar via CSS-Override. Composable exportiert: `isFocusMode`, `toggleFocusMode()`, `exitFocusMode()`. ESC-Taste beendet Focus Mode.",
-  "state": "incoming",
+  "state": "done",
   "priority": "low",
   "definition_of_done": {
     "criteria": [

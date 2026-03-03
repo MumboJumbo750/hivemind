@@ -8,6 +8,7 @@ export const useProjectStore = defineStore('project', () => {
   const activeProject = ref<Project | null>(null)
   const activeEpic = ref<Epic | null>(null)
   const activeTask = ref<Task | null>(null)
+  const epicTasks = ref<Task[]>([])
   const availableEpics = ref<Epic[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -33,6 +34,7 @@ export const useProjectStore = defineStore('project', () => {
     activeEpic.value = epics.find(e => !['done', 'cancelled'].includes(e.state)) ?? epics[0] ?? null
     if (activeEpic.value) {
       const tasks = await api.getTasks(activeEpic.value.epic_key)
+      epicTasks.value = tasks
       activeTask.value = tasks.find(t => ['in_progress', 'in_review'].includes(t.state)) ?? tasks[0] ?? null
     }
   }
@@ -40,12 +42,18 @@ export const useProjectStore = defineStore('project', () => {
   async function selectEpic(epic: Epic) {
     activeEpic.value = epic
     const tasks = await api.getTasks(epic.epic_key)
+    epicTasks.value = tasks
     activeTask.value = tasks.find(t => ['in_progress', 'in_review'].includes(t.state)) ?? tasks[0] ?? null
+  }
+
+  function selectTask(task: Task) {
+    activeTask.value = task
   }
 
   async function refreshActiveTask() {
     if (!activeEpic.value) return
     const tasks = await api.getTasks(activeEpic.value.epic_key)
+    epicTasks.value = tasks
     activeTask.value = tasks.find(t => t.id === activeTask.value?.id) ?? null
   }
 
@@ -58,5 +66,5 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  return { projects, activeProject, activeEpic, activeTask, availableEpics, loading, error, loadProjects, setActiveProject, selectEpic, refreshActiveTask, refreshActiveEpic }
+  return { projects, activeProject, activeEpic, activeTask, epicTasks, availableEpics, loading, error, loadProjects, setActiveProject, selectEpic, selectTask, refreshActiveTask, refreshActiveEpic }
 })

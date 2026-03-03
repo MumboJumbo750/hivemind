@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-8",
   "title": "Bibliothekar Auto-Modus: Provider-Routing + Token-Kalibrierung",
   "description": "Erweiterung des Bibliothekar-Services für den Auto-Modus.\n\n**Bestehend (seit Phase 3):** pgvector-Similarity, Kontext-Assembling, Prompt-Generierung.\n\n**Phase-8-Erweiterungen:**\n\n1. **Per-Agent-Rolle Provider-Routing:**\n   - Bibliothekar liest `ai_provider_configs[agent_role].model` und passt Prompt-Template an\n   - Verschiedene Modelle haben verschiedene Token-Limits → Context-Window anpassen\n   - `get_context_window_size(provider, model) -> int`\n   - Fallback: 4096 Tokens wenn Provider/Modell unbekannt\n\n2. **Provider-spezifische Token-Kalibrierung:**\n   - Nutzt `HIVEMIND_TOKEN_COUNT_CALIBRATION` (aus TASK-8-003)\n   - Prompt-Budget-Berechnung berücksichtigt Kalibrierungs-Faktor\n   - Token Radar / Budget-Warnungen passen sich an\n\n3. **Adaptives Budget:**\n   - Wenn Provider Streaming unterstützt: größeres Kontext-Fenster erlaubt\n   - Bei Rate-Limited Provider: Kontext aggressiver kürzen (weniger Skill-Sections)\n   - Priorität der Kontext-Sections: Skills > Recent Changes > Wiki > Historical\n\n4. **Auto-Modus Prompt-Templates:**\n   - Bestehende Templates (Kartograph, Stratege, etc.) bleiben identisch\n   - Neues Template für Reviewer-Role: `generate_reviewer_prompt(task, dod, guard_results)`\n   - System-Instruktion ergänzt: MCP-Gateway-Tools verfügbar (github/*, gitlab/*)\n\nDatei: Erweiterung von `app/services/bibliothekar.py`",
-  "state": "scoped",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

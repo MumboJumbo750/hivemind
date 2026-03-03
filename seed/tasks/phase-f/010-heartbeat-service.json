@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-F",
   "title": "Heartbeat-Service für Peer-Monitoring",
   "description": "APScheduler-Job der alle 5 Minuten (konfigurierbar via `HIVEMIND_HEARTBEAT_INTERVAL`, Default: 300s) alle `active`-Peers via `GET /federation/ping` anpingt.\n\n**Bei erfolgreichem Ping:** `nodes.last_seen` auf aktuelle Zeit aktualisieren. Wenn Peer vorher `inactive` war: Status auf `active` setzen, `peer_online`-Event auslösen.\n\n**Bei fehlgeschlagenem Ping:** Wenn `nodes.last_seen` > 15 Minuten (konfigurierbar via `HIVEMIND_PEER_TIMEOUT`, Default: 900s): `nodes.status` auf `inactive` setzen. Prüfen ob der Peer delegierte Tasks hat (`tasks.assigned_node_id` = Peer-ID mit State != 'done'): wenn ja, `peer_offline`-Event auslösen (für SSE-Notifications in TASK-F-015).\n\nHTTP-Client: `httpx.AsyncClient` mit Timeout 5s pro Ping. Ping-Requests werden NICHT signiert (Ping-Endpoint ist öffentlich). APScheduler-Job wird im gleichen Scheduler wie Outbox-Consumer registriert. Nur aktiv wenn `HIVEMIND_FEDERATION_ENABLED=true`.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

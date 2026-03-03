@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-HEALTH-001",
+  "epic_ref": "EPIC-REPO-HEALTH",
+  "title": "Scanner-Framework: Plugin-Architektur & JSON-Report-Schema",
+  "description": "Erstelle das Grundgerüst des modularen Scanner-Frameworks.\n\n**Was zu implementieren ist:**\n\n1. `scripts/analyzers/__init__.py` — Framework-Core:\n   - `BaseAnalyzer` ABC mit `name`, `description`, `analyze(root: Path) -> list[Finding]`\n   - `Finding` Dataclass: `analyzer`, `severity` (error|warning|info), `file`, `line`, `message`, `category`, `auto_fixable`\n   - `AnalyzerRegistry` — auto-discovery aller Analyzer im Ordner\n   - `run_all(root: Path, analyzers: list[str] | None = None) -> Report`\n   - `Report` Dataclass: `findings`, `summary`, `timestamp`, `root_path`\n\n2. `scripts/analyzers/report.py` — JSON-Report-Schema:\n   - `Report.to_json() -> str` (einheitliches Format)\n   - `Report.to_markdown() -> str` (für Wiki-Artikel)\n   - `Report.to_sarif() -> str` (optional, für CI-Integration)\n\n3. `scripts/health_check.py` — CLI-Entry-Point:\n   - `python scripts/health_check.py [--root .] [--analyzers a,b,c] [--format json|markdown|text] [--severity warning]`\n   - Exit-Code: 0 = nur info/warnings, 1 = errors gefunden\n\n4. Makefile-Target: `make health` → `python scripts/health_check.py`\n\n**Design-Prinzipien:**\n- Zero external dependencies (nur stdlib + pathlib + re + json)\n- Jeder Analyzer ist eine eigene Datei in `scripts/analyzers/`\n- Framework erkennt Analyzer automatisch (Subclass von BaseAnalyzer)\n- Stack-Detection: `detect_stack(root) -> set[str]` (vue, react, python, etc.)",
+  "state": "open",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "BaseAnalyzer ABC existiert mit definiertem Interface",
+      "Finding Dataclass mit allen Feldern (analyzer, severity, file, line, message, category, auto_fixable)",
+      "AnalyzerRegistry auto-discovered alle BaseAnalyzer-Subklassen",
+      "JSON-Report-Schema dokumentiert und implementiert",
+      "CLI-Entry-Point mit --root, --analyzers, --format, --severity Optionen",
+      "make health Target im Makefile",
+      "detect_stack() erkennt mindestens: vue, react, python, typescript",
+      "Funktioniert ohne externe Dependencies (nur stdlib)"
+    ]
+  },
+  "tags": ["tooling", "architecture", "python"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

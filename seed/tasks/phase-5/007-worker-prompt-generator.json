@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Worker-Prompt-Generator",
   "description": "get_prompt type=worker task_id: Task-Details, gepinnte Skills, Guard-Checkliste, Write-Tools. Phase-5-Hinweis zu Guard-Enforcement. Review-Kommentar bei Re-entry nach qa_failed. Jinja2-Template.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

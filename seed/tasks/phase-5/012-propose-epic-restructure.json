@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "propose_epic_restructure MCP-Tool",
   "description": "hivemind/propose_epic_restructure: Typen split|merge|task_move. Payload-Validierung. state=proposed. Notification restructure_proposal an Admins. code_node_refs.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

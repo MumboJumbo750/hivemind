@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-7",
   "title": "Performance-Budget: Nexus Grid + Triage dokumentieren + messen",
   "description": "Dokumentation und Messung der Performance-Grenzen für Nexus Grid und Triage Station.\n\nFunktionalität:\n1. **Performance-Budget-Dokument** in `docs/performance-budget.md`:\n   - Nexus Grid: <= 500 Knoten bei < 16ms Frame-Zeit (Cola-Layout), Bug-Heatmap-Toggle < 100ms\n   - Triage Station: Initial-Load < 2s, Dead-Letter-List-Pagination < 500ms\n   - KPI-Dashboard: Warm Cache < 100ms, Cold Cache < 5s\n   - SSE-Latenz: < 200ms vom Server-Event bis UI-Update\n2. **Playwright-Performance-Test** (oder Lighthouse CI): Misst Core Web Vitals für die drei Views\n3. **Backend-Benchmark-Skript** `scripts/bench_kpi.py`: KPI-Aggregation mit unterschiedlichen Dateimengen (100/1000/10000 Tasks)\n4. **Cytoscape-Load-Test**: Skript das 500 Knoten simuliert und Frame-Zeit misst (requestAnimationFrame-basiert)\n5. Ergebnisse werden im Performance-Budget-Dokument als 'gemessene Baseline' eingetragen\n\nDateien: `docs/performance-budget.md`, `scripts/bench_kpi.py`, `frontend/tests/performance/nexus-grid.perf.ts`",
-  "state": "scoped",
+  "state": "done",
   "priority": "low",
   "definition_of_done": {
     "criteria": [

@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "Alembic Setup + pgvector Extension",
   "description": "Alembic-Konfiguration, erste Migration mit pgvector-Extension-Aktivierung, SQLAlchemy async Engine Setup, DB-Connection-Pool.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

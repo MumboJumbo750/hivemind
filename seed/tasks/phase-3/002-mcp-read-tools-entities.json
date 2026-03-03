@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-3",
   "title": "MCP Read-Tools: Entity-Reads",
   "description": "Erste Gruppe von MCP-Read-Tools implementieren — die Entity-spezifischen Reads. Tools: `hivemind/get_epic { id }` — Epic mit State, Priority, DoD zurückgeben. `hivemind/get_task { task_id }` — Task mit State, assigned_to, pinned_skills, Guards-Übersicht. `hivemind/get_skill_versions { skill_id }` — immutable Versionshistorie eines Skills. `hivemind/get_doc { id }` — Epic-Doc laden. `hivemind/get_guards { task_id }` — alle Guards (global + project + skill + task) für einen Task. Identifier-Konvention: Tasks per `task_key` (TASK-88), Epics per `epic_key` (EPIC-12), alles andere per UUID. Jeder Tool-Handler in `app/mcp/tools/read_tools.py`. Response als JSON mit `data`-Wrapper. 404 wenn Entity nicht gefunden.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

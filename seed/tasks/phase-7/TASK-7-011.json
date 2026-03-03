@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-7",
   "title": "Audit-Retention-Cron: Row-Deletion + konfigurierbare Retention-Perioden",
   "description": "ERWEITERUNG des bestehenden `_audit_retention_job` in `app/services/scheduler.py`.\n\n**Was bereits existiert:**\n- `_audit_retention_job()` in `scheduler.py` (Zeilen 16-40) — nullifiziert `input_payload/output_payload` in `mcp_invocations` nach `audit_retention_days` (default: 90)\n- Job ist bereits registriert als `'audit_retention'` (CronTrigger, 03:00 UTC)\n- Config-Wert `audit_retention_days: int = 90` in `config.py`\n- KEINE neue Service-Datei nötig!\n\n**Was fehlt (in _audit_retention_job ergänzen):**\n1. **Row-Deletion**: Nach `audit_row_deletion_days` Tagen (default: 180) werden Rows aus `mcp_invocations` vollständig gelöscht:\n   `DELETE FROM mcp_invocations WHERE created_at < now() - interval ':days days'`\n2. **Konfigurierbare Perioden**: Neues Setting `audit_row_deletion_days: int = 180` in `config.py` hinzufügen (payload_nullify = audit_retention_days, row_delete = audit_row_deletion_days)\n3. **Logging**: Anzahl gelöschter Rows loggen (wie bereits für Nullify)\n\n**Änderungen:**\n- `app/config.py`: `audit_row_deletion_days: int = 180` hinzufügen\n- `app/services/scheduler.py`: `_audit_retention_job()` um DELETE-Query ergänzen\n\n**KEINE neue Datei, KEINE neue Job-Registrierung** — nur Erweiterung der bestehenden Funktion.\n\nDateien: `app/services/scheduler.py`, `app/config.py`",
-  "state": "scoped",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

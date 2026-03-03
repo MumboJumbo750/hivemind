@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "DB-Schema: Nexus Grid, Sync, Audit, Memory, Gamification, Rest",
   "description": "Alembic-Migration für alle verbleibenden Tabellen: code_nodes, code_edges, node_bug_reports, epic_node_links, task_node_links, mcp_invocations, idempotency_keys, sync_outbox, sync_dead_letter, decision_requests, decision_records, epic_restructure_proposals, epic_proposals, notifications, prompt_history, memory_sessions, memory_summaries, memory_entries, memory_facts, level_thresholds, badge_definitions, user_achievements, exp_events, ai_provider_configs, review_recommendations, conductor_dispatches, discovery_sessions.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

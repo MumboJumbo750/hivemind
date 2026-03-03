@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Optimistic Locking + Idempotenz",
   "description": "Auf allen mutierenden Endpoints `expected_version` und `idempotency_key` als Pflichtfelder einführen. Optimistic Locking: bei jedem Write wird `version` in der DB inkrementiert. Wenn `expected_version` nicht mit aktuellem DB-Stand übereinstimmt → HTTP 409 Conflict. Idempotenz-Cache: `idempotency_key` wird in `mcp_invocations`-Tabelle geprüft — wenn bereits vorhanden, wird das gespeicherte `output_payload` zurückgegeben statt erneut auszuführen. MCP-Write-Pflichtfelder-Schema erstellen: `request_id`, `actor_id`, `actor_role`, `epic_id` (optional), `idempotency_key`, `expected_version`. Bestehende PATCH/POST Endpoints in projects, epics, tasks Routern anpassen.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

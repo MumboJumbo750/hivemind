@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-3",
   "title": "Basis-REST-CRUD für MCP-Write-Entitäten",
   "description": "REST-Endpoints für Entitäten anlegen die in späteren Phasen MCP-Write-Tools bekommen — ermöglicht manuelles Befüllen bis die Write-Tools verfügbar sind. Endpoints: `POST/PATCH /api/wiki/articles` — Wiki-Artikel anlegen/bearbeiten (kartograph + admin Rolle). `POST/PATCH /api/guards` — Guards anlegen/bearbeiten (admin only). `POST/PATCH /api/code-nodes` — Code-Nodes anlegen/bearbeiten (kartograph + admin). `POST /api/epics/{epic_key}/docs` — Epic-Docs anlegen (admin). RBAC-Enforcement: Rollen-Prüfung serverseitig via bestehender Auth-Middleware. Pydantic-Schemas für Request/Response-Bodies. Optimistic Locking (version-Feld) für PATCH-Endpoints. Audit-Log-Einträge für alle Mutationen. MCP-Tool-Wrapper für diese Endpoints kommen erst in Phase 5.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

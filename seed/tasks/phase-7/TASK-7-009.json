@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-7",
   "title": "DLQ REST-Aliases + Dead-Letter List-Endpoint",
   "description": "REST-Aliases für die MCP DLQ-Tools sowie ein List-Endpoint für die Triage-Station.\n\n**Kontext:** `sync_dead_letter`-Tabelle enthält Felder: `id, outbox_id, system, entity_type, entity_id, payload, error, failed_at, requeued_by, requeued_at, discarded_by, discarded_at`\n\n**Neuer Router `app/routers/triage.py` (bisher nicht vorhanden):**\n\n1. `GET /api/triage/dead-letters` → paginierte Liste aller nicht-discardeten Dead-Letter-Einträge (`discarded_at IS NULL`).\n   - Filter: `system` (youtrack/sentry), `direction` (über join auf sync_outbox)\n   - Response-Felder: `id, system, entity_type, error` (NICHT last_error — Feldname in DB ist `error`!), `failed_at, requeued_at, payload_preview` (erste 200 Zeichen von payload als string)\n   - Pagination: offset-basiert (konsistent mit bestehender sync_outbox.py), page_size max 50\n\n2. `POST /api/triage/dead-letters/{id}/requeue` → Ruft identische Service-Logik wie MCP-Tool auf (kein Doppelcode — gemeinsamer Service). Scope: admin, triage.\n\n3. `POST /api/triage/dead-letters/{id}/discard` → Ruft identische Service-Logik wie MCP-Tool auf. Scope: admin, triage.\n\n**Tipp:** Gemeinsame Logik für requeue/discard in `app/services/dlq_service.py` kapseln — sowohl MCP-Tool als auch REST-Router importieren daraus.\n\nDateien: `app/routers/triage.py`, `app/services/dlq_service.py`",
-  "state": "scoped",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

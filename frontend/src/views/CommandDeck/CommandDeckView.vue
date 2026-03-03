@@ -82,6 +82,62 @@ const reviewTask = ref<Task | null>(null)
 
 function openReview(task: Task) { reviewTask.value = task }
 
+// ── Worker Prompt (inline, pro Task) ────────────────────────────────────────
+interface PromptEntry { text: string; loading: boolean; copied: boolean }
+const promptMap = ref(new Map<string, PromptEntry>())
+const promptExpanded = ref(new Set<string>())
+
+async function togglePrompt(task: Task) {
+  const key = task.task_key
+  if (promptExpanded.value.has(key)) {
+    promptExpanded.value = new Set([...promptExpanded.value].filter(k => k !== key))
+    return
+  }
+  promptExpanded.value = new Set([...promptExpanded.value, key])
+  if (promptMap.value.get(key)?.text) return
+  const entry: PromptEntry = { text: '', loading: true, copied: false }
+  promptMap.value = new Map(promptMap.value).set(key, entry)
+  try {
+    const role = task.state === 'in_review' ? 'reviewer' : 'worker'
+    const epicId = epics.value.find(e => e.id === task.epic_id)?.id
+    const result = await api.getPrompt(role, key, epicId, selectedProjectId.value ?? undefined)
+    const parsed = JSON.parse(result[0]?.text || '{}')
+    entry.text = parsed.data?.prompt || parsed.prompt || 'Kein Prompt verfügbar.'
+  } catch {
+    entry.text = 'Fehler beim Laden.'
+  } finally {
+    entry.loading = false
+    promptMap.value = new Map(promptMap.value).set(key, { ...entry })
+  }
+}
+
+async function copyTaskPrompt(taskKey: string) {
+  const entry = promptMap.value.get(taskKey)
+  if (!entry) return
+  await navigator.clipboard.writeText(entry.text)
+  promptMap.value = new Map(promptMap.value).set(taskKey, { ...entry, copied: true })
+  setTimeout(() => {
+    const e = promptMap.value.get(taskKey)
+    if (e) promptMap.value = new Map(promptMap.value).set(taskKey, { ...e, copied: false })
+  }, 2000)
+}
+
+// ── Reenter from qa_failed ───────────────────────────────────────────────────
+const reenteringTasks = ref(new Set<string>())
+
+async function reenterTask(task: Task) {
+  reenteringTasks.value.add(task.task_key)
+  try {
+    await api.reenterTask(task.task_key)
+    const epicKey = epics.value.find(e => e.id === task.epic_id)?.epic_key
+    if (epicKey) await refreshEpicTasks(epicKey)
+  } catch {
+    /* ignore — Fehler im UI nicht kritisch */
+  } finally {
+    reenteringTasks.value.delete(task.task_key)
+  }
+}
+
 async function onReviewDone() {
   const epicKey = epics.value.find(e => e.id === reviewTask.value?.epic_id)?.epic_key
   reviewTask.value = null
@@ -401,41 +457,79 @@ function closeTaskDetail() {
             v-else-if="!tasksByEpic[epic.epic_key].length"
             class="task-empty"
           >Keine Tasks</div>
-          <div
+          <template
             v-for="task in tasksByEpic[epic.epic_key]"
             :key="task.task_key"
-            class="task-row"
-            @click="showTaskDetail(task)"
           >
-            <span class="task-key">{{ task.task_key }}</span>
-            <span class="task-title">{{ task.title }}</span>
-            <span
-              v-if="task.assigned_node_name"
-              class="node-badge"
-              :class="{ 'node-badge--inactive': peerNodes.find(p => p.id === task.assigned_node_id)?.status === 'inactive' }"
+            <div
+              class="task-row"
+              @click="showTaskDetail(task)"
             >
-              ⬡ {{ task.assigned_node_name }}
-            </span>
-            <div class="task-actions">
-              <span class="badge badge--sm" :class="TASK_STATE_CLASS[task.state] ?? 'badge--muted'">
-                {{ task.state }}
+              <span class="task-key">{{ task.task_key }}</span>
+              <span class="task-title">{{ task.title }}</span>
+              <span
+                v-if="task.assigned_node_name"
+                class="node-badge"
+                :class="{ 'node-badge--inactive': peerNodes.find(p => p.id === task.assigned_node_id)?.status === 'inactive' }"
+              >
+                ⬡ {{ task.assigned_node_name }}
               </span>
-              <button
-                v-if="task.state === 'in_review'"
-                class="btn-review"
-                @click="openReview(task)"
-              >
-                REVIEW
-              </button>
-              <button
-                v-else-if="task.state === 'scoped' || task.state === 'ready'"
-                class="btn-start"
-                @click="startTask(task)"
-              >
-                START →
-              </button>
+              <div class="task-actions">
+                <span class="badge badge--sm" :class="TASK_STATE_CLASS[task.state] ?? 'badge--muted'">
+                  {{ task.state }}
+                </span>
+                <button
+                  v-if="task.state === 'in_review'"
+                  class="btn-review"
+                  @click.stop="openReview(task)"
+                >
+                  REVIEW
+                </button>
+                <button
+                  v-else-if="task.state === 'qa_failed'"
+                  class="btn-reenter"
+                  :disabled="reenteringTasks.has(task.task_key)"
+                  @click.stop="reenterTask(task)"
+                >
+                  {{ reenteringTasks.has(task.task_key) ? '...' : '↩ ZURÜCK' }}
+                </button>
+                <button
+                  v-else-if="task.state === 'scoped' || task.state === 'ready'"
+                  class="btn-start"
+                  @click.stop="startTask(task)"
+                >
+                  START →
+                </button>
+                <button
+                  v-if="['in_progress','scoped','ready','qa_failed','in_review'].includes(task.state)"
+                  class="btn-prompt"
+                  :class="{ 'btn-prompt--active': promptExpanded.has(task.task_key) }"
+                  @click.stop="togglePrompt(task)"
+                >
+                  {{ promptExpanded.has(task.task_key) ? '▲ PROMPT' : '▼ PROMPT' }}
+                </button>
+              </div>
             </div>
-          </div>
+            <!-- Inline Prompt Panel -->
+            <div
+              v-if="promptExpanded.has(task.task_key)"
+              class="task-prompt-panel"
+              @click.stop
+            >
+              <div v-if="promptMap.get(task.task_key)?.loading" class="task-prompt-loading">Lade Prompt…</div>
+              <template v-else>
+                <div class="task-prompt-panel__actions">
+                  <button
+                    class="btn-secondary btn-prompt-copy"
+                    @click="copyTaskPrompt(task.task_key)"
+                  >
+                    {{ promptMap.get(task.task_key)?.copied ? '✓ Kopiert!' : '📋 Kopieren' }}
+                  </button>
+                </div>
+                <pre class="task-prompt-text">{{ promptMap.get(task.task_key)?.text }}</pre>
+              </template>
+            </div>
+          </template>
           <!-- Add Task button -->
           <div v-if="isDeveloper" class="task-add-row">
             <button class="btn-add-task" @click.stop="openTaskDialog(epic.epic_key)">
@@ -813,6 +907,78 @@ function closeTaskDetail() {
   transition: background var(--transition-duration) ease;
 }
 .btn-review:hover { background: color-mix(in srgb, var(--color-warning) 35%, transparent); }
+
+.btn-reenter {
+  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-size: 9px;
+  padding: 1px var(--space-2);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: background var(--transition-duration) ease;
+}
+.btn-reenter:hover:not(:disabled) { background: color-mix(in srgb, var(--color-danger) 28%, transparent); }
+.btn-reenter:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-prompt {
+  background: none;
+  color: var(--color-muted, #888);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-size: 9px;
+  padding: 1px var(--space-2);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: background var(--transition-duration) ease, color var(--transition-duration) ease;
+}
+.btn-prompt:hover { background: color-mix(in srgb, var(--color-accent) 10%, transparent); color: var(--color-accent); }
+.btn-prompt--active { color: var(--color-accent); border-color: var(--color-accent); }
+
+.task-prompt-panel {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.task-prompt-panel__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.btn-prompt-copy {
+  font-size: var(--font-size-sm);
+  padding: var(--space-1) var(--space-2);
+}
+
+.task-prompt-loading {
+  color: var(--color-muted, #888);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+}
+
+.task-prompt-text {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  line-height: 1.5;
+}
 
 .btn-start {
   background: none;

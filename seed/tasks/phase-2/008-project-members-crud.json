@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "project_members CRUD-Endpoints",
   "description": "CRUD-Endpoints für `project_members` implementieren: `POST /api/projects/{id}/members` (User zu Projekt hinzufügen mit Rolle), `DELETE /api/projects/{id}/members/{user_id}` (User aus Projekt entfernen), `PATCH /api/projects/{id}/members/{user_id}` (Rolle ändern), `GET /api/projects/{id}/members` (alle Mitglieder eines Projekts listen). `ProjectMember`-Model existiert bereits (project_id, user_id, role). Pydantic-Schemas: `MemberAdd`, `MemberUpdate`, `MemberResponse`. RBAC: nur Admin oder Project-Owner darf Members verwalten. Projekt-Rolle überschreibt globale User-Rolle für RBAC-Checks innerhalb des Projekts.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-4",
   "title": "Epic-Proposal MCP-Write-Tools (propose, update, accept, reject)",
   "description": "Vier MCP-Write-Tools implementieren die den Epic-Proposal-Workflow abdecken: `hivemind/propose_epic` (Stratege erstellt Proposal, state='proposed'), `hivemind/update_epic_proposal` (Stratege bessert nach, nur bei state='proposed', Optimistic Locking), `hivemind/accept_epic_proposal` (Triage/Admin akzeptiert → erstellt echtes Epic mit state='incoming', setzt resulting_epic_id), `hivemind/reject_epic_proposal` (Triage/Admin lehnt ab mit Begründung → Notification an Proposer, Warnung an abhängige Proposals). RBAC: propose/update → developer+, accept/reject → triage/admin. Alle Tools schreiben Audit-Log-Einträge. Notification-Events: ProposalAccepted, ProposalRejected, ProposalDependencyRejected via event_bus. Tool-Handler in `app/mcp/tools/write_tools.py`. Idempotenz: propose_epic akzeptiert optionalen `idempotency_key`.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

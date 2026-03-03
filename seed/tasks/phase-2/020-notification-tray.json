@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Notification Tray (Client-Calculated)",
   "description": "`src/components/domain/NotificationTray.vue` implementieren. 🔔-Badge in der System Bar mit ungelesener Zähler. Klick öffnet Panel mit Notification-Liste. Phase 2: **client-calculated** (kein Backend-Service). Berechnet Notifications aus aktuellen Epic/Task-Daten: (A) `sla_warning`: Epics mit `sla_due_at < now + 4h`, (B) `review_requested`: Tasks mit State `in_review`, (C) `task_assigned`: Tasks mit `assigned_to = current_user`. Jede Notification zeigt Typ-Icon, Titel, Zeitstempel. Prüft `GET /api/settings → notification_mode` beim App-Start: nur aktiv wenn `notification_mode = 'client'`. Composable `src/composables/useClientNotifications.ts` für Berechnung. Polling: alle 60 Sekunden Epic/Task-Daten neu laden und Notifications neu berechnen.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

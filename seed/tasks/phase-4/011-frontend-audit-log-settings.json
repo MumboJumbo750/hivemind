@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-4",
   "title": "Frontend: Audit-Log-Ansicht in Settings",
   "description": "Audit-Log-Ansicht in der Settings-View (`/settings`) implementieren — neuer Tab/Sektion 'Audit Log'. Tabellen-Ansicht mit Spalten: Timestamp (relativ + absolut on hover), Aktion (tool_name oder action, monospace Badge), Actor (Username + Avatar), Entity (entity_type + entity_key klickbar zu Detail), Input-Snapshot (truncated auf 80 Zeichen, expand-Button). Filter-Bar: Zeitraum (Datumsbereich-Picker), Action-Filter (Dropdown), Entity-Type-Filter (Dropdown). Paginierung: Page-Buttons oder Infinite-Scroll, max 50 Einträge pro Seite. Performance: nutze Virtual Scrolling (vue-virtual-scroller oder ähnlich) wenn > 200 Einträge visible. Admin sieht alle Einträge; developer sieht nur eigene (Backend regelt das via RBAC, Frontend zeigt kein Umschalter). Admin-Zusatz: Export-Button → CSV-Download (client-seitig aus den geladenen Daten via Blob). Leere Liste: Info-Text 'Noch keine Audit-Einträge' mit Icon. Datenschutz: input_snapshot/output_snapshot werden erst bei explizitem Aufklappen des jeweiligen Eintrags geladen (lazy-load um Output-Snapshot zu minimieren). API: `GET /api/audit` mit query-Params.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

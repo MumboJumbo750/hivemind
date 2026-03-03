@@ -64,7 +64,15 @@ seed/
 │   ├── state-machine-guide.md          # Task- und Epic-Lifecycle
 │   ├── federation-konzept.md           # Sovereign Nodes Überblick
 │   ├── tech-stack.md                   # Stack-Entscheidungen und Begründungen
-│   └── glossar.md                      # System-Glossar als Wiki-Artikel
+│   ├── glossar.md                      # System-Glossar als Wiki-Artikel
+│   ├── nexus-grid.md                   # Die Code-Landkarte
+│   ├── eskalation-und-sla.md           # Automatische Deadlines
+│   ├── mcp-integration.md             # Wie Agents kommunizieren
+│   ├── autonomie-loop.md              # Von BYOAI zur Autonomie
+│   ├── sync-und-integration.md        # Externe Systeme anbinden
+│   ├── gamification.md                # EXP, Badges & Levels
+│   ├── monorepo-struktur.md           # Ein Repo, alles drin
+│   └── skill-system.md               # Wiederverwendbare Instruktionen
 │
 ├── skills/                             # Gärtner-Output: Skills mit Frontmatter
 │   ├── fastapi-endpoint.md             # FastAPI Endpoint erstellen
@@ -76,10 +84,25 @@ seed/
 │   ├── api-test.md                     # API-Endpoint-Test schreiben
 │   └── design-token.md                 # Design Token anlegen/verwenden
 │
-└── docs/                               # Epic-Docs (Kartograph + Gärtner)
-    ├── phase-1a-architektur.md         # Architektur-Kontext für Phase 1a
-    ├── phase-1b-ui-konzept.md          # UI-Kontext für Phase 1b
-    └── ...
+├── docs/                               # Epic-Docs (Kartograph + Gärtner)
+│   ├── phase-1a-architektur.md         # Architektur-Kontext für Phase 1a
+│   ├── phase-1b-ui-konzept.md          # UI-Kontext für Phase 1b
+│   ├── phase-2-architektur.md          # Identity & RBAC Kontext
+│   ├── phase-3-architektur.md          # MCP & Embeddings Kontext
+│   ├── phase-4-architektur.md          # Planer-Writes Kontext
+│   ├── phase-5-architektur.md          # Worker/Gaertner Kontext
+│   ├── phase-6-architektur.md          # Eskalation & Triage Kontext
+│   ├── phase-7-technischer-kontext-und-vorarbeiten.md
+│   ├── phase-8-architektur.md          # Volle Autonomie Kontext
+│   └── phase-f-architektur.md          # Federation Kontext
+│
+├── decisions/                          # Decision Records (JSON)
+│   ├── dr-001.json
+│   ├── dr-002.json
+│   └── dr-003.json
+│
+└── code_nodes/                         # Kartograph Code-Landkarte
+    └── hivemind-code-map.json          # Code Nodes + Edges des Monorepos
 ```
 
 ---
@@ -208,6 +231,8 @@ hivemind seed import --path ./seed/
 4. `wiki/*.md` → `wiki_articles`-Tabelle (Frontmatter parsen, Body als Content)
 5. `docs/*.md` → `docs`-Tabelle (mit Epic-FK)
 6. `tasks/**/*.json` → `tasks`-Tabelle (mit Epic-FK, Skill-Refs auflösen)
+7. `decisions/*.json` → `decision_records`-Tabelle (mit Epic-FK)
+8. `code_nodes/*.json` → `code_nodes` + `code_edges` (Kartograph-Landkarte)
 
 ### Idempotenz
 

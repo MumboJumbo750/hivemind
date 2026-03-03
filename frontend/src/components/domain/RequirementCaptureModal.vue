@@ -24,6 +24,10 @@ const draft = ref<RequirementDraftResponse | null>(null)
 const copySuccess = ref(false)
 const enrichmentOpen = ref(false)
 
+// ── Step 2b: AI Execute ──────────────────────────────────────────────────────
+const executing = ref(false)
+const executeError = ref<string | null>(null)
+
 // ── Step 3: Submit ───────────────────────────────────────────────────────────
 const proposalText = ref('')
 const saving = ref(false)
@@ -43,6 +47,8 @@ watch(() => props.modelValue, (open) => {
     draft.value = null
     copySuccess.value = false
     enrichmentOpen.value = false
+    executing.value = false
+    executeError.value = null
     proposalText.value = ''
     saving.value = false
     saveError.value = null
@@ -81,6 +87,50 @@ async function copyPrompt() {
   }
   copySuccess.value = true
   setTimeout(() => { copySuccess.value = false }, 2000)
+}
+
+async function executeAndSubmit() {
+  if (!draft.value?.prompt || !props.projectId) return
+  executing.value = true
+  executeError.value = null
+  try {
+    const result = await api.executePrompt('stratege', draft.value.prompt)
+    if (result.status === 'no_provider') {
+      executeError.value = result.message ?? 'Kein AI-Provider für Stratege konfiguriert.'
+      return
+    }
+    if (result.status === 'error') {
+      executeError.value = result.message ?? 'Fehler bei der Ausführung.'
+      return
+    }
+    // Success — fill proposal text and auto-submit
+    const aiOutput = result.content ?? ''
+    proposalText.value = aiOutput
+    // Auto-submit the proposal
+    const lines = aiOutput.trim().split('\n')
+    const titleLine = lines.find(l => l.startsWith('#')) ?? lines[0] ?? ''
+    const title = titleLine.replace(/^#+\s*/, '').replace(/\*\*/g, '').trim().slice(0, 120)
+    await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:8000'}/api/epic-proposals`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await _getToken()}`,
+      },
+      body: JSON.stringify({
+        project_id: props.projectId,
+        title: title || requirementText.value.slice(0, 80),
+        description: aiOutput.trim(),
+        rationale: `Abgeleitet aus Anforderung: ${requirementText.value.trim().slice(0, 300)}`,
+      }),
+    })
+    saved.value = true
+    emit('proposal-saved')
+    setTimeout(() => close(), 2000)
+  } catch (e: unknown) {
+    executeError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    executing.value = false
+  }
 }
 
 async function submitProposal() {
@@ -205,6 +255,22 @@ async function _getToken(): Promise<string | null> {
                 <span class="enrichment-value mono-xs">{{ draft.draft_id }}</span>
               </div>
             </div>
+
+            <!-- AI Execute Section -->
+            <div class="execute-section">
+              <button
+                class="btn-execute"
+                :disabled="executing"
+                @click="executeAndSubmit"
+              >
+                {{ executing ? '⏳ Stratege arbeitet…' : '▶ AUSFÜHREN & EINREICHEN' }}
+              </button>
+              <span class="execute-hint">Sendet den Prompt an den konfigurierten Stratege-Provider und reicht das Ergebnis direkt als Proposal ein.</span>
+            </div>
+
+            <p v-if="executeError" class="error-text">{{ executeError }}</p>
+
+            <div class="divider-or"><span>oder manuell</span></div>
 
             <div class="hint-banner">
               Kopiere den Prompt in deinen AI-Client. Füge den generierten Epic-Proposal unten ein.
@@ -523,5 +589,63 @@ async function _getToken(): Promise<string | null> {
 
 .btn-copy:hover {
   filter: brightness(1.15);
+}
+
+/* Execute section */
+.execute-section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--color-success) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success) 20%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.btn-execute {
+  background: var(--color-success);
+  color: var(--color-bg);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-execute:hover {
+  filter: brightness(1.1);
+}
+
+.btn-execute:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.execute-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.divider-or {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.divider-or::before,
+.divider-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
 }
 </style>

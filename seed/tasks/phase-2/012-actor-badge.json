@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Actor-Identity-Badge (ActorBadge)",
   "description": "`src/components/domain/ActorBadge.vue` implementieren. Wird in der System Bar (Header) integriert. Zeigt: Username, Rolle-Badge (farbcodiert: `admin` → `--color-accent`, `developer` → `--color-text-muted`, `service` → `--color-warning`), Avatar-Placeholder (Initialen des Usernames in einem Circle). Liest Actor-Daten aus dem Auth Pinia-Store. Klick öffnet Dropdown mit Logout-Button. Kompakte Darstellung: max 200px Breite.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-F",
   "title": "Ed25519-Signatur-Middleware für Federation-Requests",
   "description": "FastAPI-Middleware die alle eingehenden `/federation/*`-Requests validiert. Erwartet Header `X-Node-Signature` (Base64-encoded Ed25519-Signatur über Request-Body) und `X-Node-ID` (UUID des sendenden Nodes). Public Key wird aus `nodes`-Tabelle via `X-Node-ID` geladen. HTTP 401 bei: fehlendem Header, unbekanntem Node-ID, ungültiger Signatur, inaktivem/blockiertem Peer (`nodes.status != 'active'`). Zusätzlich: Utility-Funktion `sign_request(body: bytes) -> str` die ausgehende Federation-Requests mit dem eigenen Private Key signiert (für Outbox-Consumer und Heartbeat). Private Key wird aus `node_identity`-Tabelle geladen und mit `HIVEMIND_KEY_PASSPHRASE` entschlüsselt. Middleware nur aktiv wenn `HIVEMIND_FEDERATION_ENABLED=true`.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

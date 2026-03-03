@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { api } from '../../api'
-import type { KpiSummaryResponse } from '../../api/types'
+import type { KpiHistoryResponse, KpiSummaryResponse } from '../../api/types'
 import KpiCard from '../../components/domain/KpiCard.vue'
+
+// ── Summary (existing) ──────────────────────────────────────────────────────
 
 const data = ref<KpiSummaryResponse | null>(null)
 const loading = ref(true)
@@ -60,8 +62,78 @@ function stopPolling(): void {
   pollHandle = null
 }
 
+// ── History / Sparklines (TASK-8-026) ──────────────────────────────────────
+
+const historyDays = ref<7 | 30>(7)
+const historyData = ref<KpiHistoryResponse | null>(null)
+const historyLoading = ref(false)
+const historyError = ref('')
+
+const SERIES_LABELS: Record<string, string> = {
+  tasks_done: 'Tasks abgeschlossen',
+  tasks_in_progress: 'Tasks in Arbeit',
+  cycle_time_avg_hours: 'Durchlaufzeit (h)',
+  bug_rate: 'Bug-Rate',
+  skill_coverage: 'Skill-Abdeckung',
+  review_pass_rate: 'Review-Erfolgsquote',
+}
+
+async function loadHistory(): Promise<void> {
+  historyLoading.value = true
+  historyError.value = ''
+  try {
+    historyData.value = await api.getKpiHistory(historyDays.value)
+  } catch (e: unknown) {
+    historyError.value = e instanceof Error ? e.message : 'History load failed'
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+/**
+ * Compute SVG polyline points string from a value array.
+ * The chart area is 200×40 (viewBox units).
+ */
+function sparklinePoints(values: number[]): string {
+  if (values.length === 0) return ''
+  const minV = Math.min(...values)
+  const maxV = Math.max(...values)
+  const range = maxV - minV || 1
+  const w = 200
+  const h = 40
+  const pad = 2
+  return values
+    .map((v, i) => {
+      const x = pad + (i / Math.max(values.length - 1, 1)) * (w - pad * 2)
+      const y = (h - pad) - ((v - minV) / range) * (h - pad * 2)
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+}
+
+function seriesAllZero(values: number[]): boolean {
+  return values.every((v) => v === 0)
+}
+
+const seriesEntries = computed(() => {
+  if (!historyData.value) return []
+  return Object.entries(historyData.value.series).map(([key, points]) => ({
+    key,
+    label: SERIES_LABELS[key] ?? key,
+    values: points.map((p) => p.value),
+    dates: points.map((p) => p.date),
+    allZero: seriesAllZero(points.map((p) => p.value)),
+    points: sparklinePoints(points.map((p) => p.value)),
+  }))
+})
+
+watch(historyDays, () => {
+  void loadHistory()
+})
+
 onMounted(() => {
   void load(false)
+  void loadHistory()
   startPolling()
 })
 
@@ -107,6 +179,72 @@ onUnmounted(() => {
     <p v-else class="kpi-empty">No KPI data available.</p>
 
     <p class="kpi-updated">{{ lastUpdatedText }}</p>
+
+    <!-- ── Time Series Section (TASK-8-026) ─────────────────────────────── -->
+    <section class="history-section">
+      <div class="history-header">
+        <h3 class="history-title">Trend-Verlauf</h3>
+        <div class="history-toggle" role="group" aria-label="Zeitraum auswählen">
+          <button
+            class="toggle-btn"
+            :class="{ 'toggle-btn--active': historyDays === 7 }"
+            @click="historyDays = 7"
+          >
+            7 Tage
+          </button>
+          <button
+            class="toggle-btn"
+            :class="{ 'toggle-btn--active': historyDays === 30 }"
+            @click="historyDays = 30"
+          >
+            30 Tage
+          </button>
+        </div>
+      </div>
+
+      <p v-if="historyError" class="kpi-error">{{ historyError }}</p>
+
+      <div v-if="historyLoading" class="history-grid">
+        <article v-for="i in 6" :key="`hsk-${i}`" class="sparkline-card kpi-skeleton" aria-hidden="true">
+          <div class="skeleton-line skeleton-line--sm" />
+          <div class="skeleton-line skeleton-line--lg" style="height: 40px" />
+        </article>
+      </div>
+
+      <div v-else-if="seriesEntries.length > 0" class="history-grid">
+        <article
+          v-for="series in seriesEntries"
+          :key="series.key"
+          class="sparkline-card"
+        >
+          <p class="sparkline-label">{{ series.label }}</p>
+          <div v-if="series.allZero" class="sparkline-empty">
+            Keine historischen Daten
+          </div>
+          <template v-else>
+            <svg
+              class="sparkline-svg"
+              viewBox="0 0 200 40"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
+              <polyline
+                class="sparkline-line"
+                :points="series.points"
+                fill="none"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <div class="sparkline-meta">
+              <span class="sparkline-date">{{ series.dates[0] }}</span>
+              <span class="sparkline-date">{{ series.dates[series.dates.length - 1] }}</span>
+            </div>
+          </template>
+        </article>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -204,13 +342,123 @@ onUnmounted(() => {
   text-align: right;
 }
 
+/* ── History / Sparklines ───────────────────────────────────────────────── */
+
+.history-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-5);
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.history-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-text);
+}
+
+.history-toggle {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.toggle-btn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.toggle-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.toggle-btn--active {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.sparkline-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--color-surface-alt) 60%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sparkline-label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sparkline-svg {
+  width: 100%;
+  height: 40px;
+  display: block;
+}
+
+.sparkline-line {
+  stroke: var(--color-accent);
+}
+
+.sparkline-empty {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--space-3) 0;
+  opacity: 0.6;
+}
+
+.sparkline-meta {
+  display: flex;
+  justify-content: space-between;
+}
+
+.sparkline-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
 @keyframes kpi-shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
 }
 
 @media (max-width: 900px) {
-  .kpi-grid {
+  .kpi-grid,
+  .history-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -220,7 +468,8 @@ onUnmounted(() => {
     padding: var(--space-4);
   }
 
-  .kpi-grid {
+  .kpi-grid,
+  .history-grid {
     grid-template-columns: 1fr;
   }
 }

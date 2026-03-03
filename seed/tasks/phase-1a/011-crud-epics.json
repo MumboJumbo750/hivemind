@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "CRUD-Endpoints: Epics",
   "description": "REST-Endpoints für Epics: POST /api/projects/{slug}/epics, GET /api/projects/{slug}/epics, GET /api/epics/{epic_key}, PATCH /api/epics/{epic_key}. Inline-Scoping: PATCH mit priority + sla_deadline + definition_of_done → state: scoped.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

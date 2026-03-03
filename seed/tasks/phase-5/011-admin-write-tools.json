@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Admin-Write-Tools: merge_guard, accept/reject Changes & Restructures",
   "description": "Admin-Tools: merge_guard (active, +30 EXP), reject_guard (rejected), accept/reject_skill_change (+20 EXP), accept/reject_guard_change, accept/reject_epic_restructure. Alle Admin-only.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-3",
   "title": "Prompt-Templates als Skills (System-Skills)",
   "description": "Agent-Prompt-Templates als versionierte Skills anlegen — globale Skills mit `lifecycle='active'` und `federation_scope='local'`. Jedes Template ist ein Skill in der `skills`-Tabelle mit `service_scope=['system']`. Templates: Bibliothekar-Template (Context Assembly Instruktionen), Worker-Template (Task-Ausführung mit Guards), Review-Template (DoD-Prüfung), Kartograph-Template (Repo-Analyse Instruktionen), Architekt-Template (Epic-Decomposition), Stratege-Template (Plan-Analyse), Gärtner-Template (Skill-Destillation), Triage-Template (Routing-Entscheidung). Templates werden beim Seed-Import oder manuell angelegt. Der Prompt-Generator (TASK-3-005) lädt das jeweils aktive Template und füllt Variablen per Jinja2 ein. Templates können über den normalen Skill-Lifecycle versioniert werden (Änderung → neue Version, alte bleibt immutable).",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

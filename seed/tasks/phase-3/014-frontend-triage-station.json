@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-3",
   "title": "Frontend: Triage Station",
   "description": "Triage Station View (`/triage`) im Frontend implementieren — erste Ansicht für Event-Routing. Zeigt alle `[UNROUTED]`-Items aus `sync_outbox` mit `direction='inbound'`. List-View mit Spalten: Source (YouTrack/Sentry-Icon), Summary, Payload-Preview, Timestamp, Routing-Actions. Actions pro Item: `[ZUORDNEN]`-Button → Modal mit Epic-Auswahl → ruft `hivemind/route_event` auf. `[IGNORIEREN]`-Button → Confirm-Dialog mit optionalem Grund → ruft `hivemind/ignore_event` auf. Filter/Tabs: `Unrouted` (default), `Routed`, `Ignored`, `All`. Echtzeit-Updates via SSE-Kanal `/events/triage` — neue Items erscheinen sofort. Paginierung mit Infinite-Scroll oder Page-Buttons. Source-Type-Badge: YouTrack → blau, Sentry → rot, Federation → lila. Responsive: funktioniert auf Desktop und Tablet.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

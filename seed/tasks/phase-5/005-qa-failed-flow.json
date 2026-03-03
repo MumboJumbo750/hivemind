@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "qa_failed-Flow & Worker-Re-entry-Eskalation",
   "description": "qa_failed nach in_progress: Worker via update_task_state. Guard-Reset: alle task_guards auf pending. Eskalation: qa_failed_count>=3 setzt System escalated statt in_progress. Fehler-Response mit Eskalations-Hinweis.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

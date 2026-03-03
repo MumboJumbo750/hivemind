@@ -1,0 +1,173 @@
+{
+  "name": "hivemind-vscode",
+  "displayName": "Hivemind",
+  "description": "Hivemind IDE-Integration — Sidebar, Conductor-Dispatches, Agent-Activity",
+  "version": "0.1.0",
+  "publisher": "hivemind",
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "workspaceContains:.vscode/mcp.json"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "hivemind",
+          "title": "Hivemind",
+          "icon": "media/hivemind.svg"
+        }
+      ]
+    },
+    "views": {
+      "hivemind": [
+        {
+          "id": "hivemind.activeTasks",
+          "name": "Aktive Tasks"
+        },
+        {
+          "id": "hivemind.nextPrompts",
+          "name": "Nächste Prompts"
+        },
+        {
+          "id": "hivemind.guardStatus",
+          "name": "Guard Status"
+        },
+        {
+          "id": "hivemind.agentActivity",
+          "name": "Agent Activity"
+        }
+      ]
+    },
+    "chatParticipants": [
+      {
+        "id": "hivemind",
+        "name": "hivemind",
+        "description": "Hivemind Orchestrator — Task-Status, Prompts, Guards",
+        "isSticky": false,
+        "commands": [
+          { "name": "next", "description": "Nächsten anstehenden Dispatch-Prompt anzeigen" },
+          { "name": "task", "description": "Task-Details und Worker-Prompt (Arg: TASK-KEY)" },
+          { "name": "guard", "description": "Guards für den aktuellen Task ausführen" },
+          { "name": "health", "description": "Repo Health-Status anzeigen" },
+          { "name": "kartograph", "description": "Kartograph-Session starten" }
+        ]
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "hivemind.activeTask",
+        "toolReferenceName": "hivemind:task",
+        "displayName": "Hivemind Active Task",
+        "modelDescription": "Returns the active Hivemind task context for this workspace.",
+        "canBeReferencedInPrompt": true
+      },
+      {
+        "name": "hivemind.activeEpic",
+        "toolReferenceName": "hivemind:epic",
+        "displayName": "Hivemind Active Epic",
+        "modelDescription": "Returns the active Hivemind epic context for this workspace.",
+        "canBeReferencedInPrompt": true
+      }
+    ],
+    "commands": [
+      {
+        "command": "hivemind.nextPrompt",
+        "title": "Hivemind: Next Prompt"
+      },
+      {
+        "command": "hivemind.runGuard",
+        "title": "Hivemind: Run Guard"
+      },
+      {
+        "command": "hivemind.submitResult",
+        "title": "Hivemind: Submit Result"
+      },
+      {
+        "command": "hivemind.refresh",
+        "title": "Hivemind: Aktualisieren",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "hivemind.refresh",
+          "when": "view == hivemind.activeTasks",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Hivemind",
+      "properties": {
+        "hivemind.url": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "Hivemind Backend URL"
+        },
+        "hivemind.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatisch mit Hivemind Backend verbinden"
+        },
+        "hivemind.notifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Benachrichtigungen bei Task-Transitions anzeigen"
+        },
+        "hivemind.governanceLevel": {
+          "type": "string",
+          "default": "manual",
+          "enum": ["manual", "semi-auto", "full-auto"],
+          "description": "Governance-Stufe für automatische Dispatch-Ausführung"
+        },
+        "hivemind.governanceSource": {
+          "type": "string",
+          "default": "merged",
+          "enum": ["extension", "backend", "merged"],
+          "description": "Quelle für Governance-Entscheidung: nur Extension, nur Backend oder kombiniert (strikter)"
+        },
+        "hivemind.executionTarget": {
+          "type": "string",
+          "default": "chat",
+          "enum": ["chat", "cli"],
+          "description": "Dispatch-Ausführung in Copilot Chat (GUI) oder Copilot CLI (Terminal/headless)"
+        },
+        "hivemind.dispatchTimeoutSeconds": {
+          "type": "number",
+          "default": 900,
+          "minimum": 30,
+          "description": "Timeout für IDE-Dispatches in Sekunden bis timed_out gemeldet wird"
+        },
+        "hivemind.progressPollIntervalMs": {
+          "type": "number",
+          "default": 4000,
+          "minimum": 1000,
+          "description": "Polling-Intervall für MCP/Audit-Progress-Erkennung in Millisekunden"
+        },
+        "hivemind.copilotCliCommandTemplate": {
+          "type": "string",
+          "default": "gh copilot run --input-file \"{taskfile}\"",
+          "description": "Template für Copilot CLI. Platzhalter: {taskfile}, {task_key}, {agent_role}"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.99.0",
+    "typescript": "^5.4.0",
+    "@vscode/vsce": "^2.24.0"
+  }
+}

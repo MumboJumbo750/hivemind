@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-F",
   "title": "Shared Epic Dashboard — Node-Badges + Filter",
   "description": "Erweiterung des bestehenden Command Deck (Task-Übersicht) um Federation-Informationen:\n\n**Node-Badge:** Tasks mit gesetztem `assigned_node_id` zeigen ein `[◈ node-name]`-Badge neben dem Task-Titel. Badge-Farbe basierend auf Peer-Status: `active` = Standard-Federation-Farbe, `inactive` = gedimmt/grau. Peer-zugewiesene Tasks sind visuell unterscheidbar: leicht abgedimmter Hintergrund + kleines Node-Icon links.\n\n**Node-Filter:** Neues Dropdown in der bestehenden Filter-Bar über der Task-Liste. Optionen: 'Alle Nodes', 'Lokal (eigener Node)', sowie ein Eintrag pro bekanntem Peer. Filterung via `assigned_node_id` Query-Parameter auf `GET /api/tasks`.\n\n**API-Erweiterung:** `GET /api/tasks` muss `assigned_node_id`-Filter als Query-Parameter akzeptieren. Task-Response muss `assigned_node_name` (resolved aus `nodes`-Tabelle) enthalten. Neuer Query-Parameter `?assigned_node_id=<uuid>` auf bestehenden Tasks-Endpoint.\n\n**Backend:** `GET /api/nodes` Endpoint für Dropdown-Daten (falls nicht bereits in TASK-F-012 implementiert).",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

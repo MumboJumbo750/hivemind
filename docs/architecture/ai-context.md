@@ -92,7 +92,7 @@ skill_type: "runtime"   # Laufzeitumgebung, Container-Befehle, Environment-Konte
 
 | Typ | Beschreibung | Beispiele |
 |-----|--------------|-----------|
-| `implementation` | Code-Muster, API-Patterns | `fastapi-endpoint.md`, `alembic-migration.md` |
+| `domain` | Code-Muster, API-Patterns | `fastapi-endpoint.md`, `alembic-migration.md` |
 | `runtime` | Container-Befehle, Laufzeit-Topologie | `podman-exec.md`, `runtime-environment.md` |
 | `system` | Prompt-Templates, System-Level | `prompt-template-worker.md` |
 

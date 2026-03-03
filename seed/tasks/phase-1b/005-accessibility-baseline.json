@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1B",
   "title": "Accessibility-Baseline im Design System",
   "description": "Accessibility-Grundlagen direkt im CSS-Design-System verankern — kein Vue-Code. (1) `tokens.css` erweitern: `--focus-ring-color` als Core-Token (Default: `#20e3ff`, gleiches Wert wie `--color-accent`), `--focus-ring-width: 2px`, `--focus-ring-offset: 2px`. `@media (prefers-reduced-motion: reduce)` Block in `tokens.css`: `--transition-duration: 0ms` und `--animation-duration: 0ms` setzen (damit alle Transitions und Animations die diese Tokens nutzen automatisch deaktiviert werden). (2) Alle Theme-Dateien (003/004) müssen `--focus-ring-color` mit einem zum Theme passenden High-Contrast-Wert überschreiben. (3) `components.css` erweitern: globale `:focus-visible`-Regel die `outline: var(--focus-ring-width) solid var(--focus-ring-color)` und `outline-offset: var(--focus-ring-offset)` setzt. `:focus:not(:focus-visible)` explizit `outline: none` setzen. Sicherstellen dass alle interaktiven Elemente (a, button, input, select, textarea) den Ring erben.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

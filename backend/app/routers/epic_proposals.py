@@ -231,7 +231,7 @@ async def draft_requirement(
         proposed_by=actor.id,
         title=body.text[:80] + ("…" if len(body.text) > 80 else ""),
         description=body.text,
-        rationale=None,
+        rationale="",
         state="draft",
         raw_requirement=body.text,
     )

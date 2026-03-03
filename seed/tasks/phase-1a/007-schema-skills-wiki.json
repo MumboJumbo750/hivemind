@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "DB-Schema: Skills, Docs, Wiki, Guards",
   "description": "Alembic-Migration für skills, skill_versions, skill_parents, skill_change_proposals, docs, context_boundaries, wiki_categories, wiki_articles, wiki_versions, guards, task_guards, guard_change_proposals.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

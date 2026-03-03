@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-HEALTH-003",
+  "epic_ref": "EPIC-REPO-HEALTH",
+  "title": "Analyzer: Magic Numbers & Hardcoded Strings",
+  "description": "Implementiere Analyzer für Magic Numbers und hardcodierte Strings in Geschäftslogik.\n\n**Was zu implementieren ist:**\n\n`scripts/analyzers/magic_values.py`:\n\n1. **Magic Numbers:**\n   - Numerische Literals in Bedingungen: `if (x > 42)`, `threshold = 0.85`\n   - Numerische Literals als Argumente: `setTimeout(fn, 3000)`, `retry(5)`\n   - Ausnahmen: 0, 1, -1, 2 (häufig intentional), Array-Indizes, Enum-Werte\n   - Ausnahmen: Zeilen mit `# noqa: magic` oder `// magic-ok` Kommentar\n   - Empfehlung: Named Constants\n\n2. **Hardcoded Strings:**\n   - URL-Strings in Geschäftslogik: `fetch('http://...')` statt Config\n   - API-Pfade direkt im Code: `'/api/v1/users'` statt zentraler Route-Definition\n   - Status-Strings: `status === 'pending'` statt Enum/Constant\n   - Ausnahmen: Import-Pfade, Log-Messages, Test-Dateien, Error-Messages\n\n**Sprachunterstützung:**\n- Python: `.py` Files (nicht `tests/`, nicht `migrations/`)\n- TypeScript/JavaScript: `.ts`, `.js`, `.vue` `<script>` Blöcke\n\n**Konfigurierbar:**\n- `allowed_numbers: list[int|float]` (Default: [0, 1, -1, 2, 100])\n- `ignore_patterns: list[str]` (Regex für erlaubte Zeilen)\n- `ignore_dirs: list[str]` (Default: tests/, migrations/, __pycache__/)",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Erkennt Magic Numbers in Bedingungen und Funktionsargumenten",
+      "Erkennt hardcodierte URLs und API-Pfade in Geschäftslogik",
+      "Erkennt hardcodierte Status-Strings statt Enums/Constants",
+      "Konfigurierbare Allowlists und Ignore-Patterns",
+      "Funktioniert für Python und TypeScript/JavaScript",
+      "Sinnvolle Ausnahmen (Tests, Migrations, Imports)",
+      "Unit-Tests mit Beispiel-Dateien"
+    ]
+  },
+  "tags": ["tooling", "python", "typescript", "code-quality"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-HEALTH-001"]
+}

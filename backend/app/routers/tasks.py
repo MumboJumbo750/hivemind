@@ -105,6 +105,34 @@ async def review_task(
     return task  # type: ignore[return-value]
 
 
+@router.post(
+    "/{task_key}/reenter",
+    response_model=TaskResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def reenter_task(
+    task_key: str,
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(get_current_actor),
+) -> TaskResponse:
+    """qa_failed → in_progress: Guard-Reset + Eskalations-Check."""
+    t0 = time.perf_counter()
+    svc = TaskService(db)
+    task = await svc.reenter_from_qa_failed(task_key)
+    duration = int((time.perf_counter() - t0) * 1000)
+    await write_audit(
+        tool_name="reenter_from_qa_failed",
+        actor_id=actor.id,
+        actor_role=actor.role,
+        input_payload={"task_key": task_key},
+        output_payload={"task_key": task.task_key, "state": task.state},
+        epic_id=task.epic_id,
+        target_id=task.task_key,
+        duration_ms=duration,
+    )
+    return task  # type: ignore[return-value]
+
+
 # ── Context Boundary ──────────────────────────────────────────────────────────
 
 class ContextBoundaryResponse(BaseModel):

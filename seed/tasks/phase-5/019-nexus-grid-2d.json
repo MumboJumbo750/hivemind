@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Nexus Grid 2D (Cytoscape.js)",
   "description": "Force-directed Graph (Cytoscape.js cose-Layout). Fog-of-War-Overlay. Click auf Node oeffnet Detail-Panel. Projekt-Filter. Backend: GET /api/nexus/graph.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

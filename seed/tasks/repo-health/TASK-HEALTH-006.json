@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-HEALTH-006",
+  "epic_ref": "EPIC-REPO-HEALTH",
+  "title": "Analyzer: Dependency-Freshness & Security-Hints",
+  "description": "Implementiere Analyzer für veraltete und potenziell unsichere Dependencies.\n\n**Was zu implementieren ist:**\n\n`scripts/analyzers/dependency_freshness.py`:\n\n1. **Python Dependencies** (`requirements.txt`, `pyproject.toml`):\n   - Pinned ohne Range: `fastapi==0.109.0` → info (kein auto-update)\n   - Unpinned: `fastapi` → warning (non-reproducible)\n   - Bekannte deprecated Packages (z.B. `python-jose` → `pyjwt`)\n\n2. **Node Dependencies** (`package.json`):\n   - Veraltete Major-Versionen: erkennt wenn `^`-Range >2 Majors hinterherhinkt\n   - Duplicate Dependencies: gleiche Lib in dependencies + devDependencies\n   - Bekannte deprecated Packages (Mapping konfigurierbar)\n\n3. **Lockfile-Checks:**\n   - `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` vorhanden?\n   - `requirements.txt` vs. `pyproject.toml` Konsistenz\n\n4. **Security-Hints** (ohne externen Service):\n   - Nutzt kein `npm audit` oder `pip-audit` (externe Dep)\n   - Stattdessen: konfigurierbare Blocklist bekannter CVE-Packages\n   - z.B. `{\"package\": \"lodash\", \"below\": \"4.17.21\", \"reason\": \"Prototype Pollution\"}`\n\n**Zero-Dep-Prinzip:** Kein Network-Zugriff nötig. Alles Regex + Version-Parsing.",
+  "state": "open",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "Erkennt unpinned und zu stark gepinnte Python-Dependencies",
+      "Erkennt veraltete Node-Dependencies und Duplikate",
+      "Prüft Lockfile-Existenz",
+      "Konfigurierbare Security-Blocklist ohne externe Services",
+      "Zero external dependencies (Version-Parsing mit stdlib)",
+      "Unit-Tests"
+    ]
+  },
+  "tags": ["tooling", "security", "dependencies"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-HEALTH-001"]
+}

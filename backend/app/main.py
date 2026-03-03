@@ -1,10 +1,31 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import logging
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        integrations=[
+            FastApiIntegration(),
+            SqlalchemyIntegration(),
+            LoggingIntegration(
+                level=logging.INFO,
+                event_level=logging.ERROR,
+            ),
+        ],
+        traces_sample_rate=settings.sentry_traces_sample_rate,
+        send_default_pii=False,
+        environment=settings.sentry_environment,
+    )
 from app.db import AsyncSessionLocal
 from app.mcp.transport import mcp_standard_routes
 from app.mcp.transport import router as mcp_router
@@ -14,6 +35,7 @@ from app.routers import (
     audit,
     auth,
     code_nodes,
+    conductor,
     epic_proposals,
     epics,
     events,
@@ -21,6 +43,7 @@ from app.routers import (
     guards,
     health,
     kpis,
+    mcp_bridges,
     members,
     nexus,
     nodes,
@@ -103,6 +126,9 @@ def create_app() -> FastAPI:
     app.include_router(notifications.router, prefix="/api")
     app.include_router(triage.router, prefix="/api")
     app.include_router(kpis.router, prefix="/api")
+    app.include_router(mcp_bridges.router, prefix="/api")
+    app.include_router(conductor.router, prefix="/api")
+    app.include_router(conductor.ide_router, prefix="/api")
     app.include_router(federation.router)
     app.include_router(mcp_router, prefix="/api")
 

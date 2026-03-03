@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1B",
   "title": "@hey-api/openapi-ts Setup + Backend OpenAPI-Export",
   "description": "Zwei zusammengehörige Setup-Aufgaben: (1) Frontend: `@hey-api/openapi-ts` als devDependency installieren. `openapi-ts.config.ts` im Frontend-Root anlegen mit `input: '../openapi.json'`, `output: 'src/api/client/'`, `client: '@hey-api/client-fetch'`. In `package.json` ein Script `\"generate:api\": \"openapi-ts\"` hinzufügen. Zielordner `src/api/client/` anlegen (mit `.gitkeep` damit er ins Repo kommt, aber generierte Dateien via `.gitignore` ignoriert werden). (2) Backend: `backend/scripts/export_openapi.py` schreiben — importiert die FastAPI-App, ruft `app.openapi()` auf und schreibt das Ergebnis als `openapi.json` in den Repo-Root. Script muss aus dem `backend/`-Verzeichnis ausführbar sein: `python scripts/export_openapi.py`.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

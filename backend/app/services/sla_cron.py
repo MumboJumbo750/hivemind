@@ -106,3 +106,56 @@ async def sla_cron_job() -> None:
             count = len(epics)
             if count:
                 logger.info("SLA-Cron: %d Epics geprüft", count)
+
+    # Phase 8 (TASK-8-019): AI-gestützte proaktive Eskalation
+    from app.config import settings as _settings
+    if _settings.hivemind_conductor_enabled:
+        await _ai_proactive_escalation()
+
+
+async def _ai_proactive_escalation() -> None:
+    """Phase 8 (TASK-8-019): AI-gestützte proaktive Eskalation für blockierte Tasks.
+
+    Analysiert blockierte/escalated Tasks und triggert KI-Analyse über den Conductor,
+    wenn governance.escalation ≠ 'manual'.
+    """
+    from sqlalchemy import and_, select
+
+    from app.db import AsyncSessionLocal
+    from app.models.task import Task
+    from app.services.conductor import conductor
+    from app.services.governance import get_governance_level
+
+    async with AsyncSessionLocal() as db:
+        level = await get_governance_level(db, "escalation")
+        if level == "manual":
+            return
+
+        result = await db.execute(
+            select(Task).where(
+                and_(
+                    Task.state.in_(["blocked", "escalated"]),
+                )
+            ).limit(20)
+        )
+        blocked_tasks = result.scalars().all()
+
+        for task in blocked_tasks:
+            try:
+                await conductor.dispatch(
+                    trigger_type="task_state",
+                    trigger_id=task.task_key,
+                    trigger_detail=f"ai_proactive_escalation:{task.state}",
+                    agent_role="architekt",
+                    prompt_type="architekt_resolve",
+                    db=db,
+                    execution_mode="local",
+                )
+            except Exception as e:
+                logger.error("AI proactive escalation failed for %s: %s", task.task_key, e)
+
+        if blocked_tasks:
+            logger.info(
+                "AI-Eskalation: %d blockierte Tasks analysiert (level=%s)",
+                len(blocked_tasks), level,
+            )

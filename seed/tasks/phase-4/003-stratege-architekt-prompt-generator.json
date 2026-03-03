@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-4",
   "title": "Stratege & Architekt Prompt-Generator",
   "description": "Zwei neue Prompt-Typen im bestehenden Prompt-Generator-Service (`app/services/prompt_generator.py`) ergänzen: `stratege` (Pflicht-Parameter: `project_id` — assembliert alle Epics des Projekts + offene Proposals + Wiki-Overview + aktuelle Roadmap-Situation → Plan-Analyse-Prompt) und `architekt` (Pflicht-Parameter: `epic_id` — assembliert Epic-Detail + alle vorhandenen Tasks im Epic + aktive Skills mit Relevanz-Score + Epic-Docs → Decomposition-Prompt). Beide Typen schreiben `prompt_history`-Einträge (wie alle anderen Prompt-Typen). Token-Budget: stratege nutzt `app_settings.token_budget_default`, architekt nutzt `context_boundaries.max_token_budget` falls gesetzt. Stratege-Prompt enthält Anleitung zur Nutzung von `hivemind/propose_epic`. Architekt-Prompt enthält Anleitung zur Nutzung von `hivemind/decompose_epic`, `hivemind/set_context_boundary`, `hivemind/link_skill`, `hivemind/assign_task`. Ergänzende MCP-Tool-Registrierung: `hivemind/get_prompt { type: 'stratege', project_id }` und `{ type: 'architekt', epic_id }` korrekt routen.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

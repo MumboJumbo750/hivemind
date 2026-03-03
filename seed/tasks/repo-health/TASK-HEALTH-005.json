@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-HEALTH-005",
+  "epic_ref": "EPIC-REPO-HEALTH",
+  "title": "Analyzer: File-Size, Layer-Violations & Dead-Code-Hints",
+  "description": "Migriere bestehende Checks aus `scripts/arch-check.py` ins Framework und erweitere sie.\n\n**Was zu migrieren/implementieren ist:**\n\n`scripts/analyzers/file_size.py`:\n- Bestehende Logik aus arch-check.py: Warn >300, Error >500 Zeilen\n- NEU: Konfigurierbare Schwellen per Dateityp (z.B. Tests dürfen länger sein)\n- NEU: Cyclomatic Complexity Hint (Funktionen >20 Branches)\n\n`scripts/analyzers/layer_violations.py`:\n- Bestehende FE Layer-Checks aus arch-check.py (UI-Primitives → keine Stores/API)\n- Bestehende BE Layer-Checks aus arch-check.py (Router → keine Models direkt)\n- NEU: Sprachagnostisch konfigurierbar via Regelset:\n  ```json\n  {\"layer\": \"router\", \"forbidden_imports\": [\"app.models.*\"], \"message\": \"Router → Model direkt\"}\n  ```\n- NEU: Vue Composables sollten keine Komponenten importieren\n- NEU: Services sollten keine Router importieren (zirkulär)\n\n`scripts/analyzers/dead_code.py`:\n- Unexportierte Funktionen in `.ts` Files (kein `export`)\n- Python: Funktionen ohne Aufruf im selben Modul und ohne `__all__` Export\n- Nicht importierte Dateien (Files die nirgends referenziert werden)\n- Caveat: Heuristik, markiert als `severity: info`\n\n**Migration:** Nach erfolgreicher Migration können die Checks aus `arch-check.py` entfernt werden. `arch-check.py` wird dann ein Wrapper der das Framework aufruft.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "File-Size-Analyzer mit konfigurierbaren Schwellen pro Dateityp",
+      "Layer-Violations-Analyzer mit regelbasiertem Import-Check",
+      "Dead-Code-Analyzer (Heuristik) für TS und Python",
+      "Alle bestehenden arch-check.py Prüfungen im Framework abgebildet",
+      "arch-check.py delegiert an Framework (Backwards-Kompatibilität)",
+      "Unit-Tests für jeden Analyzer"
+    ]
+  },
+  "tags": ["tooling", "code-quality", "migration"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-HEALTH-001"]
+}

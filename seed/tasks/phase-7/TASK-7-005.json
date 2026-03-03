@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-7",
   "title": "Sentry Bug-Aggregation: Stack-Traces → node_bug_reports",
   "description": "Handler für inbound Sentry-Events. Aggregiert Bug-Reports in der neuen Tabelle `node_bug_reports` (aus TASK-7-001).\n\nFunktionalität:\n1. `SentryAggregationService` in `app/services/sentry_aggregation.py`\n2. Methode `process_sentry_event(payload)`: Extrahiert sentry_issue_id, stack_trace_hash (SHA256 über Fingerprint/Stacktrace), first_seen, last_seen\n3. UPSERT auf `node_bug_reports`: INSERT ON CONFLICT (sentry_issue_id) DO UPDATE SET count=count+1, last_seen=excluded.last_seen\n4. epic_id bleibt zunächst NULL (wird durch pgvector-Routing in TASK-7-006 gesetzt)\n5. SSE-Event `bug_aggregated` feuern nach jedem Upsert (für Heatmap-Live-Update)\n6. Aufruf aus `consume_inbound()` (TASK-7-003) für sentry_*-Events\n7. Idempotenz: Doppelte sentry_issue_id erhöht nur count, kein Duplikat\n\nDateien: `app/services/sentry_aggregation.py`, Integration in `app/services/outbox_consumer.py`",
-  "state": "scoped",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

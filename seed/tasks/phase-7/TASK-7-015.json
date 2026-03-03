@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-7",
   "title": "Triage Station: [DEAD LETTER]-Kategorie mit Requeue-UI",
   "description": "Neue Kategorie in der Triage Station für Dead-Letter-Einträge.\n\nFunktionalität:\n1. Neuer Tab/Sektion '[DEAD LETTER]' in der Triage Station View (neben bestehenden Kategorien)\n2. Zeigt paginierte Liste aus `GET /api/triage/dead-letters` — Felder: direction, payload_preview, attempts, last_error, created_at\n3. Aktionen pro Eintrag:\n   - **Requeue**: POST /api/triage/dead-letters/{id}/requeue → optimistisches UI-Update, Eintrag verschwindet aus Liste\n   - **Discard**: POST /api/triage/dead-letters/{id}/discard → Bestätigungs-Dialog, dann Eintrag verschwindet\n4. Leerer Zustand: Sci-Fi-Nachricht 'No dead signals in the queue' mit grünem Status-Indikator\n5. SSE-Subscription auf `dlq_requeued` + `dlq_discarded` → Live-Update ohne Reload\n6. Badge-Counter auf Tab: Anzahl nicht-discardeter Dead-Letter-Einträge\n7. Error-State: Wenn Requeue fehlschlägt → Toast-Notification mit Fehlertext\n\nDateien: `frontend/src/views/TriageStation.vue`, `frontend/src/components/DeadLetterList.vue`",
-  "state": "scoped",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

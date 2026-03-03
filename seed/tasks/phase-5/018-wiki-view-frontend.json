@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Wiki View (Frontend)",
   "description": "Vue 3: Artikel-Reader (Markdown), Suchleiste, Tag-Filter, Mit-Epic-verknuepfen-Dialog, Versions-History. Reka UI.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

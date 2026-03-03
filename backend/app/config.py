@@ -64,9 +64,47 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
+    # Sentry
+    sentry_dsn: str = ""
+    sentry_environment: str = "development"
+    sentry_traces_sample_rate: float = 1.0
+
+    # Phase 8 — AI Provider settings
+    hivemind_ai_api_key: str = ""
+    hivemind_ai_rpm_limit: int = 10
+    hivemind_ai_tpm_limit: int = 0  # 0 = no limit
+    hivemind_token_count_calibration: str = ""  # JSON: {"anthropic": 1.05, ...}
+
+    # Phase 8 — GitHub integration
+    hivemind_github_webhook_secret: str = ""
+    hivemind_github_token: str = ""
+    hivemind_github_url: str = "https://api.github.com"
+
+    # Phase 8 — GitLab integration
+    hivemind_gitlab_webhook_secret: str = ""
+    hivemind_gitlab_token: str = ""
+    hivemind_gitlab_url: str = "https://gitlab.com"
+
+    # Phase 8 — Conductor settings
+    hivemind_conductor_enabled: bool = False
+    hivemind_conductor_parallel: int = 3
+    hivemind_conductor_cooldown_seconds: int = 10
+    hivemind_conductor_ide_timeout: int = 300
+    hivemind_conductor_ide_timeout_seconds: int = 300  # deprecated alias
+
+    # Phase 8 — Governance & TLS
+    hivemind_enforce_tls: bool = False
+    hivemind_auto_review_grace_minutes: int = 30
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.hivemind_cors_origins.split(",")]
+
+    @property
+    def conductor_ide_timeout_seconds(self) -> int:
+        """Return IDE timeout in seconds (prefers HIVEMIND_CONDUCTOR_IDE_TIMEOUT)."""
+        value = self.hivemind_conductor_ide_timeout or self.hivemind_conductor_ide_timeout_seconds
+        return max(int(value), 1)
 
 
 settings = Settings()

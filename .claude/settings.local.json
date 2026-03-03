@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(podman compose exec backend python -c \"import urllib.request; print\\(urllib.request.urlopen\\(''http://localhost:8000/health''\\).read\\(\\)\\)\")",
+      "Bash(podman compose logs backend --tail=20)",
+      "Bash(podman compose logs backend --tail=30)",
+      "Bash(podman compose logs backend --tail=15)",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -H \"Content-Type: application/json\" -d '{\"\"username\"\": \"\"admin\"\", \"\"password\"\": \"\"admin\"\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -H \"Content-Type: application/json\" -d '{\"\"username\"\": \"\"hivemind\"\", \"\"password\"\": \"\"hivemind\"\"}')",
+      "Read(//dev/**)",
+      "Bash(curl -s http://localhost:8000/api/)"
+    ]
+  }
+}

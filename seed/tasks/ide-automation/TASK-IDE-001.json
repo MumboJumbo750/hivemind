@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-IDE-001",
+  "epic_ref": "EPIC-IDE-AUTOMATION",
+  "title": "MCP-Konfiguration: .vscode/mcp.json + Copilot CLI Setup",
+  "description": "Konfiguriere Hivemind als MCP-Server für alle unterstützten IDE-Clients.\n\n**Was zu implementieren ist:**\n\n1. **`.vscode/mcp.json`** (bereits erstellt):\n   ```json\n   {\n     \"servers\": {\n       \"hivemind\": {\n         \"type\": \"sse\",\n         \"url\": \"http://localhost:8000/api/mcp/sse\"\n       }\n     }\n   }\n   ```\n   - In Source Control einchecken → jeder der das Repo öffnet hat Hivemind-Tools\n   - Copilot Agent Mode erkennt die Tools automatisch\n\n2. **Copilot CLI MCP-Config** (`~/.copilot/mcp-config.json`):\n   - Dokumentation im Wiki: Wie User den Hivemind-Server in Copilot CLI registriert\n   - `/mcp add hivemind` Anleitung\n   - Config-Snippet:\n   ```json\n   {\n     \"mcpServers\": {\n       \"hivemind\": {\n         \"type\": \"sse\",\n         \"url\": \"http://localhost:8000/api/mcp/sse\",\n         \"tools\": [\"*\"]\n       }\n     }\n   }\n   ```\n\n3. **Claude Desktop / Cursor Config** (Referenz):\n   - claude_desktop_config.json Snippet für Claude Desktop\n   - .cursor/mcp.json Snippet für Cursor\n\n4. **AGENTS.md aktualisieren:**\n   - Neuer Abschnitt: 'IDE MCP-Integration'\n   - Beschreibt welche IDE welche Config braucht\n   - Verweis auf `.vscode/mcp.json`\n\n5. **Health-Check:** `GET /api/mcp/discovery` Endpoint der Config-Snippets für alle Clients liefert.",
+  "state": "open",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      ".vscode/mcp.json existiert und ist in Git eingecheckt",
+      "Copilot CLI MCP-Config als Wiki-Artikel dokumentiert",
+      "Claude Desktop + Cursor Config-Snippets dokumentiert",
+      "AGENTS.md enthält Abschnitt 'IDE MCP-Integration'",
+      "Copilot Agent Mode erkennt Hivemind-Tools beim Öffnen des Projekts",
+      "Discovery-Endpoint liefert Config-Snippets für alle Clients"
+    ]
+  },
+  "tags": ["ide", "mcp", "configuration", "documentation"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": ["mcp-integration"],
+  "source_doc": null,
+  "estimated_complexity": "small",
+  "depends_on": []
+}

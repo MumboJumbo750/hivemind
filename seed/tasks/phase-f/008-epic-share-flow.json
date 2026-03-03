@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-F",
   "title": "Epic-Share-Flow an Peer-Node",
   "description": "Neuer REST-Endpoint `POST /api/epics/{id}/share` mit Request-Body `{ \"peer_node_id\": \"uuid\" }`. Workflow:\n\n1. Epic via ID laden, validieren dass es existiert und `state` in ['scoped', 'active'] ist.\n2. Peer-Node via `peer_node_id` aus `nodes`-Tabelle laden, validieren dass `status='active'`.\n3. Epic-Spec serialisieren (Title, Description, DoD, Tags, Priority).\n4. Alle zugehörigen Tasks laden und serialisieren.\n5. Optional: `assigned_node_id` auf ausgewählten Tasks setzen (Request kann `task_ids` enthalten die dem Peer zugewiesen werden).\n6. Outbox-Eintrag anlegen: `direction='peer_outbound'`, `event_type='epic_shared'`, `target_node_id` = Peer, `payload` = Epic-Spec + Tasks-Array.\n7. Response: 202 Accepted mit Outbox-ID.\n\nHTTP 404 bei unbekanntem Epic oder Peer. HTTP 400 wenn Peer inaktiv. Pydantic Request/Response-Schemas anlegen.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

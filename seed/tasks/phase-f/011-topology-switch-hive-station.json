@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-F",
   "title": "Topologie-Schalter + Hive-Station-Client",
   "description": "Env-Variable `HIVEMIND_FEDERATION_TOPOLOGY` mit drei Modi implementieren:\n\n**`direct_mesh` (Default):** Peer-Discovery ausschließlich über `peers.yaml`. Transport direkt Node → Node. Kein Hive-Station-Kontakt. Dies ist der bestehende Modus aus TASK-F-002 + TASK-F-005.\n\n**`hub_assisted`:** Zusätzlich zur lokalen Peer-Liste: beim Start Register-Call an Hive Station (`HIVEMIND_HIVE_STATION_URL`) mit eigenem Node-Info (Name, URL, Public Key) + Bearer-Token (`HIVEMIND_HIVE_STATION_TOKEN`). Periodisch (im Heartbeat-Job) Peer-Liste von Hive Station laden und in lokale `nodes`-Tabelle mergen. Presence-Heartbeat an Hive Station senden. Transport bleibt direkt Node → Node. Fallback: wenn Hive Station nicht erreichbar → mit lokalem Peer-Cache + `peers.yaml` weiterarbeiten, Warning loggen.\n\n**`hub_relay`:** Wie `hub_assisted`, aber zusätzlich: wenn direkter Transport an Peer fehlschlägt (Timeout/Connection refused), Outbox-Eintrag an Hive Station als Relay weiterleiten (`POST /relay/forward`). Hive Station speichert store-and-forward. `HIVEMIND_HIVE_RELAY_ENABLED` muss `true` sein.\n\nImplementierung als `app/services/hive_station.py` Client-Klasse. Env-Variablen: `HIVEMIND_FEDERATION_TOPOLOGY`, `HIVEMIND_HIVE_STATION_URL`, `HIVEMIND_HIVE_STATION_TOKEN`, `HIVEMIND_HIVE_RELAY_ENABLED`.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

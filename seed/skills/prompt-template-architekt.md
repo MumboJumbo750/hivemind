@@ -28,6 +28,8 @@ Prüfe: Existiert `AGENTS.md` im Projektroot?
 - **Nein** → Füge `TASK-ENV-001` (Basisinfrastruktur: AGENTS.md + Runtime-Skills) als **Stufe 0** ein, bevor andere Backend-Tasks starten. Vorlage: `seed/tasks/env-bootstrap/TASK-ENV-001.json`. Pinne `repo-onboarding` als Skill für diesen Task.
 - **Ja** → Weiter mit normaler Dekomposition.
 
+**Monorepo-Ergänzung:** Bei Monorepos prüfe `AGENTS.md` pro Package, das in diesem Epic berührt wird. Package ohne `AGENTS.md` → `TASK-ENV-001` für dieses Package als Stufe 0 einfügen. Frontend-Packages können parallel starten (kein Container-Kontext nötig).
+
 1. Analysiere die Epic-Beschreibung und bestehende Tasks.
 2. Identifiziere fehlende Tasks oder Lücken.
 3. Schlage eine optimale Task-Reihenfolge vor (Dependency-Graph).

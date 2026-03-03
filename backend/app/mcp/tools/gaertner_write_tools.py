@@ -64,8 +64,8 @@ register_tool(
                     "description": "UUIDs of parent skills (max depth 3)",
                 },
                 "skill_type": {
-                    "type": "string", "enum": ["system", "domain"],
-                    "description": "Skill type (default: domain)",
+                    "type": "string", "enum": ["system", "domain", "runtime"],
+                    "description": "Skill type: domain (default), system (prompt templates), runtime (container/environment)",
                 },
             },
             "required": ["title", "content"],

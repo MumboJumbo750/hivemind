@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Kartograph-Write-Tools: Wiki, Epic-Doc, Guard-Proposals",
   "description": "MCP-Write-Tools Kartograph: create_wiki_article (+ explored_at setzen), update_wiki_article (Versionierung), create_epic_doc, link_wiki_to_epic, propose_guard (lifecycle=draft), propose_guard_change, submit_guard_proposal (draft nach pending_merge).",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

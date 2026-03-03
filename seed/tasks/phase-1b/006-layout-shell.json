@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1B",
   "title": "Layout Shell — AppShell.vue mit 5-Slot CSS-Grid",
   "description": "`src/components/layout/AppShell.vue` implementieren — die strukturelle Hülle der gesamten App. Das Layout wird via CSS Grid definiert (kein Flexbox-Hack). Grid-Areas: `system-bar` (top, full-width, ~32px), `nav-sidebar` (left, collapsible, `--sidebar-width` / `--sidebar-collapsed-width`), `main-canvas` (center, scrollable, flex-grow), `context-panel` (right, collapsible, 320px / 0px), `status-bar` (bottom, full-width, ~24px). Fünf benannte `<slot>`-Elemente: `<slot name='system-bar'>`, `<slot name='nav-sidebar'>`, `<slot name='main-canvas'>`, `<slot name='context-panel'>`, `<slot name='status-bar'>`. Collapsed-State für NavSidebar und ContextPanel als `ref<boolean>`-Props (oder emittierte Events). CSS-Transition für Collapse/Expand über `--transition-duration`-Token. AppShell in `App.vue` einbinden und `<RouterView />` in den `main-canvas`-Slot legen. Minimal-Placeholder-Inhalte für alle anderen Slots (leere Divs mit CSS-Styling).",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

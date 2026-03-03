@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-4",
   "title": "Skill Write-Tools: submit_skill_proposal, merge_skill, reject_skill",
   "description": "Drei MCP-Write-Tools für den Skill-Lifecycle implementieren: `hivemind/submit_skill_proposal` (Gaertner/Developer: draft → pending_merge, Permission: submit_skill_proposal), `hivemind/merge_skill` (Admin: pending_merge → active, erstellt skill_versions-Eintrag mit diff_from_previous, setzt lifecycle='active', sendet SkillMergedEvent), `hivemind/reject_skill` (Admin: pending_merge → rejected, Pflicht-Parameter: rationale, sendet SkillRejectedEvent mit Begründung an proposed_by). Alle drei Tools schreiben Audit-Log-Einträge. Optimistic Locking mit version-Parameter. State-Machine-Enforcement: ungültige Transition → MCP-konforme Fehlermeldung mit code='INVALID_STATE_TRANSITION'. Handler in `app/mcp/tools/skill_write_tools.py` (neue Datei). Tool-Registrierung in `app/mcp/server.py` ergänzen. Diff-Berechnung bei merge: textuelle Unterschiede zwischen alter und neuer Version in `diff_from_previous` speichern (unified diff format).",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

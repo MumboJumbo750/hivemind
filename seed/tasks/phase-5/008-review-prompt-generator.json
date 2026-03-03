@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Review-Prompt-Generator",
   "description": "get_prompt type=review task_id: DoD-Kriterien, Guard-Status mit Provenance (source, checked_at), Task-Result+Artifacts, qa_failed_count. Warnhinweis bei self-reported mit leerer Ausgabe. Jinja2-Template.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

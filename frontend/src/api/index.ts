@@ -1,4 +1,4 @@
-import type { Project, Epic, Task, Skill, SkillForkResponse, SkillListResponse, SkillVersion, ContextBoundary, EpicProposal, EpicProposalListResponse, RequirementDraftResponse, NodeIdentity, PeerNode, FederationSettings, TriageItem, McpToolResponse, AuditListResponse, HivemindNotification, SyncStatusResponse, NodeBugCountItem, KpiSummaryResponse, DeadLetterListResponse } from './types'
+import type { Project, Epic, Task, Skill, SkillForkResponse, SkillListResponse, SkillVersion, ContextBoundary, EpicProposal, EpicProposalListResponse, RequirementDraftResponse, NodeIdentity, PeerNode, FederationSettings, TriageItem, McpToolResponse, AuditListResponse, HivemindNotification, SyncStatusResponse, NodeBugCountItem, KpiSummaryResponse, KpiHistoryResponse, NexusGraph3DResponse, DeadLetterListResponse, ReviewRecommendation, AiProviderConfig, AiModelInfo, AiCredential, GovernanceConfig, McpBridge, McpBridgeTool } from './types'
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string) ?? 'http://localhost:8000'
 
@@ -115,6 +115,9 @@ export const api = {
 
   rejectTask: (taskKey: string, comment?: string) =>
     request<Task>(`/api/tasks/${taskKey}/review`, { method: 'POST', body: JSON.stringify({ action: 'reject', comment }) }),
+
+  reenterTask: (taskKey: string) =>
+    request<Task>(`/api/tasks/${taskKey}/reenter`, { method: 'POST' }),
 
   // ─── Members ─────────────────────────────────────────────────────────────
   getMembers: (projectId: string) =>
@@ -274,9 +277,22 @@ export const api = {
     return request<NodeBugCountItem[]>(`/api/nexus/bug-counts${qs}`)
   },
 
-  // ─── KPI Dashboard (Phase 7) ─────────────────────────────────────────────
+  // ─── KPI Dashboard (Phase 7 / 8) ─────────────────────────────────────────
   getKpiSummary: () =>
     request<KpiSummaryResponse>('/api/kpis/summary'),
+
+  getKpiHistory: (days: 7 | 30 = 7) =>
+    request<KpiHistoryResponse>(`/api/kpis/history?days=${days}`),
+
+  // ─── Nexus Grid 3D (Phase 8) ─────────────────────────────────────────────
+  getNexusGraph3D: (params?: { project_id?: string; page?: number; page_size?: number }) => {
+    const q = new URLSearchParams()
+    if (params?.project_id) q.set('project_id', params.project_id)
+    if (params?.page !== undefined) q.set('page', String(params.page))
+    if (params?.page_size !== undefined) q.set('page_size', String(params.page_size))
+    const qs = q.toString()
+    return request<NexusGraph3DResponse>(`/api/nexus/graph3d${qs ? `?${qs}` : ''}`)
+  },
 
   // ─── Dead Letter Queue (Phase 7) ─────────────────────────────────────────
   getDeadLetters: (params?: { system?: string; direction?: string; cursor?: string; limit?: number }) => {
@@ -295,6 +311,100 @@ export const api = {
   discardDeadLetter: (id: string) =>
     request<{ data: unknown }>(`/api/triage/dead-letters/${id}/discard`, { method: 'POST' }),
 
+  // ─── AI Review Recommendations (Phase 8) ────────────────────────────────
+  getReviewRecommendations: async (taskKey: string): Promise<ReviewRecommendation | null> => {
+    try {
+      const res = await request<{ result: McpToolResponse[] }>('/api/mcp/call', {
+        method: 'POST',
+        body: JSON.stringify({
+          tool: 'hivemind/get_review_recommendations',
+          arguments: { task_key: taskKey },
+        }),
+      })
+      const text = res.result?.[0]?.text
+      if (!text) return null
+      const parsed = JSON.parse(text) as { data?: ReviewRecommendation; error?: { message: string } }
+      if (parsed.error) return null
+      return parsed.data ?? null
+    } catch {
+      return null
+    }
+  },
+
+  vetoAutoReview: (taskKey: string) =>
+    request<{ status: string }>(`/api/tasks/${taskKey}/veto-auto-review`, { method: 'POST' }),
+
+  // ─── AI Provider Config (Phase 8) ────────────────────────────────────────
+  getAiProviders: () =>
+    request<AiProviderConfig[]>('/api/settings/ai-providers'),
+
+  getAiProviderModels: (provider: string, apiKey?: string, endpoint?: string, credentialId?: string, agentRole?: string) => {
+    const params = new URLSearchParams({ provider })
+    if (apiKey) params.set('api_key', apiKey)
+    if (endpoint) params.set('endpoint', endpoint)
+    if (credentialId) params.set('credential_id', credentialId)
+    if (agentRole) params.set('agent_role', agentRole)
+    return request<AiModelInfo[]>(`/api/settings/ai-providers/models?${params.toString()}`)
+  },
+
+  upsertAiProvider: (agentRole: string, data: Partial<AiProviderConfig> & { agent_role: string }) =>
+    request<AiProviderConfig>(`/api/settings/ai-providers/${encodeURIComponent(agentRole)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteAiProvider: (agentRole: string) =>
+    request<void>(`/api/settings/ai-providers/${encodeURIComponent(agentRole)}`, { method: 'DELETE' }),
+
+  testAiProvider: (agentRole: string) =>
+    request<{ ok: boolean; message: string }>(`/api/settings/ai-providers/${encodeURIComponent(agentRole)}/test`, { method: 'POST' }),
+
+  // ─── AI Credentials (zentrale Key-Verwaltung) ────────────────────────────
+  getCredentials: () =>
+    request<AiCredential[]>('/api/settings/credentials'),
+
+  createCredential: (data: { name: string; provider_type: string; api_key?: string; endpoint?: string; note?: string }) =>
+    request<AiCredential>('/api/settings/credentials', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateCredential: (id: string, data: { name?: string; provider_type?: string; api_key?: string; endpoint?: string; note?: string }) =>
+    request<AiCredential>(`/api/settings/credentials/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  deleteCredential: (id: string) =>
+    request<void>(`/api/settings/credentials/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // ─── Governance Config (Phase 8) ─────────────────────────────────────────
+  getGovernance: () =>
+    request<GovernanceConfig>('/api/settings/governance'),
+
+  updateGovernance: (data: GovernanceConfig) =>
+    request<GovernanceConfig>('/api/settings/governance', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // ─── MCP Bridge Config (Phase 8) ─────────────────────────────────────────
+  getMcpBridges: () =>
+    request<McpBridge[]>('/api/admin/mcp-bridges'),
+
+  createMcpBridge: (data: {
+    name: string
+    namespace: string
+    transport: 'http' | 'sse' | 'stdio'
+    url_or_command: string
+    enabled: boolean
+    blocklist: string[]
+  }) =>
+    request<McpBridge>('/api/admin/mcp-bridges', { method: 'POST', body: JSON.stringify(data) }),
+
+  testMcpBridge: (id: string) =>
+    request<{ ok: boolean; message: string }>(`/api/admin/mcp-bridges/${encodeURIComponent(id)}/test`, { method: 'POST' }),
+
+  getMcpBridgeTools: (id: string) =>
+    request<McpBridgeTool[]>(`/api/admin/mcp-bridges/${encodeURIComponent(id)}/tools`),
+
+  deleteMcpBridge: (id: string) =>
+    request<void>(`/api/admin/mcp-bridges/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
   // ─── Prompt ──────────────────────────────────────────────────────────────
   getPrompt: async (type: string, taskId?: string, epicId?: string, projectId?: string) => {
     const res = await request<{ result: McpToolResponse[] }>('/api/mcp/call', {
@@ -305,5 +415,25 @@ export const api = {
       }),
     })
     return res.result
+  },
+
+  // ─── Conductor Manual Dispatch ───────────────────────────────────────────
+  executePrompt: async (agentRole: string, prompt: string, taskKey?: string, epicId?: string) => {
+    return request<{
+      status: string
+      content?: string
+      tool_calls?: { name: string; arguments: Record<string, unknown> }[]
+      input_tokens?: number
+      output_tokens?: number
+      message?: string
+    }>('/api/admin/conductor/dispatch', {
+      method: 'POST',
+      body: JSON.stringify({
+        agent_role: agentRole,
+        prompt,
+        ...(taskKey && { task_key: taskKey }),
+        ...(epicId && { epic_id: epicId }),
+      }),
+    })
   },
 }

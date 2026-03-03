@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Gaertner-Write-Tools: propose_skill, propose_skill_change, create_decision_record, update_doc",
   "description": "MCP-Write-Tools Gaertner: (1) propose_skill — Skill mit lifecycle=draft, Circular-Check, Depth<=3. (2) propose_skill_change — Change-Proposal. (3) create_decision_record — Epic-Entscheidung dokumentieren, max 3x/Tag. (4) update_doc — Epic-Doc mit Optimistic Locking.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-3",
   "title": "Embedding-Service mit Circuit-Breaker",
   "description": "Provider-abstrahierten Embedding-Service implementieren (`app/services/embedding_service.py`). Core: `EmbeddingProvider` ABC mit `embed(text)` und `embed_batch(texts)` Methoden. Default-Provider `OllamaProvider`: httpx-Client gegen `HIVEMIND_OLLAMA_URL/api/embeddings` mit Modell `nomic-embed-text` (768-dimensionale Vektoren). Circuit-Breaker: Nach `HIVEMIND_EMBEDDING_CB_THRESHOLD` (Default: 3) aufeinanderfolgenden Timeouts → OPEN-State, Requests werden sofort mit `embedding=NULL` beantwortet. Adaptiver Cooldown Half-Open: Exponentieller Backoff 60s → 120s → 240s → max 600s (`HIVEMIND_EMBEDDING_CB_BACKOFF_BASE`, `HIVEMIND_EMBEDDING_CB_BACKOFF_MAX`). Reset nach 10min stabilem CLOSED. Priority-Queue: Prio 1 (lokal on-write), Prio 2 (Kartograph-Bootstrap Batch), Prio 3 (Federation Re-Embeddings). On-write-Hook: bei Skill-Merge, Wiki-Create, Epic-Create automatisch Embedding berechnen. `NULL`-Embedding = Feature-Degradation (semantische Suche deaktiviert), kein Fehler.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

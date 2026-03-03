@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-4",
   "title": "Frontend: Skill Lab (vollständig)",
   "description": "Skill Lab View (`/skill-lab`) vollständig implementieren. Komponenten: `SkillList.vue` — Skills browsen mit Lifecycle-Filter-Tabs (Alle | Aktiv | Pendend | Draft | Abgelehnt), Skill-Cards mit Titel, Lifecycle-Badge (farbig: aktiv=grün, pending=gelb, draft=grau, abgelehnt=rot), Confidence-Bar als Progress-Ring (SVG, 0–100%), service_scope + stack Tags, letzter Autor + Timestamp. `SkillDetail.vue` — Vollansicht: Markdown-Rendered Content (via `marked` + `sanitize-html`), Versionsverlauf-Dropdown, Edit-Button (nur draft des eigenen Users), Submit-Button (draft → pending_merge via `POST /api/skills/{id}/submit`). `SkillDiffView.vue` — Diff-Ansicht für Proposals: zeigt Inline-Diff (nutze `diff`-Paket aus npm) zwischen letzter aktiver Version und Proposal-Content, Farbgebung: hinzugefügt=grün-muted, entfernt=rot-muted. Admin-Aktionen (nur für admin-User): `[Merge ✓]`-Button → Confirmation → `POST /api/skills/{id}/merge`; `[Ablehnen ✗]`-Button → Modal mit Begründungsfeld → `POST /api/skills/{id}/reject`. Alle API-Calls aus dem OpenAPI-generierten Client. Route: `/skill-lab` im Vue-Router. Navigation-Link im Sidebar/Command-Deck-Nav.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-7",
   "title": "YouTrack Status-Rücksync: Bidirektionale State-Updates",
   "description": "Handler für outbound YouTrack-Events im `consume_outbound`-Consumer (TASK-7-002).\n\nFunktionalität:\n1. `YouTrackSyncService` in `app/services/youtrack_sync.py`\n2. Methode `sync_task_state(outbox_entry)`: Liest Task aus DB, mappt Hivemind-State → YouTrack-State (z.B. in_progress→'In Progress', done→'Resolved'), PATCH an YouTrack REST API `/api/issues/{externalId}`\n3. Methode `sync_assignee(outbox_entry)`: Setzt Assignee in YouTrack basierend auf assigned_to\n4. Authentifizierung: Bearer Token aus `HIVEMIND_YOUTRACK_TOKEN` env\n5. Base-URL aus `HIVEMIND_YOUTRACK_URL` env\n6. httpx AsyncClient mit Timeout (10s), Connection-Reuse\n7. Fehlerbehandlung: 4xx → log + permanent_failure (kein Retry), 5xx → raise (Consumer macht Retry)\n8. State-Mapping-Tabelle konfigurierbar (ENV oder YAML)\n\nDateien: `app/services/youtrack_sync.py`, `app/services/outbox_consumer.py` (Integration)",
-  "state": "scoped",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

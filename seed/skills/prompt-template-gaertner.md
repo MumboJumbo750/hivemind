@@ -56,7 +56,7 @@ confidence: 0.5
 
 | `skill_type` | Beschreibung | Beispiele |
 | ------------ | ------------ | --------- |
-| `implementation` | Code-Muster, API-Patterns (Standard) | `fastapi-endpoint.md`, `alembic-migration.md` |
+| `domain` | Code-Muster, API-Patterns (Standard) | `fastapi-endpoint.md`, `alembic-migration.md` |
 | `runtime` | Laufzeitumgebung, Container-Befehle | `podman-exec.md`, `runtime-environment.md` |
 | `system` | Prompt-Templates, System-Level | `prompt-template-worker.md` |
 

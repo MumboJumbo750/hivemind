@@ -311,6 +311,53 @@ export interface KpiSummaryResponse {
   computed_at: string | null
 }
 
+// ─── KPI History (Phase 8) ─────────────────────────────────────────────────
+
+export interface KpiDataPoint {
+  date: string
+  value: number
+}
+
+export interface KpiHistoryResponse {
+  days: number
+  series: {
+    tasks_done: KpiDataPoint[]
+    tasks_in_progress: KpiDataPoint[]
+    cycle_time_avg_hours: KpiDataPoint[]
+    bug_rate: KpiDataPoint[]
+    skill_coverage: KpiDataPoint[]
+    review_pass_rate: KpiDataPoint[]
+  }
+}
+
+// ─── Nexus Grid 3D (Phase 8) ───────────────────────────────────────────────
+
+export interface Node3DItem {
+  id: string
+  label: string
+  type: string
+  x: number
+  y: number
+  z: number
+  fog_of_war: boolean
+  discovery_count: number
+}
+
+export interface Edge3DItem {
+  source: string
+  target: string
+  type: string
+}
+
+export interface NexusGraph3DResponse {
+  nodes: Node3DItem[]
+  edges: Edge3DItem[]
+  total_nodes: number
+  page: number
+  page_size: number
+  has_more: boolean
+}
+
 // ─── Dead Letter Queue (Phase 7) ───────────────────────────────────────────
 
 export interface DeadLetterItem {
@@ -331,6 +378,91 @@ export interface DeadLetterListResponse {
   has_more: boolean
   total: number
   limit: number
+}
+
+// ─── AI Review Recommendations (Phase 8) ──────────────────────────────────
+
+export interface ReviewChecklistItem {
+  label: string
+  passed: boolean
+}
+
+export type ReviewVerdict = 'approve' | 'reject' | 'needs_review'
+
+export interface ReviewRecommendation {
+  verdict: ReviewVerdict
+  confidence: number          // 0–100
+  reasoning: string
+  checklist: ReviewChecklistItem[]
+  auto_approved?: boolean
+  grace_period_ends_at?: string | null
+}
+
+// ─── AI Provider Config (Phase 8) ─────────────────────────────────────────
+
+export interface AiProviderConfig {
+  agent_role: string
+  provider: string
+  model: string | null
+  endpoint: string | null
+  api_key?: string
+  has_api_key: boolean
+  credential_id: string | null
+  credential_name: string | null
+  rpm_limit: number | null
+  daily_token_budget: number | null
+  enabled: boolean
+}
+
+export interface AiModelInfo {
+  id: string
+  name: string
+  vendor?: string
+  category?: string        // 'powerful' | 'versatile' | 'lightweight'
+  premium_multiplier?: number  // e.g. 0.25, 1, 50
+  max_context_tokens?: number
+  max_prompt_tokens?: number
+  max_output_tokens?: number
+  supports_vision?: boolean
+  supports_tool_calls?: boolean
+  supports_streaming?: boolean
+}
+
+export interface AiCredential {
+  id: string
+  name: string
+  provider_type: string
+  endpoint: string | null
+  note: string | null
+  has_api_key: boolean
+  usage_count: number
+}
+
+// ─── Governance Config (Phase 8) ──────────────────────────────────────────
+
+export type GovernanceLevel = 'manual' | 'assisted' | 'auto'
+
+export type GovernanceConfig = Record<string, GovernanceLevel>
+
+// ─── MCP Bridge Config (Phase 8) ──────────────────────────────────────────
+
+export interface McpBridge {
+  id: string
+  name: string
+  namespace: string
+  transport: 'http' | 'sse' | 'stdio'
+  url_or_command: string
+  enabled: boolean
+  status: 'connected' | 'disconnected' | 'unknown'
+  tool_count: number | null
+  blocklist: string[]
+  created_at: string
+}
+
+export interface McpBridgeTool {
+  name: string
+  description: string
+  blocked: boolean
 }
 
 // ─── Decision Requests ─────────────────────────────────────────────────────

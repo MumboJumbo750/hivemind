@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-4",
   "title": "Planer-Write-Tools: decompose_epic, create_task, link_skill, set_context_boundary, assign_task",
   "description": "Architekten-Write-Tools implementieren die Epic-Dekomposition und Task-Management ermöglichen: `hivemind/decompose_epic` (zerlegt Epic in Tasks/Subtasks in einem Aufruf via transactions), `hivemind/create_task` (einzelnen Task anlegen in Epic, state='incoming'), `hivemind/create_subtask` (Subtask mit parent_task_id), `hivemind/link_skill` (Skill-Version auf Task pinnen — speichert in task_skills mit pinned_version), `hivemind/set_context_boundary` (Context Boundary für Task: allowed_skills[], allowed_docs[], max_token_budget — in context_boundaries Tabelle), `hivemind/assign_task` (Task einem User zuweisen, löst task_assigned Notification aus, setzt assigned_to). Zusätzlich: `hivemind/update_task_state` für Architekt-Flow (scoped → ready, Voraussetzung: assigned_to gesetzt sonst 422). RBAC: developer in eigenen Epics, admin überall. Alle mit Optimistic Locking, Audit-Log. Handler in `app/mcp/tools/write_tools.py`.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

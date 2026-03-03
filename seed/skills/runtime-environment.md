@@ -2,7 +2,7 @@
 title: "Runtime Environment — AGENTS.md Pattern"
 service_scope: ["*"]
 stack: ["devops", "documentation"]
-skill_type: "system"
+skill_type: "runtime"
 confidence: 0.9
 source_epics: ["EPIC-ENV-BOOTSTRAP"]
 guards: []

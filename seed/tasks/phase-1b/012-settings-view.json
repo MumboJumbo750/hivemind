@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1B",
   "title": "Settings View — Theme, Solo/Team, MCP-Status",
   "description": "`src/views/Settings/SettingsView.vue` vollständig implementieren (ersetzt den Platzhalter aus TASK-1B-008). Drei Einstellungsbereiche: (1) Theme-Auswahl: drei Theme-Cards oder Radio-Buttons für `space-neon`, `industrial-amber`, `operator-mono`. Jede Option zeigt eine kleine Farbpaletten-Vorschau. Bei Auswahl wird `useTheme().setTheme(selected)` aufgerufen — Live-Vorschau sofort sichtbar (das gesamte Layout wechselt das Theme). Aktives Theme ist visuell hervorgehoben. (2) Solo/Team-Toggle: `<Toggle>` (Reka UI) zwischen `solo` und `team`. In Phase 1 wird der Wert nur im Pinia-Store `src/stores/settingsStore.ts` gespeichert (localStorage), kein Backend-Write. Label und Beschreibungstext erklären den Unterschied. (3) MCP-Verbindungsstatus: Read-only Anzeige des MCP-Protokolls (MCP 1.0), Transport (SSE), Tool-Count und aktiven Sessions via `GET /api/mcp/status`. Kein Dropdown mehr — der Transport ist immer SSE/JSON-RPC 2.0 (Standard). `src/stores/settingsStore.ts` anlegen mit `theme`, `mode` (`solo | team`)-State, persistiert in localStorage via defineStore + watch.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

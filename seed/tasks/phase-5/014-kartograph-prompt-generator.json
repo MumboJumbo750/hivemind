@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-5",
   "title": "Kartograph-Prompt-Generator",
   "description": "get_prompt type=kartograph: Unerkundete Code-Nodes, zuletzt kartierte Bereiche, Wiki-Uebersicht. Write-Tools: create_wiki_article etc. Kein task/epic Kontext noetig. Jinja2-Template.",
-  "state": "incoming",
+  "state": "done",
   "priority": "medium",
   "definition_of_done": {
     "criteria": [

@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-ENV-BOOTSTRAP",
   "title": "Monorepo-Pattern: Per-Package AGENTS.md + AI-Config-Files Validation",
   "description": "Dokumentiere das Monorepo-Pattern für hierarchische AGENTS.md-Files und validiere den gesamten Bootstrap-Flow.\n\n**Monorepo-Pattern dokumentieren in `docs/architecture/ai-context.md`:**\n\n```\nmonorepo/\n  AGENTS.md              ← globaler Kontext (Gesamt-Topologie, Cross-Service)\n  CLAUDE.md              ← @see AGENTS.md + Claude-spezifisch\n  .cursorrules           ← @see AGENTS.md + Cursor-spezifisch\n  packages/\n    backend/\n      AGENTS.md          ← backend-spezifisch (überschreibt/erweitert Root)\n    frontend/\n      AGENTS.md          ← frontend-spezifisch\n```\n\n**Hierarchie-Regeln:**\n- Root AGENTS.md: Gesamt-Topologie, Cross-Package Build-Order, globale Conventions\n- Package AGENTS.md: Service-spezifische Befehle, lokaler Dev-Server, package-spezifische Env-Vars\n- Claude Code lädt hierarchisch: Root + nächstes Verzeichnis = kompletter Context\n\n**AI-spezifische Config-Files (Thin Wrapper Pattern):**\n- Erstelle .cursorrules (Verweis auf AGENTS.md + Cursor-Regeln)\n- Erstelle .github/copilot-instructions.md (Verweis auf AGENTS.md + Copilot-Regeln)\n- Regel: Diese Files bleiben dünn — Inhalt gehört in AGENTS.md\n\n**Validation-Checkliste:**\n- [ ] Alle Befehle in AGENTS.md sind copy-paste-ready getestet\n- [ ] MCP-Health-Check dokumentiert (curl http://localhost:8000/health)\n- [ ] Kein AI-Agent hat 'wo muss ich den Befehl ausführen?' gefragt\n\nDateien: `docs/architecture/ai-context.md`, `.cursorrules`, `.github/copilot-instructions.md`",
-  "state": "scoped",
+  "state": "done",
   "priority": "low",
   "definition_of_done": {
     "criteria": [

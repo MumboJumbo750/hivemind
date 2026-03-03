@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-F",
   "title": "Outbox-Consumer (peer_outbound)",
   "description": "Erster Outbox-Consumer im System: verarbeitet `sync_outbox`-Einträge mit `direction='peer_outbound'`. Implementierung als APScheduler-Job (Intervall: 30 Sekunden, konfigurierbar via `HIVEMIND_OUTBOX_INTERVAL`). Pro Run: alle `sync_outbox`-Einträge mit `direction='peer_outbound'` und `attempts < max_attempts` laden (älteste zuerst, Batch-Limit 50). Für jeden Eintrag: Ziel-URL aus `nodes`-Tabelle via `target_node_id` ermitteln. HTTP POST an `{node_url}/federation/{event_type}` mit signiertem Request-Body (via `sign_request()`-Utility aus TASK-F-003). Bei HTTP 2xx: Eintrag aus `sync_outbox` löschen. Bei Fehler: `attempts` inkrementieren. Wenn `attempts >= max_attempts` (aus `HIVEMIND_DLQ_MAX_ATTEMPTS`, Default: 5): Eintrag in `sync_dead_letter` verschieben mit `last_error`. HTTP-Client: `httpx.AsyncClient` mit Timeout 10s. Dependency `httpx` in `requirements.txt` ergänzen. Dependency `apscheduler` in `requirements.txt` ergänzen falls nicht vorhanden. APScheduler im FastAPI Lifespan starten/stoppen.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

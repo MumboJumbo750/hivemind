@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Task-Assignment + Settings-API",
   "description": "Zwei kleine API-Erweiterungen: (A) Task-Assignment: `PATCH /api/tasks/{task_key}` um `assigned_to`-Feld erweitern. RBAC: nur Project-Member oder Admin darf Tasks zuweisen. Validiert dass der zugewiesene User existiert und Project-Member ist. (B) Solo/Team-Modus Settings: `PATCH /api/settings` mit `{ mode: 'solo' | 'team' }`. Schreibt in `app_settings`-Tabelle. Kein Neustart nötig — RBAC-Middleware liest Modus bei jedem Request. `GET /api/settings` liefert aktuellen Modus + `notification_mode`. Neuer Router `backend/app/routers/settings.py`. In main.py registrieren.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

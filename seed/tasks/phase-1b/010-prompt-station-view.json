@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1B",
   "title": "Prompt Station View — Inline-Review + Inline-Scoping",
   "description": "`src/views/PromptStation/PromptStationView.vue` vollständig implementieren (ersetzt den Platzhalter aus TASK-1B-008). Die View ist das Herzstück der Phase-1b-UI. Aufbau: (A) Leer-State: wenn kein Projekt aktiv, zeigt die View einen Call-to-Action 'Kein Projekt aktiv' mit Button zum Öffnen des ProjectCreateDialog. (B) Aktiver-Prompt-State: zeigt den aktiven Task des aktiven Epics. Kopieren-Button kopiert Task-Beschreibung in Clipboard (`navigator.clipboard.writeText`). (C) Inline-Review-Panel: sichtbar wenn aktiver Task `state === 'in_review'`. Enthält: DoD-Checkliste (Checkboxen read-only aus `definition_of_done.criteria`, manuell abhakbar nur im UI, kein Backend-Write), optionales Kommentarfeld (Textarea), Button `[✗ ABLEHNEN]` → ruft `rejectTask(taskId, comment)` auf, Button `[✓ GENEHMIGEN]` → ruft `approveTask(taskId)` auf. Nach Erfolg: Task-State neu laden. (D) Inline-Scoping-Panel: sichtbar wenn aktives Epic `state === 'incoming'`. Enthält: Priorität-Dropdown (`low/medium/high/critical` via HivemindDropdown), SLA-Deadline Date-Input (optional), DoD-Kurztext Textarea, Button `[EPIC SCOPEN →]` → ruft `patchEpicState(epicId, { state: 'scoped', priority, sla_deadline, dod })` auf. State-Management via Pinia-Store `src/stores/projectStore.ts`: aktives Projekt, aktives Epic, aktiver Task. API-Calls beim Mount.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

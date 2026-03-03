@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-IDE-002",
+  "epic_ref": "EPIC-IDE-AUTOMATION",
+  "title": "MCP-Prompts: Agent-Rollen als MCP-Prompt-Templates registrieren",
+  "description": "MCP-Server können vorkonfigurierte Prompts exponieren. In VS Code nutzbar als `/hivemind.worker`, `/hivemind.kartograph` etc.\n\n**Was zu implementieren ist:**\n\n1. **MCP Prompt-Capability** im Hivemind MCP-Server:\n   - MCP-Server registriert Prompts pro Agent-Rolle\n   - Prompts werden dynamisch generiert (nutzt bestehenden PromptGenerator)\n   - Jeder Prompt enthält: Rolle, Skills, Context Boundary, aktuelle Task-Infos\n\n2. **Prompt-Registrierung:**\n   ```\n   /hivemind.worker        — Worker-Prompt für aktiven Task\n   /hivemind.kartograph    — Kartograph-Prompt (Bootstrap oder Follow-Up)\n   /hivemind.reviewer      — Review-Prompt für Task in in_review\n   /hivemind.gaertner      — Gaertner-Prompt nach Task-Done\n   /hivemind.stratege      — Stratege-Prompt für Epic-Planung\n   /hivemind.architekt     — Architekt-Prompt für Epic-Zerlegung\n   /hivemind.next          — Nächster anstehender Prompt (beliebige Rolle)\n   ```\n\n3. **Dynamische Argumente:**\n   - `/hivemind.worker` akzeptiert `task_key` als Argument\n   - `/hivemind.next` wählt automatisch den nächsten offenen Dispatch\n   - Prompt enthält alle nötigen Informationen (Skills, DoD, Guards, Context)\n\n4. **VS Code Integration:**\n   - User tippt `/hivemind.next` in Copilot Chat → bekommt vollständigen Agent-Prompt\n   - Copilot hat gleichzeitig lokale Tools + Hivemind MCP-Tools\n   - Kein Copy-Paste mehr nötig!\n\n**Kontext:** MCP Prompt-Capability ist in VS Code seit ~1.99 unterstützt.\nDokumentation: https://modelcontextprotocol.io/docs/concepts/prompts",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "MCP-Server exponiert Prompts pro Agent-Rolle",
+      "Prompts werden dynamisch via PromptGenerator erstellt",
+      "/hivemind.next liefert den nächsten anstehenden Prompt automatisch",
+      "/hivemind.worker akzeptiert task_key als Argument",
+      "Prompts enthalten Skills, DoD, Guards, Context Boundary",
+      "In VS Code Copilot Chat nutzbar als Slash-Commands"
+    ]
+  },
+  "tags": ["mcp", "prompts", "automation", "copilot"],
+  "subtasks": [],
+  "pinned_skills": ["mcp-tool", "prompt-generator"],
+  "linked_wiki": ["mcp-integration", "byoai-workflow"],
+  "source_doc": null,
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-IDE-001"]
+}

@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1B",
   "title": "Projekt-Anlegen-Dialog (ProjectCreateDialog)",
   "description": "`src/components/domain/ProjectCreateDialog.vue` implementieren — Domain-Komponente (Layer 3, kennt Hivemind-Konzepte). Basiert auf `HivemindModal`. Felder: (1) Name (text input, required, max 100 Zeichen), (2) Slug (text input, auto-generiert aus Name via `name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')`, editierbar, validiert: nur `[a-z0-9-]`, unique-Validierung erst nach Submit), (3) Beschreibung (textarea, optional, max 500 Zeichen). Submit-Button `[PROJEKT ANLEGEN]` ruft `createProject({ name, slug, description })` auf. Bei Erfolg: Modal schließen, Pinia-Store mit neuem Projekt aktualisieren, neues Projekt als aktiv setzen. Bei Fehler (z.B. slug-Konflikt 409): Fehlermeldung inline unter dem Slug-Feld anzeigen. Loading-State während API-Call (Button disabled, Spinner). Komponent ist aufrufbar aus: (a) Prompt Station (Leer-State CTA), (b) System Bar (Plus-Button). Beide Aufruf-Punkte nutzen v-model für `open`-State.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

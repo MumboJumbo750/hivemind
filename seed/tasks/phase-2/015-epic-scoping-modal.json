@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Epic Scoping Modal",
   "description": "`src/components/domain/EpicScopingModal.vue` implementieren. Modaler Dialog zum Scopen eines Epics (Transition `incoming → scoped`). Felder: Owner (Dropdown mit Users aus `GET /api/projects/{id}/members`), SLA-Deadline (Datepicker), Priority (Dropdown: low/medium/high/critical), DoD-Rahmen (Textarea mit `[+ Kriterium]`-Button zum dynamischen Hinzufügen von DoD-Einträgen). Submit ruft `PATCH /api/epics/{id}` auf mit neuen Feldern + State-Transition. Schließt Modal nach Erfolg und refresht Epic-Liste im Command Deck. Cancel-Button schließt ohne Änderung. Validierung: Owner und Priority sind Pflichtfelder.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

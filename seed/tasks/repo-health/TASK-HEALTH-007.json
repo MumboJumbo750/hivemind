@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-HEALTH-007",
+  "epic_ref": "EPIC-REPO-HEALTH",
+  "title": "Kartograph-Integration: Bootstrap Phase 0.5 Diagnostics",
+  "description": "Erweitere den Kartograph-Bootstrap-Workflow um eine automatische Diagnostics-Phase.\n\n**Was zu implementieren ist:**\n\n1. **Kartograph-Prompt erweitern** (`seed/skills/prompt-template-kartograph.md`):\n   - Neuer Abschnitt zwischen Phase 0 (AGENTS.md) und Phase 1 (Code-Analyse):\n     ```\n     Phase 0.5: Repo Health Scan\n     → Scanner-Toolkit ausführen: python scripts/health_check.py --format json\n     → Findings analysieren und gruppieren\n     → Wiki-Artikel erstellen: 'Repo Health Report' (tags: diagnostics, technical-debt)\n     → Guard-Proposals ableiten (was dauerhaft geprüft werden soll)\n     → Schwere Findings → Restructure-Proposals oder Epic-Empfehlungen\n     ```\n\n2. **Automatische Guard-Proposal-Ableitung:**\n   - Für jeden Analyzer der Findings mit severity=error hat:\n     - Guard-Proposal generieren mit dem Analyzer-Command als executable\n     - z.B. `python scripts/health_check.py --analyzers hardcoded-css --severity error`\n   - Template für Guard-Proposal-Text\n\n3. **Health-Report Wiki-Template:**\n   - Markdown-Template für den Wiki-Artikel\n   - Übersicht: Analyzer → Findings-Count → Severity-Distribution\n   - Detail: Top-10 Findings pro Kategorie\n   - Empfehlungen: abgeleitete Cleanup-Themen\n\n4. **Precondition in Kartograph-Bootstrap:**\n   - Wenn `scripts/health_check.py` nicht existiert (fremdes Repo):\n     - Hinweis: \"Health Scanner nicht verfügbar — manuell prüfen oder installieren\"\n     - Optional: Epic-Proposal für Scanner-Installation generieren",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "prompt-template-kartograph.md enthält Phase 0.5 Diagnostics",
+      "Health-Report wird als Wiki-Artikel erstellt (tags: diagnostics)",
+      "Guard-Proposals werden automatisch aus error-Findings abgeleitet",
+      "Markdown-Template für Health-Report existiert",
+      "Fallback für fremde Repos ohne Scanner dokumentiert",
+      "Kartograph-Prompt referenziert health_check.py"
+    ]
+  },
+  "tags": ["kartograph", "automation", "guards", "wiki"],
+  "subtasks": [],
+  "pinned_skills": ["prompt-template-kartograph"],
+  "linked_wiki": ["agent-konzept"],
+  "source_doc": "docs/agents/kartograph.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-HEALTH-001", "TASK-HEALTH-002", "TASK-HEALTH-005"]
+}

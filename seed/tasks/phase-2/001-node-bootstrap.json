@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-2",
   "title": "Node-Bootstrap beim App-Start",
   "description": "Beim ersten FastAPI-Start automatisch eine `node_identity` generieren: UUID + Ed25519-Keypair via `cryptography`. Den eigenen Node in die `nodes`-Tabelle eintragen (node_name aus ENV oder Hostname, node_url aus ENV, public_key als PEM-String). Als FastAPI `startup`-Event implementieren, idempotent: nur ausführen wenn noch kein Node-Eintrag mit der eigenen URL existiert. Private Key in `HIVEMIND_NODE_PRIVATE_KEY`-Datei oder ENV ablegen. Neue Dependency: `cryptography`. In `requirements.txt` ergänzen.",
-  "state": "incoming",
+  "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [

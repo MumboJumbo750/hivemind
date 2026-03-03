@@ -3,7 +3,7 @@
   "epic_ref": "EPIC-PHASE-1A",
   "title": "Task State Machine als Backend-Logik",
   "description": "State-Machine-Service implementieren: erlaubte Transitionen validieren, Vorbedingungen prüfen (assigned_to, result), Review-Gate erzwingen, Epic-Auto-Transitions atomar.",
-  "state": "incoming",
+  "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [

@@ -5,6 +5,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.epic import Epic
+from app.models.guard import TaskGuard
 from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskReview, TaskStateTransition, TaskUpdate
 from app.services.locking import check_version
@@ -226,6 +227,49 @@ class TaskService:
             epic.version += 1
             await self.db.flush()
 
+        await self.db.refresh(task)
+        return task
+
+    async def reenter_from_qa_failed(self, task_key: str) -> Task:
+        """qa_failed → in_progress: Guard-Reset + Eskalations-Check (TASK-5-005)."""
+        task = await self.get_by_key(task_key)
+
+        if task.state != "qa_failed":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Task muss 'qa_failed' sein (aktuell: '{task.state}').",
+            )
+
+        # Escalation: 3x qa_failed → escalated statt in_progress
+        if (task.qa_failed_count or 0) >= 3:
+            task.state = "escalated"
+            task.version += 1
+            await self.db.flush()
+            await self.db.refresh(task)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Task '{task_key}' wurde nach {task.qa_failed_count}x QA-Failure eskaliert. "
+                    "Manueller Eingriff erforderlich."
+                ),
+            )
+
+        # Normal re-entry: qa_failed → in_progress
+        task.state = "in_progress"
+        task.version += 1
+
+        # Alle Guards auf pending zurücksetzen
+        guard_result = await self.db.execute(
+            select(TaskGuard).where(TaskGuard.task_id == task.id)
+        )
+        for tg in guard_result.scalars().all():
+            if tg.status != "pending":
+                tg.status = "pending"
+                tg.output = None
+                tg.source = None
+                tg.checked_at = None
+
+        await self.db.flush()
         await self.db.refresh(task)
         return task
 
