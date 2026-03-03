@@ -177,6 +177,35 @@ fix-be:
 	@echo "→ ruff format + fix (backend)..."
 	cd backend && ruff format . && ruff check --fix .
 
+# ── Repo Health Scanner ──────────────────────────────────────────────────────
+health: ## Repo Health Scan (text output)
+	@echo "→ Repo Health Scanner..."
+	podman compose run --rm --no-deps --entrypoint="" \
+		-v "$(CURDIR):/workspace:ro" -w /workspace backend \
+		/app/.venv/bin/python scripts/health_check.py --root .
+
+health-json: ## Repo Health Scan → health_report.json
+	@echo "→ Repo Health Scanner (JSON)..."
+	podman compose run --rm --no-deps --entrypoint="" \
+		-v "$(CURDIR):/workspace" -w /workspace backend \
+		/app/.venv/bin/python scripts/health_check.py --root . --format json --output health_report.json
+
+health-md: ## Repo Health Scan → health_report.md
+	@echo "→ Repo Health Scanner (Markdown)..."
+	podman compose run --rm --no-deps --entrypoint="" \
+		-v "$(CURDIR):/workspace" -w /workspace backend \
+		/app/.venv/bin/python scripts/health_check.py --root . --format markdown --output health_report.md
+
+# ── VS Code Extension ────────────────────────────────────────────────────────
+ext-build: ## Extension kompilieren + in VS Code installieren (dann Reload Window)
+	@echo "→ Extension bauen & deployen..."
+	cd vscode-extension && npm run compile
+	@echo "✓ Fertig — VS Code neu laden: Ctrl+Shift+P → Developer: Reload Window"
+
+ext-watch: ## Extension im Watch-Modus bauen (kein Auto-Deploy)
+	@echo "→ Extension watch..."
+	cd vscode-extension && npm run watch
+
 # ── Container-Varianten (wenn Tools nicht lokal installiert sind) ─────────────
 check-docker:
 	podman compose run --rm frontend npm run lint

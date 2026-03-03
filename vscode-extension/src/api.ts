@@ -212,8 +212,13 @@ async function callMcpTool<T>(tool: string, args: Record<string, unknown>): Prom
       method: 'POST',
       body: JSON.stringify({ tool, arguments: args }),
     });
-    return parseMcpEnvelope<T>(envelope);
+    const parsed = parseMcpEnvelope<T>(envelope);
+    if (parsed.error) {
+      console.error(`[hivemind] callMcpTool(${tool}) error:`, parsed.error);
+    }
+    return parsed;
   } catch (err) {
+    console.error(`[hivemind] callMcpTool(${tool}) fetch failed:`, err);
     return {
       error: {
         code: 'http_error',
@@ -223,30 +228,36 @@ async function callMcpTool<T>(tool: string, args: Record<string, unknown>): Prom
   }
 }
 
-/** Fetch active in-progress tasks with epic metadata */
+/** Fetch tasks that need attention: incoming, scoped, ready (startable), in_progress, in_review */
 export async function fetchActiveTasks(): Promise<HivemindTask[]> {
-  const tasksResult = await callMcpTool<McpListResponse<ListTaskRow>>('hivemind/list_tasks', {
-    state: 'in_progress',
-    limit: 50,
-    offset: 0,
-  });
-  if (tasksResult.error || !tasksResult.data?.data) {
-    return [];
-  }
+  const [incomingResult, scopedResult, readyResult, inProgressResult, inReviewResult] = await Promise.all([
+    callMcpTool<ListTaskRow[]>('hivemind/list_tasks', { state: 'incoming', limit: 20, offset: 0 }),
+    callMcpTool<ListTaskRow[]>('hivemind/list_tasks', { state: 'scoped',   limit: 20, offset: 0 }),
+    callMcpTool<ListTaskRow[]>('hivemind/list_tasks', { state: 'ready',    limit: 50, offset: 0 }),
+    callMcpTool<ListTaskRow[]>('hivemind/list_tasks', { state: 'in_progress', limit: 50, offset: 0 }),
+    callMcpTool<ListTaskRow[]>('hivemind/list_tasks', { state: 'in_review',   limit: 50, offset: 0 }),
+  ]);
 
-  const tasks = tasksResult.data.data;
+  const tasks: ListTaskRow[] = [
+    ...(incomingResult.data ?? []),
+    ...(scopedResult.data ?? []),
+    ...(readyResult.data ?? []),
+    ...(inProgressResult.data ?? []),
+    ...(inReviewResult.data ?? []),
+  ];
+
   if (tasks.length === 0) {
     return [];
   }
 
-  const epicResult = await callMcpTool<McpListResponse<ListEpicRow>>('hivemind/list_epics', {
+  const epicResult = await callMcpTool<ListEpicRow[]>('hivemind/list_epics', {
     limit: 200,
     offset: 0,
   });
 
   const epicMap = new Map<string, ListEpicRow>();
-  if (!epicResult.error && epicResult.data?.data) {
-    for (const epic of epicResult.data.data) {
+  if (!epicResult.error && epicResult.data) {
+    for (const epic of epicResult.data) {
       epicMap.set(epic.id, epic);
     }
   }
@@ -261,6 +272,17 @@ export async function fetchActiveTasks(): Promise<HivemindTask[]> {
       priority: epic?.priority ?? 'n/a',
       updated_at: task.created_at,
     };
+  });
+}
+
+/** Transition task to a new state via MCP */
+export async function transitionTaskState(
+  taskKey: string,
+  targetState: string
+): Promise<McpParsed<Record<string, unknown>>> {
+  return callMcpTool<Record<string, unknown>>('hivemind/update_task_state', {
+    task_key: taskKey,
+    target_state: targetState,
   });
 }
 
@@ -327,6 +349,28 @@ export async function submitTaskResult(
     task_key: taskKey,
     result,
     artifacts,
+  });
+}
+
+/** Approve a task in review (transition → done via review gate) */
+export async function approveTask(
+  taskKey: string,
+  comment = ''
+): Promise<McpParsed<Record<string, unknown>>> {
+  return callMcpTool<Record<string, unknown>>('hivemind/approve_review', {
+    task_key: taskKey,
+    comment,
+  });
+}
+
+/** Reject a task in review (transition → qa_failed) */
+export async function rejectTask(
+  taskKey: string,
+  comment: string
+): Promise<McpParsed<Record<string, unknown>>> {
+  return callMcpTool<Record<string, unknown>>('hivemind/reject_review', {
+    task_key: taskKey,
+    comment,
   });
 }
 

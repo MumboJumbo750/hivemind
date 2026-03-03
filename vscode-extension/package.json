@@ -24,13 +24,10 @@
     },
     "views": {
       "hivemind": [
-        {
-          "id": "hivemind.activeTasks",
-          "name": "Aktive Tasks"
-        },
+        {"id": "hivemind.activeTasks", "name": "Tasks"},
         {
           "id": "hivemind.nextPrompts",
-          "name": "Nächste Prompts"
+          "name": "Aufgaben-Queue"
         },
         {
           "id": "hivemind.guardStatus",
@@ -75,6 +72,36 @@
     ],
     "commands": [
       {
+        "command": "hivemind.queueTask",
+        "title": "→ Ready",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "hivemind.startTask",
+        "title": "Start",
+        "icon": "$(play)"
+      },
+      {
+        "command": "hivemind.submitInline",
+        "title": "Submit Result",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "hivemind.reviewTask",
+        "title": "Review starten",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "hivemind.approveTask",
+        "title": "Approve",
+        "icon": "$(pass)"
+      },
+      {
+        "command": "hivemind.rejectTask",
+        "title": "Reject",
+        "icon": "$(error)"
+      },
+      {
         "command": "hivemind.nextPrompt",
         "title": "Hivemind: Next Prompt"
       },
@@ -98,6 +125,38 @@
           "command": "hivemind.refresh",
           "when": "view == hivemind.activeTasks",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "hivemind.queueTask",
+          "when": "view == hivemind.activeTasks && (viewItem == hivemind.task.incoming || viewItem == hivemind.task.scoped)",
+          "group": "inline@1"
+        },
+        {
+          "command": "hivemind.startTask",
+          "when": "view == hivemind.activeTasks && viewItem == hivemind.task.ready",
+          "group": "inline@1"
+        },
+        {
+          "command": "hivemind.submitInline",
+          "when": "view == hivemind.activeTasks && viewItem == hivemind.task.in_progress",
+          "group": "inline@1"
+        },
+        {
+          "command": "hivemind.reviewTask",
+          "when": "view == hivemind.activeTasks && viewItem == hivemind.task.in_review",
+          "group": "inline@1"
+        },
+        {
+          "command": "hivemind.approveTask",
+          "when": "view == hivemind.activeTasks && viewItem == hivemind.task.in_review",
+          "group": "inline@2"
+        },
+        {
+          "command": "hivemind.rejectTask",
+          "when": "view == hivemind.activeTasks && viewItem == hivemind.task.in_review",
+          "group": "inline@3"
         }
       ]
     },
@@ -160,9 +219,11 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
+    "postcompile": "node scripts/deploy-local.js",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "package": "vsce package"
+    "package": "vsce package",
+    "deploy": "node scripts/deploy-local.js"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

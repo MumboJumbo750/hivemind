@@ -2,8 +2,8 @@
  * Hivemind Sidebar TreeView Provider — TASK-IDE-003
  *
  * Provides four tree views:
- *   hivemind.activeTasks   — Tasks in in_progress with epic + priority
- *   hivemind.nextPrompts   — Pending conductor dispatches
+ *   hivemind.activeTasks   — All tasks (incoming → in_review) with inline actions
+ *   hivemind.nextPrompts   — Aufgaben-Queue: dispatches + ready/review tasks
  *   hivemind.guardStatus   — Guard results for the selected task
  *   hivemind.agentActivity — Recent dispatch/event activity
  */
@@ -18,18 +18,32 @@ import {
   HivemindTaskGuard,
 } from './api';
 
-class TaskItem extends vscode.TreeItem {
-  constructor(task: HivemindTask) {
+export { HivemindTask };
+
+export class TaskItem extends vscode.TreeItem {
+  constructor(readonly task: HivemindTask) {
     super(`${task.task_key} — ${task.title}`, vscode.TreeItemCollapsibleState.None);
-    this.description = `${task.epic_key ?? 'EPIC-?'} • ${task.priority ?? 'n/a'}`;
+    this.description = `${task.epic_key ?? 'EPIC-?'} • ${stateLabel(task.state)}`;
     this.tooltip = `${task.task_key}\nState: ${task.state}\nEpic: ${task.epic_key ?? 'n/a'}\nPriority: ${task.priority ?? 'n/a'}`;
     this.iconPath = stateIcon(task.state);
-    this.contextValue = 'hivemind.task';
+    // contextValue drives inline buttons in package.json view/item/context
+    this.contextValue = `hivemind.task.${task.state}`;
     this.command = {
       command: 'hivemind.openTask',
       title: 'Task öffnen',
       arguments: [task.task_key],
     };
+  }
+}
+
+function stateLabel(state: string): string {
+  switch (state) {
+    case 'incoming':    return '○ Incoming';
+    case 'scoped':      return '◌ Scoped';
+    case 'ready':       return '● Ready';
+    case 'in_progress': return '◎ In Progress';
+    case 'in_review':   return '👁 In Review';
+    default:            return state;
   }
 }
 
@@ -66,8 +80,14 @@ class PlaceholderItem extends vscode.TreeItem {
 
 function stateIcon(state: string): vscode.ThemeIcon {
   switch (state) {
+    case 'incoming':
+      return new vscode.ThemeIcon('inbox');
+    case 'scoped':
+      return new vscode.ThemeIcon('list-unordered');
+    case 'ready':
+      return new vscode.ThemeIcon('circle-filled');
     case 'in_progress':
-      return new vscode.ThemeIcon('sync~spin');
+      return new vscode.ThemeIcon('circle-outline');
     case 'in_review':
       return new vscode.ThemeIcon('eye');
     case 'qa_failed':
@@ -123,7 +143,7 @@ export class ActiveTasksProvider implements vscode.TreeDataProvider<vscode.TreeI
 
   getChildren(): vscode.TreeItem[] {
     if (this.tasks.length === 0) {
-      return [new PlaceholderItem('Keine Tasks in in_progress')];
+      return [new PlaceholderItem('Keine Tasks (incoming / ready / in_progress / in_review)')];
     }
     return this.tasks.map(task => new TaskItem(task));
   }
@@ -134,9 +154,17 @@ export class NextPromptsProvider implements vscode.TreeDataProvider<vscode.TreeI
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
   private dispatches: HivemindDispatch[] = [];
+  private readyTasks: HivemindTask[] = [];
+  private reviewTasks: HivemindTask[] = [];
 
   setDispatches(dispatches: HivemindDispatch[]): void {
     this.dispatches = dispatches;
+    this.refresh();
+  }
+
+  setTasks(allTasks: HivemindTask[]): void {
+    this.readyTasks = allTasks.filter(t => t.state === 'ready');
+    this.reviewTasks = allTasks.filter(t => t.state === 'in_review');
     this.refresh();
   }
 
@@ -153,10 +181,36 @@ export class NextPromptsProvider implements vscode.TreeDataProvider<vscode.TreeI
   }
 
   getChildren(): vscode.TreeItem[] {
-    if (this.dispatches.length === 0) {
-      return [new PlaceholderItem('Keine anstehenden Dispatches')];
+    const items: vscode.TreeItem[] = [];
+
+    // Section: Pending dispatches
+    if (this.dispatches.length > 0) {
+      const header = new vscode.TreeItem('── Dispatches ──', vscode.TreeItemCollapsibleState.None);
+      header.iconPath = new vscode.ThemeIcon('broadcast');
+      items.push(header);
+      items.push(...this.dispatches.map(d => new DispatchItem(d)));
     }
-    return this.dispatches.map(dispatch => new DispatchItem(dispatch));
+
+    // Section: Tasks waiting for review
+    if (this.reviewTasks.length > 0) {
+      const header = new vscode.TreeItem('── Review wartend ──', vscode.TreeItemCollapsibleState.None);
+      header.iconPath = new vscode.ThemeIcon('eye');
+      items.push(header);
+      items.push(...this.reviewTasks.map(t => new TaskItem(t)));
+    }
+
+    // Section: Ready tasks (next work items)
+    if (this.readyTasks.length > 0) {
+      const header = new vscode.TreeItem('── Bereit zum Start ──', vscode.TreeItemCollapsibleState.None);
+      header.iconPath = new vscode.ThemeIcon('play-circle');
+      items.push(header);
+      items.push(...this.readyTasks.map(t => new TaskItem(t)));
+    }
+
+    if (items.length === 0) {
+      return [new PlaceholderItem('Keine anstehenden Aufgaben')];
+    }
+    return items;
   }
 }
 

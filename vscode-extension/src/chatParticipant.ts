@@ -35,7 +35,16 @@ type ChatProgress = vscode.Progress<{ message?: string }>;
 
 function md(text: string): vscode.MarkdownString {
   const s = new vscode.MarkdownString(text);
-  s.isTrusted = true;
+  s.isTrusted = {
+    enabledCommands: [
+      'hivemind.nextPrompt',
+      'hivemind.openTask',
+      'hivemind.runGuard',
+      'hivemind.submitResult',
+      'hivemind.executeDispatch',
+      'hivemind.refresh',
+    ],
+  };
   return s;
 }
 
@@ -304,16 +313,34 @@ async function handleStatus(progress: ChatProgress, stream: vscode.ChatResponseS
   }
 }
 
-async function handleKartograph(progress: ChatProgress, stream: vscode.ChatResponseStream): Promise<void> {
+async function handleKartograph(
+  request: vscode.ChatRequest,
+  progress: ChatProgress,
+  stream: vscode.ChatResponseStream,
+  token: vscode.CancellationToken
+): Promise<void> {
   progress.report({ message: 'Kartograph-Prompt laden...' });
 
   try {
     const result = await fetchPromptForTask('kartograph', '');
-    if (result.data?.prompt) {
-      stream.markdown(md('## Kartograph-Session'));
-      stream.markdown(md(`\`\`\`\n${escapeCodeBlock(result.data.prompt)}\n\`\`\``));
-    } else {
+    if (!result.data?.prompt) {
       stream.markdown(md('Kein Kartograph-Prompt verfuegbar — kein offener Explore-Task?'));
+      return;
+    }
+
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+    const repoContext = `Workspace-Pfad: ${workspaceRoot}\n\n`;
+    const fullPrompt = repoContext + result.data.prompt;
+
+    stream.markdown(md('## Kartograph-Session gestartet'));
+    stream.markdown(md(`*Workspace: \`${workspaceRoot}\` • ${result.data.token_count} Tokens*`));
+    stream.markdown(md('---'));
+
+    // Prompt ans Modell schicken — Kartograph führt die Analyse tatsächlich aus
+    const messages = [vscode.LanguageModelChatMessage.User(fullPrompt)];
+    const response = await request.model.sendRequest(messages, {}, token);
+    for await (const chunk of response.text) {
+      stream.markdown(new vscode.MarkdownString(chunk));
     }
   } catch (err) {
     stream.markdown(md(`**Fehler:** ${err}`));
@@ -494,7 +521,7 @@ export function registerChatParticipant(context: vscode.ExtensionContext): void 
     } else if (command === 'health') {
       await handleHealth(request, progress, stream, token);
     } else if (command === 'kartograph') {
-      await handleKartograph(progress, stream);
+      await handleKartograph(request, progress, stream, token);
     } else {
       handledTaskKey = await handleStatus(progress, stream);
       stream.markdown(md('\n---\n**Verfuegbare Subcommands:**'));

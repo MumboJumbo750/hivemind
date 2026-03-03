@@ -40,6 +40,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchActiveTasks = fetchActiveTasks;
+exports.transitionTaskState = transitionTaskState;
 exports.fetchPendingDispatches = fetchPendingDispatches;
 exports.fetchNextPrompt = fetchNextPrompt;
 exports.fetchPromptForTask = fetchPromptForTask;
@@ -47,6 +48,8 @@ exports.fetchTask = fetchTask;
 exports.fetchGuards = fetchGuards;
 exports.reportGuardResult = reportGuardResult;
 exports.submitTaskResult = submitTaskResult;
+exports.approveTask = approveTask;
+exports.rejectTask = rejectTask;
 exports.acknowledgeDispatch = acknowledgeDispatch;
 exports.markDispatchRunning = markDispatchRunning;
 exports.completeDispatch = completeDispatch;
@@ -118,9 +121,14 @@ async function callMcpTool(tool, args) {
             method: 'POST',
             body: JSON.stringify({ tool, arguments: args }),
         });
-        return parseMcpEnvelope(envelope);
+        const parsed = parseMcpEnvelope(envelope);
+        if (parsed.error) {
+            console.error(`[hivemind] callMcpTool(${tool}) error:`, parsed.error);
+        }
+        return parsed;
     }
     catch (err) {
+        console.error(`[hivemind] callMcpTool(${tool}) fetch failed:`, err);
         return {
             error: {
                 code: 'http_error',
@@ -129,17 +137,22 @@ async function callMcpTool(tool, args) {
         };
     }
 }
-/** Fetch active in-progress tasks with epic metadata */
+/** Fetch tasks that need attention: incoming, scoped, ready (startable), in_progress, in_review */
 async function fetchActiveTasks() {
-    const tasksResult = await callMcpTool('hivemind/list_tasks', {
-        state: 'in_progress',
-        limit: 50,
-        offset: 0,
-    });
-    if (tasksResult.error || !tasksResult.data?.data) {
-        return [];
-    }
-    const tasks = tasksResult.data.data;
+    const [incomingResult, scopedResult, readyResult, inProgressResult, inReviewResult] = await Promise.all([
+        callMcpTool('hivemind/list_tasks', { state: 'incoming', limit: 20, offset: 0 }),
+        callMcpTool('hivemind/list_tasks', { state: 'scoped', limit: 20, offset: 0 }),
+        callMcpTool('hivemind/list_tasks', { state: 'ready', limit: 50, offset: 0 }),
+        callMcpTool('hivemind/list_tasks', { state: 'in_progress', limit: 50, offset: 0 }),
+        callMcpTool('hivemind/list_tasks', { state: 'in_review', limit: 50, offset: 0 }),
+    ]);
+    const tasks = [
+        ...(incomingResult.data ?? []),
+        ...(scopedResult.data ?? []),
+        ...(readyResult.data ?? []),
+        ...(inProgressResult.data ?? []),
+        ...(inReviewResult.data ?? []),
+    ];
     if (tasks.length === 0) {
         return [];
     }
@@ -148,8 +161,8 @@ async function fetchActiveTasks() {
         offset: 0,
     });
     const epicMap = new Map();
-    if (!epicResult.error && epicResult.data?.data) {
-        for (const epic of epicResult.data.data) {
+    if (!epicResult.error && epicResult.data) {
+        for (const epic of epicResult.data) {
             epicMap.set(epic.id, epic);
         }
     }
@@ -163,6 +176,13 @@ async function fetchActiveTasks() {
             priority: epic?.priority ?? 'n/a',
             updated_at: task.created_at,
         };
+    });
+}
+/** Transition task to a new state via MCP */
+async function transitionTaskState(taskKey, targetState) {
+    return callMcpTool('hivemind/update_task_state', {
+        task_key: taskKey,
+        target_state: targetState,
     });
 }
 /** Fetch pending dispatches (TASK-IDE-005: execution_mode=ide) */
@@ -211,6 +231,20 @@ async function submitTaskResult(taskKey, result, artifacts = []) {
         task_key: taskKey,
         result,
         artifacts,
+    });
+}
+/** Approve a task in review (transition → done via review gate) */
+async function approveTask(taskKey, comment = '') {
+    return callMcpTool('hivemind/approve_review', {
+        task_key: taskKey,
+        comment,
+    });
+}
+/** Reject a task in review (transition → qa_failed) */
+async function rejectTask(taskKey, comment) {
+    return callMcpTool('hivemind/reject_review', {
+        task_key: taskKey,
+        comment,
     });
 }
 /** Acknowledge an IDE dispatch */

@@ -148,6 +148,29 @@ export class SseListener {
 
     if (eventType.startsWith('task_')) {
       const taskKey = getString(d?.task_key) ?? 'unknown';
+      const newState = getString(d?.new_state) ?? getString(d?.state) ?? '';
+
+      // Special handling: task moved to in_review → offer direct Review action
+      if (newState === 'in_review' || eventType === 'task_in_review') {
+        vscode.window.showInformationMessage(
+          `Hivemind: ${taskKey} wartet auf Review`,
+          'Review starten',
+          'Approve',
+          'Task öffnen'
+        ).then(action => {
+          if (action === 'Review starten') {
+            void vscode.commands.executeCommand('hivemind.openTask', taskKey);
+          } else if (action === 'Approve') {
+            void vscode.commands.executeCommand('workbench.action.chat.open', {
+              query: `@hivemind /task ${taskKey}`,
+            });
+          } else if (action === 'Task öffnen') {
+            void vscode.commands.executeCommand('hivemind.openTask', taskKey);
+          }
+        });
+        return;
+      }
+
       void vscode.window.showInformationMessage(`Hivemind: ${eventType} (${taskKey})`);
       return;
     }
@@ -155,11 +178,14 @@ export class SseListener {
     if (eventType === 'conductor:dispatch' && isReviewDispatch(d)) {
       const triggerId = getString(d?.trigger_id) ?? 'Task';
       vscode.window.showInformationMessage(
-        `Hivemind: Review needed (${triggerId})`,
-        'Next Prompt'
+        `Hivemind: Review benötigt (${triggerId})`,
+        'Review starten',
+        'Task öffnen'
       ).then(action => {
-        if (action) {
+        if (action === 'Review starten') {
           void vscode.commands.executeCommand('hivemind.nextPrompt');
+        } else if (action === 'Task öffnen') {
+          void vscode.commands.executeCommand('hivemind.openTask', triggerId);
         }
       });
     }

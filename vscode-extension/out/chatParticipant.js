@@ -55,7 +55,16 @@ const PARTICIPANT_ID = 'hivemind';
 const execAsync = (0, node_util_1.promisify)(node_child_process_1.exec);
 function md(text) {
     const s = new vscode.MarkdownString(text);
-    s.isTrusted = true;
+    s.isTrusted = {
+        enabledCommands: [
+            'hivemind.nextPrompt',
+            'hivemind.openTask',
+            'hivemind.runGuard',
+            'hivemind.submitResult',
+            'hivemind.executeDispatch',
+            'hivemind.refresh',
+        ],
+    };
     return s;
 }
 function createProgressReporter(stream) {
@@ -276,16 +285,25 @@ async function handleStatus(progress, stream) {
         return undefined;
     }
 }
-async function handleKartograph(progress, stream) {
+async function handleKartograph(request, progress, stream, token) {
     progress.report({ message: 'Kartograph-Prompt laden...' });
     try {
         const result = await (0, api_1.fetchPromptForTask)('kartograph', '');
-        if (result.data?.prompt) {
-            stream.markdown(md('## Kartograph-Session'));
-            stream.markdown(md(`\`\`\`\n${escapeCodeBlock(result.data.prompt)}\n\`\`\``));
-        }
-        else {
+        if (!result.data?.prompt) {
             stream.markdown(md('Kein Kartograph-Prompt verfuegbar — kein offener Explore-Task?'));
+            return;
+        }
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+        const repoContext = `Workspace-Pfad: ${workspaceRoot}\n\n`;
+        const fullPrompt = repoContext + result.data.prompt;
+        stream.markdown(md('## Kartograph-Session gestartet'));
+        stream.markdown(md(`*Workspace: \`${workspaceRoot}\` • ${result.data.token_count} Tokens*`));
+        stream.markdown(md('---'));
+        // Prompt ans Modell schicken — Kartograph führt die Analyse tatsächlich aus
+        const messages = [vscode.LanguageModelChatMessage.User(fullPrompt)];
+        const response = await request.model.sendRequest(messages, {}, token);
+        for await (const chunk of response.text) {
+            stream.markdown(new vscode.MarkdownString(chunk));
         }
     }
     catch (err) {
@@ -427,7 +445,7 @@ function registerChatParticipant(context) {
             await handleHealth(request, progress, stream, token);
         }
         else if (command === 'kartograph') {
-            await handleKartograph(progress, stream);
+            await handleKartograph(request, progress, stream, token);
         }
         else {
             handledTaskKey = await handleStatus(progress, stream);

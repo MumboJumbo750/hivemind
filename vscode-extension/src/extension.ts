@@ -4,16 +4,39 @@
 
 import * as vscode from 'vscode';
 import {
+  approveTask,
   checkHealth,
   fetchActiveTasks,
   fetchGuards,
   fetchPendingDispatches,
+  fetchPromptForTask,
   fetchTask,
   HivemindDispatch,
   HivemindTaskGuard,
+  rejectTask,
   reportGuardResult,
   submitTaskResult,
+  transitionTaskState,
 } from './api';
+import { TaskItem } from './sidebarProvider';
+
+/** Advance task through incoming→scoped→ready chain in one shot */
+async function advanceToReady(taskKey: string): Promise<boolean> {
+  const taskResp = await fetchTask(taskKey);
+  const currentState = taskResp.data?.state;
+  if (!currentState) { return false; }
+  const chain: string[] = [];
+  if (currentState === 'incoming') { chain.push('scoped', 'ready'); }
+  else if (currentState === 'scoped') { chain.push('ready'); }
+  for (const state of chain) {
+    const r = await transitionTaskState(taskKey, state);
+    if (r.error) {
+      vscode.window.showErrorMessage(`Fehler bei Transition → ${state}: ${r.error.message}`);
+      return false;
+    }
+  }
+  return true;
+}
 import { AutoExecuteManager } from './autoExecute';
 import { registerChatParticipant } from './chatParticipant';
 import { registerChatContextTools } from './chatContextTools';
@@ -30,6 +53,12 @@ let sseListener: SseListener | null = null;
 let statusBar: HivemindStatusBar | null = null;
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 let autoExecuteManager: AutoExecuteManager | null = null;
+let outputChannel: vscode.OutputChannel | null = null;
+
+export function log(msg: string): void {
+  outputChannel?.appendLine(`[${new Date().toISOString()}] ${msg}`);
+  console.log(`[hivemind] ${msg}`);
+}
 
 let activeTaskKey: string | undefined;
 let activeRole = 'worker';
@@ -40,9 +69,15 @@ interface JsonObject {
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  outputChannel = vscode.window.createOutputChannel('Hivemind');
+  context.subscriptions.push(outputChannel);
+  log('Extension aktiviert');
+
   if (!(await workspaceHasHivemindServer())) {
+    log('workspaceHasHivemindServer() = false → Extension deaktiviert');
     return;
   }
+  log('workspaceHasHivemindServer() = true');
 
   const config = vscode.workspace.getConfiguration('hivemind');
   const autoConnect = config.get<boolean>('autoConnect', true);
@@ -90,6 +125,126 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('hivemind.openTask', async (taskKey: string) => {
       setActiveTask(taskKey, 'worker', guardStatusProvider);
       await openTaskDetails(taskKey);
+    }),
+
+    vscode.commands.registerCommand('hivemind.queueTask', async (item: TaskItem) => {
+      const taskKey = item?.task?.task_key;
+      if (!taskKey) { return; }
+      log(`queueTask: ${taskKey} → ready`);
+      const ok = await advanceToReady(taskKey);
+      if (ok) {
+        await refreshAll(activeTasksProvider, nextPromptsProvider, guardStatusProvider, statusBar!);
+        vscode.window.showInformationMessage(`${taskKey} ist jetzt ready — klicke ▶ Start zum Beginnen.`);
+      }
+    }),
+
+    vscode.commands.registerCommand('hivemind.startTask', async (item: TaskItem) => {
+      const taskKey = item?.task?.task_key;
+      if (!taskKey) { return; }
+      log(`startTask: ${taskKey}`);
+      const result = await transitionTaskState(taskKey, 'in_progress');
+      if (result.error) {
+        vscode.window.showErrorMessage(`Fehler beim Starten: ${result.error.message}`);
+        return;
+      }
+      setActiveTask(taskKey, 'worker', guardStatusProvider);
+      await refreshAll(activeTasksProvider, nextPromptsProvider, guardStatusProvider, statusBar!);
+      log(`startTask: Prompt für ${taskKey} laden...`);
+      const promptResp = await fetchPromptForTask('worker', taskKey);
+      const prompt = promptResp.data?.prompt ?? `@hivemind /task ${taskKey}`;
+      try {
+        await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt });
+      } catch {
+        await vscode.env.clipboard.writeText(prompt);
+        vscode.window.showInformationMessage(`Prompt für ${taskKey} in Zwischenablage kopiert.`);
+      }
+    }),
+
+    vscode.commands.registerCommand('hivemind.reviewTask', async (item: TaskItem) => {
+      const taskKey = item?.task?.task_key;
+      if (!taskKey) { return; }
+      log(`reviewTask: ${taskKey}`);
+      setActiveTask(taskKey, 'review', guardStatusProvider);
+      const promptResp = await fetchPromptForTask('review', taskKey);
+      const prompt = promptResp.data?.prompt ?? `@hivemind /task ${taskKey}`;
+      try {
+        await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt });
+      } catch {
+        await vscode.env.clipboard.writeText(prompt);
+        vscode.window.showInformationMessage(`Review-Prompt für ${taskKey} in Zwischenablage kopiert.`);
+      }
+    }),
+
+    vscode.commands.registerCommand('hivemind.submitInline', async (item: TaskItem) => {
+      const taskKey = item?.task?.task_key;
+      if (!taskKey) { return; }
+      log(`submitInline: ${taskKey}`);
+      const resultText = await vscode.window.showInputBox({
+        title: `${taskKey}: Ergebnis einreichen`,
+        prompt: 'Kurzfassung der Umsetzung',
+        placeHolder: 'Was wurde implementiert / geändert?',
+        ignoreFocusOut: true,
+      });
+      if (!resultText) { return; }
+
+      const response = await submitTaskResult(taskKey, resultText);
+      if (response.error) {
+        vscode.window.showErrorMessage(`Submit fehlgeschlagen: ${response.error.message}`);
+        return;
+      }
+      // Transition to in_review
+      const transition = await transitionTaskState(taskKey, 'in_review');
+      if (transition.error) {
+        vscode.window.showWarningMessage(
+          `Result gespeichert, aber Transition → in_review fehlgeschlagen: ${transition.error.message}`
+        );
+      } else {
+        vscode.window.showInformationMessage(`${taskKey}: Result eingereicht → in_review`);
+      }
+      await refreshAll(activeTasksProvider, nextPromptsProvider, guardStatusProvider, statusBar!);
+    }),
+
+    vscode.commands.registerCommand('hivemind.approveTask', async (item: TaskItem) => {
+      const taskKey = item?.task?.task_key;
+      if (!taskKey) { return; }
+      log(`approveTask: ${taskKey}`);
+      const comment = await vscode.window.showInputBox({
+        title: `${taskKey}: Review Approve`,
+        prompt: 'Optionaler Kommentar',
+        placeHolder: 'LGTM',
+        ignoreFocusOut: true,
+      });
+      if (comment === undefined) { return; } // cancelled
+      const response = await approveTask(taskKey, comment);
+      if (response.error) {
+        vscode.window.showErrorMessage(`Approve fehlgeschlagen: ${response.error.message}`);
+        return;
+      }
+      vscode.window.showInformationMessage(`${taskKey}: Approved ✓ → done`);
+      await refreshAll(activeTasksProvider, nextPromptsProvider, guardStatusProvider, statusBar!);
+    }),
+
+    vscode.commands.registerCommand('hivemind.rejectTask', async (item: TaskItem) => {
+      const taskKey = item?.task?.task_key;
+      if (!taskKey) { return; }
+      log(`rejectTask: ${taskKey}`);
+      const comment = await vscode.window.showInputBox({
+        title: `${taskKey}: Review Reject`,
+        prompt: 'Begründung für Ablehnung (Pflichtfeld)',
+        placeHolder: 'Was muss nachgebessert werden?',
+        ignoreFocusOut: true,
+      });
+      if (!comment) {
+        vscode.window.showWarningMessage('Reject abgebrochen — Begründung ist Pflicht.');
+        return;
+      }
+      const response = await rejectTask(taskKey, comment);
+      if (response.error) {
+        vscode.window.showErrorMessage(`Reject fehlgeschlagen: ${response.error.message}`);
+        return;
+      }
+      vscode.window.showInformationMessage(`${taskKey}: Rejected → qa_failed`);
+      await refreshAll(activeTasksProvider, nextPromptsProvider, guardStatusProvider, statusBar!);
     }),
 
     vscode.commands.registerCommand('hivemind.executeDispatch', async (dispatch: unknown) => {
@@ -217,15 +372,19 @@ async function refreshAll(
   guardStatusProvider: GuardStatusProvider,
   status: HivemindStatusBar
 ): Promise<void> {
+  log('refreshAll() gestartet');
   const healthy = await checkHealth();
+  log(`checkHealth() = ${healthy}`);
   if (!healthy) {
     status.setDisconnected();
     return;
   }
 
   const [tasks, dispatches] = await Promise.all([fetchActiveTasks(), fetchPendingDispatches()]);
+  log(`fetchActiveTasks() → ${tasks.length} Tasks: ${tasks.map(t => t.task_key).join(', ')}`);
   activeTasksProvider.setTasks(tasks);
   nextPromptsProvider.setDispatches(dispatches);
+  nextPromptsProvider.setTasks(tasks);
 
   if (!activeTaskKey || !tasks.some(task => task.task_key === activeTaskKey)) {
     activeTaskKey = tasks[0]?.task_key;

@@ -1,5 +1,26 @@
 # Hivemind VS Code Extension
 
+## Entwicklung & Build
+
+**Nach Änderungen am Extension-Code:**
+
+```bash
+make ext-build
+# oder direkt:
+cd vscode-extension && npm run compile
+```
+
+`npm run compile` kopiert `out/` automatisch per `postcompile`-Hook in
+`~/.vscode/extensions/hivemind.hivemind-vscode-0.1.0/out/`.
+
+Anschließend VS Code neu laden: `Ctrl+Shift+P` → **Developer: Reload Window**
+
+> **Warum notwendig?** VS Code lädt die installierte Extension aus
+> `~/.vscode/extensions/`, nicht direkt aus dem Workspace-Quellverzeichnis.
+> Ohne diesen Schritt läuft die alte kompilierte Version weiter.
+
+---
+
 ## Auto-Execute (TASK-IDE-006)
 
 Die Extension empfängt `conductor:dispatch` Events über SSE (`/api/events/tasks`) und delegiert sie an Copilot:
