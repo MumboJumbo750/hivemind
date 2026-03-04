@@ -49,8 +49,63 @@ from app.models.wiki import WikiArticle
 logger = logging.getLogger(__name__)
 
 
+
 def _slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9-]+", "-", text.lower()).strip("-")
+
+
+def _parse_health_report_summary(content: str) -> str:
+    """Extract a brief summary from a diagnostics wiki article (TASK-HEALTH-008).
+
+    Tries to parse error/warning counts and top categories from the markdown content.
+    Falls back to the first 400 characters when patterns are not found.
+    """
+    lines = content.splitlines()
+    errors = warnings = 0
+    categories: list[tuple[str, int]] = []
+
+    error_pat = re.compile(r"(\d+)\s+error", re.IGNORECASE)
+    warn_pat = re.compile(r"(\d+)\s+warning", re.IGNORECASE)
+    # Matches lines like: "- hardcoded-css: 42 findings" or "| hardcoded-css | 42 |"
+    cat_pat = re.compile(r"[|\-\s]+([\w-]+)\s*[|:]\s*(\d+)", re.IGNORECASE)
+
+    for line in lines[:80]:
+        m = error_pat.search(line)
+        if m:
+            errors = max(errors, int(m.group(1)))
+        m = warn_pat.search(line)
+        if m:
+            warnings = max(warnings, int(m.group(1)))
+        m = cat_pat.search(line)
+        if m:
+            cat_name = m.group(1).lower()
+            known = {"hardcoded-css", "layer-violations", "file-size", "magic-values",
+                     "duplicate-detection", "import-cycles", "naming-conventions"}
+            if cat_name in known:
+                categories.append((cat_name, int(m.group(2))))
+
+    # Deduplicate categories, keep top 3 by count
+    seen: set[str] = set()
+    unique_cats: list[tuple[str, int]] = []
+    for name, count in sorted(categories, key=lambda x: -x[1]):
+        if name not in seen:
+            seen.add(name)
+            unique_cats.append((name, count))
+            if len(unique_cats) >= 3:
+                break
+
+    if errors or warnings or unique_cats:
+        cat_names = ", ".join(c[0] for c in unique_cats)
+        cat_str = "\n".join(f"  - {n}: {c} Findings" for n, c in unique_cats) or "  _keine Kategorien erkannt_"
+        return (
+            f"- **{errors}** Errors, **{warnings}** Warnings\n"
+            f"- Top-Kategorien:\n{cat_str}\n"
+            + (f"- Empfehlung: Cleanup-Epics für {cat_names} ableiten" if cat_names else "")
+        )
+
+    # Fallback: first 400 chars of content
+    excerpt = content.strip()[:400].replace("\n", " ")
+    return f"_{excerpt}..._"
 
 # Token counting — use tiktoken when available, fallback to word approximation
 _encoding = None
@@ -72,6 +127,94 @@ MAX_HISTORY_PER_TASK = 500
 
 # Default token budget when no DB config is available (fallback to settings)
 _DEFAULT_TOKEN_BUDGET = 8000
+
+# ── Health-Findings → Guard-Mapping (TASK-HEALTH-008) ─────────────────────────
+HEALTH_FINDINGS_TO_GUARD_MAPPING: dict[str, list[str]] = {
+    "hardcoded-css": ["no-hardcoded-colors", "no-hardcoded-spacing"],
+    "layer-violations": ["layer-boundaries"],
+    "file-size": ["max-file-size"],
+    "magic-values": ["no-magic-numbers"],
+    "duplicate-detection": ["no-duplicate-components"],
+}
+
+# ── Cleanup-Epic-Templates pro Analyzer-Kategorie (TASK-HEALTH-008) ───────────
+CLEANUP_EPIC_TEMPLATES: dict[str, dict] = {
+    "hardcoded-css": {
+        "title": "Design-Token-Migration: Hardcoded CSS-Werte ersetzen",
+        "description": (
+            "Alle hardcodierten Farb- und Spacing-Werte durch Design-Tokens ersetzen.\n\n"
+            "**Scope:** Alle Komponenten mit hardcoded CSS-Werten laut Health Report.\n\n"
+            "**Vorgehen:**\n"
+            "1. Design-Token-Katalog erstellen (colors, spacing, typography)\n"
+            "2. Hardcoded Werte komponentenweise ersetzen\n"
+            "3. Visuelle Regression-Tests sicherstellen"
+        ),
+        "definition_of_done": [
+            "Alle hardcodierten Farbwerte durch CSS-Variablen/Tokens ersetzt",
+            "Alle hardcodierten Spacing-Werte durch Tokens ersetzt",
+            "Health-Report zeigt 0 hardcoded-css Findings",
+            "Visuelle Regressions-Tests grün",
+        ],
+        "tags": ["cleanup", "design-tokens", "css", "health-report"],
+    },
+    "duplicate-detection": {
+        "title": "Komponenten-Deduplizierung: Doppelte Implementierungen zusammenführen",
+        "description": (
+            "Identifizierte doppelte Komponenten zusammenführen und eine "
+            "Single-Source-of-Truth etablieren.\n\n"
+            "**Scope:** Alle Duplikat-Paare laut Health Report.\n\n"
+            "**Vorgehen:**\n"
+            "1. Duplikat-Paare analysieren (Unterschiede dokumentieren)\n"
+            "2. Gemeinsame Basiskomponente extrahieren\n"
+            "3. Alle Verweise auf Duplikate migrieren\n"
+            "4. Duplikate entfernen"
+        ),
+        "definition_of_done": [
+            "Alle identifizierten Duplikat-Paare aufgelöst",
+            "Keine redundanten Komponenten-Implementierungen",
+            "Health-Report zeigt 0 duplicate-detection Findings",
+            "Alle bestehenden Tests grün",
+        ],
+        "tags": ["cleanup", "refactoring", "deduplication", "health-report"],
+    },
+    "layer-violations": {
+        "title": "Layer-Refactoring: Architektur-Schichten bereinigen",
+        "description": (
+            "Layer-Violations gemäß Health Report beheben und saubere "
+            "Architektur-Schichten herstellen.\n\n"
+            "**Scope:** Alle Layer-Verletzungen laut Health Report.\n\n"
+            "**Vorgehen:**\n"
+            "1. Bestehende Layer-Definitionen dokumentieren\n"
+            "2. Verletzungen analysieren und Refactoring-Plan erstellen\n"
+            "3. Schrittweise Refactoring unter Beibehaltung der Funktionalität"
+        ),
+        "definition_of_done": [
+            "Alle Layer-Violations aus Health Report behoben",
+            "Layer-Boundaries als Guards konfiguriert",
+            "Health-Report zeigt 0 layer-violations Findings",
+            "Architektur-Dokumentation aktualisiert",
+        ],
+        "tags": ["cleanup", "architecture", "layers", "health-report"],
+    },
+    "magic-values": {
+        "title": "Konstanten-Extraktion: Magic Values ersetzen",
+        "description": (
+            "Alle Magic Numbers und Magic Strings durch benannte Konstanten ersetzen.\n\n"
+            "**Scope:** Alle Magic-Value-Findings laut Health Report.\n\n"
+            "**Vorgehen:**\n"
+            "1. Magic Values katalogisieren und gruppieren\n"
+            "2. Konstanten-Datei(en) erstellen\n"
+            "3. Magic Values ersetzen"
+        ),
+        "definition_of_done": [
+            "Alle Magic Numbers durch benannte Konstanten ersetzt",
+            "Alle Magic Strings durch Konstanten/Enums ersetzt",
+            "Health-Report zeigt 0 magic-values Findings",
+            "Code-Review bestätigt Lesbarkeitsverbesserung",
+        ],
+        "tags": ["cleanup", "constants", "code-quality", "health-report"],
+    },
+}
 
 
 async def _get_provider_token_budget(db: AsyncSession, agent_role: str, settings: Settings) -> int:
@@ -333,6 +476,21 @@ Task-Resource: `{task_resource_uri}`
 **Weitere Tools:**
 - `hivemind/report_guard_result` — Guard-Status melden (passed/failed/skipped)
 - `hivemind/create_decision_request` — Entscheidung anfordern (Task → blocked)
+
+### ⚠️ Operative Hinweise (häufige Fehler!)
+
+**MCP-Aufrufe:** Alle Tools laufen über **einen** Endpoint — `POST {mcp_base}/api/mcp/call` mit Body:
+```json
+{{"tool": "hivemind/TOOLNAME", "arguments": {{...}}}}
+```
+Es gibt **keine** individuellen REST-Endpoints wie `/api/mcp/submit_result` — das wären 404er!
+
+**Host-Einschränkungen:** `python` ist auf dem Windows-Host NICHT verfügbar (nur Microsoft Store Stub).
+Scripts via Container: `podman compose exec backend /app/.venv/bin/python /workspace/scripts/mcp_call.py "hivemind/get_task" '{{"task_key": "{task.task_key}"}}'`
+Alternativ: `curl` oder PowerShell `Invoke-WebRequest` direkt vom Host.
+
+**PowerShell:** Backticks in Here-Strings werden als Escape-Sequenzen interpretiert → Parse-Error.
+JSON in Datei auslagern (`Get-Content payload.json -Raw`) oder einfache Anführungszeichen nutzen. Keine Markdown-Backticks in JSON-Bodys.
 
 ### Auftrag
 Führe die Aufgabe gemäß der Beschreibung und DoD aus.
@@ -690,6 +848,9 @@ Nutze folgende Tools für die Umsetzung:
             for a in wiki_articles
         ) if wiki_articles else "_Kein Wiki vorhanden_"
 
+        # ── Health-Report-Enrichment (TASK-HEALTH-008) ──────────────────────
+        health_section = await self._build_health_report_section()
+
         token_budget = Settings().hivemind_token_budget
 
         return f"""## Rolle: Stratege — Plan-Analyse
@@ -706,7 +867,7 @@ Nutze folgende Tools für die Umsetzung:
 
 ### Wiki-Überblick ({len(wiki_articles)} Artikel)
 {wiki_text}
-
+{health_section}
 ### Analyse-Framework
 - **Fortschritt**: % der Tasks in done-State pro Epic
 - **Risiken**: Epics mit vielen blockierten Tasks
@@ -720,6 +881,7 @@ Nutze folgende Tools für die Umsetzung:
 4. Prüfe offene Proposals auf strategische Relevanz.
 5. Erstelle eine Zusammenfassung des Projektstands.
 6. Bei Bedarf: Erstelle neue Epic-Proposals für identifizierte Lücken.
+7. Bei vorhandenem Health-Report: Leite Cleanup-Epics aus den Top-Findings ab.
 
 ### MCP-Tools
 Nutze folgendes Tool für neue Epic-Vorschläge:
@@ -1001,6 +1163,59 @@ Gib für jeden Event zurück:
 - Unbekannt → Eskalation an Admin"""
 
     # ── Data Loaders ───────────────────────────────────────────────────────
+
+    async def _build_health_report_section(self) -> str:
+        """Build Repo-Health-Report section for Stratege prompt (TASK-HEALTH-008).
+
+        - If a wiki article with tag 'diagnostics' exists: render summary.
+        - If no diagnostics article but code_nodes > 0: render warning hint.
+        - Otherwise: return empty string.
+        """
+        from app.models.code_node import CodeNode
+
+        # Check for diagnostics wiki article
+        try:
+            diag_result = await self.db.execute(
+                select(WikiArticle)
+                .where(WikiArticle.tags.any("diagnostics"))
+                .order_by(WikiArticle.updated_at.desc())
+                .limit(1)
+            )
+            diag_article = diag_result.scalar_one_or_none()
+        except Exception:
+            diag_article = None
+
+        # Count code nodes
+        try:
+            node_count_result = await self.db.execute(
+                select(func.count()).select_from(CodeNode)
+            )
+            code_node_count = node_count_result.scalar_one()
+        except Exception:
+            code_node_count = 0
+
+        if diag_article:
+            summary = _parse_health_report_summary(diag_article.content)
+            date_str = diag_article.updated_at.strftime("%Y-%m-%d") if diag_article.updated_at else "unbekannt"
+            return f"""
+### 📊 Repo Health Report (vom {date_str})
+{summary}
+
+> Cleanup-Epic-Templates verfügbar für: hardcoded-css, duplicate-detection, layer-violations, magic-values.
+> Health-Findings → Guard-Mapping: hardcoded-css → [no-hardcoded-colors, no-hardcoded-spacing] | layer-violations → [layer-boundaries] | file-size → [max-file-size]
+"""
+
+        if code_node_count > 0:
+            return f"""
+### ⚠ Kein Repo Health Report vorhanden
+Das Repo ist kartiert ({code_node_count} Code-Nodes), aber es existiert noch kein Diagnostics-Wiki-Artikel.
+
+**Empfehlung:** Kartograph mit Diagnostics-Phase ausführen bevor Epics geplant werden.
+Dann stehen Cleanup-Epic-Templates und Health→Guard-Mappings automatisch zur Verfügung.
+
+> Nächster Schritt: Repo Health Scan durchführen (`make health`)
+"""
+        return ""
 
     async def _load_task(self, task_key: str) -> Task | None:
         result = await self.db.execute(select(Task).where(Task.task_key == task_key))

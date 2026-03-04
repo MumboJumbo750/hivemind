@@ -35,6 +35,7 @@ podman compose ps                           # Service-Status
 ./backend  → /app        (backend-Container, Hot-Reload aktiv)
 ./frontend → /app        (frontend-Container, Hot-Reload aktiv)
 ./seed     → /seed:ro    (alle Container, read-only)
+./         → /workspace  (backend-Container, Workspace-Root für Analyzer/Scripts)
 ```
 
 ---
@@ -78,6 +79,12 @@ make migrate           # alembic upgrade head
 make shell-be          # bash im Backend-Container
 make db                # psql-Shell
 make logs              # Backend-Logs live
+
+make health            # Repo Health Scan (text)
+make health-scan       # Alias für make health
+make health-json       # Repo Health Scan → health_report.json
+make health-md         # Repo Health Scan → health_report.md
+make health-test       # Analyzer-Unit-Tests im Container
 ```
 
 ## ⚠️ Rebuild vs. Restart vs. Nichts
@@ -149,7 +156,46 @@ Der MCP-Server ist **Teil der FastAPI-App** und läuft im `backend`-Container au
 | `task_id` | `task_key` |
 | `state` | `target_state` |
 | `result_text` | `result` |
+### MCP-Tool-Aufrufe vom Host (ohne MCP-Client)
 
+**Alle MCP-Tools laufen über EINEN Endpoint:** `POST /api/mcp/call` mit Body `{"tool": "hivemind/TOOLNAME", "arguments": {...}}`.
+Es gibt **keine** individuellen REST-Endpoints pro Tool (kein `/api/mcp/submit_result` etc.).
+
+```bash
+# ✅ RICHTIG — curl vom Host:
+curl -X POST http://localhost:8000/api/mcp/call \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "hivemind/get_task", "arguments": {"task_key": "TASK-88"}}'
+
+# ✅ RICHTIG — mcp_call.py im Container:
+podman compose exec backend /app/.venv/bin/python /workspace/scripts/mcp_call.py \
+  "hivemind/get_task" '{"task_key": "TASK-88"}'
+
+# ❌ FALSCH — Python auf dem Host (existiert nicht):
+python scripts/mcp_call.py "hivemind/get_task" ...    # Kein Python auf dem Host!
+
+# ❌ FALSCH — Individuelle Endpoints (existieren nicht):
+curl http://localhost:8000/api/mcp/submit_result       # 404!
+```
+
+### PowerShell-Besonderheiten
+
+- Backticks (`` ` ``) in PowerShell Here-Strings (`@"..."@`) werden als **Escape-Sequenzen** interpretiert
+- Markdown mit Code-Backticks in JSON-Bodys führt zu Parse-Errors
+- **Lösung:** JSON in Datei auslagern und mit `Get-Content payload.json -Raw` einlesen
+- Oder: einfache Anführungszeichen für JSON-Strings ohne Variablen-Interpolation
+
+```powershell
+# ✅ RICHTIG — Einfache Anführungszeichen:
+Invoke-WebRequest -Uri "http://localhost:8000/api/mcp/call" `
+  -Method POST -ContentType "application/json" `
+  -Body '{"tool": "hivemind/get_task", "arguments": {"task_key": "TASK-88"}}'
+
+# ✅ RICHTIG — JSON aus Datei:
+$body = Get-Content payload.json -Raw
+Invoke-WebRequest -Uri "http://localhost:8000/api/mcp/call" `
+  -Method POST -ContentType "application/json" -Body $body
+```
 ---
 
 ## Projektstruktur
@@ -291,3 +337,23 @@ Inbound-Erfolg = routing_state = 'routed' ← Eintrag BLEIBT (Audit-Record)
 ```
 node_bug_reports.node_id → code_nodes.id  (NICHT nodes.id!)
 ```
+
+### Workspace-FS Tools
+
+Die MCP-Filesystem-Tools (`hivemind/fs_read`, `fs_write`, `fs_list`, `fs_search`, `fs_stat`) laufen im `backend`-Container und greifen via Volume-Mount auf den Workspace zu.
+
+**Implementierung:** `backend/app/mcp/tools/fs_tools.py`
+**Vollständige Doku:** `docs/features/workspace-fs.md`
+**Externe Repos:** `docs/setup-external-repo.md`
+
+```
+HIVEMIND_WORKSPACE_ROOT   = /workspace  (Container-Pfad, default)
+HIVEMIND_FS_DENY_LIST     = .git/objects,.env,...  (fnmatch, kommasepariert)
+HIVEMIND_FS_RATE_LIMIT    = 120  (Aufrufe/Minute pro Tool)
+```
+
+Sicherheitsregeln (müssen bei Changes respektiert werden):
+- **Path-Sandboxing**: Alle Pfade werden auf `HIVEMIND_WORKSPACE_ROOT` eingesperrt (`Path.resolve()` + `relative_to()`)
+- **Deny-List**: Wird in **allen** Tools geprüft — kein Tool darf Deny-List-Einträge überspringen
+- **Symlink-Traversal**: `fs_list` und `fs_search` lösen Symlinks auf und prüfen, ob das Ziel noch im Root liegt
+- **Atomisches Schreiben**: `fs_write` nutzt `tempfile` + `os.replace()` — kein partial-write

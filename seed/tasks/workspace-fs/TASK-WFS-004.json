@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-WFS-004",
+  "epic_ref": "EPIC-WFS",
+  "title": "Analyzer-Test-Migration: Host zu Container",
+  "description": "Alle Analyzer-Tests von Host-Ausführung auf Container-Ausführung migrieren:\n\n**Änderungen:**\n- `sys.path.insert(0, ...)` Hacks in Test-Dateien entfernen (PYTHONPATH löst das)\n- pytest-Konfiguration für `/workspace/scripts/` im Container\n- `make health-test` als primärer Weg für Analyzer-Tests\n- Test-Dependencies in `requirements-dev.txt` prüfen/ergänzen\n- CI-Pipeline (falls vorhanden) auf Container-basierte Tests umstellen\n\n**Validierung:**\n- Alle bestehenden Analyzer-Tests (test_magic_values.py, test_hardcoded_css.py, test_duplicate_detection.py) laufen mit `make health-test`\n- Bestehende `make test` (Backend-Tests) wird nicht langsamer\n- Kein Python auf dem Host nötig für Analyzer-Tests",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "sys.path Hacks aus Analyzer-Tests entfernt",
+      "make health-test führt alle Analyzer-Tests im Container aus",
+      "Alle bestehenden Analyzer-Tests passen (green)",
+      "Bestehende make test nicht gebrochen oder langsamer",
+      "Kein Host-Python für Analyzer-Tests nötig"
+    ]
+  },
+  "tags": ["testing", "migration", "dx"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "low",
+  "depends_on": ["TASK-WFS-001"]
+}

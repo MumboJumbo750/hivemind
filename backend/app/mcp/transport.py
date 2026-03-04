@@ -22,6 +22,7 @@ from starlette.types import Receive, Scope, Send
 
 from mcp.server.sse import SseServerTransport
 
+from app.config import settings
 from app.mcp.server import server, _tool_definitions, _tool_handlers, call_tool
 import app.mcp.tools  # noqa: F401 — ensure all tools are registered
 import app.mcp.prompts  # noqa: F401 — register MCP prompt capability (TASK-IDE-002)
@@ -139,12 +140,23 @@ async def mcp_discovery():
     """Return MCP config snippets for all supported IDE clients.
 
     No auth required — useful for automated setup scripts.
+    Includes workspace configuration for external repo setup.
     """
     base_url = "http://localhost:8000"
     sse_url = f"{base_url}/api/mcp/sse"
+    deny_patterns = [
+        p.strip()
+        for p in settings.hivemind_fs_deny_list.split(",")
+        if p.strip()
+    ]
     return {
         "server_name": "hivemind",
         "sse_url": sse_url,
+        "workspace": {
+            "root": settings.hivemind_workspace_root,
+            "deny_patterns": deny_patterns,
+            "init_hint": "python scripts/hivemind_init.py --workspace /path/to/your/repo",
+        },
         "clients": {
             "vscode": {
                 "description": "VS Code / Copilot Agent Mode (.vscode/mcp.json — bereits im Repo)",

@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-WFS-006",
+  "epic_ref": "EPIC-WFS",
+  "title": "Integration-Tests und Docs für Workspace-FS",
+  "description": "Integration-Tests für alle Workspace-FS-Tools und Dokumentation:\n\n**Integration-Tests:**\n- `fs_read`: liest existierende Datei korrekt, Line-Range funktioniert\n- `fs_write`: erstellt Datei, Änderung auf Host sichtbar, Parent-Dirs werden erstellt\n- `fs_list`: gibt korrekte Struktur zurück, Ignore-Patterns greifen\n- `fs_search`: findet Grep-Matches, Glob-Patterns funktionieren\n- `fs_stat`: gibt korrekte Metadaten zurück\n- **Path-Traversal wird geblockt**: `../../etc/passwd`, Symlink-Escapes\n- **Deny-List wird respektiert**: `.env`, `.git/objects` nicht lesbar\n- `run_analyzer`: gibt validen JSON-Report zurück, Timeout greift\n\n**Dokumentation:**\n- AGENTS.md: Abschnitt 'Workspace Filesystem' mit allen MCP-Tools\n- `docs/features/workspace-fs.md`: Architektur, Sicherheitsmodell, Konfiguration\n- External-Repo-Setup-Guide: Schritt-für-Schritt für fremde Repos\n- MCP-Tool-Referenz: alle FS-Tools mit Beispiel-Aufrufen",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Integration-Tests für alle 5 FS-Tools",
+      "Path-Traversal-Test (blocked)",
+      "Deny-List-Test (blocked)",
+      "run_analyzer Integration-Test",
+      "AGENTS.md Workspace-Abschnitt aktualisiert",
+      "docs/features/workspace-fs.md existiert",
+      "External-Repo-Setup-Guide vorhanden"
+    ]
+  },
+  "tags": ["testing", "documentation", "security"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-WFS-002", "TASK-WFS-003"]
+}

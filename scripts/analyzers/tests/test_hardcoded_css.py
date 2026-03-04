@@ -1,16 +1,17 @@
 """
 Unit tests for HardcodedCssAnalyzer.
-Run: podman compose run --rm --no-deps --entrypoint="" -v "$PWD:/workspace:ro" -w /workspace backend \
-       /app/.venv/bin/python -m pytest scripts/analyzers/tests/test_hardcoded_css.py -v
+
+Run (canonical):
+    make health-test
+
+Or directly:
+    podman compose exec -w /workspace -e PYTHONPATH=/workspace:/app backend \
+        /app/.venv/bin/pytest scripts/analyzers/tests/ -v
 """
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
-
-# Allow running from repo root
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 import textwrap
 import tempfile
@@ -219,6 +220,165 @@ def test_jsx_inline_color(analyzer, tmp_path):
     assert "hardcoded-color" in cats
 
 
+def test_jsx_camelcase_spacing_string(analyzer, tmp_path):
+    """paddingTop: '8px' in JSX style object must be detected."""
+    _write(tmp_path, "comp.tsx", """\
+        const X = () => <div style={{ paddingTop: '8px', marginLeft: '16px' }} />;
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert any(f.category == "hardcoded-spacing" for f in findings)
+
+
+def test_jsx_numeric_spacing(analyzer, tmp_path):
+    """padding: 12 (bare integer) in JSX must be detected."""
+    _write(tmp_path, "comp.tsx", """\
+        const X = () => <div style={{ padding: 12 }} />;
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert any(f.category == "hardcoded-spacing" for f in findings)
+
+
+def test_jsx_numeric_spacing_zero_exempt(analyzer, tmp_path):
+    """padding: 0 and padding: 1 must NOT be flagged."""
+    _write(tmp_path, "comp.tsx", """\
+        const X = () => <div style={{ padding: 0, margin: 1 }} />;
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert not any(f.category == "hardcoded-spacing" for f in findings)
+
+
+def test_jsx_camelcase_fontsize(analyzer, tmp_path):
+    """fontSize: '14px' in JSX style object must be detected."""
+    _write(tmp_path, "comp.tsx", """\
+        const X = () => <span style={{ fontSize: '14px' }}>text</span>;
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert any(f.category == "hardcoded-font-size" for f in findings)
+
+
+def test_jsx_numeric_zindex(analyzer, tmp_path):
+    """zIndex: 999 in JSX style object must be detected."""
+    _write(tmp_path, "comp.tsx", """\
+        const X = () => <div style={{ zIndex: 999 }} />;
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert any(f.category == "hardcoded-z-index" and "999" in f.message for f in findings)
+
+
+def test_jsx_string_zindex(analyzer, tmp_path):
+    """zIndex: '100' (string) in JSX style object must be detected."""
+    _write(tmp_path, "comp.tsx", """\
+        const X = () => <div style={{ zIndex: '100' }} />;
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert any(f.category == "hardcoded-z-index" for f in findings)
+
+
+def test_jsx_var_exempt(analyzer, tmp_path):
+    """style={{ color: 'var(--color-primary)' }} must NOT be flagged."""
+    _write(tmp_path, "comp.tsx", """\
+        const X = () => <div style={{ color: 'var(--color-primary)', padding: 'var(--sp-4)' }} />;
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert not findings
+
+
+def test_styled_components_color(analyzer, tmp_path):
+    """styled-components template literal with hardcoded color must be detected."""
+    _write(tmp_path, "Btn.tsx", """\
+        import styled from 'styled-components';
+        const Btn = styled.button`
+          color: #cc0000;
+          padding: 12px;
+        `;
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert any(f.category == "hardcoded-color" for f in findings)
+
+
+def test_styled_components_spacing(analyzer, tmp_path):
+    """styled-components template literal with hardcoded spacing must be detected."""
+    _write(tmp_path, "Card.tsx", """\
+        import styled from 'styled-components';
+        const Card = styled.div`
+          padding: 24px;
+          margin: 16px 0;
+        `;
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert any(f.category == "hardcoded-spacing" for f in findings)
+
+
+# ─── Configurable exceptions ──────────────────────────────────────────────────
+
+def test_exclude_pattern_skips_file(tmp_path):
+    """Files matching exclude_patterns must be skipped entirely."""
+    _write(tmp_path, "legacy-ui.css", """\
+        .x { color: #ff0000; padding: 12px; }
+    """)
+    a = HardcodedCssAnalyzer(config={"exclude_patterns": ["legacy-ui.css"]})
+    findings = a.analyze(tmp_path)
+    assert not findings
+
+
+def test_extra_definition_pattern(tmp_path):
+    """Custom definition_patterns must mark a file as exempt from analysis."""
+    _write(tmp_path, "my-brand-tokens.css", """\
+        :root { --primary: #007bff; --spacing-4: 16px; }
+    """)
+    a = HardcodedCssAnalyzer(config={"definition_patterns": ["my-brand-*"]})
+    findings = a.analyze(tmp_path)
+    assert not findings
+
+
+def test_color_allowlist(tmp_path):
+    """Colors in color_allowlist must not be flagged as named colors."""
+    _write(tmp_path, "comp.css", """\
+        .x { color: rebeccapurple; }
+    """)
+    a_default = HardcodedCssAnalyzer()
+    # rebeccapurple is not in default list, so no finding expected
+    # Test allowlist suppresses a color that IS in the default list
+    _write(tmp_path, "comp2.css", """\
+        .x { color: red; }
+    """)
+    a_allowlist = HardcodedCssAnalyzer(config={"color_allowlist": ["red"]})
+    findings = a_allowlist.analyze(tmp_path)
+    assert not any(
+        f.category == "hardcoded-color" and "red" in f.message for f in findings
+    )
+
+
+def test_spacing_allowlist_px(tmp_path):
+    """Custom spacing_allowlist_px values must not be flagged."""
+    _write(tmp_path, "comp.css", """\
+        .x { width: 18px; height: 18px; }
+    """)
+    # Default analyzer would flag 18px
+    a_default = HardcodedCssAnalyzer()
+    assert any(f.category == "hardcoded-spacing" for f in a_default.analyze(tmp_path))
+
+    # With 18 in allowlist, should be exempt
+    a_allowed = HardcodedCssAnalyzer(config={"spacing_allowlist_px": [18]})
+    findings = a_allowed.analyze(tmp_path)
+    assert not any(f.category == "hardcoded-spacing" for f in findings)
+
+
+def test_hivemind_health_json_config(tmp_path):
+    """Analyzer reads .hivemind-health.json from root when no config given."""
+    import json
+    (tmp_path / ".hivemind-health.json").write_text(
+        json.dumps({"hardcoded-css": {"exclude_patterns": ["*.css"]}}),
+        encoding="utf-8",
+    )
+    _write(tmp_path, "styles.css", """\
+        .x { color: #ff0000; }
+    """)
+    a = HardcodedCssAnalyzer()
+    findings = a.analyze(tmp_path)
+    assert not findings
+
+
 # ─── AnalyzerRegistry auto-discovery ─────────────────────────────────────────
 
 def test_registry_discovers_hardcoded_css():
@@ -231,15 +391,86 @@ def test_registry_discovers_hardcoded_css():
     assert "hardcoded-css" in names
 
 
-# ─── Zero false-positives in Hivemind frontend ───────────────────────────────
+# ─── Zero false-positives: var() usage is never flagged ──────────────────────
+
+def test_no_false_positives_on_var_usage(analyzer, tmp_path):
+    """A perfectly tokenized component using only var(--) must produce zero findings."""
+    _write(tmp_path, "PerfectComponent.vue", """\
+        <template><div class="card">content</div></template>
+        <style scoped>
+        .card {
+          color: var(--color-primary);
+          background: var(--color-surface);
+          border-color: var(--color-border);
+          padding: var(--spacing-4);
+          margin: var(--spacing-2) var(--spacing-4);
+          font-size: var(--font-size-md);
+          z-index: var(--z-modal);
+          width: var(--size-full);
+          gap: var(--spacing-2);
+        }
+        .badge {
+          background: transparent;
+          color: inherit;
+          border: 1px solid var(--color-border);
+          padding: 0px;
+        }
+        </style>
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert not findings, f"False positives detected: {[f.message for f in findings]}"
+
+
+def test_no_false_positives_on_perfect_jsx(analyzer, tmp_path):
+    """A JSX component using only var(--) or safe values must produce zero findings."""
+    _write(tmp_path, "Perfect.tsx", """\
+        const X = () => (
+          <div style={{ color: 'var(--color-fg)', padding: 'var(--sp-4)', zIndex: 0 }} />
+        );
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert not findings, f"False positives detected: {[f.message for f in findings]}"
+
 
 def test_no_errors_in_hivemind_frontend():
-    """Sanity check: no ERROR-severity findings in the actual Hivemind frontend."""
+    """
+    Verify that the Hivemind frontend produces NO error-severity findings
+    and that lines explicitly using var(--) in frontend files are not falsely flagged.
+
+    Note: info/warning findings for genuinely hardcoded values in the frontend
+    are expected (those are real issues to refactor) and are NOT false positives.
+    """
     repo_root = Path(__file__).resolve().parents[3]
     frontend = repo_root / "frontend"
     if not frontend.exists():
         pytest.skip("frontend/ not found")
     a = HardcodedCssAnalyzer()
     findings = a.analyze(frontend)
+
+    # No error-severity findings (would indicate a Bug in the analyzer)
     errors = [f for f in findings if f.severity == "error"]
     assert errors == [], f"Unexpected errors in frontend: {errors}"
+
+    # No findings should reference a line that uses var(--)
+    # (= no false positives on properly tokenized lines)
+    from pathlib import Path as _Path
+    false_positives = []
+    for f in findings:
+        if f.line is None:
+            continue
+        filepath = frontend / f.file
+        if not filepath.exists():
+            continue
+        try:
+            lines = filepath.read_text(encoding="utf-8", errors="ignore").splitlines()
+            if f.line <= len(lines):
+                src_line = lines[f.line - 1]
+                if "var(--" in src_line:
+                    false_positives.append(
+                        f"{f.file}:{f.line} — {f.message!r} (line: {src_line.strip()!r})"
+                    )
+        except Exception:
+            pass
+    assert false_positives == [], (
+        f"False positives: var(--) lines were flagged:\n" + "\n".join(false_positives)
+    )

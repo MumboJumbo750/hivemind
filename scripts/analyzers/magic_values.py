@@ -91,10 +91,15 @@ _LOG_SKIP_RE = re.compile(
 
 # ── Magic Number Regexes ───────────────────────────────────────────────────────
 
-# Number following a comparison operator: > 42, >= 3.14, == 99, !== 5, != -7
+# Number following a comparison operator: > 42, >= 3.14, == 99, !== 5, != -7, === 3
 _CMP_NUMBER_RE = re.compile(
-    r"(?:[><!]=?=?|===)\s*(-?\s*\d+(?:\.\d+)?)\b"
-    r"(?!\s*[\"'\w])"  # not followed by string or identifier (avoids false array triggers)
+    r"(?:===?|!==?|>=?|<=?)\s*(-?\s*\d+(?:\.\d+)?)\b"
+)
+
+# Number PRECEDING a comparison operator: 42 == x, -3 != y, 3.14 >= z
+# Negative lookbehind prevents matching mid-number (e.g. the '14' in '3.14')
+_CMP_NUMBER_LEFT_RE = re.compile(
+    r"(?<![.\w])(-?\d+(?:\.\d+)?)\s*(?:===?|!==?|>=?|<=?)"
 )
 
 # Number as function argument: fn(x, 3000), fn(5), retry(3)
@@ -110,8 +115,10 @@ _FUNC_ARG_NUMBER_RE = re.compile(
 # where nested parens prevent the above regex from matching
 _TRAILING_ARG_RE = re.compile(r",\s*(-?\d+(?:\.\d+)?)\s*\)")
 
-# Short variable names that are common loop counters — never flag their assignments
-_LOOP_VAR_RE = re.compile(r"^[a-z_]{1,2}$")
+# Explicit set of single-letter loop counters — never flag their assignments.
+# Intentionally narrow: only true loop variables (i, j, k, n, m, x, y, z, _).
+# Two-char names like 'id', 'db', 'ok' are NOT exempt.
+_LOOP_VAR_NAMES: frozenset[str] = frozenset({"i", "j", "k", "n", "m", "x", "y", "z", "_"})
 
 # Lowercase variable assignment: timeout = 3000, threshold = 0.85
 # Excludes ALL_CAPS and very short names (loop vars)
@@ -327,7 +334,7 @@ class MagicValuesAnalyzer(BaseAnalyzer):
 
         seen_positions: set[int] = set()
 
-        # ── Comparison operators ──────────────────────────────────────────────
+        # ── Comparison operators (number on RIGHT: op 42) ────────────────────
         for m in _CMP_NUMBER_RE.finditer(line):
             val_str = m.group(1).replace(" ", "")
             try:
@@ -336,7 +343,36 @@ class MagicValuesAnalyzer(BaseAnalyzer):
                 continue
             if val in self._allowed:
                 continue
-            seen_positions.add(m.start())
+            num_pos = m.start(1)
+            seen_positions.add(num_pos)
+            seen_positions.add(m.start())  # also mark operator position
+            findings.append(
+                Finding(
+                    analyzer=self.name,
+                    severity="warning",
+                    file=rel,
+                    line=lineno,
+                    message=(
+                        f"Magic number `{val_str}` in comparison"
+                        " — extract to a named constant (e.g. MAX_RETRIES = ...)"
+                    ),
+                    category="magic-number",
+                )
+            )
+
+        # ── Comparison operators (number on LEFT: 42 == x) ───────────────────
+        for m in _CMP_NUMBER_LEFT_RE.finditer(line):
+            num_pos = m.start(1)
+            if num_pos in seen_positions:
+                continue
+            val_str = m.group(1)
+            try:
+                val = float(val_str)
+            except ValueError:
+                continue
+            if val in self._allowed:
+                continue
+            seen_positions.add(num_pos)
             findings.append(
                 Finding(
                     analyzer=self.name,
@@ -414,7 +450,7 @@ class MagicValuesAnalyzer(BaseAnalyzer):
         # ── Lowercase variable assignments ─────────────────────────────────────
         for m in _LOWERCASE_ASSIGN_RE.finditer(line):
             var_name, val_str = m.group(1), m.group(2)
-            if _LOOP_VAR_RE.match(var_name):
+            if var_name in _LOOP_VAR_NAMES:
                 continue
             try:
                 val = float(val_str)

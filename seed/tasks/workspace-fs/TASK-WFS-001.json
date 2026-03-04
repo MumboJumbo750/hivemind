@@ -1,0 +1,26 @@
+{
+  "external_id": "TASK-WFS-001",
+  "epic_ref": "EPIC-WFS",
+  "title": "Workspace-Mount in docker-compose.yml + PYTHONPATH",
+  "description": "Workspace-Mount hinzufügen:\n\n**docker-compose.yml — backend service:**\n```yaml\nvolumes:\n  - ./backend:/app              # bleibt\n  - backend_venv:/app/.venv     # bleibt\n  - ./seed:/seed:ro             # bleibt\n  - ./:/workspace               # NEU — ganzes Repo bidirektional\nenvironment:\n  HIVEMIND_WORKSPACE_ROOT: /workspace\n  PYTHONPATH: /app:/workspace\n```\n\n**Makefile-Targets:**\n```makefile\nhealth-test:   podman compose exec backend /app/.venv/bin/pytest /workspace/scripts/analyzers/tests/ -v\nhealth-scan:   podman compose exec backend /app/.venv/bin/python /workspace/scripts/health_check.py\n```\n\n**Validierung:**\n- Root-Level-Scripts importierbar im Container\n- Bestehende `make test` nicht gebrochen\n- AGENTS.md aktualisiert",
+  "state": "open",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "/workspace-Mount in docker-compose.yml aktiv",
+      "HIVEMIND_WORKSPACE_ROOT Environment-Variable gesetzt",
+      "PYTHONPATH enthält /workspace",
+      "make health-test führt Analyzer-Tests im Container aus",
+      "make health-scan führt Health-Scan im Container aus",
+      "Bestehende Tests nicht gebrochen",
+      "AGENTS.md aktualisiert"
+    ]
+  },
+  "tags": ["infrastructure", "docker"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "low",
+  "depends_on": []
+}

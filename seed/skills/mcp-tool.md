@@ -104,6 +104,25 @@ Der Convenience-Endpoint `POST /api/mcp/call` gibt **immer** ein Wrapper-Objekt 
 - **Kanonische Parameter-Namen:** `task_key`, `epic_key`, `target_state`, `question`, `decision`, `decision_request_id`, `user_id`, `result`
 - **Alias-Toleranz:** Das Backend akzeptiert auch `task_id` → `task_key`, `epic_id` → `epic_key`, `state` → `target_state`, `blocker` → `question`, `chosen_option` → `decision`, `assignee_id` → `user_id`, `result_text` → `result`, `id` → `decision_request_id`. Die kanonischen Namen sind bevorzugt.
 
+### ⚠️ Häufige Fehler bei MCP-Tool-Aufrufen
+
+1. **Kein individueller REST-Endpoint pro Tool!**
+   Es gibt NICHT `/api/mcp/submit_result` oder `/api/mcp/update_task_state`.
+   **Alle** Tools laufen über **einen** Endpoint: `POST /api/mcp/call` mit Body:
+   ```json
+   {"tool": "hivemind/TOOLNAME", "arguments": {...}}
+   ```
+
+2. **Python existiert nicht auf dem Windows-Host!**
+   `python scripts/mcp_call.py ...` schlägt fehl (Windows hat nur den Microsoft Store Stub).
+   Richtig: `podman compose exec backend /app/.venv/bin/python /workspace/scripts/mcp_call.py ...`
+   Oder direkt `curl` / PowerShell `Invoke-WebRequest` vom Host.
+
+3. **PowerShell: Backticks in JSON vermeiden!**
+   Backticks (`` ` ``) in PowerShell Here-Strings werden als Escape-Sequenzen interpretiert.
+   Markdown-Code mit Backticks in JSON-Bodys führt zu Parse-Errors.
+   Lösung: JSON aus Datei laden (`Get-Content payload.json -Raw`) oder einfache Anführungszeichen nutzen.
+
 ### Wichtig
 - Alle MCP-Tools sind über den MCP 1.0 Standard-Transport erreichbar (externe Clients verbinden via `GET /api/mcp/sse`). Zusätzlich als Convenience-REST-Endpoint (`POST /api/mcp/call`) für das Hivemind-Frontend verfügbar
 - `get_prompt`-Aufrufe schreiben immer einen `prompt_history`-Eintrag (ab Phase 3)

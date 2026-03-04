@@ -5,7 +5,8 @@
         rebuild rebuild-be rebuild-fe \
         test test-be test-integration test-install \
         migrate shell-be db \
-        check lint typecheck arch fix check-docker
+        check lint typecheck arch fix check-docker \
+        health health-json health-md health-test health-scan
 
 VENV := /app/.venv/bin
 
@@ -47,8 +48,14 @@ help:
 	@echo "    make fix             Auto-Fix (ruff + eslint)"
 	@echo "    make check-docker    Alle Checks via Container (ohne lokale Tools)"
 	@echo ""
+	@echo "  Health & Analyzer:"
+	@echo "    make health          Repo Health Scan (text output)"
+	@echo "    make health-json     Repo Health Scan → health_report.json"
+	@echo "    make health-md       Repo Health Scan → health_report.md"
+	@echo "    make health-scan     Alias fuer make health"
+	@echo "    make health-test     Analyzer-Unit-Tests im Container"
+	@echo ""
 
-# ── Stack Management ──────────────────────────────────────────────────────────
 up:
 	podman compose up -d
 
@@ -195,6 +202,14 @@ health-md: ## Repo Health Scan → health_report.md
 	podman compose run --rm --no-deps --entrypoint="" \
 		-v "$(CURDIR):/workspace" -w /workspace backend \
 		/app/.venv/bin/python scripts/health_check.py --root . --format markdown --output health_report.md
+
+# ── Analyzer Tests im Container ─────────────────────────────────────────────
+health-scan: health ## Alias: Repo Health Scan (text output)
+
+health-test: ## Analyzer-Unit-Tests im Container ausfuehren
+	@echo "→ Analyzer-Tests im Container..."
+	podman compose exec -w /workspace -e PYTHONPATH=/workspace:/app backend \
+		$(VENV)/pytest scripts/analyzers/tests/ -v
 
 # ── VS Code Extension ────────────────────────────────────────────────────────
 ext-build: ## Extension kompilieren + in VS Code installieren (dann Reload Window)

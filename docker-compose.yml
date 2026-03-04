@@ -31,6 +31,8 @@ services:
       HIVEMIND_EMBEDDING_BATCH_SIZE: ${HIVEMIND_EMBEDDING_BATCH_SIZE:-50}
       HIVEMIND_KEY_PASSPHRASE: ${HIVEMIND_KEY_PASSPHRASE:-hivemind-dev-key-2026}
       HIVEMIND_CONDUCTOR_ENABLED: ${HIVEMIND_CONDUCTOR_ENABLED:-true}
+      HIVEMIND_WORKSPACE_ROOT: /workspace
+      PYTHONPATH: /app:/workspace
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-development}
     ports:
@@ -42,6 +44,7 @@ services:
       - ./backend:/app
       - backend_venv:/app/.venv
       - ./seed:/seed:ro
+      - ./:/workspace
 
   frontend:
     build: ./frontend

@@ -1,18 +1,18 @@
 """
 Unit tests for MagicValuesAnalyzer.
 
-Run:
-    podman compose exec backend /app/.venv/bin/pytest scripts/analyzers/tests/test_magic_values.py -v
+Run (canonical):
+    make health-test
+
+Or directly:
+    podman compose exec -w /workspace -e PYTHONPATH=/workspace:/app backend \
+        /app/.venv/bin/pytest scripts/analyzers/tests/ -v
 """
 
 from __future__ import annotations
 
-import sys
 import textwrap
 from pathlib import Path
-
-# Allow running from repo root
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 import pytest
 
@@ -126,6 +126,72 @@ def test_py_short_var_assignment_exempt(analyzer, tmp_path):
     """)
     findings = analyzer.analyze(tmp_path)
     assert not any(f.category == "magic-number" for f in findings)
+
+
+def test_py_magic_number_equality(analyzer, tmp_path):
+    """'==' comparisons must be recognised — was missing before fix."""
+    _write(tmp_path, "service.py", """\
+        def check(x):
+            if x == 42:
+                return True
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert any(f.category == "magic-number" and "42" in f.message for f in findings)
+
+
+def test_py_id_assignment_not_exempt(analyzer, tmp_path):
+    """'id' is a 2-char name but NOT a loop variable — must be flagged."""
+    _write(tmp_path, "service.py", """\
+        id = 3000
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert any(f.category == "magic-number" and "3000" in f.message for f in findings)
+
+
+def test_py_two_char_business_var_not_exempt(analyzer, tmp_path):
+    """Two-char business variable names (db, ok, ts) must be flagged."""
+    _write(tmp_path, "repo.py", """\
+        db = 5432
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert any(f.category == "magic-number" and "5432" in f.message for f in findings)
+
+
+def test_py_equality_allowed_number_exempt(analyzer, tmp_path):
+    """'== 0', '== 1' etc. must remain exempt (allowed numbers)."""
+    _write(tmp_path, "service.py", """\
+        if count == 0:
+            reset()
+        if offset == 1:
+            pass
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert not any(f.category == "magic-number" for f in findings)
+
+
+def test_py_magic_number_left_of_operator(analyzer, tmp_path):
+    """Number on LEFT side of comparison (42 == x) must be detected."""
+    _write(tmp_path, "service.py", """\
+        def check(x):
+            if 42 == x:
+                return True
+    """)
+    findings = analyzer.analyze(tmp_path)
+    assert any(f.category == "magic-number" and "42" in f.message for f in findings)
+
+
+def test_py_chained_comparison_detects_all(analyzer, tmp_path):
+    """Both magic numbers in 'x > 42 and y < 3' must be reported, not just one."""
+    _write(tmp_path, "service.py", """\
+        def check(x, y):
+            if x > 42 and y < 3:
+                pass
+    """)
+    findings = analyzer.analyze(tmp_path)
+    magic = [f for f in findings if f.category == "magic-number"]
+    values_found = {f.message for f in magic}
+    assert any("42" in msg for msg in values_found), "42 not detected"
+    assert any("3" in msg for msg in values_found), "3 not detected"
 
 
 # ─── Python: Tests & Migrations Exempt ────────────────────────────────────────

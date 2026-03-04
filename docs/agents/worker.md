@@ -132,6 +132,41 @@ Owner rejected TASK-88 (3. Mal):
 
 ---
 
+## ⚠️ Operative Hinweise für Worker-Agents
+
+### MCP-Tool-Aufrufe
+
+Alle MCP-Tools laufen über **einen** Endpoint. Es gibt **keine** individuellen REST-Endpoints pro Tool:
+
+```bash
+# ✅ RICHTIG:
+curl -X POST http://localhost:8000/api/mcp/call \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "hivemind/submit_result", "arguments": {"task_key": "TASK-88", "result": "..."}}'
+
+# ❌ FALSCH (404!):
+curl http://localhost:8000/api/mcp/submit_result
+curl http://localhost:8000/api/mcp/update_task_state
+```
+
+### Host-Einschränkungen
+
+- **Kein Python auf dem Windows-Host!** `python scripts/mcp_call.py ...` schlägt fehl (nur Microsoft Store Stub).
+- Scripts müssen via Container ausgeführt werden:
+  ```bash
+  podman compose exec backend /app/.venv/bin/python /workspace/scripts/mcp_call.py \
+    "hivemind/get_task" '{"task_key": "TASK-88"}'
+  ```
+- Alternativ: `curl` oder PowerShell `Invoke-WebRequest` direkt vom Host.
+
+### PowerShell-Besonderheiten
+
+- Backticks (`` ` ``) in Here-Strings (`@"..."@`) werden als Escape-Sequenzen interpretiert
+- Markdown mit Code-Backticks in JSON-Bodys führt zu **Parse-Errors**
+- **Lösung:** JSON in Datei auslagern und mit `Get-Content payload.json -Raw` einlesen
+
+---
+
 ## MCP-Tools
 
 ```text

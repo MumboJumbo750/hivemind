@@ -28,6 +28,43 @@ Kurzfassung des Ablaufs:
 5. Test-Dependencies prüfen — laufen Tests im Container via `make test`?
 6. Completeness-Check aus `repo-onboarding.md` Phase 4 durchführen
 
+#### A.5) Repo Health Scan (Priorität 0.5 — nach AGENTS.md, vor Code-Analyse)
+
+**Precondition:** Prüfe ob `scripts/health_check.py` im Projektroot existiert.
+
+- **Vorhanden:** Führe den Scan aus (siehe Schritte unten).
+- **Fehlt:** Hinweis im Wiki festhalten: *"Health Scanner nicht verfügbar — manuell prüfen oder skiptool installieren."* Optional: Epic-Proposal für Scanner-Installation mit `hivemind/propose_epic` erstellen (Titel: "Health Scanner installieren", Beschreibung: "scripts/health_check.py fehlt — Analyzer-Toolkit einrichten für automatisches Code-Quality-Scanning").
+
+**Schritte (wenn health_check.py vorhanden):**
+
+1. **Scanner ausführen:**
+   ```bash
+   python scripts/health_check.py --format json
+   # Im Container: podman compose exec backend /app/.venv/bin/python /workspace/scripts/health_check.py --format json
+   ```
+
+2. **Findings analysieren und gruppieren:**
+   - Findings nach Analyzer und Severity (`error` / `warning` / `info`) gruppieren
+   - Analyzer mit `severity=error`-Findings gesondert markieren
+
+3. **Wiki-Artikel erstellen** (Tag: `diagnostics`, `technical-debt`):
+   - Titel: `Repo Health Report`
+   - Template: siehe `docs/features/health-report-template.md`
+   - Nutze `hivemind/create_wiki_article` mit `tags: ["diagnostics", "technical-debt"]`
+
+4. **Guard-Proposals ableiten** — für jeden Analyzer mit `severity=error`-Findings:
+   ```
+   Guard-Name:    <analyzer-name>-check
+   Executable:    python scripts/health_check.py --analyzers <analyzer-name> --severity error
+   Exit-Code:     0 = passed, 1 = failed
+   Beschreibung:  Kein <analyzer-name>-Fehler erlaubt (abgeleitet aus Health-Scan-Findings)
+   ```
+   Nutze `hivemind/propose_guard` für jeden abgeleiteten Guard.
+
+5. **Epic-Empfehlungen** für schwere Findings (>5 errors pro Analyzer):
+   - Erstelle Restructure-Proposal oder Epic-Empfehlung via `hivemind/propose_epic`
+   - Beispiel: "Hardcoded-CSS bereinigen" wenn `hardcoded-css`-Analyzer >5 Errors hat
+
 #### B) Code-Analyse
 
 1. Analysiere die Projektstruktur (Dateien, Module, Abhängigkeiten).
@@ -56,7 +93,8 @@ Bei Monorepos erstellt der Kartograph **pro Package** ein eigenes `AGENTS.md`:
 ### Prioritäten
 
 1. **Environment Discovery zuerst** — fehlendes AGENTS.md blockiert alle anderen AI-Agents
-2. **Dateien** und **Module** erfassen
-3. Dann **Klassen** und **Funktionen** mit hoher Kopplung
-4. Abhängigkeiten (imports, calls) als Edges hinzufügen
-5. Zyklische Abhängigkeiten als Warnung markieren
+2. **Repo Health Scan** — `scripts/health_check.py --format json` ausführen, Wiki-Artikel + Guard-Proposals erstellen
+3. **Dateien** und **Module** erfassen
+4. Dann **Klassen** und **Funktionen** mit hoher Kopplung
+5. Abhängigkeiten (imports, calls) als Edges hinzufügen
+6. Zyklische Abhängigkeiten als Warnung markieren

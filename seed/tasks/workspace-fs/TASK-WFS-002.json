@@ -1,0 +1,27 @@
+{
+  "external_id": "TASK-WFS-002",
+  "epic_ref": "EPIC-WFS",
+  "title": "MCP Filesystem-Tools: fs_read, fs_write, fs_list, fs_search, fs_stat",
+  "description": "MCP-Tools für Dateizugriff auf den Workspace:\n\n**Tools:**\n- `hivemind/fs_read`: Datei lesen (mit optionaler Line-Range, Encoding-Parameter)\n- `hivemind/fs_write`: Datei schreiben/erstellen (atomisch via temp+rename, erstellt Parent-Dirs)\n- `hivemind/fs_list`: Verzeichnis auflisten (rekursiv/flach, konfigurierbare Ignore-Patterns)\n- `hivemind/fs_search`: Grep/Glob-Suche über Workspace (regex-fähig, max_results)\n- `hivemind/fs_stat`: Metadaten (Größe, Typ, mtime, Permissions)\n\n**Sicherheit:**\n- Path-Sandboxing: alle Pfade werden auf `HIVEMIND_WORKSPACE_ROOT` resolved und eingesperrt\n- Path-Traversal-Schutz: `..` und Symlinks die aus dem Sandbox ausbrechen werden abgelehnt\n- Konfigurierbare Deny-List (Default: `.git/objects`, `.env`, `*.key`, `*.pem`)\n- Max File-Size für Reads (Default: 10MB)\n- Rate-Limiting pro Tool-Aufruf\n\n**Implementierung:**\n- Neuer Router oder MCP-Tool-Modul: `backend/app/mcp/tools/fs_tools.py`\n- Shared Utility: `backend/app/services/workspace_fs.py` (Path-Resolution, Sandboxing)\n- Alle Tools im MCP-Server registriert und über SSE erreichbar",
+  "state": "open",
+  "priority": "critical",
+  "definition_of_done": {
+    "criteria": [
+      "fs_read liest Dateien mit optionaler Line-Range",
+      "fs_write erstellt/überschreibt Dateien atomisch",
+      "fs_list listet Verzeichnisse mit Ignore-Patterns",
+      "fs_search führt Grep/Glob-Suche durch",
+      "fs_stat gibt Datei-Metadaten zurück",
+      "Path-Sandboxing verhindert Zugriff außerhalb /workspace",
+      "Deny-List für sensitive Dateien implementiert",
+      "Alle Tools über MCP SSE erreichbar"
+    ]
+  },
+  "tags": ["mcp", "filesystem", "security"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "high",
+  "depends_on": ["TASK-WFS-001"]
+}

@@ -4,10 +4,22 @@ Analyzer: Hardcoded CSS Values — Colors, Spacing, Fonts, Z-Index
 Detects hardcoded CSS values that should use design tokens / CSS custom properties.
 
 Registered automatically via AnalyzerRegistry (BaseAnalyzer subclass).
+
+Configuration (via __init__ config dict or root/.hivemind-health.json):
+  {
+    "hardcoded-css": {
+      "exclude_patterns": ["**/tokens/**", "**/design-system/**"],
+      "definition_patterns": ["my-theme", "my-colors"],
+      "color_allowlist": ["rebeccapurple"],
+      "spacing_allowlist_px": [2, 3, 4]
+    }
+  }
 """
 
 from __future__ import annotations
 
+import fnmatch
+import json
 import re
 from pathlib import Path
 
@@ -19,14 +31,29 @@ from scripts.analyzers import BaseAnalyzer, Finding
 _HEX_RE = re.compile(r"(?<![&\w])#([0-9a-fA-F]{3,8})\b")
 _RGB_RE = re.compile(r"\brgba?\s*\([\d\s,./%%]+\)")
 _HSL_RE = re.compile(r"\bhsla?\s*\([\d\s,./%%]+\)")
-_NAMED_COLOR_PROPS_RE = re.compile(
-    r"(?:^|\s|;)"
-    r"(color|background(?:-color)?|border(?:-color)?|outline(?:-color)?|fill|stroke)"
-    r"\s*:\s*"
-    r"(red|green|blue|white|black|gray|grey|yellow|orange|purple|pink|brown|"
-    r"cyan|magenta|lime|navy|teal|silver|gold|coral|salmon|khaki|violet|indigo)\b",
-    re.IGNORECASE,
+
+_DEFAULT_NAMED_COLORS = (
+    "red|green|blue|white|black|gray|grey|yellow|orange|purple|pink|brown|"
+    "cyan|magenta|lime|navy|teal|silver|gold|coral|salmon|khaki|violet|indigo"
 )
+def _make_named_color_re(extra_allowlist: frozenset[str] = frozenset()) -> re.Pattern:
+    banned = _DEFAULT_NAMED_COLORS
+    if extra_allowlist:
+        # Remove allowlisted names from the detection set
+        all_names = [n.strip() for n in banned.split("|")]
+        all_names = [n for n in all_names if n.lower() not in extra_allowlist]
+        if not all_names:
+            return re.compile(r"(?!x)x")  # never matches
+        banned = "|".join(all_names)
+    return re.compile(
+        r"(?:^|\s|;)"
+        r"(color|background(?:-color)?|border(?:-color)?|outline(?:-color)?|fill|stroke)"
+        r"\s*:\s*"
+        r"(" + banned + r")\b",
+        re.IGNORECASE,
+    )
+
+_NAMED_COLOR_PROPS_RE = _make_named_color_re()  # default (no allowlist)
 
 # Spacing — px values on layout properties (ignore 0px, 1px borders)
 _SPACING_RE = re.compile(
@@ -38,7 +65,6 @@ _SPACING_RE = re.compile(
     r"((?:\d+px\s*)+)",  # one or more px values
     re.IGNORECASE,
 )
-_SPACING_EXEMPT_RE = re.compile(r"\b(?:0px|1px|100%|0)\b")
 
 # Font size
 _FONT_SIZE_RE = re.compile(
@@ -48,7 +74,7 @@ _FONT_SIZE_RE = re.compile(
 _FONT_SIZE_EXEMPT = {"1rem", "inherit", "initial", "unset"}
 
 # Z-index
-_ZINDEX_RE = re.compile(r"(?:^|\s|;)z-index\s*:\s*(\d+)\b", re.IGNORECASE)
+_ZINDEX_RE = re.compile(r"(?:^|\s|;)z-index\s*:\s*(-?\d+)\b", re.IGNORECASE)
 _ZINDEX_EXEMPT = {0, 1, -1}
 
 # Exempt patterns (token / var usages)
@@ -58,7 +84,7 @@ _EXEMPT_TOKENS = re.compile(
 )
 
 # Files that are allowed to define raw values (theme/token definition files)
-_DEFINITION_FILENAME_RE = re.compile(
+_DEFAULT_DEFINITION_STEMS = re.compile(
     r"(tokens|semantic|theme|variables|colors|palette|design-system|base)",
     re.IGNORECASE,
 )
@@ -74,6 +100,41 @@ _SKIP_DIRS = {
     "dist", "build", ".next", "coverage", "out",
 }
 
+# ─── JSX / React inline-style helpers ─────────────────────────────────────────
+
+# JSX camelCase → CSS property groups
+_JSX_COLOR_PROPS = frozenset({
+    "color", "backgroundColor", "background", "borderColor",
+    "borderTopColor", "borderRightColor", "borderBottomColor", "borderLeftColor",
+    "outlineColor", "fill", "stroke", "caretColor",
+})
+_JSX_SPACING_PROPS = frozenset({
+    "padding", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+    "paddingInline", "paddingBlock",
+    "margin", "marginTop", "marginRight", "marginBottom", "marginLeft",
+    "marginInline", "marginBlock",
+    "gap", "rowGap", "columnGap",
+    "top", "right", "bottom", "left",
+    "width", "height", "maxWidth", "maxHeight", "minWidth", "minHeight",
+    "borderRadius",
+    "borderTopLeftRadius", "borderTopRightRadius",
+    "borderBottomLeftRadius", "borderBottomRightRadius",
+    "inset",
+})
+_JSX_FONT_PROPS = frozenset({"fontSize", "lineHeight"})
+_JSX_ZINDEX_PROPS = frozenset({"zIndex"})
+
+# Matches  propName: 'value'  or  propName: "value"
+_JSX_PROP_STR_RE = re.compile(r'(\w+)\s*:\s*[\'"]([^\'"]+)[\'"]')
+# Matches  propName: 123   or   propName: -123   (bare number)
+_JSX_PROP_NUM_RE = re.compile(r'(\w+)\s*:\s*(-?\d+(?:\.\d+)?)(?:\s*[,}\s]|$)')
+
+# styled-components: styled.tag`...`  or  styled(Comp)`...`  or  css`...`
+_STYLED_COMPONENTS_RE = re.compile(
+    r"(?:styled\.[a-zA-Z]+|styled\([^)]+\)|css)\s*`([^`]*)`",
+    re.DOTALL,
+)
+
 
 class HardcodedCssAnalyzer(BaseAnalyzer):
     """Detects hardcoded CSS colors, spacing, font-sizes, and z-index values."""
@@ -81,38 +142,94 @@ class HardcodedCssAnalyzer(BaseAnalyzer):
     name = "hardcoded-css"
     description = "Finds hardcoded CSS values that should use design tokens."
 
-    def analyze(self, root: Path) -> list[Finding]:
-        findings: list[Finding] = []
+    def __init__(self, config: dict | None = None) -> None:
+        self._init_config = config  # preserve for re-use; root-level config loaded in analyze()
 
+    def analyze(self, root: Path) -> list[Finding]:
+        cfg = self._resolve_config(root)
+        exclude_patterns: list[str] = cfg.get("exclude_patterns", [])
+        color_allowlist: frozenset[str] = frozenset(
+            s.lower() for s in cfg.get("color_allowlist", [])
+        )
+        extra_def_patterns: list[str] = cfg.get("definition_patterns", [])
+        spacing_allowlist_px: frozenset[int] = frozenset(
+            int(v) for v in cfg.get("spacing_allowlist_px", [])
+        )
+
+        named_color_re = (
+            _make_named_color_re(color_allowlist) if color_allowlist
+            else _NAMED_COLOR_PROPS_RE
+        )
+
+        findings: list[Finding] = []
         for path in _iter_files(root):
-            if _is_definition_file(path):
+            if _is_definition_file(path, extra_def_patterns):
+                continue
+            if _is_excluded(path, root, exclude_patterns):
                 continue
             try:
-                self._analyze_file(root, path, findings)
+                self._analyze_file(root, path, findings, named_color_re, spacing_allowlist_px)
             except Exception:
                 pass  # never crash the run
 
         return findings
 
-    def _analyze_file(self, root: Path, path: Path, findings: list[Finding]) -> None:
+    # ── config helpers ────────────────────────────────────────────────────────
+
+    def _resolve_config(self, root: Path) -> dict:
+        if self._init_config is not None:
+            return self._init_config
+        # Try to load from root/.hivemind-health.json
+        cfg_file = root / ".hivemind-health.json"
+        if cfg_file.exists():
+            try:
+                data = json.loads(cfg_file.read_text(encoding="utf-8"))
+                return data.get("hardcoded-css", {})
+            except Exception:
+                pass
+        return {}
+
+    # ── file dispatch ─────────────────────────────────────────────────────────
+
+    def _analyze_file(
+        self,
+        root: Path,
+        path: Path,
+        findings: list[Finding],
+        named_color_re: re.Pattern,
+        spacing_allowlist_px: frozenset[int],
+    ) -> None:
         text = path.read_text(encoding="utf-8", errors="ignore")
         rel = self._rel(root, path)
 
         if path.suffix == ".vue":
-            # Only analyze <style> blocks in Vue SFCs
-            style_blocks = re.findall(r"<style[^>]*>(.*?)</style>", text, re.DOTALL)
-            css_text = "\n".join(style_blocks)
-            if not css_text.strip():
-                return
-            self._check_css(rel, css_text, findings, offset=0)
+            # Only analyze <style> blocks in Vue SFCs; track actual file line offsets
+            for m in re.finditer(r"<style[^>]*>(.*?)</style>", text, re.DOTALL):
+                css_text = m.group(1)
+                if not css_text.strip():
+                    continue
+                # Number of newlines before the CSS content start = 0-based line index
+                offset = text[: m.start(1)].count("\n")
+                self._check_css(rel, css_text, findings, offset=offset,
+                                named_color_re=named_color_re,
+                                spacing_allowlist_px=spacing_allowlist_px)
         elif path.suffix in _CSS_EXTS:
-            self._check_css(rel, text, findings, offset=0)
+            self._check_css(rel, text, findings, offset=0,
+                            named_color_re=named_color_re,
+                            spacing_allowlist_px=spacing_allowlist_px)
         elif path.suffix in {".jsx", ".tsx"}:
-            # Check inline styles: style={{ color: 'red', padding: '12px' }}
-            self._check_jsx_inline_styles(rel, text, findings)
+            self._check_jsx(rel, text, findings,
+                            named_color_re=named_color_re,
+                            spacing_allowlist_px=spacing_allowlist_px)
 
     def _check_css(
-        self, rel: str, text: str, findings: list[Finding], offset: int
+        self,
+        rel: str,
+        text: str,
+        findings: list[Finding],
+        offset: int,
+        named_color_re: re.Pattern = _NAMED_COLOR_PROPS_RE,
+        spacing_allowlist_px: frozenset[int] = frozenset(),
     ) -> None:
         lines = text.splitlines()
         for i, raw_line in enumerate(lines, 1 + offset):
@@ -124,28 +241,176 @@ class HardcodedCssAnalyzer(BaseAnalyzer):
                 continue
 
             lineno = i
-            self._check_colors(rel, line, lineno, findings)
-            self._check_spacing(rel, line, lineno, findings)
+            self._check_colors(rel, line, lineno, findings, named_color_re)
+            self._check_spacing(rel, line, lineno, findings, spacing_allowlist_px)
             self._check_font_size(rel, line, lineno, findings)
             self._check_zindex(rel, line, lineno, findings)
 
-    def _check_jsx_inline_styles(
-        self, rel: str, text: str, findings: list[Finding]
+    def _check_jsx(
+        self,
+        rel: str,
+        text: str,
+        findings: list[Finding],
+        named_color_re: re.Pattern = _NAMED_COLOR_PROPS_RE,
+        spacing_allowlist_px: frozenset[int] = frozenset(),
     ) -> None:
-        """Check style={{ ... }} objects in JSX/TSX."""
+        """Check JSX/TSX files: inline styles, styled-components."""
+        # 1. style={{ ... }} inline objects
         inline_re = re.compile(r"style\s*=\s*\{\{(.+?)\}\}", re.DOTALL)
         for m in inline_re.finditer(text):
             lineno = text[: m.start()].count("\n") + 1
             block = m.group(1)
-            self._check_colors(rel, block, lineno, findings)
-            self._check_spacing(rel, block, lineno, findings)
-            self._check_font_size(rel, block, lineno, findings)
-            self._check_zindex(rel, block, lineno, findings)
+            self._check_jsx_style_object(
+                rel, block, lineno, findings, named_color_re, spacing_allowlist_px
+            )
 
-    # ── individual checks ────────────────────────────────────────────────────
+        # 2. styled-components template literals
+        for m in _STYLED_COMPONENTS_RE.finditer(text):
+            lineno = text[: m.start()].count("\n") + 1
+            css_body = m.group(1)
+            self._check_css(
+                rel, css_body, findings, offset=lineno - 1,
+                named_color_re=named_color_re,
+                spacing_allowlist_px=spacing_allowlist_px,
+            )
+
+    def _check_jsx_style_object(
+        self,
+        rel: str,
+        block: str,
+        base_lineno: int,
+        findings: list[Finding],
+        named_color_re: re.Pattern,
+        spacing_allowlist_px: frozenset[int],
+    ) -> None:
+        """Parse a JS style-object block and check each property:value pair."""
+        # ── String values:  propName: 'value'  or  propName: "value" ──
+        for m in _JSX_PROP_STR_RE.finditer(block):
+            prop = m.group(1)
+            raw_value = m.group(2)
+            line_offset = block[: m.start()].count("\n")
+            lineno = base_lineno + line_offset
+
+            # Skip if value is a CSS variable
+            if _VAR_RE.search(raw_value):
+                continue
+
+            if prop in _JSX_COLOR_PROPS:
+                # Reuse CSS color checks by constructing pseudo-CSS line
+                css_prop = _camel_to_kebab(prop)
+                self._check_colors(
+                    rel, f"{css_prop}: {raw_value}", lineno, findings, named_color_re
+                )
+
+            elif prop in _JSX_SPACING_PROPS:
+                # Extract px values from quoted string
+                px_vals = re.findall(r"(\d+)px", raw_value)
+                non_exempt = [
+                    int(v) for v in px_vals
+                    if int(v) not in (0, 1) and int(v) not in spacing_allowlist_px
+                ]
+                if non_exempt:
+                    findings.append(Finding(
+                        analyzer=self.name,
+                        severity="info",
+                        file=rel,
+                        line=lineno,
+                        message=(
+                            f"Hardcoded spacing `{prop}: '{raw_value}'` "
+                            f"— consider a spacing token"
+                        ),
+                        category="hardcoded-spacing",
+                        auto_fixable=False,
+                    ))
+
+            elif prop in _JSX_FONT_PROPS:
+                val = raw_value.lower()
+                if val not in _FONT_SIZE_EXEMPT and re.search(
+                    r"\d+(?:\.\d+)?(?:px|rem|em|pt)", val
+                ):
+                    findings.append(Finding(
+                        analyzer=self.name,
+                        severity="info",
+                        file=rel,
+                        line=lineno,
+                        message=(
+                            f"Hardcoded font-size `{raw_value}` "
+                            f"— consider a typography token"
+                        ),
+                        category="hardcoded-font-size",
+                        auto_fixable=False,
+                    ))
+
+            elif prop in _JSX_ZINDEX_PROPS:
+                try:
+                    val = int(raw_value)
+                    if val not in _ZINDEX_EXEMPT:
+                        findings.append(Finding(
+                            analyzer=self.name,
+                            severity="info",
+                            file=rel,
+                            line=lineno,
+                            message=(
+                                f"Hardcoded z-index `{val}` "
+                                f"— consider a z-index scale token"
+                            ),
+                            category="hardcoded-z-index",
+                            auto_fixable=False,
+                        ))
+                except ValueError:
+                    pass
+
+        # ── Numeric values:  propName: 123  ──
+        for m in _JSX_PROP_NUM_RE.finditer(block):
+            prop = m.group(1)
+            try:
+                num = float(m.group(2))
+            except ValueError:
+                continue
+            line_offset = block[: m.start()].count("\n")
+            lineno = base_lineno + line_offset
+
+            if prop in _JSX_SPACING_PROPS:
+                int_val = int(num)
+                if num == int_val and int_val not in (0, 1) and int_val not in spacing_allowlist_px:
+                    findings.append(Finding(
+                        analyzer=self.name,
+                        severity="info",
+                        file=rel,
+                        line=lineno,
+                        message=(
+                            f"Hardcoded spacing `{prop}: {int_val}` (implicit px) "
+                            f"— consider a spacing token"
+                        ),
+                        category="hardcoded-spacing",
+                        auto_fixable=False,
+                    ))
+
+            elif prop in _JSX_ZINDEX_PROPS:
+                int_val = int(num)
+                if int_val not in _ZINDEX_EXEMPT:
+                    findings.append(Finding(
+                        analyzer=self.name,
+                        severity="info",
+                        file=rel,
+                        line=lineno,
+                        message=(
+                            f"Hardcoded z-index `{int_val}` "
+                            f"— consider a z-index scale token"
+                        ),
+                        category="hardcoded-z-index",
+                        auto_fixable=False,
+                    ))
+
+    # ── individual CSS checks ─────────────────────────────────────────────────
 
     def _check_colors(
-        self, rel: str, line: str, lineno: int, findings: list[Finding]
+        self,
+        rel: str,
+        line: str,
+        lineno: int,
+        findings: list[Finding],
+        named_color_re: re.Pattern = _NAMED_COLOR_PROPS_RE,
     ) -> None:
         if _EXEMPT_TOKENS.search(line):
             return
@@ -173,7 +438,7 @@ class HardcodedCssAnalyzer(BaseAnalyzer):
                     auto_fixable=False,
                 ))
 
-        m = _NAMED_COLOR_PROPS_RE.search(line)
+        m = named_color_re.search(line)
         if m:
             findings.append(Finding(
                 analyzer=self.name,
@@ -186,15 +451,23 @@ class HardcodedCssAnalyzer(BaseAnalyzer):
             ))
 
     def _check_spacing(
-        self, rel: str, line: str, lineno: int, findings: list[Finding]
+        self,
+        rel: str,
+        line: str,
+        lineno: int,
+        findings: list[Finding],
+        spacing_allowlist_px: frozenset[int] = frozenset(),
     ) -> None:
         m = _SPACING_RE.search(line)
         if not m:
             return
         values = m.group(2).strip()
-        # Exempt if ALL tokens are 0px or 1px
-        tokens = re.findall(r"\d+px", values)
-        non_exempt = [t for t in tokens if t not in ("0px", "1px")]
+        # Exempt if ALL tokens are 0px, 1px, or in allowlist
+        tokens = re.findall(r"(\d+)px", values)
+        non_exempt = [
+            t for t in tokens
+            if int(t) not in (0, 1) and int(t) not in spacing_allowlist_px
+        ]
         if not non_exempt:
             return
         findings.append(Finding(
@@ -246,6 +519,13 @@ class HardcodedCssAnalyzer(BaseAnalyzer):
         ))
 
 
+# ─── Utilities ────────────────────────────────────────────────────────────────
+
+def _camel_to_kebab(name: str) -> str:
+    """Convert camelCase to kebab-case. E.g. 'backgroundColor' → 'background-color'."""
+    return re.sub(r"([A-Z])", lambda m: "-" + m.group(1).lower(), name)
+
+
 # ─── File Iterator ────────────────────────────────────────────────────────────
 
 def _iter_files(root: Path):
@@ -257,6 +537,25 @@ def _iter_files(root: Path):
             yield entry
 
 
-def _is_definition_file(path: Path) -> bool:
+def _is_definition_file(path: Path, extra_patterns: list[str] = []) -> bool:
     """Return True if this file is a token/theme definition (allowed to have raw values)."""
-    return bool(_DEFINITION_FILENAME_RE.search(path.stem))
+    if _DEFAULT_DEFINITION_STEMS.search(path.stem):
+        return True
+    for pat in extra_patterns:
+        if fnmatch.fnmatch(path.stem.lower(), pat.lower()):
+            return True
+    return False
+
+
+def _is_excluded(path: Path, root: Path, patterns: list[str]) -> bool:
+    """Return True if *path* matches any of the given glob exclude patterns."""
+    if not patterns:
+        return False
+    try:
+        rel = path.relative_to(root).as_posix()
+    except ValueError:
+        rel = path.as_posix()
+    for pat in patterns:
+        if fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch(path.name, pat):
+            return True
+    return False

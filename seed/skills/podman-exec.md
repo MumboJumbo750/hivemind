@@ -109,15 +109,69 @@ podman compose exec postgres psql -U hivemind hivemind
 # Im psql: \dt (Tabellen), \d tablename (Schema), \q (beenden)
 ```
 
+### MCP-Tools vom Host aufrufen (ohne MCP-Client)
+
+Wenn kein MCP-Client (VS Code, Cursor, Claude Desktop) verfügbar ist, können MCP-Tools über den **Convenience-REST-Endpoint** aufgerufen werden:
+
+```bash
+# ✅ RICHTIG — Alle MCP-Tools über EINEN Endpoint:
+curl -X POST http://localhost:8000/api/mcp/call \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "hivemind/submit_result", "arguments": {"task_key": "TASK-88", "result": "..."}}'
+
+# ✅ Alternativ via mcp_call.py Helper (im Container!):
+podman compose exec backend /app/.venv/bin/python /workspace/scripts/mcp_call.py \
+  "hivemind/get_task" '{"task_key": "TASK-88"}'
+```
+
+```bash
+# ❌ FALSCH — Diese Endpoints existieren NICHT:
+curl http://localhost:8000/api/mcp/submit_result      # 404!
+curl http://localhost:8000/api/mcp/update_task_state   # 404!
+
+# ❌ FALSCH — Python existiert NICHT auf dem Windows-Host:
+python scripts/mcp_call.py "hivemind/get_task" ...     # scheitert!
+```
+
+**Merke:**
+- Es gibt **keine** individuellen REST-Endpoints pro MCP-Tool
+- **Alle** Tools laufen über `POST /api/mcp/call` mit Body `{"tool": "hivemind/TOOLNAME", "arguments": {...}}`
+- Python-Scripts müssen via `podman compose exec backend` ausgeführt werden — der Host hat kein Python
+- Alternativ: `curl` / `Invoke-WebRequest` direkt vom Host — kein Python nötig
+
+### PowerShell-Besonderheiten
+
+```powershell
+# ✅ RICHTIG — JSON in einfachen Anführungszeichen, keine Backticks:
+Invoke-WebRequest -Uri "http://localhost:8000/api/mcp/call" `
+  -Method POST -ContentType "application/json" `
+  -Body '{"tool": "hivemind/submit_result", "arguments": {"task_key": "TASK-88", "result": "Ergebnis ohne Backticks"}}'
+
+# ❌ FALSCH — Backticks (`) in Strings werden als Escape-Zeichen interpretiert:
+$body = @"
+{"result": "Code mit `backticks` bricht PowerShell"}
+"@
+# → Parse-Error! ` wird als Unicode-Escape interpretiert
+```
+
+**Regeln für PowerShell:**
+- Backticks (`` ` ``) in Here-Strings (`@"..."@`) werden als Escape-Sequenzen interpretiert
+- Markdown-Ergebnisse mit Code-Backticks müssen escaped oder vermieden werden
+- Sicherer: JSON aus Datei lesen statt inline: `$body = Get-Content payload.json -Raw`
+- Alternativ: Backticks durch `'` (Apostroph) oder `(Backtick)` ersetzen
+
 ### Häufige Fehler
 
 | Fehler | Ursache | Fix |
 | ------ | ------- | --- |
 | `command not found: alembic` | Befehl auf dem Host | `make migrate` oder vollständiger Venv-Pfad |
 | `command not found: pytest` | Test-Deps nicht installiert | `make test-install` |
+| `python: not found` / MS Store Stub | Python nicht auf Host-PATH | `podman compose exec backend /app/.venv/bin/python` |
+| `404 Not Found` bei MCP-Tool | Falscher Endpoint | `POST /api/mcp/call` mit `{"tool": "..."}` |
 | `connection refused` (MCP) | Backend läuft nicht | `make up` |
 | `Can't locate revision` | Migrations-Konflikt | `podman compose exec backend /app/.venv/bin/alembic heads` |
 | Port 8000 belegt | Anderer Prozess | `podman compose ps` + `make down` |
+| PowerShell Parse-Error in JSON | Backticks in Strings | JSON in Datei auslagern oder einfache Anführungszeichen nutzen |
 
 ### Wichtig
 

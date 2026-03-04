@@ -96,6 +96,11 @@ class Settings(BaseSettings):
     hivemind_enforce_tls: bool = False
     hivemind_auto_review_grace_minutes: int = 30
 
+    # Filesystem Tools (TASK-WFS-002)
+    hivemind_workspace_root: str = "/workspace"
+    hivemind_fs_deny_list: str = ".git/objects,.env,.env.local,.env.production"
+    hivemind_fs_rate_limit: int = 60  # max calls per tool per minute
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.hivemind_cors_origins.split(",")]

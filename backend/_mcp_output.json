@@ -1,0 +1,8 @@
+{
+  "result": [
+    {
+      "type": "text",
+      "text": "{\"data\": {\"task_key\": \"TASK-WFS-005\", \"state\": \"done\", \"exp_awarded\": 50, \"epic_auto_transitioned\": false, \"comment\": \"Review bestanden: Task-Resource geladen (hivemind://task/TASK-WFS-005), keine DoD-Kriterien/Guards konfiguriert. Fixes verifiziert: /workspace-Fallback in _workspace_sys_path greift bei externem HIVEMIND_WORKSPACE_ROOT; Timeout-Fall laeuft ohne Hang (daemon thread). Relevante Tests gruen (23 analyzer_tools, 26 fs_tools, 81 analyzer script tests).\"}}"
+    }
+  ]
+}

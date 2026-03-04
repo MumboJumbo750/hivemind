@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-WFS-005",
+  "epic_ref": "EPIC-WFS",
+  "title": "Workspace-Config und hivemind init für externe Repos",
+  "description": "Konfiguration und Setup-Tooling für den Einsatz von hivemind in externen Repos:\n\n**hivemind init Script/Befehl:**\n- Generiert `docker-compose.override.yml` mit Workspace-Mount\n- Legt `.vscode/mcp.json` für Copilot-Integration an\n- Erstellt `.hivemind/config.yml` mit Workspace-Einstellungen\n- Interaktiv oder mit Defaults (--yes Flag)\n\n**Konfiguration:**\n- `HIVEMIND_WORKSPACE_ROOT` konfigurierbar (nicht hardcoded /workspace)\n- Workspace Deny-Patterns konfigurierbar (`.gitignore` respektieren)\n- Stack-Auto-Detection konfigurierbar (override für falsche Erkennung)\n\n**Discovery-Endpoint erweitern:**\n- `GET /api/mcp/discovery` um Workspace-Info und FS-Tool-Docs ergänzen\n- Setup-Anweisungen für alle unterstützten IDEs\n\n**Dokumentation:**\n- README-Abschnitt: 'Hivemind in deinem Repo einsetzen'\n- Schritt-für-Schritt-Guide mit Beispielen",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "hivemind init Script generiert docker-compose.override.yml",
+      "hivemind init legt .vscode/mcp.json an",
+      "HIVEMIND_WORKSPACE_ROOT konfigurierbar",
+      "Discovery-Endpoint um Workspace-Info erweitert",
+      "External-Repo-Setup dokumentiert"
+    ]
+  },
+  "tags": ["dx", "portability", "tooling"],
+  "subtasks": [],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": null,
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-WFS-001", "TASK-WFS-002"]
+}
