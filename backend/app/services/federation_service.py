@@ -208,3 +208,263 @@ async def notify_peer_task_update(
     await db.flush()
     logger.info("Outbox entry for task update %s → %s (peer: %s)", task_key, new_state, assigned_node_id)
     return True
+
+
+# ─── Node / Identity helpers ──────────────────────────────────────────────────
+
+
+async def get_own_identity(db: AsyncSession):
+    """Return the local NodeIdentity row, or None."""
+    result = await db.execute(select(NodeIdentity))
+    return result.scalar_one_or_none()
+
+
+async def get_node_by_id(db: AsyncSession, node_id: uuid.UUID):
+    """Return a Node by primary key, or None."""
+    result = await db.execute(select(Node).where(Node.id == node_id))
+    return result.scalar_one_or_none()
+
+
+async def get_peer_node_by_url(db: AsyncSession, node_url: str):
+    """Return a Node matching the given URL, or None."""
+    result = await db.execute(select(Node).where(Node.node_url == node_url))
+    return result.scalar_one_or_none()
+
+
+async def list_peer_nodes(db: AsyncSession) -> list:
+    """List all non-deleted Nodes in name order."""
+    result = await db.execute(
+        select(Node).where(Node.deleted_at.is_(None)).order_by(Node.node_name)
+    )
+    return list(result.scalars().all())
+
+
+async def create_peer_node(
+    db: AsyncSession,
+    node_name: str,
+    node_url: str,
+    public_key: str | None = None,
+):
+    """Create, flush, commit and return a new Node."""
+    node = Node(
+        node_name=node_name,
+        node_url=node_url,
+        public_key=public_key,
+        status="active",
+    )
+    db.add(node)
+    await db.flush()
+    await db.refresh(node)
+    await db.commit()
+    return node
+
+
+async def update_peer_node(
+    db: AsyncSession,
+    node_id: uuid.UUID,
+    status: str | None = None,
+    node_name: str | None = None,
+):
+    """Update a peer node's mutable fields. Returns node or None if not found."""
+    result = await db.execute(
+        select(Node).where(Node.id == node_id, Node.deleted_at.is_(None))
+    )
+    node = result.scalar_one_or_none()
+    if node is None:
+        return None
+    if status is not None:
+        node.status = status
+    if node_name is not None:
+        node.node_name = node_name
+    await db.flush()
+    await db.refresh(node)
+    await db.commit()
+    return node
+
+
+async def delete_peer_node(db: AsyncSession, node_id: uuid.UUID) -> bool:
+    """Soft-delete a peer node. Returns True on success, False if not found."""
+    from datetime import datetime, timezone
+
+    result = await db.execute(
+        select(Node).where(Node.id == node_id, Node.deleted_at.is_(None))
+    )
+    node = result.scalar_one_or_none()
+    if node is None:
+        return False
+    node.deleted_at = datetime.now(timezone.utc)
+    await db.flush()
+    await db.commit()
+    return True
+
+
+# ─── Federated resource operations ───────────────────────────────────────────
+
+
+async def upsert_federated_skill(db: AsyncSession, origin_node_id, body) -> tuple:
+    """Upsert a federated Skill.
+
+    ``body`` must expose: title, content, service_scope, stack, skill_type,
+    lifecycle, version, external_id.
+    Returns ``(skill_obj, created: bool)``.
+    """
+    existing = None
+    if origin_node_id:
+        result = await db.execute(
+            select(Skill).where(
+                Skill.origin_node_id == origin_node_id,
+                Skill.title == body.title,
+            )
+        )
+        existing = result.scalar_one_or_none()
+
+    if existing:
+        existing.content = body.content
+        existing.service_scope = body.service_scope
+        existing.stack = body.stack
+        existing.lifecycle = body.lifecycle
+        existing.version = body.version
+        await db.flush()
+        await db.refresh(existing)
+        return existing, False
+
+    skill = Skill(
+        title=body.title,
+        content=body.content,
+        service_scope=body.service_scope,
+        stack=body.stack,
+        skill_type=body.skill_type,
+        lifecycle=body.lifecycle,
+        version=body.version,
+        origin_node_id=origin_node_id,
+        federation_scope="federated",
+    )
+    db.add(skill)
+    await db.flush()
+    await db.refresh(skill)
+    return skill, True
+
+
+async def upsert_federated_wiki(db: AsyncSession, origin_node_id, body) -> tuple:
+    """Upsert a federated WikiArticle.
+
+    ``body`` must expose: slug, title, content, tags, version.
+    Returns ``(article_obj, created: bool)``.
+    """
+    existing = None
+    if origin_node_id:
+        result = await db.execute(
+            select(WikiArticle).where(
+                WikiArticle.origin_node_id == origin_node_id,
+                WikiArticle.slug == body.slug,
+            )
+        )
+        existing = result.scalar_one_or_none()
+
+    if existing:
+        existing.title = body.title
+        existing.content = body.content
+        existing.tags = body.tags
+        existing.version = body.version
+        await db.flush()
+        await db.refresh(existing)
+        return existing, False
+
+    article = WikiArticle(
+        title=body.title,
+        slug=body.slug,
+        content=body.content,
+        tags=body.tags,
+        version=body.version,
+        origin_node_id=origin_node_id,
+        federation_scope="federated",
+    )
+    db.add(article)
+    await db.flush()
+    await db.refresh(article)
+    return article, True
+
+
+async def create_federated_epic(db: AsyncSession, origin_node_id, body) -> tuple:
+    """Create a federated Epic with its tasks.
+
+    Returns ``(epic_obj, task_count: int)``.
+    """
+    from app.models.epic import Epic
+    from app.models.task import Task
+    from app.services.key_generator import next_epic_key, next_task_key
+
+    epic_key = await next_epic_key(db)
+    epic = Epic(
+        epic_key=epic_key,
+        external_id=body.external_id,
+        title=body.title,
+        description=body.description,
+        priority=body.priority,
+        dod_framework=body.definition_of_done,
+        origin_node_id=origin_node_id,
+        state="scoped",
+    )
+    db.add(epic)
+    await db.flush()
+
+    task_count = 0
+    for task_spec in body.tasks:
+        task_key = await next_task_key(db)
+        task = Task(
+            task_key=task_key,
+            epic_id=epic.id,
+            external_id=task_spec.external_id,
+            title=task_spec.title,
+            description=task_spec.description,
+            state=task_spec.state or "incoming",
+            definition_of_done=task_spec.definition_of_done,
+            pinned_skills=task_spec.pinned_skills,
+            assigned_node_id=task_spec.assigned_node_id,
+        )
+        db.add(task)
+        task_count += 1
+
+    await db.flush()
+    await db.refresh(epic)
+    return epic, task_count
+
+
+async def find_and_update_federated_task(db: AsyncSession, origin_node_id, body):
+    """Find a task by external_id/task_key and apply a federated state update.
+
+    Returns the updated task object.
+    Raises ``LookupError`` if not found, ``PermissionError`` if the requesting
+    node is not authorised, ``ValueError`` on invalid state transitions.
+    """
+    from app.models.task import Task
+    from app.services.state_machine import TASK_ALLOWED_TRANSITIONS
+
+    result = await db.execute(
+        select(Task).where(Task.external_id == body.external_id)
+    )
+    task = result.scalar_one_or_none()
+
+    if task is None:
+        result = await db.execute(
+            select(Task).where(Task.task_key == body.external_id)
+        )
+        task = result.scalar_one_or_none()
+
+    if task is None:
+        raise LookupError(f"Task '{body.external_id}' not found")
+
+    if task.assigned_node_id and origin_node_id:
+        if task.assigned_node_id != origin_node_id:
+            raise PermissionError("Only the assigned node can update this task")
+
+    if body.state not in TASK_ALLOWED_TRANSITIONS.get(task.state, set()):
+        raise ValueError(f"Invalid transition: {task.state} → {body.state}")
+
+    task.state = body.state
+    if body.result:
+        task.result = body.result
+    task.version += 1
+    await db.flush()
+    await db.refresh(task)
+    return task

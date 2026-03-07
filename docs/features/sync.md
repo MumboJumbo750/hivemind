@@ -93,7 +93,7 @@ CREATE TABLE sync_dead_letter (
 );
 ```
 
-- **Admin-Aktion (MCP):** `hivemind/requeue_dead_letter { "id": "uuid" }`
+- **Admin-Aktion (MCP):** `hivemind-requeue_dead_letter { "id": "uuid" }`
   - setzt den zugehörigen `sync_outbox`-Eintrag zurück auf `state='pending'`, `attempts=0`, `next_retry_at=now()`
   - schreibt `requeued_by` und `requeued_at` auf den Dead-Letter-Eintrag
 - Optionaler REST-Alias: `POST /admin/dlq/{id}/requeue` kann intern denselben Service aufrufen

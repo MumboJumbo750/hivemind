@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-WORKER-007",
+  "epic_ref": "EPIC-WORKER-ORCH",
+  "title": "Lern-Effekt aus Worker- und Reviewer-Ausgaben gezielt steigern",
+  "description": "Nutze Ergebnisse aus Worker-Runs, Reviews und Resume-Loops, um die Ausführung künftiger Epics systematisch zu verbessern.\n\n**Was zu implementieren ist:**\n\n1. Wiederkehrende Reject-Gründe und Fixmuster extrahieren\n2. Resume-Pakete und Reviewer-Kommentare in verwertbare Lernartefakte überführen\n3. Prompt-Hinweise, Review-Checklisten und Skill-Kandidaten daraus ableiten\n4. Dedupe- und Qualitätsfilter speziell für Ausführungs-Learnings ergänzen\n5. Sichtbar machen, welche Learnings später tatsächlich geholfen haben\n\n**Wichtig:** Nicht rohe Chats recyceln, sondern hochwertige, destillierte Erkenntnisse nutzen.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Worker-/Reviewer-Ausgaben werden für den Lern-Loop strukturiert extrahiert",
+      "Reject-Gründe und Fixmuster können in Prompt-/Skill-Verbesserungen einfließen",
+      "Ausführungs-Learnings sind dedupliziert und qualitätsgefiltert",
+      "Der Nutzen dieser Learnings ist messbar oder zumindest nachvollziehbar"
+    ]
+  },
+  "tags": ["learning", "workers", "review", "prompts", "skills"],
+  "subtasks": [],
+  "pinned_skills": ["review-recommendation", "prompt-generator", "skill-lifecycle"],
+  "linked_wiki": ["memory-ledger"],
+  "source_doc": "docs/features/epic-start-parallel-workers.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-WORKER-005"]
+}

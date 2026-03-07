@@ -94,6 +94,49 @@ def as_str(val: Any) -> str | None:
     return str(val) if val is not None else None
 
 
+VALID_TASK_STATES = {
+    "incoming",
+    "scoped",
+    "ready",
+    "in_progress",
+    "in_review",
+    "qa_failed",
+    "blocked",
+    "escalated",
+    "done",
+    "cancelled",
+}
+
+LEGACY_SEED_TASK_STATE_MAP = {
+    "open": "incoming",
+}
+
+
+def _normalize_seed_task_state(raw_state: Any) -> str:
+    """Map legacy/backlog-oriented seed states to runtime task states.
+
+    Seed definitions historically used ``open`` for backlog tasks, while the
+    runtime state machine uses ``incoming`` as the canonical entry state.
+    Unknown values fall back to ``incoming`` so imports stay robust.
+    """
+    if raw_state is None:
+        return "incoming"
+
+    state = str(raw_state).strip()
+    if not state:
+        return "incoming"
+
+    normalized = LEGACY_SEED_TASK_STATE_MAP.get(state, state)
+    if normalized in VALID_TASK_STATES:
+        return normalized
+
+    print(
+        f"  WARNUNG: unbekannter Task-State '{state}' im Seed — "
+        "verwende 'incoming'."
+    )
+    return "incoming"
+
+
 # ─── Bootstrap Admin-User ─────────────────────────────────────────────────────
 
 def upsert_admin_user(cur: psycopg2.extensions.cursor) -> str:
@@ -284,18 +327,37 @@ def import_tasks(
             err += 1
             continue
 
-        cur.execute("SELECT id, pinned_skills FROM tasks WHERE external_id = %s", (external_id,))
+        normalized_state = _normalize_seed_task_state(data.get("state"))
+
+        cur.execute("SELECT id, pinned_skills, state FROM tasks WHERE external_id = %s", (external_id,))
         row = cur.fetchone()
         if row:
             # Update pinned_skills wenn sie sich geändert haben
             seed_skills: list[str] = data.get("pinned_skills") or []
             db_skills: list[str] = row["pinned_skills"] or []
-            if sorted(seed_skills) != sorted(db_skills):
+            state_changed = row["state"] != normalized_state
+            skills_changed = sorted(seed_skills) != sorted(db_skills)
+
+            if skills_changed:
                 cur.execute(
                     "UPDATE tasks SET pinned_skills = %s::jsonb WHERE id = %s",
                     (json.dumps(seed_skills), as_str(row["id"])),
                 )
+            if state_changed:
+                cur.execute(
+                    "UPDATE tasks SET state = %s WHERE id = %s",
+                    (normalized_state, as_str(row["id"])),
+                )
+
+            if skills_changed and state_changed:
+                print(
+                    "  ✓ Task bereits vorhanden, pinned_skills + state aktualisiert: "
+                    f"{external_id} → skills={seed_skills}, state={normalized_state}"
+                )
+            elif skills_changed:
                 print(f"  ✓ Task bereits vorhanden, pinned_skills aktualisiert: {external_id} → {seed_skills}")
+            elif state_changed:
+                print(f"  ✓ Task bereits vorhanden, state aktualisiert: {external_id} → {normalized_state}")
             else:
                 print(f"  ✓ Task bereits vorhanden: {external_id}")
             skipped += 1
@@ -323,7 +385,7 @@ def import_tasks(
                 external_id,
                 data["title"],
                 data.get("description"),
-                data.get("state", "incoming"),
+                normalized_state,
                 dod_jsonb,
                 pinned_skills_jsonb,
             ),
@@ -380,11 +442,11 @@ def import_wiki(
         cur.execute(
             """
             INSERT INTO wiki_articles (
-                id, title, slug, content,
+                id, wiki_key, title, slug, content,
                 tags, linked_epics,
                 author_id
             ) VALUES (
-                %s, %s, %s, %s,
+                %s, 'WIKI-' || nextval('wiki_key_seq'), %s, %s, %s,
                 %s::text[], %s::uuid[],
                 %s
             )
@@ -467,6 +529,15 @@ def import_skills(
                     (source_slug, as_str(existing["id"])),
                 )
                 print(f"  ✓ Skill source_slug gesetzt: {title} → {source_slug}")
+            # Backfill skill_key wenn noch nicht gesetzt
+            cur.execute("SELECT skill_key FROM skills WHERE id = %s", (as_str(existing["id"]),))
+            sk_row = cur.fetchone()
+            if sk_row and not sk_row["skill_key"]:
+                cur.execute(
+                    "UPDATE skills SET skill_key = 'SKILL-' || nextval('skill_key_seq') WHERE id = %s",
+                    (as_str(existing["id"]),),
+                )
+                print(f"  ✓ Skill skill_key nachgezogen: {title}")
             # Content-Update: immer aktuellen Seed-Inhalt einspielen
             cur.execute(
                 "UPDATE skills SET content = %s WHERE id = %s",
@@ -485,13 +556,13 @@ def import_skills(
         cur.execute(
             """
             INSERT INTO skills (
-                id, project_id, title, content,
+                id, skill_key, project_id, title, content,
                 service_scope, stack,
                 version_range, confidence,
                 source_epics, owner_id,
                 lifecycle, skill_type, source_slug
             ) VALUES (
-                %s, %s, %s, %s,
+                %s, 'SKILL-' || nextval('skill_key_seq'), %s, %s, %s,
                 %s::text[], %s::text[],
                 %s::jsonb, %s,
                 %s::text[], %s,
@@ -581,8 +652,8 @@ def import_docs(
         doc_id = str(uuid.uuid4())
         cur.execute(
             """
-            INSERT INTO docs (id, title, content, epic_id, updated_by)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO docs (id, doc_key, title, content, epic_id, updated_by)
+            VALUES (%s, 'DOC-' || nextval('doc_key_seq'), %s, %s, %s, %s)
             """,
             (doc_id, title, body, epic_id, admin_id),
         )

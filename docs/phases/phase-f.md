@@ -7,7 +7,7 @@
 **Voraussetzung:** Phase 2 abgeschlossen.
 **Rollout-Hinweis:** Teams mit zentraler Instanz können Federation später aktivieren. Das Zielbild bleibt Federation-kompatibel (`direct_mesh` zuerst, `hub_assisted` optional danach).
 **AI-Integration:** Keine — alles läuft manuell über Prompt Station (wie Phase 2).
-**MCP-Tool-Hinweis:** Phase F implementiert Federation als REST-API-Endpoints (`/federation/*`). Die MCP-Tool-Wrapper (`hivemind/fork_federated_skill`, `hivemind/start_discovery_session`, `hivemind/end_discovery_session`) werden erst verfügbar wenn Phase 3 den MCP-Server bereitstellt. Vor Phase 3 sind alle Federation-Aktionen über die UI erreichbar (Buttons in Gilde-View, Settings, Command Deck).
+**MCP-Tool-Hinweis:** Phase F implementiert Federation als REST-API-Endpoints (`/federation/*`). Die MCP-Tool-Wrapper (`hivemind-fork_federated_skill`, `hivemind-start_discovery_session`, `hivemind-end_discovery_session`) werden erst verfügbar wenn Phase 3 den MCP-Server bereitstellt. Vor Phase 3 sind alle Federation-Aktionen über die UI erreichbar (Buttons in Gilde-View, Settings, Command Deck).
 
 ## Phasen-Sequenz & Mercenary Loadout
 
@@ -53,7 +53,7 @@ Phase 4 (nach Phase F):
 - [ ] Signatur-Middleware: Alle `/federation/*` Requests via Ed25519 validieren (Public Key aus `nodes`-Tabelle)
 - [ ] Outbox-Consumer für `peer_outbound`: `direction='peer_outbound'` verarbeiten (HTTP POST an `nodes.node_url`) — erster Outbox-Consumer überhaupt; der `outbound`-Consumer für YouTrack/Sentry folgt erst in Phase 7
 - [ ] Skill/Wiki Publish-Trigger: Bei `lifecycle='active'` + `federation_scope='federated'` → Outbox-Einträge für alle bekannten Peers
-- [ ] REST-Endpoint `POST /skills/fork` + MCP-Tool-Wrapper `hivemind/fork_federated_skill` (MCP-Wrapper erst ab Phase 3 nutzbar): federierten Skill lokal als Draft forken (`extends` auf Origin-Skill)
+- [ ] REST-Endpoint `POST /skills/fork` + MCP-Tool-Wrapper `hivemind-fork_federated_skill` (MCP-Wrapper erst ab Phase 3 nutzbar): federierten Skill lokal als Draft forken (`extends` auf Origin-Skill)
 - [ ] Epic-Share-Flow: `assigned_node_id` auf Task setzen → Epic-Spec + Task-Spec an Peer-Node senden
 - [ ] Task-Update-Empfang: Eingehende Task-State-Updates von Peer-Nodes verarbeiten + lokal spiegeln
 - [ ] Heartbeat-Service: Regelmäßiger Ping an alle bekannten Peers (aktualisiert `nodes.last_seen`)
@@ -78,7 +78,7 @@ Phase 4 (nach Phase F):
 - [ ] Settings Tab: Hive Station Felder (URL, Token) + Verbindungsstatus
 - [ ] Shared Epic Dashboard: Task-Badges für Peer-zugewiesene Tasks (`[◈ ben-hivemind]`)
 - [ ] Gilde-View: Federated-Skills-Sektion mit Read-only-Badge `[von: node-name]` + `[ÜBERNEHMEN]`-Button; die Integration in das Skill Lab (Arsenal) folgt in Phase 4 sobald Skill Lab gebaut ist
-- [ ] `[ÜBERNEHMEN]` ruft `hivemind/fork_federated_skill` auf und erstellt lokalen Draft-Fork
+- [ ] `[ÜBERNEHMEN]` ruft `hivemind-fork_federated_skill` auf und erstellt lokalen Draft-Fork
 - [ ] Node-Filter im Command Deck: Tasks nach Node filtern
 
 ---
@@ -154,7 +154,7 @@ services:
 - [ ] Skill mit `federation_scope='federated'` → Outbox-Einträge pro Peer nach Merge
 - [ ] Peer-Node empfängt Skill + speichert mit `origin_node_id` gesetzt
 - [ ] Peer-Node kann federierten Skill nicht editieren (HTTP 403)
-- [ ] `hivemind/fork_federated_skill` erstellt aus federiertem Skill einen lokalen Draft-Fork mit `extends`-Link
+- [ ] `hivemind-fork_federated_skill` erstellt aus federiertem Skill einen lokalen Draft-Fork mit `extends`-Link
 - [ ] Epic mit Peer-zugewiesenem Task → Task erscheint in Peer-Prompt-Station
 - [ ] Task-State-Update von Peer → State auf Origin-Node korrekt gespiegelt
 - [ ] Peer offline → Outbox-Retry greift; bei 5 Fehlern → DLQ

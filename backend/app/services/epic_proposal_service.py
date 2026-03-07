@@ -16,6 +16,9 @@ from app.models.user import User
 from app.schemas.epic_proposal import EpicProposalCreate, EpicProposalUpdate
 from app.services.event_bus import publish
 from app.services.locking import check_version
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ProposalNotFoundError(Exception):
@@ -84,6 +87,7 @@ class EpicProposalService:
         self.db.add(proposal)
         await self.db.flush()
         await self.db.refresh(proposal)
+        await self._trigger_conductor_epic_proposal(proposal)
         return proposal
 
     async def update(
@@ -140,10 +144,8 @@ class EpicProposalService:
             )
 
         # Create the Epic from the proposal
-        from sqlalchemy import text
-        result = await self.db.execute(text("SELECT nextval('epic_key_seq')"))
-        seq_val = result.scalar_one()
-        epic_key = f"EPIC-{seq_val}"
+        from app.services.key_generator import next_epic_key
+        epic_key = await next_epic_key(self.db)
 
         epic = Epic(
             epic_key=epic_key,
@@ -164,6 +166,7 @@ class EpicProposalService:
         proposal.version += 1
         await self.db.flush()
         await self.db.refresh(proposal)
+        await self._trigger_conductor_epic_created(epic)
 
         # Notification to proposer
         publish(
@@ -243,6 +246,27 @@ class EpicProposalService:
                 channel="notifications",
             )
 
+    async def create_draft(
+        self,
+        project_id: uuid.UUID,
+        proposed_by: uuid.UUID,
+        text: str,
+    ) -> EpicProposal:
+        """Create an EpicProposal with state='draft' from a free-text requirement."""
+        draft = EpicProposal(
+            project_id=project_id,
+            proposed_by=proposed_by,
+            title=text[:80] + ("\u2026" if len(text) > 80 else ""),
+            description=text,
+            rationale="",
+            state="draft",
+            raw_requirement=text,
+        )
+        self.db.add(draft)
+        await self.db.flush()
+        await self.db.refresh(draft)
+        return draft
+
     async def resolve_usernames(self, proposals: list[EpicProposal]) -> dict[uuid.UUID, str]:
         """Resolve proposed_by UUIDs to usernames."""
         user_ids = {p.proposed_by for p in proposals}
@@ -252,3 +276,19 @@ class EpicProposalService:
             select(User.id, User.username).where(User.id.in_(user_ids))
         )
         return {row[0]: row[1] for row in result.all()}
+
+    async def _trigger_conductor_epic_proposal(self, proposal: EpicProposal) -> None:
+        try:
+            from app.services.conductor import conductor
+
+            await conductor.on_epic_proposal_submitted(str(proposal.id), self.db)
+        except Exception:
+            logger.exception("Conductor hook failed for epic proposal %s", proposal.id)
+
+    async def _trigger_conductor_epic_created(self, epic: Epic) -> None:
+        try:
+            from app.services.conductor import conductor
+
+            await conductor.on_epic_created(str(epic.id), self.db)
+        except Exception:
+            logger.exception("Conductor hook failed for accepted epic %s", epic.epic_key)

@@ -1,4 +1,4 @@
-import type { Project, Epic, Task, Skill, SkillForkResponse, SkillListResponse, SkillVersion, ContextBoundary, EpicProposal, EpicProposalListResponse, RequirementDraftResponse, NodeIdentity, PeerNode, FederationSettings, TriageItem, McpToolResponse, AuditListResponse, HivemindNotification, SyncStatusResponse, NodeBugCountItem, KpiSummaryResponse, KpiHistoryResponse, NexusGraph3DResponse, DeadLetterListResponse, ReviewRecommendation, AiProviderConfig, AiModelInfo, AiCredential, GovernanceConfig, McpBridge, McpBridgeTool } from './types'
+import type { Project, ProjectIntegration, Epic, EpicRun, EpicRunArtifact, EpicStartResponse, Task, Skill, SkillForkResponse, SkillListResponse, SkillVersion, ContextBoundary, EpicProposal, EpicProposalListResponse, RequirementDraftResponse, NodeIdentity, PeerNode, FederationSettings, TriageItem, McpToolResponse, AuditListResponse, HivemindNotification, SyncStatusResponse, NodeBugCountItem, KpiSummaryResponse, KpiHistoryResponse, NexusGraph3DResponse, DeadLetterListResponse, ReviewRecommendation, AiProviderConfig, AiModelInfo, AiCredential, GovernanceConfig, McpBridge, McpBridgeTool } from './types'
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string) ?? 'http://localhost:8000'
 
@@ -83,8 +83,124 @@ export const api = {
   getProjects: () =>
     request<Project[]>('/api/projects'),
 
-  createProject: (data: { name: string; slug: string; description?: string }) =>
+  createProject: (data: {
+    name: string
+    slug: string
+    description?: string
+    repo_host_path?: string
+    workspace_root?: string
+    workspace_mode?: 'read_only' | 'read_write'
+    onboarding_status?: 'pending' | 'ready' | 'error'
+    default_branch?: string
+    remote_url?: string
+    detected_stack?: string[]
+  }) =>
     request<Project>('/api/projects', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateProject: (projectId: string, data: {
+    name?: string
+    description?: string
+    repo_host_path?: string | null
+    workspace_root?: string | null
+    workspace_mode?: 'read_only' | 'read_write' | null
+    onboarding_status?: 'pending' | 'ready' | 'error' | null
+    default_branch?: string | null
+    remote_url?: string | null
+    detected_stack?: string[] | null
+  }) =>
+    request<Project>(`/api/projects/${projectId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  previewProjectOnboarding: (projectId: string, data?: {
+    port?: number
+    container_path?: string
+    deny_patterns?: string
+  }) =>
+    request<{
+      project_id: string
+      project_slug: string
+      repo_host_path: string
+      container_path: string
+      workspace_mode: 'read_only' | 'read_write' | null
+      repo_accessible: boolean
+      repo_is_git_repo: boolean
+      detected_stack: string[]
+      requires_restart: boolean
+      warnings: string[]
+      files: { path: string; location: string; writable: boolean; content: string }[]
+      next_steps: string[]
+    }>(`/api/projects/${projectId}/onboarding/preview`, { method: 'POST', body: JSON.stringify(data ?? {}) }),
+
+  applyProjectOnboarding: (projectId: string, data?: {
+    port?: number
+    container_path?: string
+    deny_patterns?: string
+  }) =>
+    request<{
+      project_id: string
+      status: 'pending' | 'ready' | 'error' | null
+      applied_files: string[]
+      pending_files: string[]
+      requires_restart: boolean
+      message: string
+    }>(`/api/projects/${projectId}/onboarding/apply`, { method: 'POST', body: JSON.stringify(data ?? {}) }),
+
+  verifyProjectOnboarding: (projectId: string) =>
+    request<{
+      project_id: string
+      status: 'pending' | 'ready' | 'error' | null
+      workspace_root: string
+      workspace_accessible: boolean
+      detected_stack: string[]
+      warnings: string[]
+      message: string
+    }>(`/api/projects/${projectId}/onboarding/verify`, { method: 'POST' }),
+
+  getProjectIntegrations: (projectId: string) =>
+    request<ProjectIntegration[]>(`/api/projects/${projectId}/integrations`),
+
+  createProjectIntegration: (projectId: string, data: {
+    provider: 'youtrack' | 'sentry' | 'in_app' | 'github_projects'
+    display_name?: string
+    integration_key?: string
+    base_url?: string
+    external_project_key?: string
+    project_selector?: Record<string, unknown>
+    status_mapping?: Record<string, unknown>
+    routing_hints?: Record<string, unknown>
+    config?: Record<string, unknown>
+    webhook_secret?: string
+    access_token?: string
+    sync_enabled?: boolean
+    sync_direction?: string
+    github_repo?: string
+    github_project_id?: string
+    status_field_id?: string
+    priority_field_id?: string
+  }) =>
+    request<ProjectIntegration>(`/api/projects/${projectId}/integrations`, { method: 'POST', body: JSON.stringify(data) }),
+
+  updateProjectIntegration: (projectId: string, integrationId: string, data: {
+    display_name?: string
+    integration_key?: string
+    base_url?: string
+    external_project_key?: string
+    project_selector?: Record<string, unknown>
+    status_mapping?: Record<string, unknown>
+    routing_hints?: Record<string, unknown>
+    config?: Record<string, unknown>
+    webhook_secret?: string
+    access_token?: string
+    sync_enabled?: boolean
+    sync_direction?: string
+    github_repo?: string
+    github_project_id?: string
+    status_field_id?: string
+    priority_field_id?: string
+  }) =>
+    request<ProjectIntegration>(`/api/projects/${projectId}/integrations/${integrationId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  checkProjectIntegration: (projectId: string, integrationId: string) =>
+    request<ProjectIntegration>(`/api/projects/${projectId}/integrations/${integrationId}/check`, { method: 'POST' }),
 
   // ─── Epics ───────────────────────────────────────────────────────────────
   getEpics: (projectId: string) =>
@@ -96,6 +212,30 @@ export const api = {
   // Legacy alias
   patchEpicState: (epicKey: string, patch: { state?: string; priority?: string; sla_due_at?: string; dod_framework?: unknown }) =>
     request<Epic>(`/api/epics/${epicKey}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+
+  startEpic: (epicKey: string, data: {
+    dry_run?: boolean
+    max_parallel_workers: number
+    execution_mode_preference?: 'local' | 'ide' | 'github_actions' | 'byoai'
+    respect_file_claims?: boolean
+    auto_resume_on_qa_failed?: boolean
+  }) =>
+    request<EpicStartResponse>(`/api/epics/${epicKey}/start`, { method: 'POST', body: JSON.stringify(data) }),
+
+  getEpicRuns: (epicKey: string, limit = 10) =>
+    request<EpicRun[]>(`/api/epics/${epicKey}/runs?limit=${limit}`),
+
+  getEpicRun: (runId: string) =>
+    request<EpicRun>(`/api/epic-runs/${runId}`),
+
+  getEpicRunArtifacts: (runId: string, params?: { artifact_type?: string; state?: string; task_key?: string }) => {
+    const qs = new URLSearchParams()
+    if (params?.artifact_type) qs.set('artifact_type', params.artifact_type)
+    if (params?.state) qs.set('state', params.state)
+    if (params?.task_key) qs.set('task_key', params.task_key)
+    const q = qs.toString()
+    return request<EpicRunArtifact[]>(`/api/epic-runs/${runId}/artifacts${q ? `?${q}` : ''}`)
+  },
 
   // ─── Tasks ───────────────────────────────────────────────────────────────
   getTasks: (epicKey: string) =>
@@ -317,7 +457,7 @@ export const api = {
       const res = await request<{ result: McpToolResponse[] }>('/api/mcp/call', {
         method: 'POST',
         body: JSON.stringify({
-          tool: 'hivemind/get_review_recommendations',
+          tool: 'hivemind-get_review_recommendations',
           arguments: { task_key: taskKey },
         }),
       })
@@ -410,7 +550,7 @@ export const api = {
     const res = await request<{ result: McpToolResponse[] }>('/api/mcp/call', {
       method: 'POST',
       body: JSON.stringify({
-        tool: 'hivemind/get_prompt',
+        tool: 'hivemind-get_prompt',
         arguments: { type, ...(taskId && { task_id: taskId }), ...(epicId && { epic_id: epicId }), ...(projectId && { project_id: projectId }) },
       }),
     })

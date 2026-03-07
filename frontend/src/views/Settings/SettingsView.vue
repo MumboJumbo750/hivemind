@@ -4,6 +4,7 @@ import { useTheme } from '../../composables/useTheme'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useAuthStore } from '../../stores/authStore'
 import FederationSettings from '../../components/domain/FederationSettings.vue'
+import ProjectIntegrationsPanel from '../../components/domain/ProjectIntegrationsPanel.vue'
 import SyncStatusPanel from '../../components/SyncStatusPanel.vue'
 import AiProviderConfigPanel from '../../components/domain/AiProviderConfigPanel.vue'
 import GovernanceConfigPanel from '../../components/domain/GovernanceConfigPanel.vue'
@@ -15,7 +16,7 @@ const { currentTheme, availableThemes, setTheme } = useTheme()
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
 
-const activeTab = ref<'settings' | 'sync' | 'audit' | 'ai-providers' | 'governance' | 'mcp-bridges'>('settings')
+const activeTab = ref<'settings' | 'integrations' | 'sync' | 'audit' | 'ai-providers' | 'governance' | 'mcp-bridges'>('settings')
 const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 // ── Audit Log state ──────────────────────────────────────────────────────────
@@ -99,8 +100,9 @@ function absoluteTime(iso: string): string {
 }
 
 function entityFromTool(toolName: string): string {
-  // Extract entity type from tool name like "hivemind/create_task" → "task"
-  const parts = toolName.replace('hivemind/', '').split('_')
+  // Extract entity type from tool name like "hivemind-create_task" → "task"
+  const name = toolName.replace('hivemind-', '').replace('hivemind/', '')
+  const parts = name.split('_')
   return parts.length > 1 ? parts.slice(1).join('_') : parts[0]
 }
 
@@ -176,6 +178,11 @@ onMounted(() => {
         :class="{ 'settings-tab--active': activeTab === 'settings' }"
         @click="activeTab = 'settings'"
       >Allgemein</button>
+      <button
+        class="settings-tab"
+        :class="{ 'settings-tab--active': activeTab === 'integrations' }"
+        @click="activeTab = 'integrations'"
+      >Integrationen</button>
       <button
         v-if="isAdmin"
         class="settings-tab"
@@ -275,6 +282,12 @@ onMounted(() => {
         <h2 class="section-title">Federation</h2>
         <p class="section-desc">Verbindung zu anderen Hivemind-Nodes konfigurieren.</p>
         <FederationSettings />
+      </section>
+    </template>
+
+    <template v-if="activeTab === 'integrations'">
+      <section class="settings-section">
+        <ProjectIntegrationsPanel />
       </section>
     </template>
 

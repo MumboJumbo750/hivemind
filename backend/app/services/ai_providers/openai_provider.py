@@ -1,6 +1,7 @@
 """OpenAI AI Provider — Phase 8 (TASK-8-002)."""
+import json
 import logging
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 from .base import AIChunk, AIProvider, AIResponse, ToolCall
 
@@ -65,6 +66,95 @@ class OpenAIProvider(AIProvider):
                 tool_calls.append(ToolCall(
                     id=tc.id,
                     name=tc.function.name.replace("__", "/"),
+                    arguments=json.loads(tc.function.arguments or "{}"),
+                ))
+
+        return AIResponse(
+            content=choice.message.content,
+            tool_calls=tool_calls,
+            input_tokens=response.usage.prompt_tokens if response.usage else 0,
+            output_tokens=response.usage.completion_tokens if response.usage else 0,
+            model=response.model,
+            finish_reason=choice.finish_reason or "",
+        )
+
+    async def send_messages(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict] | None = None,
+        model: str | None = None,
+        system: str | None = None,
+    ) -> AIResponse:
+        """Multi-turn conversation with tool support (OpenAI format)."""
+        client = self._get_client()
+        model_name = model or self._default_model
+
+        # Build OpenAI messages array
+        oai_messages: list[dict[str, Any]] = []
+        if system:
+            oai_messages.append({"role": "system", "content": system})
+
+        # Map for tool-name translation (MCP uses hyphens, OpenAI needs underscores)
+        name_to_oai: dict[str, str] = {}
+        oai_to_name: dict[str, str] = {}
+
+        for msg in messages:
+            role = msg.get("role", "user")
+            if role == "assistant":
+                oai_msg: dict[str, Any] = {"role": "assistant"}
+                if msg.get("content"):
+                    oai_msg["content"] = msg["content"]
+                if msg.get("tool_calls"):
+                    oai_msg["tool_calls"] = []
+                    for tc in msg["tool_calls"]:
+                        oai_name = tc["name"].replace("/", "__").replace("-", "_")
+                        name_to_oai[tc["name"]] = oai_name
+                        oai_to_name[oai_name] = tc["name"]
+                        oai_msg["tool_calls"].append({
+                            "id": tc["id"],
+                            "type": "function",
+                            "function": {
+                                "name": oai_name,
+                                "arguments": json.dumps(tc.get("arguments", {})),
+                            },
+                        })
+                oai_messages.append(oai_msg)
+            elif role == "tool":
+                oai_messages.append({
+                    "role": "tool",
+                    "tool_call_id": msg["tool_call_id"],
+                    "content": msg.get("content", ""),
+                })
+            else:
+                oai_messages.append({"role": role, "content": msg.get("content", "")})
+
+        kwargs: dict[str, Any] = {"model": model_name, "messages": oai_messages}
+        if tools:
+            openai_tools = []
+            for t in tools:
+                oai_name = t["name"].replace("/", "__").replace("-", "_")
+                name_to_oai[t["name"]] = oai_name
+                oai_to_name[oai_name] = t["name"]
+                openai_tools.append({
+                    "type": "function",
+                    "function": {
+                        "name": oai_name,
+                        "description": t.get("description", ""),
+                        "parameters": t.get("inputSchema", {}),
+                    },
+                })
+            kwargs["tools"] = openai_tools
+
+        response = await client.chat.completions.create(**kwargs)
+        choice = response.choices[0]
+
+        tool_calls = []
+        if choice.message.tool_calls:
+            for tc in choice.message.tool_calls:
+                original_name = oai_to_name.get(tc.function.name, tc.function.name)
+                tool_calls.append(ToolCall(
+                    id=tc.id,
+                    name=original_name,
                     arguments=json.loads(tc.function.arguments or "{}"),
                 ))
 

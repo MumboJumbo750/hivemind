@@ -27,7 +27,7 @@ export const useTriageStore = defineStore('triage', () => {
   }
 
   async function routeEvent(eventId: string, epicId: string) {
-    const result = await api.callMcpTool('hivemind/route_event', { event_id: eventId, epic_id: epicId })
+    const result = await api.callMcpTool('hivemind-route_event', { event_id: eventId, epic_id: epicId })
     // Update local state
     const item = items.value.find(i => i.id === eventId)
     if (item) item.routing_state = 'routed'
@@ -35,7 +35,7 @@ export const useTriageStore = defineStore('triage', () => {
   }
 
   async function ignoreEvent(eventId: string, reason?: string) {
-    const result = await api.callMcpTool('hivemind/ignore_event', { event_id: eventId, reason: reason ?? '' })
+    const result = await api.callMcpTool('hivemind-ignore_event', { event_id: eventId, reason: reason ?? '' })
     const item = items.value.find(i => i.id === eventId)
     if (item) item.routing_state = 'ignored'
     return result

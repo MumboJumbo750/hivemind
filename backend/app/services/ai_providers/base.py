@@ -51,6 +51,25 @@ class AIProvider(ABC):
     ) -> AIResponse:
         """Send a prompt and return the full response."""
 
+    async def send_messages(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict] | None = None,
+        model: str | None = None,
+        system: str | None = None,
+    ) -> AIResponse:
+        """Send a multi-turn conversation and return the response.
+
+        Default implementation: extract last user message and delegate to send_prompt.
+        Subclasses should override for proper multi-turn support.
+        """
+        last_user = ""
+        for msg in reversed(messages):
+            if msg.get("role") == "user":
+                last_user = msg.get("content", "")
+                break
+        return await self.send_prompt(last_user, tools, model, system)
+
     @abstractmethod
     async def stream_prompt(
         self,

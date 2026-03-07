@@ -25,7 +25,7 @@ ADMIN_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
 register_tool(
     Tool(
-        name="hivemind/route_event",
+        name="hivemind-route_event",
         description=(
             "Route an unrouted sync_outbox event to a specific epic. "
             "Sets routing_state='routed', writes audit log, broadcasts SSE event. "
@@ -73,7 +73,7 @@ async def _handle_route_event(args: dict) -> list[dict]:
 
 register_tool(
     Tool(
-        name="hivemind/ignore_event",
+        name="hivemind-ignore_event",
         description=(
             "Ignore an unrouted sync_outbox event with optional reason. "
             "Sets routing_state='ignored', writes audit log, broadcasts SSE event. "

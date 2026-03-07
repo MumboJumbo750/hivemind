@@ -208,6 +208,12 @@
           "minimum": 1000,
           "description": "Polling-Intervall für MCP/Audit-Progress-Erkennung in Millisekunden"
         },
+        "hivemind.noMcpActivityTimeoutSeconds": {
+          "type": "number",
+          "default": 90,
+          "minimum": 0,
+          "description": "Fail-Fast in Sekunden ohne erkannten MCP-Tool-Call (0 = deaktiviert)"
+        },
         "hivemind.copilotCliCommandTemplate": {
           "type": "string",
           "default": "gh copilot run --input-file \"{taskfile}\"",

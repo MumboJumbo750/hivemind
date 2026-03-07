@@ -51,7 +51,7 @@ CREATE TABLE epic_proposals (
 
 ```python
 # Stratege: neues Proposal erstellen
-hivemind/propose_epic {
+hivemind-propose_epic {
   "project_id": "uuid",
   "title": "...",
   "description": "...",
@@ -60,7 +60,7 @@ hivemind/propose_epic {
 }
 
 # Stratege: Proposal nachbessern (nur im state 'proposed')
-hivemind/update_epic_proposal {
+hivemind-update_epic_proposal {
   "proposal_id": "uuid",
   "title": "...",        # optional
   "description": "...", # optional
@@ -68,14 +68,14 @@ hivemind/update_epic_proposal {
 }
 
 # Triage/Admin: akzeptieren → erstellt Epic (state=incoming)
-hivemind/accept_epic_proposal {
+hivemind-accept_epic_proposal {
   "proposal_id": "uuid"
 }
 # Setzt resulting_epic_id, Proposal-State → accepted
 # Erzeugt Epic mit state='incoming' und einer 'epic_proposal_source'-Relation
 
 # Triage/Admin: ablehnen
-hivemind/reject_epic_proposal {
+hivemind-reject_epic_proposal {
   "proposal_id": "uuid",
   "reason": "Scope zu groß, bitte in 2 Proposals aufteilen"
 }

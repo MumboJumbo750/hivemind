@@ -75,7 +75,7 @@ async def test_fs_read_existing_file(client, ws: Path) -> None:
     with _patch_ws(ws):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_read", "arguments": {"path": "hello.txt"}},
+            json={"tool": "hivemind-fs_read", "arguments": {"path": "hello.txt"}},
         )
 
     assert response.status_code == 200
@@ -92,7 +92,7 @@ async def test_fs_read_line_range(client, ws: Path) -> None:
     with _patch_ws(ws):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_read", "arguments": {
+            json={"tool": "hivemind-fs_read", "arguments": {
                 "path": "hello.txt",
                 "start_line": 2,
                 "end_line": 2,
@@ -112,7 +112,7 @@ async def test_fs_read_not_found(client, ws: Path) -> None:
     with _patch_ws(ws):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_read", "arguments": {"path": "ghost.txt"}},
+            json={"tool": "hivemind-fs_read", "arguments": {"path": "ghost.txt"}},
         )
 
     assert response.status_code == 200
@@ -134,7 +134,7 @@ async def test_fs_write_file_visible_on_filesystem(client, ws: Path) -> None:
     with _patch_ws(ws):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_write", "arguments": {
+            json={"tool": "hivemind-fs_write", "arguments": {
                 "path": "written.txt",
                 "content": content,
             }},
@@ -156,7 +156,7 @@ async def test_fs_write_creates_subdirectory(client, ws: Path) -> None:
     with _patch_ws(ws):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_write", "arguments": {
+            json={"tool": "hivemind-fs_write", "arguments": {
                 "path": "newdir/subdir/deep.txt",
                 "content": "tiefe Datei",
             }},
@@ -176,7 +176,7 @@ async def test_fs_write_overwrites_existing(client, ws: Path) -> None:
     with _patch_ws(ws):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_write", "arguments": {
+            json={"tool": "hivemind-fs_write", "arguments": {
                 "path": "hello.txt",
                 "content": "NEU",
             }},
@@ -196,7 +196,7 @@ async def test_fs_list_correct_structure(client, ws: Path) -> None:
     with _patch_ws(ws):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_list", "arguments": {"path": "."}},
+            json={"tool": "hivemind-fs_list", "arguments": {"path": "."}},
         )
 
     assert response.status_code == 200
@@ -232,7 +232,7 @@ async def test_fs_list_recursive(client, ws: Path) -> None:
     with _patch_ws(ws):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_list", "arguments": {"path": ".", "recursive": True}},
+            json={"tool": "hivemind-fs_list", "arguments": {"path": ".", "recursive": True}},
         )
 
     assert response.status_code == 200
@@ -247,7 +247,7 @@ async def test_fs_list_not_directory(client, ws: Path) -> None:
     with _patch_ws(ws):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_list", "arguments": {"path": "hello.txt"}},
+            json={"tool": "hivemind-fs_list", "arguments": {"path": "hello.txt"}},
         )
 
     assert response.status_code == 200
@@ -263,7 +263,7 @@ async def test_fs_search_finds_grep_matches(client, ws: Path) -> None:
     with _patch_ws(ws), _patch_deny([]):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_search", "arguments": {
+            json={"tool": "hivemind-fs_search", "arguments": {
                 "pattern": "ANSWER",
                 "path": ".",
             }},
@@ -290,7 +290,7 @@ async def test_fs_search_no_match(client, ws: Path) -> None:
     with _patch_ws(ws), _patch_deny([]):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_search", "arguments": {
+            json={"tool": "hivemind-fs_search", "arguments": {
                 "pattern": "XYZZY_NEVER_EXISTS_12345",
                 "path": ".",
             }},
@@ -308,7 +308,7 @@ async def test_fs_search_regex_pattern(client, ws: Path) -> None:
     with _patch_ws(ws), _patch_deny([]):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_search", "arguments": {
+            json={"tool": "hivemind-fs_search", "arguments": {
                 "pattern": r"Zeile\s+\d+",
                 "path": ".",
                 "regex": True,
@@ -328,7 +328,7 @@ async def test_path_traversal_blocked_read(client, ws: Path) -> None:
     with _patch_ws(ws):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_read", "arguments": {"path": "../../etc/passwd"}},
+            json={"tool": "hivemind-fs_read", "arguments": {"path": "../../etc/passwd"}},
         )
 
     assert response.status_code == 200
@@ -342,7 +342,7 @@ async def test_path_traversal_blocked_write(client, ws: Path) -> None:
     with _patch_ws(ws):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_write", "arguments": {
+            json={"tool": "hivemind-fs_write", "arguments": {
                 "path": "../outside.txt",
                 "content": "evil",
             }},
@@ -362,22 +362,22 @@ async def test_deny_list_respected(client, ws: Path) -> None:
         # fs_read auf .env → access_denied
         resp_read = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_read", "arguments": {"path": ".env"}},
+            json={"tool": "hivemind-fs_read", "arguments": {"path": ".env"}},
         )
         # fs_write auf .env → access_denied
         resp_write = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_write", "arguments": {"path": ".env", "content": "BAD=1"}},
+            json={"tool": "hivemind-fs_write", "arguments": {"path": ".env", "content": "BAD=1"}},
         )
         # fs_list: .env darf nicht auftauchen
         resp_list = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_list", "arguments": {"path": "."}},
+            json={"tool": "hivemind-fs_list", "arguments": {"path": "."}},
         )
         # fs_search: .env darf nicht in Ergebnissen erscheinen
         resp_search = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/fs_search", "arguments": {
+            json={"tool": "hivemind-fs_search", "arguments": {
                 "pattern": "supersecret",
                 "path": ".",
             }},
@@ -429,7 +429,7 @@ async def test_run_analyzer_valid_json_report(client) -> None:
     with patch("app.mcp.tools.analyzer_tools._run_analyzers_sync", return_value=fake_report):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/run_analyzer", "arguments": {}},
+            json={"tool": "hivemind-run_analyzer", "arguments": {}},
         )
 
     assert response.status_code == 200
@@ -480,7 +480,7 @@ async def test_run_analyzer_cached_false_first_call(client) -> None:
     with patch("app.mcp.tools.analyzer_tools._run_analyzers_sync", return_value=fake_report):
         response = await client.post(
             "/api/mcp/call",
-            json={"tool": "hivemind/run_analyzer", "arguments": {}},
+            json={"tool": "hivemind-run_analyzer", "arguments": {}},
         )
 
     assert response.status_code == 200

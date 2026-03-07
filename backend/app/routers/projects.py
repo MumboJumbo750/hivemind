@@ -6,13 +6,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.routers.deps import get_current_user
 from app.schemas.project import (
+    ProjectIntegrationCreate,
+    ProjectIntegrationResponse,
+    ProjectIntegrationUpdate,
+    ProjectOnboardingApplyResponse,
+    ProjectOnboardingPreviewResponse,
+    ProjectOnboardingRequest,
+    ProjectOnboardingStatusResponse,
+    ProjectOnboardingVerifyResponse,
     ProjectCreate,
     ProjectMemberAdd,
     ProjectMemberResponse,
     ProjectResponse,
     ProjectUpdate,
 )
+from app.services.project_integration_service import ProjectIntegrationService
 from app.services.project_service import ProjectService
+from app.services.project_onboarding import ProjectOnboardingService
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -96,3 +106,102 @@ async def remove_member(
 ) -> None:
     svc = ProjectService(db)
     await svc.remove_member(project_id, user_id)
+
+
+@router.post("/{project_id}/onboarding/preview", response_model=ProjectOnboardingPreviewResponse)
+async def preview_project_onboarding(
+    project_id: uuid.UUID,
+    body: ProjectOnboardingRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ProjectOnboardingPreviewResponse:
+    svc = ProjectOnboardingService(db)
+    result = await svc.preview(
+        project_id,
+        port=body.port,
+        container_path=body.container_path,
+        deny_patterns=body.deny_patterns,
+    )
+    return ProjectOnboardingPreviewResponse.model_validate(result)
+
+
+@router.post("/{project_id}/onboarding/apply", response_model=ProjectOnboardingApplyResponse)
+async def apply_project_onboarding(
+    project_id: uuid.UUID,
+    body: ProjectOnboardingRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ProjectOnboardingApplyResponse:
+    svc = ProjectOnboardingService(db)
+    result = await svc.apply(
+        project_id,
+        port=body.port,
+        container_path=body.container_path,
+        deny_patterns=body.deny_patterns,
+    )
+    return ProjectOnboardingApplyResponse.model_validate(result)
+
+
+@router.post("/{project_id}/onboarding/verify", response_model=ProjectOnboardingVerifyResponse)
+async def verify_project_onboarding(
+    project_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> ProjectOnboardingVerifyResponse:
+    svc = ProjectOnboardingService(db)
+    result = await svc.verify(project_id)
+    return ProjectOnboardingVerifyResponse.model_validate(result)
+
+
+@router.get("/{project_id}/onboarding/status", response_model=ProjectOnboardingStatusResponse)
+async def get_project_onboarding_status(
+    project_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> ProjectOnboardingStatusResponse:
+    svc = ProjectOnboardingService(db)
+    result = await svc.status(project_id)
+    return ProjectOnboardingStatusResponse.model_validate(result)
+
+
+@router.get("/{project_id}/integrations", response_model=list[ProjectIntegrationResponse])
+async def list_project_integrations(
+    project_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> list[ProjectIntegrationResponse]:
+    svc = ProjectIntegrationService(db)
+    return [ProjectIntegrationResponse.model_validate(item) for item in await svc.list_for_project(project_id)]
+
+
+@router.post(
+    "/{project_id}/integrations",
+    response_model=ProjectIntegrationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_project_integration(
+    project_id: uuid.UUID,
+    body: ProjectIntegrationCreate,
+    db: AsyncSession = Depends(get_db),
+) -> ProjectIntegrationResponse:
+    svc = ProjectIntegrationService(db)
+    result = await svc.create(project_id, body)
+    return ProjectIntegrationResponse.model_validate(result)
+
+
+@router.patch("/{project_id}/integrations/{integration_id}", response_model=ProjectIntegrationResponse)
+async def update_project_integration(
+    project_id: uuid.UUID,
+    integration_id: uuid.UUID,
+    body: ProjectIntegrationUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> ProjectIntegrationResponse:
+    svc = ProjectIntegrationService(db)
+    result = await svc.update(project_id, integration_id, body)
+    return ProjectIntegrationResponse.model_validate(result)
+
+
+@router.post("/{project_id}/integrations/{integration_id}/check", response_model=ProjectIntegrationResponse)
+async def check_project_integration(
+    project_id: uuid.UUID,
+    integration_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> ProjectIntegrationResponse:
+    svc = ProjectIntegrationService(db)
+    result = await svc.check(project_id, integration_id)
+    return ProjectIntegrationResponse.model_validate(result)

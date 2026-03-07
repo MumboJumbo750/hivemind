@@ -140,6 +140,6 @@ Jedes Guard-Ergebnis speichert:
 
 ### Verfügbare Tools
 
-- `hivemind/report_guard_result` — Guard-Ergebnis melden
-- `hivemind/update_task_state` — State-Transition (prüft Guards ab Phase 5)
-- `hivemind/get_guards` — Alle Guards für einen Task laden
+- `hivemind-report_guard_result` — Guard-Ergebnis melden
+- `hivemind-update_task_state` — State-Transition (prüft Guards ab Phase 5)
+- `hivemind-get_guards` — Alle Guards für einen Task laden

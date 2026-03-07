@@ -12,6 +12,10 @@ const projectStore = useProjectStore()
 const name = ref('')
 const slug = ref('')
 const description = ref('')
+const repoHostPath = ref('')
+const workspaceMode = ref<'read_only' | 'read_write'>('read_only')
+const defaultBranch = ref('')
+const remoteUrl = ref('')
 const slugManuallyEdited = ref(false)
 const slugError = ref<string | null>(null)
 const error = ref<string | null>(null)
@@ -37,6 +41,10 @@ async function handleSubmit() {
       name: name.value,
       slug: slug.value,
       description: description.value || undefined,
+      repo_host_path: repoHostPath.value.trim() || undefined,
+      workspace_mode: repoHostPath.value.trim() ? workspaceMode.value : undefined,
+      default_branch: defaultBranch.value.trim() || undefined,
+      remote_url: remoteUrl.value.trim() || undefined,
     })
     projectStore.projects.push(project)
     await projectStore.setActiveProject(project)
@@ -44,6 +52,10 @@ async function handleSubmit() {
     name.value = ''
     slug.value = ''
     description.value = ''
+    repoHostPath.value = ''
+    workspaceMode.value = 'read_only'
+    defaultBranch.value = ''
+    remoteUrl.value = ''
     slugManuallyEdited.value = false
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -96,6 +108,41 @@ async function handleSubmit() {
           placeholder="Projektbeschreibung (optional)"
           rows="3"
         />
+      </div>
+      <div class="form-field">
+        <label class="form-label">Repo-Pfad</label>
+        <input
+          v-model="repoHostPath"
+          class="form-input"
+          placeholder="C:\\code\\mein-repo oder /home/user/mein-repo"
+        />
+        <span class="field-hint">Optional — bindet das Projekt an ein lokales Repository.</span>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Workspace-Modus</label>
+        <select v-model="workspaceMode" class="form-input">
+          <option value="read_only">read_only</option>
+          <option value="read_write">read_write</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Default-Branch</label>
+        <input
+          v-model="defaultBranch"
+          class="form-input"
+          maxlength="100"
+          placeholder="main"
+        />
+      </div>
+      <div class="form-field">
+        <label class="form-label">Remote-URL</label>
+        <input
+          v-model="remoteUrl"
+          class="form-input"
+          maxlength="300"
+          placeholder="https://github.com/org/repo.git"
+        />
+        <span class="field-hint">Für Windows-Onboarding empfohlen, damit `verify` das Repo eindeutig zuordnen kann.</span>
       </div>
       <span v-if="error" class="form-error">{{ error }}</span>
     </form>

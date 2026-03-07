@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-PROJ-005",
+  "epic_ref": "EPIC-PROJ-AUTO",
+  "title": "Conductor-Autostart mit Governance und Review-Gates konsolidieren",
+  "description": "Bringe den Automationspfad ab Intake/Proposal/Ereignis bis zum Agentenstart in eine kontrollierte, projektbezogene Form.\n\n**Was zu implementieren ist:**\n\n1. **Autostart-Regeln definieren:**\n- wann Stratege automatisch startet\n- wann Architekt/Worker folgen dürfen\n- welche Eingangstypen nur Triage auslösen\n- wie Projektkontext und Repo-Kontext an den Dispatch gebunden werden\n\n2. **Governance/Review explizit einziehen:**\n- keine versteckten Full-Auto-Seiteneffekte\n- Auto-Review nur dort, wo Governance das erlaubt\n- manuelle Eingriffspunkte sichtbar im UI/Statusmodell\n\n3. **Doppelte Dispatches verhindern:**\n- Zusammenspiel zwischen Scheduler, Inbound-Consumer, Routing und Conductor bereinigen\n- ein Inbound-Event darf nicht mehrere konkurrierende Agentenstarts erzeugen\n\n4. **Status-Transparenz:**\n- sichtbar, warum ein Event nur triagiert, in Proposal umgewandelt oder direkt dispatcht wurde\n- Fallbacks (`ide`, `local`, `byoai`) nachvollziehbar machen\n\n**Wichtig:** Dieses Task dient der Betriebssicherheit. Automatisierung ist nur wertvoll, wenn sie deterministisch, auditierbar und stoppbar bleibt.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Autostart-Regeln für zentrale Intake-Fälle sind dokumentiert und implementiert",
+      "Governance/Review beeinflusst den Automationspfad explizit",
+      "Doppelte Dispatches werden verhindert oder abgefangen",
+      "Dispatch-Entscheidungen sind im Status/Audit nachvollziehbar",
+      "Projekt- und Repo-Kontext werden an den Conductor durchgereicht"
+    ]
+  },
+  "tags": ["conductor", "governance", "review", "automation"],
+  "subtasks": [],
+  "pinned_skills": ["conductor-orchestrator", "review-workflow"],
+  "linked_wiki": ["autonomie-loop", "state-machine-guide"],
+  "source_doc": null,
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-PROJ-004"]
+}

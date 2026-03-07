@@ -122,19 +122,19 @@ const emit = defineEmits<{
 
 ```typescript
 // FALSCH — result ist ein Objekt, kein Array
-const result = await api.callMcpTool('hivemind/get_prompt', { type: 'architekt', epic_id: epicKey })
+const result = await api.callMcpTool('hivemind-get_prompt', { type: 'architekt', epic_id: epicKey })
 result.map(r => r.text) // ❌ result.map is not a function
 
 // RICHTIG — api.callMcpTool unwrappt .result intern
 // → gibt McpToolResponse[] zurück
 ```
 
-**Identifier:** Epics und Tasks werden in MCP-Tools per **Key** referenziert (`epic.epic_key`, `task.task_key`), **nicht** per UUID (`epic.id`). Beispiel:
+**Identifier:** Alle Entitäten werden in MCP-Tools per **Key** referenziert (z.B. `epic.epic_key`, `task.task_key`, `skill.skill_key`), **nicht** per UUID. Beispiel:
 
 ```typescript
 // FALSCH
 await api.getPrompt('architekt', undefined, epic.id)        // UUID → 404
 
 // RICHTIG
-await api.getPrompt('architekt', undefined, epic.epic_key)  // "EPIC-PHASE-4" → ✅
+await api.getPrompt('architekt', undefined, epic.epic_key)  // "EPIC-12" → ✅
 ```

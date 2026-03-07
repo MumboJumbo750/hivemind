@@ -25,7 +25,12 @@ async def test_fork_creates_local_draft():
     identity = MagicMock()
     identity.node_id = own_node_id
 
-    db = AsyncMock()
+    db = MagicMock()
+    db.execute = AsyncMock()
+    db.flush = AsyncMock()
+    db.refresh = AsyncMock()
+    db.commit = AsyncMock()
+    db.add = MagicMock()
     call_count = 0
 
     def _execute(*args, **kwargs):
@@ -67,7 +72,9 @@ async def test_fork_404_for_missing_skill():
 
     from app.routers.skills import fork_skill
 
-    db = AsyncMock()
+    db = MagicMock()
+    db.execute = AsyncMock()
+    db.commit = AsyncMock()
     r = MagicMock()
     r.scalar_one_or_none.return_value = None
     db.execute.return_value = r
@@ -87,7 +94,9 @@ async def test_fork_400_for_non_federated():
     skill = MagicMock()
     skill.federation_scope = "local"
 
-    db = AsyncMock()
+    db = MagicMock()
+    db.execute = AsyncMock()
+    db.commit = AsyncMock()
     r = MagicMock()
     r.scalar_one_or_none.return_value = skill
     db.execute.return_value = r
@@ -108,7 +117,9 @@ async def test_fork_409_for_duplicate():
     skill.federation_scope = "federated"
     existing_parent = MagicMock()
 
-    db = AsyncMock()
+    db = MagicMock()
+    db.execute = AsyncMock()
+    db.commit = AsyncMock()
     call_count = 0
 
     def _execute(*args, **kwargs):

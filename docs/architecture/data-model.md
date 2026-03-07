@@ -405,17 +405,38 @@ CREATE TABLE exp_events (
 CREATE INDEX idx_exp_events_user ON exp_events (user_id, created_at DESC);
 
 -- ─────────────────────────────────────────────
--- EPICS & TASKS
+-- UNIFIED KEY SEQUENCES
 -- ─────────────────────────────────────────────
+-- Alle Entity-Keys werden über PostgreSQL Sequences generiert (atomar, kollisionsfrei).
+-- Zentrale Implementierung: backend/app/services/key_generator.py
+--
+-- Format: {PREFIX}-{n}  (n = nextval('{entity}_key_seq'))
+--   Epic:  EPIC-{n}    (epic_key_seq)
+--   Task:  TASK-{n}    (task_key_seq)
+--   Skill: SKILL-{n}   (skill_key_seq)
+--   Wiki:  WIKI-{n}    (wiki_key_seq)
+--   Guard: GUARD-{n}   (guard_key_seq)
+--   Doc:   DOC-{n}     (doc_key_seq)
+--
+-- Alle Key-Spalten haben UNIQUE-Constraint + Immutability-Trigger.
+-- Keys werden NIEMALS recycled (Sequence-Lücken sind akzeptabel).
 
 CREATE SEQUENCE epic_key_seq;
+CREATE SEQUENCE task_key_seq;
+CREATE SEQUENCE skill_key_seq;
+CREATE SEQUENCE wiki_key_seq;
+CREATE SEQUENCE guard_key_seq;
+CREATE SEQUENCE doc_key_seq;
+
+-- ─────────────────────────────────────────────
+-- EPICS & TASKS
+-- ─────────────────────────────────────────────
 
 CREATE TABLE epics (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   epic_key        TEXT NOT NULL UNIQUE,
-  -- epic_key wird in der Applikationsschicht generiert:
   -- epic_key = f"EPIC-{nextval('epic_key_seq')}" (Python, vor INSERT)
-  -- Analog zu task_key: API-stabil, immutable, menschenlesbar.
+  -- API-stabil, immutable, menschenlesbar.
   project_id      UUID REFERENCES projects(id), -- NULL erlaubt für federated
   external_id     TEXT UNIQUE,
   title           TEXT NOT NULL,
@@ -463,14 +484,10 @@ FOR EACH ROW
 WHEN (OLD.epic_key IS DISTINCT FROM NEW.epic_key)
 EXECUTE FUNCTION prevent_epic_key_update();
 
-CREATE SEQUENCE task_key_seq;
-
 CREATE TABLE tasks (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_key           TEXT NOT NULL UNIQUE,
-  -- task_key wird in der Applikationsschicht generiert:
   -- task_key = f"TASK-{nextval('task_key_seq')}" (Python, vor INSERT)
-  -- PostgreSQL DEFAULT unterstützt keine String-Konkatenation mit nextval().
   epic_id            UUID NOT NULL REFERENCES epics(id),
   parent_task_id     UUID REFERENCES tasks(id),
   title              TEXT NOT NULL,
@@ -515,6 +532,9 @@ EXECUTE FUNCTION prevent_task_key_update();
 
 CREATE TABLE skills (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  skill_key      TEXT UNIQUE,
+  -- skill_key = f"SKILL-{nextval('skill_key_seq')}" (Python, vor INSERT)
+  -- Menschenlesbarer Key, immutable nach Erstellung.
   project_id     UUID REFERENCES projects(id), -- NULL = global oder federated
   title          TEXT NOT NULL,
   content        TEXT NOT NULL,
@@ -607,6 +627,8 @@ CREATE TABLE skill_change_proposals (
 -- epic_id ist nullable für den Sonderfall von Entwurfs-Docs die noch keinem Epic zugeordnet sind.
 CREATE TABLE docs (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  doc_key     TEXT UNIQUE,
+  -- doc_key = f"DOC-{nextval('doc_key_seq')}" (Python, vor INSERT)
   title       TEXT NOT NULL,
   content     TEXT NOT NULL,
   epic_id     UUID REFERENCES epics(id),
@@ -648,6 +670,8 @@ CREATE TABLE wiki_categories (
 
 CREATE TABLE wiki_articles (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  wiki_key      TEXT UNIQUE,
+  -- wiki_key = f"WIKI-{nextval('wiki_key_seq')}" (Python, vor INSERT)
   category_id   UUID REFERENCES wiki_categories(id), -- NULL = unkategorisiert; Breadcrumb über wiki_categories.parent_id
   title         TEXT NOT NULL,
   slug          TEXT NOT NULL UNIQUE,
@@ -956,6 +980,8 @@ CREATE TABLE epic_restructure_proposals (
 
 CREATE TABLE guards (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  guard_key   TEXT UNIQUE,
+  -- guard_key = f"GUARD-{nextval('guard_key_seq')}" (Python, vor INSERT)
   project_id  UUID REFERENCES projects(id),  -- NULL = global
   skill_id    UUID REFERENCES skills(id),     -- NULL = nicht skill-spezifisch
   title       TEXT NOT NULL,

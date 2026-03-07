@@ -21,16 +21,21 @@ Du implementierst den Conductor — einen event-getriebenen Backend-Service der 
 
 ### Kontext
 Der Conductor ist **kein Agent** (keine AI-Intelligenz), sondern ein deterministischer Dispatcher. Er reagiert auf Events (SSE, State-Transitions), schaut in den `ai_provider_configs` nach dem konfigurierten Provider für die jeweilige Agent-Rolle und dispatcht den Prompt. Nicht-konfigurierte Rollen → BYOAI-Fallback (Prompt Station zeigt Prompt).
+Manuelle Dispatches aus der Prompt Station laufen ueber `/api/admin/conductor/dispatch`: der Request enthaelt `agent_role` plus Entity-Kontext (`task_key`, `epic_id`, `project_id`) und der Backend-Endpoint generiert daraus zuerst den passenden Prompt.
 
 ### Konventionen
 - Service in `app/services/conductor.py`
-- Model in `app/models/conductor_dispatch.py`
+- Model in `app/models/conductor.py`
 - Conductor wird als Teil des FastAPI-Lifespan gestartet (kein eigener Container)
-- Aktivierung via `HIVEMIND_CONDUCTOR_ENABLED=true` (Default: `false`)
+- Aktivierung via `HIVEMIND_CONDUCTOR_ENABLED=true`
 - Deaktivierbar pro Projekt (Fallback: manuelle Prompt Station)
 - Jeder Dispatch erzeugt einen `conductor_dispatches`-Eintrag (Audit-Trail)
-- Idempotenz: `idempotency_key` aus `(event_type, entity_id, timestamp_bucket)` → Doppelte Events = Noop
-- Cooldown: `HIVEMIND_CONDUCTOR_COOLDOWN_SECONDS` zwischen Dispatches für denselben Kontext
+- Dedup/Cooldown via `cooldown_key = "{agent_role}:{trigger_id}:{bucket}"`
+- Execution Modes: `local`, `ide`, `github_actions`, `byoai`
+- Fallback-Chain ist pro Regel konfigurierbar; z.B. `ide -> local -> byoai`
+- Lokale Tool-Ausfuehrung fuer `/admin/conductor/dispatch` nutzt `agentic_dispatch()` mit rollenabhaengiger MCP-Tool-Allowlist
+- `execution_mode='local'` soll auch im automatischen Workflow ueber `agentic_dispatch()` laufen, damit MCP-Tools wirklich ausgefuehrt werden
+- Die Trigger fuer Governance-relevante Flows muessen sowohl in REST-Services als auch in MCP-Write-Tools verdrahtet sein
 
 ### Datenmodell
 
@@ -39,35 +44,45 @@ class ConductorDispatch(Base):
     __tablename__ = "conductor_dispatches"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    idempotency_key: Mapped[str] = mapped_column(String(255), unique=True)
-    event_type: Mapped[str] = mapped_column(String(100))  # task_state_changed, epic_state_changed, ...
-    entity_id: Mapped[str] = mapped_column(String(100))  # TASK-88, EPIC-12, ...
-    agent_role: Mapped[str] = mapped_column(String(50))  # worker, gaertner, reviewer, ...
-    prompt_type: Mapped[str] = mapped_column(String(50))  # worker, gaertner, review, ...
-    provider: Mapped[str | None] = mapped_column(String(50))  # anthropic, ollama, None (BYOAI)
-    status: Mapped[str] = mapped_column(String(20), default="dispatched")  # dispatched, completed, failed, byoai
-    tokens_used: Mapped[int | None] = mapped_column()
-    error_message: Mapped[str | None] = mapped_column(Text)
+    trigger_type: Mapped[str] = mapped_column(String(50))      # task_state, event, epic_state, ...
+    trigger_id: Mapped[str] = mapped_column(String(200))       # TASK-88, EPIC-12, decision-id, ...
+    trigger_detail: Mapped[str | None] = mapped_column(String(500))
+    agent_role: Mapped[str] = mapped_column(String(50))        # worker, gaertner, reviewer, ...
+    prompt_type: Mapped[str | None] = mapped_column(String(100))
+    execution_mode: Mapped[str] = mapped_column(String(20))    # local, ide, github_actions, byoai
+    status: Mapped[str] = mapped_column(String(20), default="dispatched")
+    cooldown_key: Mapped[str | None] = mapped_column(String(300))
+    result: Mapped[dict | None] = mapped_column(JSONB)         # prompt, tokens, tool_calls, error, progress, ...
     dispatched_at: Mapped[datetime] = mapped_column(default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column()
 ```
 
-### Die 12 Dispatch-Regeln (kanonisch)
+### Die Dispatch-Regeln (kanonisch)
 
 | # | Trigger-Event | Bedingung | Agent | Prompt-Typ |
 |---|---------------|-----------|-------|------------|
-| 1 | Epic `incoming → scoped` | `governance.epic_scoping = 'auto'` | Architekt | `architekt` |
-| 2 | Epic `incoming` (neu) | `governance.epic_scoping = 'auto'` | Auto-Scope (intern) | — |
-| 3 | Task `scoped → ready` | — | Worker (nach Bibliothekar) | `worker` |
-| 4 | Task `in_review` | `governance.review ≠ 'manual'` | Reviewer | `review` |
-| 5 | Task `done` | — | Gaertner | `gaertner` |
-| 6 | `[UNROUTED]` Event | — | Triage | `triage` |
-| 7 | `[EPIC PROPOSAL]` eingereicht | `governance.epic_proposals = 'auto'` | Triage (auto-accept) | `triage` |
-| 8 | `[SKILL PROPOSAL]` eingereicht | `governance.skill_merge = 'auto'` | Auto-Merge-Check | — |
-| 9 | Projekt erstellt + Repo | — | Kartograph | `kartograph` |
-| 10 | Kartograph-Session beendet | Plan vorhanden | Stratege | `stratege` |
-| 11 | GitLab `push`-Event | Follow-up nötig | Kartograph | `kartograph` |
-| 12 | `decision_request` erstellt | `governance.decisions ≠ 'manual'` | Decision-Resolver | — |
+| 1 | Task `scoped -> in_progress` | Regel `task_scoped_to_in_progress` | Worker | `worker_implement` |
+| 2 | Task `in_progress -> in_review` | Governance `review != manual` | Reviewer | `reviewer_check` |
+| 3 | Task `done` | Regel `task_done` | Gaertner | `gaertner_harvest` |
+| 4 | Task `qa_failed` | Regel `task_qa_failed` | Gaertner | `gaertner_review_feedback` |
+| 5 | Task `incoming -> scoped` | Governance `epic_scoping != manual` | Architekt | `architekt_decompose` |
+| 6 | `[UNROUTED]` Inbound-Event | Regel `event_unrouted_inbound` | Triage | `triage_classify` |
+| 7 | Epic erstellt | Governance `epic_scoping != manual` | Stratege | `stratege_plan` |
+| 8 | Epic `incoming -> scoped` | Regel `epic_scoped` | Architekt | `architekt_decompose` |
+| 9 | Epic-Proposal eingereicht | Governance `epic_proposal != manual` | Triage | `triage_epic_proposal` |
+| 10 | Skill-Proposal eingereicht | Governance `skill_merge != manual` | Triage | `triage_skill_proposal` |
+| 11 | Guard-Proposal eingereicht | Governance `guard_merge != manual` | Triage | `triage_guard_proposal` |
+| 12 | Epic-Restructure vorgeschlagen | Regel `epic_restructure_proposed` | Triage | `triage_epic_restructure` |
+| 13 | Projekt erstellt | Regel `project_created` | Kartograph | `kartograph_explore` |
+| 14 | Push-Event | Regel `push_event` | Kartograph | `kartograph_follow_up` |
+| 15 | Decision Request offen | Governance `decision_request != manual` | Triage | `triage_decision_request` |
+
+Wichtig zum Ist-Stand:
+- `manual` blockiert den automatischen Dispatch.
+- `assisted` und `auto` loesen fuer die meisten Governance-Typen heute denselben Dispatch aus.
+- Der explizite Unterschied zwischen `assisted` und `auto` ist aktuell nur fuer `review` mit Grace-Period/Auto-Approve voll implementiert.
+- Skill-, Guard- und Epic-Restructure-Proposals gehen im Auto-/Assisted-Modus ueber Triage-Review statt ueber den Gaertner selbst.
+- `guard_merge` startet keinen separaten Folge-Agenten; der operative Effekt eines gemergten Guards ist die sofortige Materialisierung auf passende Tasks.
 
 ### Implementierung
 
@@ -87,12 +102,14 @@ class Conductor:
 
     async def on_task_state_changed(self, event: TaskStateChanged):
         match event.new_state:
-            case "ready":
+            case "in_progress" if event.old_state == "scoped":
                 await self._dispatch("worker", "worker", task_key=event.task_key)
             case "in_review":
                 await self._dispatch_review(event.task_key)
             case "done":
                 await self._dispatch("gaertner", "gaertner", task_key=event.task_key)
+            case "qa_failed":
+                await self._dispatch("gaertner", "gaertner_review_feedback", task_key=event.task_key)
 
     async def on_epic_state_changed(self, event: EpicStateChanged):
         match event.new_state:
@@ -181,11 +198,30 @@ class Conductor:
 - RPM-Limit als primäre Backpressure (→ `ai-provider-service` Skill)
 - Keine externe Message Queue nötig für Single-Node-Betrieb
 
+### Prompt-Aufloesung & manueller Run
+
+- `conductor.dispatch()` baut Prompts serverseitig ueber `PromptGenerator.generate(...)`
+- `agent_role` bestimmt `prompt_type` und die Tool-Allowlist
+- Der manuelle Endpoint `/api/admin/conductor/dispatch` loest bei vorhandenem Kontext den Prompt immer neu auf
+- Die Prompt Station darf beim Klick auf `Ausfuehren` keinen Rohtext wie `task.description` senden, sondern muss den ausgewaehlten Agenten-Prompt verwenden
+- Proposal-/Decision-Dispatches muessen den passenden Prompt-Kontext aufloesen:
+  - `skill:proposal` → `skill_id`
+  - `guard:proposal` → `guard_id`
+  - `epic_proposal:submitted` → `proposal_id`
+  - `decision_request:open` / `epic_restructure:proposed` → `decision_id`
+
+### Self-Improvement-Regeln
+
+- Auto-Review darf nie am Review-Workflow vorbei direkt `done` setzen.
+- `task_done` und `task_qa_failed` sind beide Lerntrigger fuer den Gaertner.
+- Reicht der Gaertner einen Skill-Entwurf ein (`submit_skill_proposal`), uebernimmt anschliessend Triage die Review-/Merge-Entscheidung.
+- Reicht der Kartograph einen Guard oder ein Epic-Restructure ein, uebernimmt ebenfalls Triage die Entscheidung.
+
 ### Konfiguration
 
 | Env-Variable | Default | Beschreibung |
 | --- | --- | --- |
-| `HIVEMIND_CONDUCTOR_ENABLED` | `false` | Conductor aktivieren |
+| `HIVEMIND_CONDUCTOR_ENABLED` | `true` im Compose-Default | Conductor aktivieren |
 | `HIVEMIND_CONDUCTOR_PARALLEL` | `3` | Max. gleichzeitige Agent-Dispatches |
 | `HIVEMIND_CONDUCTOR_COOLDOWN_SECONDS` | `10` | Mindestzeit zwischen Dispatches für denselben Kontext |
 

@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AGENT-004",
+  "epic_ref": "EPIC-AGENT-LOOP",
+  "title": "Lern-Pipeline aus Agenten-Ausgaben aufbauen",
+  "description": "Nutze die Outputs der Agenten systematisch, um den Lernertrag des Systems zu steigern.\n\n**Was zu implementieren ist:**\n\n1. **Output-Typen klassifizieren:**\n- Worker-Ergebnisse und Artefakte\n- Reviewer-Kommentare und Reject-Gründe\n- Gaertner-Skill-Kandidaten und Doc-Vorschläge\n- Triage-Entscheidungen und Routing-Begründungen\n- Stratege-/Architekt-Planungsentscheidungen\n\n2. **Lernartefakte definieren:**\n- Skill-Kandidaten\n- Prompt-Verbesserungskandidaten\n- Decision Records / Heuristiken\n- Wiki-/Doc-Updates\n- Routing-Hinweise / Review-Checklisten\n\n3. **Extraktion und Persistenz bauen:**\n- strukturierte Summary statt nur Freitext\n- Verknüpfung mit Quelle, Projekt, Task/Epic, Agent-Rolle, Confidence\n\n4. **Einspeisung in bestehende Systeme:**\n- Skill-Lifecycle\n- Wiki/Docs\n- Prompt-Generator-Kontext\n- Review- und Triage-Hilfen\n\n**Wichtig:** Lernen soll aus realen Ergebnissen kommen, nicht aus unkontrolliertem Volltext-Recycling.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Relevante Agenten-Ausgaben werden strukturiert klassifiziert",
+      "Es gibt definierte Lernartefakte mit Quelle und Kontext",
+      "Die Artefakte werden persistent gespeichert oder als Proposal erzeugt",
+      "Bestehende Wissens- und Prompt-Pfade können diese Artefakte nutzen"
+    ]
+  },
+  "tags": ["learning", "skills", "prompts", "wiki", "review", "triage"],
+  "subtasks": [],
+  "pinned_skills": ["skill-lifecycle", "prompt-generator", "wiki-fulltext-search", "review-recommendation"],
+  "linked_wiki": ["memory-ledger"],
+  "source_doc": "docs/features/memory-ledger.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-AGENT-002"]
+}

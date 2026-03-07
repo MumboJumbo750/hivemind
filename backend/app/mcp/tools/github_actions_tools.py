@@ -34,7 +34,7 @@ async def _report_guard_result_handler(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/report_guard_result",
+        name="hivemind-report_guard_result",
         description=(
             "Report a CI guard result back to Hivemind from GitHub Actions. "
             "Called by agents running in CI pipelines. "

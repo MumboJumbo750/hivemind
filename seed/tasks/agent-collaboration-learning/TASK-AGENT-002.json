@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AGENT-002",
+  "epic_ref": "EPIC-AGENT-LOOP",
+  "title": "Agent-Handoffs und Trigger-Kette explizit stabilisieren",
+  "description": "Härte das Zusammenspiel zwischen Intake, Conductor, Review und Folge-Agenten über klare Übergabeverträge.\n\n**Was zu implementieren ist:**\n\n1. **Handoff-Verträge definieren:**\n- welcher Trigger startet welchen Agenten\n- welche Kontextdaten garantiert mitgegeben werden\n- wann Folge-Agenten erlaubt, verboten oder verzögert sind\n\n2. **Doppelpfade bereinigen:**\n- Polling vs. direkte Events\n- konkurrierende Trigger aus Service, Router, Cron oder MCP-Pfaden\n- idempotente Wiederholung statt Mehrfach-Dispatch\n\n3. **Dispatch-Kontext vervollständigen:**\n- Projekt, Repo, Epic, Task, Integration, Intake-Quelle, Review-Kontext\n- Ursache und Auslöser im Dispatch-Audit erhalten\n\n4. **SSE/Status-Sichtbarkeit verbessern:**\n- klarer Status je Handoff: queued, dispatched, acknowledged, running, completed, failed, vetoed, fallback\n\n**Wichtig:** Ziel ist eine nachvollziehbare Orchestrierungskette statt lose gekoppelte Übergänge.",
+  "state": "done",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Handoffs zwischen Agenten sind als explizite Trigger-Kette modelliert",
+      "Doppeltrigger und Mehrfach-Dispatches werden verhindert oder dedupliziert",
+      "Dispatch-Audits enthalten vollständigen Kontext",
+      "Handoff-Status sind im System sichtbar und testbar"
+    ]
+  },
+  "tags": ["backend", "conductor", "events", "audit", "sse"],
+  "subtasks": [],
+  "pinned_skills": ["conductor-orchestrator", "outbox-consumer", "sse-event-stream"],
+  "linked_wiki": ["autonomy-loop"],
+  "source_doc": "docs/features/autonomy-loop.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-AGENT-001"]
+}

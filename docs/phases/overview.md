@@ -42,7 +42,7 @@ Solo-Entwickler (kein Peer):         Phase F überspringen oder nach Phase 5 nac
 
 **Kompatibilitätsgarantie:** Das Schema (inkl. `nodes`, `node_identity`, `origin_node_id`, `federation_scope`) wird bereits in Phase 1 angelegt. Phase F aktiviert darauf aufbauend das Federation-Protokoll — kein Migrations-Bruch.
 
-**MCP-Tool-Abgrenzung:** Phase F implementiert Federation als REST-API-Endpoints (`/federation/*`). Das Frontend nutzt diese Endpoints direkt (UI-Buttons, Settings). Die MCP-Tool-Wrapper (`hivemind/fork_federated_skill`, `hivemind/start_discovery_session`, `hivemind/end_discovery_session`) werden erst verfügbar wenn Phase 3 den MCP-Server bereitstellt. Vor Phase 3 sind alle Federation-Aktionen ausschließlich über die UI erreichbar.
+**MCP-Tool-Abgrenzung:** Phase F implementiert Federation als REST-API-Endpoints (`/federation/*`). Das Frontend nutzt diese Endpoints direkt (UI-Buttons, Settings). Die MCP-Tool-Wrapper (`hivemind-fork_federated_skill`, `hivemind-start_discovery_session`, `hivemind-end_discovery_session`) werden erst verfügbar wenn Phase 3 den MCP-Server bereitstellt. Vor Phase 3 sind alle Federation-Aktionen ausschließlich über die UI erreichbar.
 
 ---
 

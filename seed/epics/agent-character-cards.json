@@ -1,0 +1,19 @@
+{
+  "external_id": "EPIC-AGENT-CARDS",
+  "title": "Agent Character Cards und visuelle Identität",
+  "description": "**Problem:** Hivemind besitzt klar definierte Agentenrollen, aber die UI kommuniziert diese Rollen bisher primär textuell. Dadurch bleiben Dispatches, Zustände, Trigger und Spezialisierungen abstrakt. Ein konsistentes Character-Card-System kann die Agenten als klar erkennbare operative Rollen sichtbar machen und gleichzeitig Notifications, Conductor-Flows und Operator-Views deutlich verständlicher machen.\n\n**Zielbild:** Jeder Agent erhält eine konsistente visuelle Identität mit Hero-Bild, Portrait und Notification-Avatar. Diese Visuals werden in Character Cards eingebettet, die Fähigkeiten, Trigger, Schedules, Governance und Status transportieren. Das System soll sowohl ästhetisch zum Sci-Fi-Game-HUD von Hivemind passen als auch operativ nutzbar sein.\n\n**Scope dieses Epics:**\n\n1. Art Direction und visuelle Welt für alle Agenten\n2. Bildprompt- und Asset-Standard für große und kleine Varianten\n3. Datenmodell für Agent Card Metadaten\n4. UI-Komponenten für große und kompakte Character Cards\n5. Notification-/Dispatch-Integration mit kleinen Agenten-Avataren\n6. Asset-Pipeline und Dateikonventionen\n7. Dokumentation und Produktions-Workflow\n\n**Nicht-Ziel:** Dieses Epic ersetzt keine fachliche Rollenlogik. Die Character Cards visualisieren bestehende Agenten und verbessern die Bedienbarkeit, nicht die Geschäftslogik selbst.",
+  "state": "scoped",
+  "priority": "medium",
+  "sla_deadline": null,
+  "definition_of_done": "Für alle relevanten Agenten existieren konsistente Bildvorgaben und Asset-Typen. Character Cards können große und kleine Varianten rendern und relevante Metadaten anzeigen. Notifications und Dispatch-Feeds können kleine Agenten-Avatare nutzen. Die Art Direction, Bildprompts und Produktionsrichtlinien sind dokumentiert.",
+  "tags": [
+    "ui",
+    "art-direction",
+    "agents",
+    "cards",
+    "avatars",
+    "notifications"
+  ],
+  "depends_on": ["EPIC-PHASE-1B"],
+  "source_doc": "docs/ui/agent-character-cards.md"
+}

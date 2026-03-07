@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AGENT-005",
+  "epic_ref": "EPIC-AGENT-LOOP",
+  "title": "Lernrauschen filtern und Qualitätssicherung ergänzen",
+  "description": "Verhindere, dass der neue Lern-Loop minderwertige oder redundante Erkenntnisse verstärkt.\n\n**Was zu implementieren ist:**\n\n1. **Qualitätskriterien definieren:**\n- Mindest-Confidence\n- Source-Attribution vorhanden\n- Ergebnis reproduzierbar oder nachvollziehbar\n- keine Duplikate / keine trivialen Varianten\n\n2. **Filter und Dedupe bauen:**\n- ähnliche Learnings clustern\n- Konflikte markieren statt blind mergen\n- bekannte, bereits übernommene Erkenntnisse erkennen\n\n3. **Reviewbare Lernpfade schaffen:**\n- wann wird direkt übernommen?\n- wann als Proposal?\n- wann nur als Beobachtung gespeichert?\n\n4. **Missbrauch und Prompt-Injection abfedern:**\n- Agenten-Outputs bleiben Quelle, nicht Systeminstruktion\n- besonders riskante Artefakte nur mit Review weiterverwenden\n\n**Wichtig:** Mehr Lernen ist nur dann wertvoll, wenn die Qualität der übernommenen Erkenntnisse kontrolliert bleibt.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Für Lernartefakte existieren klare Qualitäts- und Übernahmeregeln",
+      "Dedupe und Konfliktmarkierung verhindern unnötige Wiederholungen",
+      "Riskante oder schwache Learnings werden nicht ungeprüft aktiviert",
+      "Die Qualitätslogik ist testbar und dokumentiert"
+    ]
+  },
+  "tags": ["learning", "quality", "security", "dedupe", "governance"],
+  "subtasks": [],
+  "pinned_skills": ["skill-lifecycle", "guard-enforcement", "review-recommendation"],
+  "linked_wiki": ["memory-ledger"],
+  "source_doc": "docs/features/agent-skills.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-AGENT-004"]
+}

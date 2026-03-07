@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-PROJ-003",
+  "epic_ref": "EPIC-PROJ-AUTO",
+  "title": "YouTrack-, Sentry- und In-App-Intake projektbezogen verdrahten",
+  "description": "Stelle sicher, dass alle Eingangskanäle einem konkreten Hivemind-Projekt zugeordnet und konfiguriert werden können.\n\n**Was zu implementieren ist:**\n\n1. **Projektbezogene Integrationskonfiguration:**\n- YouTrack: Basis-URL, Projekt-/Filter-Zuordnung, Auth/Secret, optionale Status-Mappings\n- Sentry: Projekt-/Slug-Zuordnung, Secret/Token, Routing-Hinweise\n- In-App-Requirement-Capture: explizite Projektbindung bleibt Pflicht\n\n2. **Webhook-/Ingest-Zuordnung:**\n- Webhook-Inbound muss das Zielprojekt bestimmen können\n- robuste Strategie für Matchen via Projekt-ID, Slug, Integration-Key oder Mapping-Regeln\n- unroutbare Events landen nachvollziehbar in Triage/DLQ statt \"irgendwo\"\n\n3. **Admin-/Settings-UI:**\n- pro Projekt sichtbare Integrationen inkl. Health/letztem Status\n- klare Anzeige ob eine Quelle aktiv, unvollständig oder fehlerhaft ist\n\n4. **Auditierbarkeit:**\n- Inbound-Events speichern, aus welchem Kanal und für welches Projekt sie kamen\n- Dedupe und Fehlerszenarien projektbezogen nachvollziehbar halten\n\n**Wichtig:** Integrationen dürfen nicht nur global in `.env` gedacht sein, wenn das Zielbild mehrere Projekte/Repos in derselben lokalen Instanz vorsieht.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Integrationen können projektbezogen konfiguriert werden",
+      "Inbound-Webhooks ordnen Events einem Projekt zu",
+      "Unroutbare Events werden sichtbar triagiert statt still zu verpuffen",
+      "UI zeigt Integrationsstatus pro Projekt",
+      "Audit-Daten enthalten Kanal- und Projektkontext"
+    ]
+  },
+  "tags": ["integrations", "webhooks", "youtrack", "sentry", "triage"],
+  "subtasks": [],
+  "pinned_skills": ["webhook-ingest", "sentry-bug-aggregation-node-bug-reports", "outbound-sync-youtrack-sentry-status-ruecksync"],
+  "linked_wiki": ["mcp-integration"],
+  "source_doc": null,
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-PROJ-001"]
+}

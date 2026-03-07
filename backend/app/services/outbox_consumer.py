@@ -18,6 +18,7 @@ from app.models.federation import Node
 from app.models.sync import SyncDeadLetter, SyncOutbox
 from app.services import event_bus
 from app.services.federation_auth import sign_request
+from app.services.intake_service import IntakeService
 from app.services.sync_errors import PermanentSyncError
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,11 @@ async def process_inbound() -> None:
                 SyncOutbox.routing_state == "unrouted",
                 SyncOutbox.state == "pending",
                 or_(
+                    SyncOutbox.routing_detail.is_(None),
+                    SyncOutbox.routing_detail["intake_stage"].astext.is_(None),
+                    SyncOutbox.routing_detail["intake_stage"].astext != "triage_pending",
+                ),
+                or_(
                     SyncOutbox.next_retry_at.is_(None),
                     SyncOutbox.next_retry_at <= func.now(),
                 ),
@@ -146,8 +152,8 @@ async def process_inbound() -> None:
 
         for entry in entries:
             try:
-                await _dispatch_inbound(entry)
-                entry.routing_state = "routed"
+                outcome = await _dispatch_inbound(entry, db)
+                IntakeService(db).apply_inbound_outcome(entry, outcome)
             except Exception as exc:
                 logger.error("Inbound entry %s failed: %s", entry.id, exc)
                 entry.attempts += 1
@@ -181,22 +187,23 @@ async def _dispatch_outbound(entry: SyncOutbox) -> None:
     raise ValueError(f"Unsupported outbound system: {entry.system}")
 
 
-async def _dispatch_inbound(entry: SyncOutbox) -> None:
+async def _dispatch_inbound(entry: SyncOutbox, db: AsyncSession) -> dict:
     """Dispatch one inbound entry to the matching integration service."""
+    intake_service = IntakeService(db)
     if entry.system == "sentry":
         from app.services.sentry_aggregation import SentryAggregationService
 
         service = SentryAggregationService()
         payload = entry.raw_payload if isinstance(entry.raw_payload, dict) else entry.payload
         await service.process_sentry_event(payload)
-        return
+        return intake_service.resolve_inbound_outcome(entry)
 
     if entry.system == "youtrack":
         from app.services.youtrack_sync import YouTrackSyncService
 
         service = YouTrackSyncService()
         await service.process_inbound(entry.payload)
-        return
+        return intake_service.resolve_inbound_outcome(entry)
 
     raise ValueError(f"Unsupported inbound system: {entry.system}")
 

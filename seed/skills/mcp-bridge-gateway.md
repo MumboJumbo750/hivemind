@@ -21,7 +21,7 @@ Du implementierst den MCP Bridge / Gateway — das zentrale Konzept, das Hivemin
 
 ### Kontext
 
-**Problem:** Hivemind hat eigene MCP-Tools (`hivemind/*`). GitHub hat einen MCP-Server (`@modelcontextprotocol/server-github`), GitLab ebenso. Ein AI-Agent soll Tools aus allen Quellen nutzen können — ohne separate Konfiguration pro MCP-Server.
+**Problem:** Hivemind hat eigene MCP-Tools (`hivemind-*`). GitHub hat einen MCP-Server (`@modelcontextprotocol/server-github`), GitLab ebenso. Ein AI-Agent soll Tools aus allen Quellen nutzen können — ohne separate Konfiguration pro MCP-Server.
 
 **Lösung: MCP Gateway Pattern**
 
@@ -33,7 +33,7 @@ AI Agent  (Claude, GPT-4o, Llama, etc.)
 ┌─────────────────────────────────────────┐
 │  Hivemind MCP Server (Gateway)          │
 │                                         │
-│  hivemind/* tools  → lokaler Handler    │
+│  hivemind-* tools  → lokaler Handler    │
 │  github/* tools    → Proxy → GitHub MCP │
 │  gitlab/* tools    → Proxy → GitLab MCP │
 │  slack/* tools     → Proxy → Slack MCP  │
@@ -59,7 +59,7 @@ Hivemind agiert als **Proxy mit Layer** — jeder Tool-Call durchläuft RBAC, Au
 - Model: `app/models/mcp_bridge.py`
 - Schema: `app/schemas/mcp_bridge.py`
 - Namespace-Prefix: externe Tools werden unter ihrem Bridge-Namespace registriert (`github/create_issue`, `gitlab/get_pipeline`)
-- Hivemind-eigene Tools bleiben unter `hivemind/*`
+- Hivemind-eigene Tools bleiben unter `hivemind-*`
 - Kein Tool-Name-Kollision möglich durch Namespace-Trennung
 
 ### Datenmodell
@@ -189,7 +189,7 @@ class MCPGateway:
 
     def __init__(self):
         self._bridges: dict[str, MCPBridge] = {}  # namespace → bridge
-        self._local_tools: dict[str, Callable] = {}  # hivemind/* tools
+        self._local_tools: dict[str, Callable] = {}  # hivemind-* tools
 
     async def startup(self, db: AsyncSession):
         """Alle konfigurierten Bridges starten."""
@@ -215,7 +215,7 @@ class MCPGateway:
         tools = {}
         # Lokale Tools
         for name, handler in self._local_tools.items():
-            tools[f"hivemind/{name}"] = {
+            tools[f"hivemind-{name}"] = {
                 "description": handler.__doc__,
                 "inputSchema": handler.input_schema,
             }
@@ -267,24 +267,24 @@ class ConductorToolResolver:
 
     ROLE_TOOLS = {
         "worker": [
-            "hivemind/get_task",
-            "hivemind/submit_result",
-            "hivemind/update_task_state",
+            "hivemind-get_task",
+            "hivemind-submit_result",
+            "hivemind-update_task_state",
             "github/get_file_contents",    # ← Proxied!
             "github/create_branch",         # ← Proxied!
             "github/push_files",            # ← Proxied!
             "github/create_pull_request",   # ← Proxied!
         ],
         "reviewer": [
-            "hivemind/get_task",
-            "hivemind/submit_review_recommendation",
+            "hivemind-get_task",
+            "hivemind-submit_review_recommendation",
             "github/get_file_contents",
             "github/list_commits",
             "github/get_pull_request",
         ],
         "tester": [
-            "hivemind/get_task",
-            "hivemind/report_guard_result",
+            "hivemind-get_task",
+            "hivemind-report_guard_result",
             "github/get_file_contents",
             "github/search_code",
         ],
@@ -297,7 +297,7 @@ class ConductorToolResolver:
 Worker Agent erhält Prompt:
   "Implementiere Feature X. Nutze Branch feature/TASK-42."
 
-1. hivemind/get_task {"task_key": "TASK-42"}
+1. hivemind-get_task {"task_key": "TASK-42"}
    → {title, description, acceptance_criteria, ...}
 
 2. github/get_file_contents {"owner": "acme", "repo": "app", "path": "src/feature.py"}
@@ -320,13 +320,13 @@ Worker Agent erhält Prompt:
    }
    → PR #123 erstellt
 
-7. hivemind/submit_result {
+7. hivemind-submit_result {
      "task_key": "TASK-42",
      "result": "Feature X implemented. PR #123 created.",
      "artifacts": [{"type": "github_pr", "url": "https://github.com/acme/app/pull/123"}]
    }
 
-8. hivemind/update_task_state {"task_key": "TASK-42", "target_state": "in_review"}
+8. hivemind-update_task_state {"task_key": "TASK-42", "target_state": "in_review"}
 ```
 
 ### Beispiel-Konfigurationen

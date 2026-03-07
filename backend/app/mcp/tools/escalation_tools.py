@@ -1,8 +1,8 @@
 """MCP Escalation & Decision Write Tools — Phase 6.
 
-- hivemind/resolve_decision_request — Resolve an open decision request (TASK-6-005)
-- hivemind/resolve_escalation — Resolve escalated task → in_progress (TASK-6-006)
-- hivemind/reassign_epic_owner — Change epic owner/backup_owner (TASK-6-007)
+- hivemind-resolve_decision_request — Resolve an open decision request (TASK-6-005)
+- hivemind-resolve_escalation — Resolve escalated task → in_progress (TASK-6-006)
+- hivemind-reassign_epic_owner — Change epic owner/backup_owner (TASK-6-007)
 """
 from __future__ import annotations
 
@@ -47,12 +47,12 @@ def _err(code: str, message: str, status: int = 400) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/resolve_decision_request — TASK-6-005
+# hivemind-resolve_decision_request — TASK-6-005
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/resolve_decision_request",
+        name="hivemind-resolve_decision_request",
         description=(
             "Resolve an open decision request. Sets state=resolved, creates "
             "DecisionRecord, and atomically transitions associated task "
@@ -190,12 +190,12 @@ async def _handle_resolve_decision_request(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/resolve_escalation — TASK-6-006
+# hivemind-resolve_escalation — TASK-6-006
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/resolve_escalation",
+        name="hivemind-resolve_escalation",
         description=(
             "Resolve an escalated task: escalated → in_progress. "
             "Admin only. Resets qa_failed_count to 0. "
@@ -296,12 +296,12 @@ async def _handle_resolve_escalation(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/reassign_epic_owner — TASK-6-007
+# hivemind-reassign_epic_owner — TASK-6-007
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/reassign_epic_owner",
+        name="hivemind-reassign_epic_owner",
         description=(
             "Admin tool: change epic owner_id and/or backup_owner_id. "
             "Validates that target users exist.\n"
@@ -429,12 +429,12 @@ async def _handle_reassign_epic_owner(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/list_decision_requests — TASK-6-008
+# hivemind-list_decision_requests — TASK-6-008
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/list_decision_requests",
+        name="hivemind-list_decision_requests",
         description=(
             "List decision requests, optionally filtered by state (open, resolved, expired). "
             "Returns id, task_id, epic_id, owner_id, backup_owner_id, state, sla_due_at, "

@@ -19,7 +19,7 @@ Hivemind                    User                    AI-Client
    |                          |-- nächste Session ─────→ |
 ```
 
-Ab Phase 8: AI-Client konsumiert Prompts direkt — kein manueller Schritt mehr.
+Ab Phase 8: AI-Client konsumiert Prompts direkt oder die Prompt Station dispatcht sie serverseitig — kein Copy/Paste-Zwang mehr.
 
 ---
 
@@ -52,12 +52,12 @@ Du arbeitest an TASK-88 im Rahmen von EPIC-12.
 [task.definition_of_done]
 
 ### Verfügbare Hivemind-Tools
-- hivemind/get_task               — Task-Details laden
-- hivemind/get_guards             — Guards für diesen Task laden
-- hivemind/report_guard_result    — Guard-Ergebnis melden (passed|failed|skipped)
-- hivemind/submit_result          — Ergebnis + Artefakte speichern
-- hivemind/update_task_state      — Status setzen (→ in_review nur wenn alle Guards passed)
-- hivemind/create_decision_request — eskalieren wenn blockiert
+- hivemind-get_task               — Task-Details laden
+- hivemind-get_guards             — Guards für diesen Task laden
+- hivemind-report_guard_result    — Guard-Ergebnis melden (passed|failed|skipped)
+- hivemind-submit_result          — Ergebnis + Artefakte speichern
+- hivemind-update_task_state      — Status setzen (→ in_review nur wenn alle Guards passed)
+- hivemind-create_decision_request — eskalieren wenn blockiert
 
 ### Kontext (vom Bibliotekar, [630/8000] Tokens)
 [Skill: FastAPI Endpoint erstellen — 420 Tokens]
@@ -119,14 +119,16 @@ Du reviewst TASK-88 im Rahmen von EPIC-12.
 - Prompts werden **serverseitig** generiert, nicht clientseitig zusammengebaut
 - Jeder Prompt-Typ hat ein versioniertes Template im Backend
 - Templates sind selbst **Skills** (global, lifecycle-managed) — können also verbessert werden
-- MCP-Endpunkt: `hivemind/get_prompt { "type": "worker", "task_id": "TASK-88" }`
+- MCP-Endpunkt: `hivemind-get_prompt { "type": "worker", "task_key": "TASK-88" }`
+- Legacy-Alias: `task_id` bleibt fuer `get_prompt` kompatibel, aber neue Aufrufe sollen `task_key` verwenden
+- Manueller Dispatch in der Prompt Station: zuerst Prompt generieren, dann den generierten Prompt mit der ausgewaehlten `agent_role` an `/api/admin/conductor/dispatch` senden
 
 ### Zwei Darstellungsformen
 
 | Modus | Parameter | Inhalt | Einsatz |
 | --- | --- | --- | --- |
 | **Kompakt** (default) | `assembled: false` | Referenzen kollabiert: `[Skill: FastAPI Endpoint — 420 Tokens]` | Prompt Station — übersichtliche Darstellung, Kopieren |
-| **Volltext** | `assembled: true` | Alle Skills/Docs inline expandiert | Volltext-Modal — vollständiger lesbarer Prompt-Text |
+| **Volltext** | `assembled: true` | Ausgewaehlte Skills/Docs inline expandiert, Rest kollabiert | Volltext-Modal — vollständiger lesbarer Prompt-Text |
 
 Die kompakte Form ist für den User leichter zu überfliegen. Die Volltext-Form ist identisch mit dem, was tatsächlich an den AI-Client gesendet wird — beide Formen teilen dieselbe Token-Zählung.
 

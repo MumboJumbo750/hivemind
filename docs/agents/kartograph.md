@@ -66,15 +66,15 @@ Ausgabe:  Wachsende Systemkarte in Hivemind (Wiki + Nexus Grid Nodes)
    User fügt Prompt in AI-Client ein
 
 2. AI-Client fragt aktiv nach was es braucht:
-   hivemind/search_wiki { "query": "authentication" }
+   hivemind-search_wiki { "query": "authentication" }
    → findet nichts → weiß: das muss noch kartiert werden
 
 3. AI liest Repo-Dateien (eigene Filesystem-Zugriffe)
    → erkennt Auth-Muster in /src/auth/
 
 4. AI schreibt Erkenntnis in Hivemind:
-   hivemind/create_wiki_article { "title": "Auth-Architektur", "slug": "auth-architektur", "content": "...", "tags": ["backend", "auth"] }
-   hivemind/create_epic_doc { "epic_id": "550e8400-e29b-41d4-a716-446655440000", "title": "Auth Setup", "content": "..." }
+   hivemind-create_wiki_article { "title": "Auth-Architektur", "slug": "auth-architektur", "content": "...", "tags": ["backend", "auth"] }
+   hivemind-create_epic_doc { "epic_id": "550e8400-e29b-41d4-a716-446655440000", "title": "Auth Setup", "content": "..." }
 
 5. Hivemind generiert Follow-up-Prompt: "Was noch nicht kartiert wurde: ..."
    User führt nächste Session durch
@@ -138,7 +138,7 @@ Die Prompt Pipeline (→ [Prompt Pipeline](./prompt-pipeline.md)) unterstützt d
 | Guard-Proposals | Guards aus Repo-Dateien entdecken (`.eslintrc`, `pytest.ini`, `pyproject.toml`, CI-Configs) | `propose_guard`, `submit_guard_proposal` |
 | Guard-Change-Proposals | Bestehende Guards aktualisieren (z.B. Coverage-Schwelle ändern) | `propose_guard_change` |
 | Epic-Restructure-Proposals | Falsch geschnittene Epics vorschlagen umzustrukturieren | `propose_epic_restructure` |
-| Discovery Sessions | Codebase-Bereiche aktiv erkunden und an Peers broadcasten | `hivemind/start_discovery_session`, `hivemind/end_discovery_session` |
+| Discovery Sessions | Codebase-Bereiche aktiv erkunden und an Peers broadcasten | `hivemind-start_discovery_session`, `hivemind-end_discovery_session` |
 
 > **Guard-Discovery:** Der Kartograph analysiert Repo-Dateien (`.github/workflows/ci.yml`, `Makefile`, `package.json`, `pyproject.toml`, `.pre-commit-config.yaml`) und erstellt daraus Guard-Proposals. Vollständige Quellen-Tabelle: [→ guards.md — Kartograph-Discovery](../features/guards.md#kartograph-discovery)
 

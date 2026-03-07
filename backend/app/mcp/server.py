@@ -1,6 +1,6 @@
 """Hivemind MCP Server — MCP 1.0 Standard (TASK-3-001).
 
-Provides Model Context Protocol tools under the ``hivemind/`` namespace.
+Provides Model Context Protocol tools under the ``hivemind-`` namespace.
 
 Transports (always available via FastAPI):
   - **SSE** (standard): ``GET /api/mcp/sse`` + ``POST /api/mcp/message``

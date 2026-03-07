@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-PROJ-006",
+  "epic_ref": "EPIC-PROJ-AUTO",
+  "title": "Lokale End-to-End-Tests und Betriebsdoku für Repo-Projekte",
+  "description": "Sichere das Zielbild mit realistischen End-to-End-Flows, klarer Doku und einer lokalen Betriebscheckliste ab.\n\n**Was zu implementieren ist:**\n\n1. **End-to-End-Testfälle definieren und abdecken:**\n- Projekt mit lokalem Repo anlegen/onboarden\n- Requirement direkt in der App erfassen → Proposal/Weiterverarbeitung\n- Sentry-Event → Projektzuordnung → Routing/Triage\n- YouTrack-Event → Projektzuordnung → Status-/Proposal-Folgepfad\n- kontrollierter Agentenstart mit aktivem Review-Gate\n\n2. **Smoke-Checks für lokalen Betrieb:**\n- Was muss laufen? (`backend`, `frontend`, `postgres`, optional `ollama`)\n- Wie prüft man Workspace, Discovery, Integrationen und Provider?\n- Wie wechselt man kontrolliert zwischen lokalen Repos?\n\n3. **Dokumentation:**\n- Guide \"Neues lokales Repo als Projekt anbinden\"\n- Guide \"YouTrack/Sentry an ein Projekt koppeln\"\n- Troubleshooting für häufige Fehlpfade (Mount, Auth, Webhook, Provider, Routing)\n\n4. **Nachverfolgbarkeit:**\n- Verlinkung des Epics/der Tasks in relevanter Doku oder Seed-Docs\n- klare Übergabekriterien für produktive Nutzung im lokalen Setup\n\n**Wichtig:** Dieses Task ist erst dann done, wenn ein Entwickler ohne Insiderwissen den Flow reproduzierbar lokal nutzen kann.",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "E2E- oder integrative Smoke-Tests decken die Kernflüsse ab",
+      "Lokale Betriebscheckliste ist dokumentiert",
+      "Repo-Onboarding und Integrationssetup sind nachvollziehbar beschrieben",
+      "Typische Fehlerfälle haben Troubleshooting-Einträge",
+      "Ein neuer Entwickler kann den Flow reproduzierbar lokal durchspielen"
+    ]
+  },
+  "tags": ["testing", "docs", "dx", "operations"],
+  "subtasks": [],
+  "pinned_skills": ["api-test", "repo-onboarding"],
+  "linked_wiki": ["workspace-fs"],
+  "source_doc": null,
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-PROJ-002", "TASK-PROJ-003", "TASK-PROJ-005"]
+}

@@ -2,14 +2,14 @@
   "external_id": "TASK-4-006",
   "epic_ref": "EPIC-PHASE-4",
   "title": "Skill Write-Tools: submit_skill_proposal, merge_skill, reject_skill",
-  "description": "Drei MCP-Write-Tools für den Skill-Lifecycle implementieren: `hivemind/submit_skill_proposal` (Gaertner/Developer: draft → pending_merge, Permission: submit_skill_proposal), `hivemind/merge_skill` (Admin: pending_merge → active, erstellt skill_versions-Eintrag mit diff_from_previous, setzt lifecycle='active', sendet SkillMergedEvent), `hivemind/reject_skill` (Admin: pending_merge → rejected, Pflicht-Parameter: rationale, sendet SkillRejectedEvent mit Begründung an proposed_by). Alle drei Tools schreiben Audit-Log-Einträge. Optimistic Locking mit version-Parameter. State-Machine-Enforcement: ungültige Transition → MCP-konforme Fehlermeldung mit code='INVALID_STATE_TRANSITION'. Handler in `app/mcp/tools/skill_write_tools.py` (neue Datei). Tool-Registrierung in `app/mcp/server.py` ergänzen. Diff-Berechnung bei merge: textuelle Unterschiede zwischen alter und neuer Version in `diff_from_previous` speichern (unified diff format).",
+  "description": "Drei MCP-Write-Tools für den Skill-Lifecycle implementieren: `hivemind-submit_skill_proposal` (Gaertner/Developer: draft → pending_merge, Permission: submit_skill_proposal), `hivemind-merge_skill` (Admin: pending_merge → active, erstellt skill_versions-Eintrag mit diff_from_previous, setzt lifecycle='active', sendet SkillMergedEvent), `hivemind-reject_skill` (Admin: pending_merge → rejected, Pflicht-Parameter: rationale, sendet SkillRejectedEvent mit Begründung an proposed_by). Alle drei Tools schreiben Audit-Log-Einträge. Optimistic Locking mit version-Parameter. State-Machine-Enforcement: ungültige Transition → MCP-konforme Fehlermeldung mit code='INVALID_STATE_TRANSITION'. Handler in `app/mcp/tools/skill_write_tools.py` (neue Datei). Tool-Registrierung in `app/mcp/server.py` ergänzen. Diff-Berechnung bei merge: textuelle Unterschiede zwischen alter und neuer Version in `diff_from_previous` speichern (unified diff format).",
   "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [
-      "`hivemind/submit_skill_proposal` setzt lifecycle='pending_merge', schreibt Audit-Log",
-      "`hivemind/merge_skill` setzt lifecycle='active', erstellt skill_versions-Eintrag mit diff",
-      "`hivemind/reject_skill` setzt lifecycle='rejected', sendet Notification mit rationale an proposed_by",
+      "`hivemind-submit_skill_proposal` setzt lifecycle='pending_merge', schreibt Audit-Log",
+      "`hivemind-merge_skill` setzt lifecycle='active', erstellt skill_versions-Eintrag mit diff",
+      "`hivemind-reject_skill` setzt lifecycle='rejected', sendet Notification mit rationale an proposed_by",
       "Ungültige Transitions geben MCP-Error mit code='INVALID_STATE_TRANSITION'",
       "RBAC: merge/reject ohne admin → 403; submit ohne eigenes Skill → 403",
       "Version-Mismatch → 409 mit code='VERSION_CONFLICT'",

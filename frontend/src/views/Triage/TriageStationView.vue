@@ -76,6 +76,19 @@ function getSummary(item: { payload: Record<string, unknown> }) {
   return (p.summary as string) || (p.title as string) || (p.external_id as string) || '(no summary)'
 }
 
+function getProjectLabel(item: { payload: Record<string, unknown>; project_id?: string | null }) {
+  const ctx = item.payload.project_context as Record<string, unknown> | undefined
+  return (ctx?.project_slug as string) || item.project_id || 'unmatched'
+}
+
+function getRoutingReason(item: { routing_detail?: Record<string, unknown> | null }) {
+  const reason = (item.routing_detail?.reason as string) || ''
+  const dispatchStatus = (item.routing_detail?.dispatch_status as string) || ''
+  const dispatchMode = (item.routing_detail?.dispatch_mode as string) || ''
+  const suffix = dispatchStatus ? ` · Dispatch: ${dispatchStatus}${dispatchMode ? ` (${dispatchMode})` : ''}` : ''
+  return `${reason}${suffix}`.trim()
+}
+
 function formatTime(iso: string) {
   const d = new Date(iso)
   return d.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
@@ -150,7 +163,7 @@ async function loadEscalatedTasks() {
   escalatedLoading.value = true
   escalatedError.value = null
   try {
-    const result = await api.callMcpTool('hivemind/list_tasks', { state: 'escalated' })
+    const result = await api.callMcpTool('hivemind-list_tasks', { state: 'escalated' })
     const text = result[0]?.text
     if (text) {
       const parsed = JSON.parse(text)
@@ -167,7 +180,7 @@ async function resolveEscalation(task: Task) {
   if (!confirm(`Task "${task.task_key}" de-eskalieren?`)) return
   resolveLoading.value = task.task_key
   try {
-    await api.callMcpTool('hivemind/resolve_escalation', { task_key: task.task_key })
+    await api.callMcpTool('hivemind-resolve_escalation', { task_key: task.task_key })
     await loadEscalatedTasks()
   } catch (e: unknown) {
     escalatedError.value = (e as Error).message
@@ -188,7 +201,7 @@ async function loadDecisionRequests() {
   decisionsLoading.value = true
   decisionsError.value = null
   try {
-    const result = await api.callMcpTool('hivemind/list_decision_requests', { state: 'open' })
+    const result = await api.callMcpTool('hivemind-list_decision_requests', { state: 'open' })
     const text = result[0]?.text
     if (text) {
       const parsed = JSON.parse(text)
@@ -497,6 +510,7 @@ onUnmounted(() => {
           <span :class="['source-badge', getSourceClass(item.system)]">
             {{ getSourceIcon(item.system) }} {{ item.system }}
           </span>
+          <span class="item-project">{{ getProjectLabel(item) }}</span>
           <span class="item-summary">{{ getSummary(item) }}</span>
           <span class="item-entity">{{ item.entity_type }}</span>
           <span class="item-time">{{ formatTime(item.created_at) }}</span>
@@ -508,6 +522,7 @@ onUnmounted(() => {
             <button class="btn btn-ignore" @click="openIgnoreModal(item.id)">Ignorieren</button>
           </div>
         </div>
+        <div v-if="getRoutingReason(item)" class="item-reason">{{ getRoutingReason(item) }}</div>
         <div class="item-payload">
           <code>{{ JSON.stringify(item.payload, null, 2).slice(0, 200) }}</code>
         </div>
@@ -731,6 +746,15 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.item-project {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--color-accent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
 .item-entity {
   color: var(--color-text-muted);
   font-size: 0.75rem;
@@ -766,6 +790,12 @@ onUnmounted(() => {
   background: var(--color-bg);
   border-radius: 4px;
   overflow: hidden;
+}
+
+.item-reason {
+  margin-top: var(--space-2, 0.5rem);
+  color: var(--color-warning);
+  font-size: 0.75rem;
 }
 
 .item-payload code {

@@ -19,7 +19,7 @@ const { isAutoMode, overrideManual, enterManualMode, exitManualMode, setConducto
 
 interface ConductorDispatch {
   id: string
-  task_key: string
+  trigger_id: string
   dispatched_at: string
   status: string
   tokens_used?: number | null
@@ -50,9 +50,10 @@ async function loadConductorDispatches() {
       headers: { 'Content-Type': 'application/json' },
     })
     if (res.ok) {
-      const data = await res.json() as { dispatches?: ConductorDispatch[]; total_tokens?: number }
-      conductorDispatches.value = data.dispatches ?? []
-      conductorTokenTotal.value = data.total_tokens ?? 0
+      const data = await res.json() as { dispatches?: ConductorDispatch[]; total_tokens?: number } | ConductorDispatch[]
+      const dispatches = Array.isArray(data) ? data : data.dispatches ?? []
+      conductorDispatches.value = dispatches
+      conductorTokenTotal.value = Array.isArray(data) ? 0 : data.total_tokens ?? 0
     }
   } catch {
     // Non-critical — endpoint may not exist yet
@@ -105,7 +106,10 @@ async function copyWorkerPrompt() {
 // Task wechselt → Prompt-Cache leeren
 watch(
   () => projectStore.activeTask?.task_key,
-  () => { workerPrompt.value = '' },
+  () => {
+    workerPrompt.value = ''
+    taskAgentRole.value = recommendedAgentRoleForTask()
+  },
 )
 
 // QA-Failed Prompt Flow
@@ -227,7 +231,19 @@ const gaertnerExecuting = ref(false)
 const gaertnerExecuteResult = ref<ExecuteResult | null>(null)
 const gaertnerExecuteError = ref<string | null>(null)
 
-function agentRoleForTask(): string {
+const TASK_AGENT_OPTIONS = [
+  { label: 'Worker', value: 'worker', icon: '⚙' },
+  { label: 'Reviewer', value: 'reviewer', icon: '🔍' },
+  { label: 'Gaertner', value: 'gaertner', icon: '🌱' },
+  { label: 'Kartograph', value: 'kartograph', icon: '🗺' },
+  { label: 'Architekt', value: 'architekt', icon: '🏗' },
+  { label: 'Stratege', value: 'stratege', icon: '🧭' },
+  { label: 'Triage', value: 'triage', icon: '🧪' },
+]
+
+const taskAgentRole = ref('worker')
+
+function recommendedAgentRoleForTask(): string {
   const state = projectStore.activeTask?.state
   if (state === 'in_progress') return 'worker'
   if (state === 'scoped') return 'worker'
@@ -236,17 +252,47 @@ function agentRoleForTask(): string {
   return 'worker'
 }
 
+const taskAgentLabel = computed(() =>
+  TASK_AGENT_OPTIONS.find((item) => item.value === taskAgentRole.value)?.label ?? taskAgentRole.value,
+)
+
+function promptTypeForAgentRole(agentRole: string): string {
+  return agentRole === 'reviewer' ? 'review' : agentRole
+}
+
+async function buildTaskExecutionPrompt(agentRole: string): Promise<string> {
+  const promptType = promptTypeForAgentRole(agentRole)
+  const taskKey = ['worker', 'review', 'gaertner', 'kartograph'].includes(promptType)
+    ? projectStore.activeTask?.task_key
+    : undefined
+  const epicRef = agentRole === 'architekt' ? projectStore.activeEpic?.epic_key : undefined
+  const projectId = agentRole === 'stratege' ? projectStore.activeProject?.id : undefined
+
+  const result = await api.getPrompt(promptType, taskKey, epicRef, projectId)
+  const parsed = JSON.parse(result[0]?.text || '{}') as {
+    data?: { prompt?: string }
+    prompt?: string
+    error?: { message?: string }
+  }
+  const prompt = parsed.data?.prompt || parsed.prompt
+  if (!prompt) {
+    throw new Error(parsed.error?.message || 'Kein Prompt verfügbar.')
+  }
+  return prompt
+}
+
 async function executeTaskPrompt() {
   if (!projectStore.activeTask) return
   executing.value = true
   executeResult.value = null
   executeError.value = null
   try {
+    const prompt = await buildTaskExecutionPrompt(taskAgentRole.value)
     const result = await api.executePrompt(
-      agentRoleForTask(),
-      projectStore.activeTask.description ?? '',
+      taskAgentRole.value,
+      prompt,
       projectStore.activeTask.task_key,
-      projectStore.activeEpic?.id,
+      projectStore.activeEpic?.epic_key,
     )
     executeResult.value = result
     if (result.status === 'failed' || result.status === 'no_provider') {
@@ -476,7 +522,7 @@ onUnmounted(() => {
               class="dispatch-item"
               :class="`dispatch-item--${d.status}`"
             >
-              <span class="dispatch-key mono">{{ d.task_key }}</span>
+              <span class="dispatch-key mono">{{ d.trigger_id }}</span>
               <span class="dispatch-status" :class="`dispatch-status--${d.status}`">{{ d.status }}</span>
               <span class="dispatch-time mono">{{ new Date(d.dispatched_at).toLocaleTimeString('de-DE') }}</span>
               <span v-if="d.tokens_used" class="dispatch-tokens mono">{{ d.tokens_used }} tok</span>
@@ -550,6 +596,13 @@ onUnmounted(() => {
           <button class="btn-secondary" @click="copyToClipboard(projectStore.activeTask.description ?? '')">
             📋 Beschreibung kopieren
           </button>
+          <HivemindDropdown :items="TASK_AGENT_OPTIONS" v-model="taskAgentRole">
+            <template #trigger>
+              <button class="btn-secondary btn-agent-select" :disabled="executing">
+                {{ taskAgentLabel }} ▾
+              </button>
+            </template>
+          </HivemindDropdown>
           <button
             class="btn-primary"
             @click="executeTaskPrompt"
@@ -1385,10 +1438,15 @@ onUnmounted(() => {
   display: flex;
   gap: var(--space-2);
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .btn-execute {
   background: var(--color-accent);
+}
+
+.btn-agent-select {
+  min-width: 132px;
 }
 
 .execute-result {

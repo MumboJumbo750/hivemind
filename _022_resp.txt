@@ -1,0 +1,1 @@
+{"result":[{"type":"text","text":"{\"data\": {\"task_key\": \"TASK-3-022\", \"state\": \"in_progress\", \"result_length\": 390, \"artifacts_count\": 1}, \"meta\": {\"version\": 14}}"}]}

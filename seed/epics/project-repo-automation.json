@@ -1,0 +1,19 @@
+{
+  "external_id": "EPIC-PROJ-AUTO",
+  "title": "Projektgebundene Repo-Automation — lokales Repo, Intake-Kanäle und kontrollierter Autostart",
+  "description": "**Problem:** Hivemind kann heute lokal betrieben werden, aber das Zielbild ist noch nicht vollständig erreicht: Ein Hivemind-\"Projekt\" ist noch nicht sauber an genau ein lokales Repository gebunden, Workspace-Konfigurationen sind global statt projektbezogen, und Intake über App, YouTrack oder Sentry ist noch nicht konsistent pro Projekt verdrahtet. Dadurch ist der gewünschte Workflow \"Anforderung reinkippen → Hivemind ordnet zu → Agenten legen kontrolliert los\" nur teilweise vorhanden.\n\n**Zielbild:** Ein Benutzer startet Hivemind lokal, legt ein Projekt an oder onboardet ein bestehendes lokales Repo, verbindet optional YouTrack und Sentry mit genau diesem Projekt und gibt Anforderungen entweder direkt in der App oder über externe Quellen hinein. Hivemind routet diese Eingänge projektbezogen, erzeugt Proposal/Epic/Task-Kontext und startet den passenden Automationspfad über den Conductor — weiterhin unter klaren Review-Gates und Governance-Regeln.\n\n**Scope dieses Epics:**\n\n1. **Projekt = Repo:** Projekte bekommen einen eigenen Workspace-/Repo-Bezug inklusive Host-Pfad, Modus und Onboarding-Status.\n2. **One-click Onboarding:** Externe Repos werden ohne manuelle Compose-Handarbeit angebunden oder umgeschaltet.\n3. **Projektbezogener Intake:** In-App-Requirements, YouTrack und Sentry werden nicht mehr global, sondern pro Projekt konfiguriert und zugeordnet.\n4. **Geschlossener Automationsfluss:** Inbound-Events, Proposal-Erstellung, Routing und Conductor-Dispatch laufen konsistent zusammen — ohne doppelte oder konkurrierende Triggerpfade.\n5. **Lokale Nutzbarkeit:** Der komplette Flow ist für den lokalen Betrieb dokumentiert, testbar und nachvollziehbar.\n\n**Nicht-Ziel:** Dieses Epic führt keinen unkontrollierten \"Full Auto ohne Review\" ein. Review-Gates, Governance und manuelle Eingriffspunkte bleiben erhalten.",
+  "state": "scoped",
+  "priority": "high",
+  "sla_deadline": null,
+  "definition_of_done": "Ein Hivemind-Projekt kann genau einem lokalen Repo zugeordnet werden. Repo-Onboarding funktioniert ohne manuelles Bearbeiten von Compose-Dateien. Intake über App, YouTrack und Sentry ist projektbezogen konfigurierbar und landet im richtigen Projektkontext. Routing, Proposal-Erstellung und Conductor-Dispatch sind konsistent verbunden. Der lokale End-to-End-Flow von Requirement/Webhook bis zum kontrollierten Agentenstart ist getestet und dokumentiert.",
+  "tags": [
+    "automation",
+    "workspace",
+    "project",
+    "integrations",
+    "conductor",
+    "dx"
+  ],
+  "depends_on": ["EPIC-WFS", "EPIC-PHASE-7", "EPIC-PHASE-8", "EPIC-IDE-AUTOMATION"],
+  "source_doc": null
+}

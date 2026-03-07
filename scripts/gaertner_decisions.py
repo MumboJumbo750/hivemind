@@ -17,28 +17,28 @@ def mcp(tool, args):
 # Decision Record 1: Outbox Consumer Architecture
 print("Creating Decision Records...")
 
-dr1 = mcp('hivemind/create_decision_record', {
+dr1 = mcp('hivemind-create_decision_record', {
     'epic_id': EPIC_P7_ID,
     'decision': 'Separate Outbox-Consumer pro Direction statt einem generischen Consumer',
     'rationale': 'Phase F hat bewiesen dass peer_outbound seinen eigenen Consumer braucht (Ed25519-Signing, Hub-Relay-Fallback). Phase 7 ergänzt einen outbound-Consumer mit System-spezifischen Adaptern (YouTrack, Sentry). Ein generischer Consumer wäre zu komplex — jeder Direction-Typ hat eigene Auth, Retry- und Delivery-Logik. Drei separate Jobs: peer_outbound (Phase F), outbound (Phase 7), inbound-routing (Phase 7).',
 })
 print(f"  DR1 (Outbox Architecture): {json.dumps(dr1)[:200]}")
 
-dr2 = mcp('hivemind/create_decision_record', {
+dr2 = mcp('hivemind-create_decision_record', {
     'epic_id': EPIC_P7_ID,
     'decision': 'pgvector Cosine-Similarity mit konfigurierbarem Threshold (Default 0.85) für Auto-Routing',
     'rationale': 'Alternative war regelbasiertes Routing (Keyword-Matching). pgvector-Similarity ist flexibler, braucht keine manuellen Regeln und nutzt die seit Phase 3 vorhandene Embedding-Infrastruktur. Threshold ist per API änderbar ohne Neustart. Bei Embedding-Service-Ausfall: Graceful Degradation zu [UNROUTED] statt Fehlschlag.',
 })
 print(f"  DR2 (Auto-Routing): {json.dumps(dr2)[:200]}")
 
-dr3 = mcp('hivemind/create_decision_record', {
+dr3 = mcp('hivemind-create_decision_record', {
     'epic_id': EPIC_P7_ID,
     'decision': 'DLQ-Requeue setzt attempts auf 0 (frischer Retry-Zyklus) statt Weiterzählen',
     'rationale': 'Ein Requeue ist eine bewusste Admin-Aktion (z.B. nach Bug-Fix oder Netzwerk-Recovery). Weiterzählen der attempts würde den Eintrag sofort wieder in die DLQ schieben wenn der erste Retry fehlschlägt. Reset auf 0 gibt dem Eintrag einen vollständigen frischen Zyklus (5 Versuche mit Exponential Backoff).',
 })
 print(f"  DR3 (DLQ Requeue): {json.dumps(dr3)[:200]}")
 
-dr4 = mcp('hivemind/create_decision_record', {
+dr4 = mcp('hivemind-create_decision_record', {
     'epic_id': EPIC_P7_ID,
     'decision': 'KPI-Werte stündlich gecacht statt Echtzeit-Aggregation pro Request',
     'rationale': 'KPI-Berechnung erfordert Aggregat-Queries über große Tabellen (tasks, mcp_invocations, decision_requests). Echtzeit pro Request wäre zu teuer. Stündlicher Cache hat dieselbe Granularität wie der SLA-Cron und reicht für KPI-Monitoring. Phase 8 ergänzt historische Zeitreihen via kpi_snapshots-Tabelle.',
@@ -47,7 +47,7 @@ print(f"  DR4 (KPI Caching): {json.dumps(dr4)[:200]}")
 
 # Also create an Epic-Doc for Phase 7 with the technical context
 print("\nCreating Epic-Doc for Phase 7 technical context...")
-doc = mcp('hivemind/create_epic_doc', {
+doc = mcp('hivemind-create_epic_doc', {
     'epic_id': EPIC_P7_ID,
     'title': 'Phase 7 — Technischer Kontext & Vorarbeiten',
     'content': """# Phase 7 — Technischer Kontext

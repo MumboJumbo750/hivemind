@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-WORKER-002",
+  "epic_ref": "EPIC-WORKER-ORCH",
+  "title": "Runnable-Task-Graph und Ausführbarkeitsanalyse ergänzen",
+  "description": "Baue eine explizite Analyse, welche Tasks eines Epics aktuell wirklich parallel oder seriell ausführbar sind.\n\n**Was zu implementieren ist:**\n\n1. `runnable` fachlich definieren (Dependencies, Decisions, aktive Dispatches, Konflikte)\n2. Task-Graph aus Dependencies, Parent/Subtasks und Kontextbeziehungen ableiten\n3. Dry-Run-Ausgabe für ein Epic erstellen: runnable, blocked, waiting, conflicting\n4. Konfliktgründe strukturiert ausgeben\n5. Grundlage für Slot-basierte Worker-Planung bereitstellen\n\n**Wichtig:** Parallelität darf nicht nur am State hängen, sondern an echter Ausführbarkeit.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Das System kann runnable Tasks für ein Epic bestimmen",
+      "Blockierte und konfliktbehaftete Tasks werden mit Grund angezeigt",
+      "Dry-Run liefert eine belastbare Ausführbarkeitsanalyse",
+      "Die Analyse kann vom Epic-Start-Pfad genutzt werden"
+    ]
+  },
+  "tags": ["backend", "graph", "scheduler", "dependencies"],
+  "subtasks": [],
+  "pinned_skills": ["conductor-orchestrator", "state-machine-transition"],
+  "linked_wiki": ["state-machine-guide"],
+  "source_doc": "docs/features/epic-start-parallel-workers.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-WORKER-001"]
+}

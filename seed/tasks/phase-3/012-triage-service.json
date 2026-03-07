@@ -2,14 +2,14 @@
   "external_id": "TASK-3-012",
   "epic_ref": "EPIC-PHASE-3",
   "title": "Triage-Service + Write-Tools",
-  "description": "Triage-Service implementieren (`app/services/triage_service.py`) und als MCP-Write-Tools bereitstellen. MCP-Tools: `hivemind/route_event { event_id, epic_id }` — setzt `routing_state = 'routed'`, weist Event dem Epic zu, schreibt Audit-Log. `hivemind/ignore_event { event_id, reason? }` — setzt `routing_state = 'ignored'` mit optionalem Grund, schreibt Audit-Log. Validation: Nur Events mit `routing_state='unrouted'` können geroutet/ignoriert werden (sonst 409 Conflict). RBAC: Nur admin mit `triage`-Permission. SSE-Broadcast: `triage_routed` und `triage_ignored` Events an `/events/triage` Kanal. `[UNROUTED]`-Items-Erzeugung: Webhook-Ingest (TASK-3-011) erstellt die Items automatisch. Federation-Events (von Phase F) erscheinen ebenfalls als Triage-Items wenn kein Routing möglich. Der `hivemind/get_triage` Read-Tool (TASK-3-004) zeigt die Items an.",
+  "description": "Triage-Service implementieren (`app/services/triage_service.py`) und als MCP-Write-Tools bereitstellen. MCP-Tools: `hivemind-route_event { event_id, epic_id }` — setzt `routing_state = 'routed'`, weist Event dem Epic zu, schreibt Audit-Log. `hivemind-ignore_event { event_id, reason? }` — setzt `routing_state = 'ignored'` mit optionalem Grund, schreibt Audit-Log. Validation: Nur Events mit `routing_state='unrouted'` können geroutet/ignoriert werden (sonst 409 Conflict). RBAC: Nur admin mit `triage`-Permission. SSE-Broadcast: `triage_routed` und `triage_ignored` Events an `/events/triage` Kanal. `[UNROUTED]`-Items-Erzeugung: Webhook-Ingest (TASK-3-011) erstellt die Items automatisch. Federation-Events (von Phase F) erscheinen ebenfalls als Triage-Items wenn kein Routing möglich. Der `hivemind-get_triage` Read-Tool (TASK-3-004) zeigt die Items an.",
   "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [
       "Triage-Service in `app/services/triage_service.py` implementiert",
-      "`hivemind/route_event` setzt `routing_state='routed'` und weist Epic zu",
-      "`hivemind/ignore_event` setzt `routing_state='ignored'` mit optionalem Grund",
+      "`hivemind-route_event` setzt `routing_state='routed'` und weist Epic zu",
+      "`hivemind-ignore_event` setzt `routing_state='ignored'` mit optionalem Grund",
       "Nur Events mit `routing_state='unrouted'` können geroutet/ignoriert werden (sonst 409)",
       "RBAC: Nur admin mit `triage`-Permission darf Write-Tools aufrufen",
       "Audit-Log-Eintrag für jede Routing-Entscheidung",

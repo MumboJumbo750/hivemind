@@ -123,14 +123,14 @@ async def test_running_and_failed_lifecycle_transitions() -> None:
 
     progress = await report_ide_dispatch_progress(
         dispatch_id,
-        body=DispatchProgressRequest(stage="mcp_call", message="hivemind/submit_result"),
+        body=DispatchProgressRequest(stage="mcp_call", message="hivemind-submit_result"),
         db=db,
         current_user=None,
     )
     assert progress["status"] in {"running", "cancelled"}
     assert isinstance(dispatch.result.get("progress"), list)
     assert dispatch.result["progress"][-1]["stage"] == "mcp_call"
-    assert dispatch.result["progress"][-1]["message"] == "hivemind/submit_result"
+    assert dispatch.result["progress"][-1]["message"] == "hivemind-submit_result"
     assert "last_progress_at" in dispatch.result
 
 

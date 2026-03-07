@@ -55,7 +55,7 @@ def _parse_dead_letter_id(args: dict) -> tuple[uuid.UUID | None, list[TextConten
 
 register_tool(
     Tool(
-        name="hivemind/requeue_dead_letter",
+        name="hivemind-requeue_dead_letter",
         description=(
             "Requeue a sync_dead_letter entry by creating a new sync_outbox entry with "
             "state='pending', attempts=0, next_retry_at=NULL."
@@ -97,7 +97,7 @@ async def _handle_requeue_dead_letter(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/discard_dead_letter",
+        name="hivemind-discard_dead_letter",
         description=(
             "Discard a sync_dead_letter entry (soft action): sets discarded_at/by, "
             "keeps row for audit trail."

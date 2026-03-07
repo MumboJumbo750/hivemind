@@ -19,7 +19,7 @@ async def test_call_unknown_tool(client):
     """Unbekannter Tool-Name → MCP-konforme Fehlermeldung."""
     resp = await client.post(
         "/api/mcp/call",
-        json={"tool": "hivemind/nonexistent", "arguments": {}},
+        json={"tool": "hivemind-nonexistent", "arguments": {}},
     )
     assert resp.status_code == 404
 

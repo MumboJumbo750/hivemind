@@ -44,9 +44,10 @@ Für jeden neuen Task:
 - **Geschätzte Komplexität**: small | medium | large
 
 ### Wichtig: Task-Benennung & Lifecycle
-`decompose_epic` generiert automatisch **phasen-spezifische Task-Keys** nach dem Muster `TASK-{prefix}-NNN`.
-- `EPIC-PHASE-5` → `TASK-5-001`, `TASK-5-002`, …
-- `EPIC-PHASE-1A` → `TASK-1A-001`, `TASK-1A-002`, …
+`decompose_epic` generiert automatisch **sequenzielle Task-Keys** im Format `TASK-{n}`.
+- Jeder Task bekommt einen global eindeutigen Key: `TASK-1`, `TASK-2`, `TASK-3`, …
+- Keys werden über PostgreSQL Sequences generiert (atomar, kollisionsfrei)
+- Note: Alte Konvention `TASK-{prefix}-NNN` ist nicht mehr aktiv
 - Jeder Task bekommt `external_id = task_key` (idempotent mit Seed-Import)
 
 Tasks starten mit **state=incoming**. Danach:
@@ -58,11 +59,11 @@ Tasks starten mit **state=incoming**. Danach:
 
 | Tool | Required | Optional |
 |------|----------|----------|
-| `hivemind/decompose_epic` | `epic_key` (str!), `tasks` (array) | — |
-| `hivemind/set_context_boundary` | `task_key` (str!) | `allowed_skills` (uuid[]), `allowed_docs` (uuid[]), `max_token_budget` (int) |
-| `hivemind/link_skill` | `task_key` (str!), `skill_id` (uuid-str) | `pinned_version_id` (uuid-str) |
-| `hivemind/assign_task` | `task_key` (str!), `user_id` (uuid-str) | — |
-| `hivemind/update_task_state` | `task_key` (str!), `target_state` (str!) | `comment` (str) |
+| `hivemind-decompose_epic` | `epic_key` (str!), `tasks` (array) | — |
+| `hivemind-set_context_boundary` | `task_key` (str!) | `allowed_skills` (uuid[]), `allowed_docs` (uuid[]), `max_token_budget` (int) |
+| `hivemind-link_skill` | `task_key` (str!), `skill_id` (uuid-str) | `pinned_version_id` (uuid-str) |
+| `hivemind-assign_task` | `task_key` (str!), `user_id` (uuid-str) | — |
+| `hivemind-update_task_state` | `task_key` (str!), `target_state` (str!) | `comment` (str) |
 
 **Achtung Feldnamen:**
 - `epic_key` NICHT `epic_id`

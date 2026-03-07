@@ -17,6 +17,7 @@ Nutze `make`-Targets oder `podman compose exec backend ...` — nie direkt `pyte
 
 ## Konventionen (Kurzreferenz)
 
+- **Unified Key System:** Alle Keys via PG-Sequences in `backend/app/services/key_generator.py` — Format `{PREFIX}-{n}` (EPIC-, TASK-, SKILL-, WIKI-, GUARD-, DOC-)
 - APScheduler-Jobs: `backend/app/services/scheduler.py` → `start_scheduler()` — **nie** `main.py`
 - SyncOutbox: NUR `'pending'` und `'dead_letter'` — kein `'delivered'`, `'failed'`, `'dead'`
 - `node_bug_reports.node_id` → FK auf `code_nodes.id` (nicht `nodes.id`)

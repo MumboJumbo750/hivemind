@@ -1,5 +1,8 @@
 # Hivemind in einem externen Repository einrichten
 
+> Ergänzende Betriebsdoku für projektbezogene Repo-/Intake-Automation:
+> `docs/project-repo-automation.md`
+
 Diese Anleitung erklärt, wie der Hivemind-MCP-Server für ein **fremdes Repository** konfiguriert wird,
 sodass Analyzer und Filesystem-Tools auf dieses Repo zugreifen können.
 
@@ -19,6 +22,13 @@ Das Init-Script generiert alle benötigten Konfigurationsdateien automatisch:
 # Vom hivemind-Root aus:
 python scripts/hivemind_init.py --workspace /absolute/path/to/your/repo
 ```
+
+> Für projektbezogenes Onboarding über die Web-App ist `remote_url` auf Windows praktisch Pflicht,
+> wenn der Host-Pfad aus dem Container nicht direkt lesbar ist. `verify` kann den Runtime-Workspace
+> dann über das Git-Remote eindeutig dem Projekt zuordnen.
+>
+> `preview` und `verify` übernehmen außerdem automatisch `remote_url`, `default_branch` und den
+> erkannten Stack in den Projekt-Datensatz, sobald das Repo im Container eindeutig zugeordnet werden kann.
 
 Das Script erstellt:
 
@@ -132,7 +142,7 @@ HIVEMIND_WORKSPACE_ROOT=/workspace
 
 Standard: `/workspace`
 
-Der Analyzer (`hivemind/run_analyzer`) verwendet diesen Pfad als Default für `root_path`,
+Der Analyzer (`hivemind-run_analyzer`) verwendet diesen Pfad als Default für `root_path`,
 falls kein expliziter Wert übergeben wird.
 
 ---
@@ -174,7 +184,7 @@ curl http://localhost:8000/api/mcp/discovery | python -m json.tool
 # Analyzer auf dem externen Repo ausführen
 curl -X POST http://localhost:8000/api/mcp/call \
   -H "Content-Type: application/json" \
-  -d '{"tool": "hivemind/run_analyzer", "arguments": {"analyzer_name": "all"}}'
+  -d '{"tool": "hivemind-run_analyzer", "arguments": {"analyzer_name": "all"}}'
 ```
 
 ---
@@ -220,12 +230,12 @@ Nach erfolgreicher Einrichtung stehen im Agent-Mode folgende Filesystem-Tools zu
 
 | Tool | Beispiel-Prompt | Beschreibung |
 |------|-----------------|--------------|
-| `hivemind/fs_read` | "Lies src/main.py" | Datei lesen (optional Zeilenbereich) |
-| `hivemind/fs_write` | "Schreib eine README" | Datei erstellen/überschreiben (atomisch) |
-| `hivemind/fs_list` | "Zeig mir die Verzeichnisstruktur" | Verzeichnis auflisten |
-| `hivemind/fs_search` | "Suche alle TODOs" | Grep/Regex über Workspace |
-| `hivemind/fs_stat` | "Wie groß ist config.yaml?" | Datei-Metadaten |
-| `hivemind/run_analyzer` | "Mach einen Health-Check" | Repo-Analyse → JSON-Report |
+| `hivemind-fs_read` | "Lies src/main.py" | Datei lesen (optional Zeilenbereich) |
+| `hivemind-fs_write` | "Schreib eine README" | Datei erstellen/überschreiben (atomisch) |
+| `hivemind-fs_list` | "Zeig mir die Verzeichnisstruktur" | Verzeichnis auflisten |
+| `hivemind-fs_search` | "Suche alle TODOs" | Grep/Regex über Workspace |
+| `hivemind-fs_stat` | "Wie groß ist config.yaml?" | Datei-Metadaten |
+| `hivemind-run_analyzer` | "Mach einen Health-Check" | Repo-Analyse → JSON-Report |
 
 Alle Tools sind auf `HIVEMIND_WORKSPACE_ROOT` eingesperrt (kein Path-Traversal möglich).
 

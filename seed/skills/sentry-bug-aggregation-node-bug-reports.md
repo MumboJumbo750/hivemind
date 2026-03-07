@@ -72,6 +72,6 @@ async def aggregate_bug_report(db: AsyncSession, sentry_event: dict):
 - `node_bug_reports.node_id` → FK auf `code_nodes.id` (nicht `nodes.id`)
 - `node_bug_reports.count` steuert Knotengröße und -farbe in der Bug Heatmap
 - Hover im Nexus Grid zeigt Bug-Details (Severity, Count, letzte Issue-IDs)
-- MCP-Tool: `hivemind/assign_bug` für manuelles Bug→Epic Routing
+- MCP-Tool: `hivemind-assign_bug` für manuelles Bug→Epic Routing
 - Stack-Trace-Pfade sind relativ — Fuzzy-Matching gegen `code_nodes.path` nötig
 - `datetime.utcnow()` ist deprecated — stattdessen `datetime.now(UTC)` verwenden

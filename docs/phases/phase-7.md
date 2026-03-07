@@ -22,10 +22,10 @@
   - Confidence >= Threshold → auto-assign (Default-Threshold: **0.85**, konfigurierbar via `app_settings.routing_threshold` und Env-Override `HIVEMIND_ROUTING_THRESHOLD`)
   - Confidence < Threshold → `[UNROUTED]`
   - Admin kann Threshold zur Laufzeit ändern via `PATCH /api/settings/routing_threshold` ohne Neustart
-- [ ] Admin-Tool: `hivemind/assign_bug` — manuelles Bug→Epic Routing (hier implementiert, **nicht** in Phase 6 — erst Phase 7 hat Sentry-Daten)
+- [ ] Admin-Tool: `hivemind-assign_bug` — manuelles Bug→Epic Routing (hier implementiert, **nicht** in Phase 6 — erst Phase 7 hat Sentry-Daten)
 - [ ] Audit-Retention-Cron: bereinigt alte `input_payload`/`output_payload`
-- [ ] DLQ-Requeue als MCP-Tool: `hivemind/requeue_dead_letter { "id": "uuid" }` (admin + triage permission)
-- [ ] DLQ-Discard als MCP-Tool: `hivemind/discard_dead_letter { "id": "uuid" }` (admin + triage permission)
+- [ ] DLQ-Requeue als MCP-Tool: `hivemind-requeue_dead_letter { "id": "uuid" }` (admin + triage permission)
+- [ ] DLQ-Discard als MCP-Tool: `hivemind-discard_dead_letter { "id": "uuid" }` (admin + triage permission)
 - [ ] Optionaler REST-Alias: `POST /api/triage/dead-letters/{id}/requeue` und `POST /api/triage/dead-letters/{id}/discard` rufen intern denselben Service auf
 - [ ] Embedding-Neuberechnung: wenn Embedding-Provider gewechselt wird
 
@@ -84,7 +84,7 @@ Ablauf:
 - [ ] Sentry Bug-Report wird in `node_bug_reports` aggregiert
 - [ ] Bug-Heatmap im Nexus Grid zeigt Farb-Intensität nach Bug-Count
 - [ ] `[DEAD LETTER]`-Items in Triage Station mit Requeue-Option
-- [ ] `hivemind/requeue_dead_letter` setzt DLQ-Eintrag deterministisch zurück in `sync_outbox` (`state='pending'`, `attempts=0`)
+- [ ] `hivemind-requeue_dead_letter` setzt DLQ-Eintrag deterministisch zurück in `sync_outbox` (`state='pending'`, `attempts=0`)
 - [ ] pgvector-Routing: >= 85% Precision nach 2 Wochen Betrieb (KPI)
 - [ ] Audit-Retention-Cron bereinigt Payloads korrekt
 - [ ] Performance-Budget fuer Nexus Grid und Triage ist dokumentiert und eingehalten

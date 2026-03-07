@@ -209,14 +209,25 @@ async def test_process_inbound_success_sets_routed(monkeypatch: pytest.MonkeyPat
     db = _db_with_entries([entry])
 
     with patch("app.services.outbox_consumer.AsyncSessionLocal", MagicMock(return_value=db)):
-        with patch("app.services.outbox_consumer._dispatch_inbound", new=AsyncMock()) as dispatch_inbound:
+        with patch(
+            "app.services.outbox_consumer._dispatch_inbound",
+            new=AsyncMock(
+                return_value={
+                    "routing_state": "routed",
+                    "intake_stage": "materialized",
+                    "materialization": "bug_report",
+                    "context_refs": {"task_keys": [], "epic_keys": []},
+                    "reason": None,
+                }
+            ),
+        ) as dispatch_inbound:
             await process_inbound()
 
     statement = db.execute.call_args.args[0]
     for_update = getattr(statement, "_for_update_arg", None)
     assert for_update is not None
     assert getattr(for_update, "skip_locked", False) is True
-    dispatch_inbound.assert_awaited_once_with(entry)
+    dispatch_inbound.assert_awaited_once_with(entry, db)
     assert entry.routing_state == "routed"
     db.delete.assert_not_called()
     db.commit.assert_awaited_once()
@@ -424,7 +435,7 @@ async def test_dispatch_inbound_sentry_prefers_raw_payload() -> None:
     service.process_sentry_event = AsyncMock()
 
     with patch("app.services.sentry_aggregation.SentryAggregationService", return_value=service):
-        await _dispatch_inbound(entry)
+        await _dispatch_inbound(entry, AsyncMock())
 
     service.process_sentry_event.assert_awaited_once_with({"source": "raw"})
 
@@ -441,7 +452,7 @@ async def test_dispatch_inbound_sentry_falls_back_to_normalized_payload() -> Non
     service.process_sentry_event = AsyncMock()
 
     with patch("app.services.sentry_aggregation.SentryAggregationService", return_value=service):
-        await _dispatch_inbound(entry)
+        await _dispatch_inbound(entry, AsyncMock())
 
     service.process_sentry_event.assert_awaited_once_with({"source": "normalized"})
 

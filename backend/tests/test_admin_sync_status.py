@@ -91,16 +91,20 @@ def test_delivered_filter_uses_only_valid_states() -> None:
 
     Erfolgreiche Outbound-Einträge werden gelöscht, nicht auf 'delivered' gesetzt.
     Nur routed inbound Einträge sollen gezählt werden.
+    Die Logik liegt jetzt in dlq_service (nach Sync/Outbox-Domain-Refactoring).
     """
     import inspect
 
-    from app.routers.admin import get_sync_status
+    from app.services.dlq_service import get_admin_delivered_rows, get_queue_stats
 
-    src = inspect.getsource(get_sync_status)
-    assert 'state == "delivered"' not in src, (
-        "delivered_filter enthält 'delivered' State — dieser existiert nie im System"
-    )
-    assert 'routing_state == "routed"' in src
+    for fn in (get_admin_delivered_rows, get_queue_stats):
+        src = inspect.getsource(fn)
+        assert 'state == "delivered"' not in src, (
+            f"{fn.__name__}: delivered_filter enthält 'delivered' State — dieser existiert nie im System"
+        )
+
+    src_stats = inspect.getsource(get_queue_stats)
+    assert 'routing_state == "routed"' in src_stats
 
 
 def test_preview_error_compacts_and_truncates_text() -> None:

@@ -23,8 +23,8 @@ async def auto_review_job() -> None:
     from sqlalchemy import select, and_
     from app.models.review import ReviewRecommendation
     from app.models.task import Task
-    from app.services.state_machine import validate_task_transition
     from app.services.governance import get_governance_level
+    from app.services.review_workflow import approve_task_review
 
     now = datetime.now(UTC)
 
@@ -77,15 +77,12 @@ async def auto_review_job() -> None:
                     rec.auto_approved = True  # mark as processed anyway
                     continue
 
-                # Validate transition in_review → done
-                try:
-                    validate_task_transition(task.state, "done")
-                except Exception:
-                    continue
-
-                # Apply auto-approve
-                task.state = "done"
-                task.version = (task.version or 0) + 1
+                # Apply canonical approve path so EXP, epic completion and follow-up dispatches run.
+                await approve_task_review(
+                    db,
+                    task,
+                    comment="Auto-approved after grace period",
+                )
                 rec.auto_approved = True
 
                 logger.info(

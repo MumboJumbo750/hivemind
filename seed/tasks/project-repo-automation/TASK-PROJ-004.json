@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-PROJ-004",
+  "epic_ref": "EPIC-PROJ-AUTO",
+  "title": "Unified Intake-Pipeline zu Proposal, Epic und Task-Kontext schließen",
+  "description": "Verbinde die verschiedenen Eingangskanäle zu einer konsistenten Pipeline, die aus Rohanforderungen oder Inbound-Events nachvollziehbaren Hivemind-Kontext erzeugt.\n\n**Was zu implementieren ist:**\n\n1. **Einheitliche Intake-Stufen definieren:**\n- Eingang erfassen (`requirement`, `youtrack_update`, `sentry_event`, optional weitere)\n- Projekt bestimmen\n- vorhandenen Kontext prüfen (existierendes Epic/Task? Bug-Cluster? Proposal?)\n- Ergebnis als Proposal, Epic-Impuls, Task-Impuls oder Triage-Fall materialisieren\n\n2. **Requirement-Capture und externe Events angleichen:**\n- In-App-Requirements sollen nicht als Sonderweg neben Webhook-Intake existieren\n- gemeinsame Begriffe/Zustände und gemeinsame Audit-/Routinglogik\n\n3. **Kontextobjekte klar festlegen:**\n- wann entsteht nur ein Draft\n- wann entsteht ein Epic-Proposal\n- wann wird direkt ein bestehendes Epic/Task referenziert\n- wann geht etwas bewusst erst in Triage\n\n4. **Doppelte oder konkurrierende Pfade vermeiden:**\n- keine konkurrierenden Trigger zwischen Inbound-Consumer, Aggregation, Routing und Prompt-Erzeugung\n- idempotente Übergänge für wiederholte Events\n\n**Wichtig:** Ziel ist ein sauberes Intake-Modell, nicht nur viele Spezialfälle in einzelnen Routern.",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Ein einheitliches Intake-Modell für App- und Webhook-Eingänge ist definiert",
+      "Proposal-/Epic-/Task-Erzeugung folgt denselben Grundregeln",
+      "Triage-Fälle sind bewusst modelliert",
+      "Doppelte oder konkurrierende Triggerpfade sind reduziert",
+      "Idempotenz für wiederholte Inbound-Ereignisse ist berücksichtigt"
+    ]
+  },
+  "tags": ["routing", "proposal", "epic", "task", "triage"],
+  "subtasks": [],
+  "pinned_skills": ["requirement-capture", "triage-routing"],
+  "linked_wiki": ["autonomie-loop"],
+  "source_doc": null,
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-PROJ-003"]
+}

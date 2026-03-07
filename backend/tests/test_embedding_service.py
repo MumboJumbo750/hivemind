@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -10,6 +11,8 @@ import pytest
 from app.services.embedding_service import (
     CBState,
     CircuitBreaker,
+    EMBEDDING_TEXT_COLS,
+    EmbeddingJob,
     EmbeddingPriority,
     EmbeddingProvider,
     EmbeddingService,
@@ -34,6 +37,17 @@ class FakeProvider(EmbeddingProvider):
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         return [await self.embed(t) for t in texts]
+
+
+class _SessionCtx:
+    def __init__(self, db: AsyncMock) -> None:
+        self._db = db
+
+    async def __aenter__(self) -> AsyncMock:
+        return self._db
+
+    async def __aexit__(self, exc_type, exc, tb) -> bool:
+        return False
 
 
 # ── Provider tests ───────────────────────────────────────────────────────────
@@ -269,14 +283,23 @@ async def test_service_enqueue():
 
 
 @pytest.mark.asyncio
+async def test_service_enqueue_rejects_unknown_table():
+    provider = FakeProvider()
+    svc = EmbeddingService(provider=provider)
+    with pytest.raises(ValueError, match="Unsupported embedding table"):
+        await svc.enqueue("unknown_table", "abc-123", "some text", EmbeddingPriority.ON_WRITE)
+
+
+@pytest.mark.asyncio
 async def test_priority_ordering():
     """Jobs with higher priority (lower int) should be dequeued first."""
     provider = FakeProvider()
     svc = EmbeddingService(provider=provider)
+    available_at = time.monotonic()
 
-    await svc.enqueue("skills", "1", "text", EmbeddingPriority.FEDERATION)
-    await svc.enqueue("skills", "2", "text", EmbeddingPriority.ON_WRITE)
-    await svc.enqueue("skills", "3", "text", EmbeddingPriority.BATCH)
+    await svc.enqueue("skills", "1", "text", EmbeddingPriority.FEDERATION, available_at=available_at)
+    await svc.enqueue("skills", "2", "text", EmbeddingPriority.ON_WRITE, available_at=available_at)
+    await svc.enqueue("skills", "3", "text", EmbeddingPriority.BATCH, available_at=available_at)
 
     job1 = await svc._queue.get()
     job2 = await svc._queue.get()
@@ -294,3 +317,86 @@ async def test_ollama_provider_interface():
     assert isinstance(provider, EmbeddingProvider)
     assert hasattr(provider, "embed")
     assert hasattr(provider, "embed_batch")
+
+
+@pytest.mark.asyncio
+async def test_search_similar_passes_candidate_filter() -> None:
+    provider = FakeProvider()
+    svc = EmbeddingService(provider=provider)
+    db = AsyncMock()
+    row = MagicMock()
+    row.id = "skill-1"
+    row.similarity = 0.91
+    db.execute = AsyncMock(return_value=[row])
+
+    results = await svc.search_similar(
+        db,
+        "skills",
+        "jwt auth",
+        limit=3,
+        candidate_ids=["skill-1", "skill-2"],
+    )
+
+    assert results == [{"id": "skill-1", "similarity": 0.91}]
+    stmt = db.execute.await_args.args[0]
+    params = db.execute.await_args.args[1]
+    assert "id::text IN" in str(stmt)
+    assert params["candidate_filter"] is True
+    assert params["candidate_ids"] == ["skill-1", "skill-2"]
+
+
+@pytest.mark.asyncio
+async def test_embed_query_uses_cache() -> None:
+    provider = FakeProvider()
+    svc = EmbeddingService(provider=provider)
+
+    first = await svc.embed_query("jwt auth")
+    second = await svc.embed_query("jwt auth")
+
+    assert first == second
+    assert provider.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_process_job_requeues_when_embedding_unavailable() -> None:
+    provider = FakeProvider()
+    provider.fail_after = 0
+    svc = EmbeddingService(provider=provider)
+    db = AsyncMock()
+    job = EmbeddingJob(
+        available_at=time.monotonic(),
+        priority=EmbeddingPriority.ON_WRITE,
+        table="skills",
+        record_id="skill-1",
+        text="jwt auth",
+    )
+
+    await svc._process_job(db, job)
+
+    assert svc._queue.qsize() == 1
+    retried = await svc._queue.get()
+    assert retried.table == "skills"
+    assert retried.record_id == "skill-1"
+    assert retried.attempts == 1
+    db.execute.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_enqueue_missing_embeddings_scans_supported_tables() -> None:
+    provider = FakeProvider()
+    svc = EmbeddingService(provider=provider)
+    db = AsyncMock()
+
+    db.execute = AsyncMock(
+        side_effect=[
+            MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="epic-1", txt="epic text")])),
+            MagicMock(all=MagicMock(return_value=[SimpleNamespace(id="doc-1", txt="doc text")])),
+        ]
+    )
+
+    with patch("app.db.AsyncSessionLocal", new=lambda: _SessionCtx(db)):
+        counts = await svc.enqueue_missing_embeddings(tables=["epics", "docs"], limit_per_table=10)
+
+    assert counts == {"epics": 1, "docs": 1}
+    assert svc._queue.qsize() == 2
+    assert set(["epics", "docs"]).issubset(EMBEDDING_TEXT_COLS.keys())

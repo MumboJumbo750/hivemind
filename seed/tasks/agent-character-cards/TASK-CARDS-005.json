@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-CARDS-005",
+  "epic_ref": "EPIC-AGENT-CARDS",
+  "title": "Notification-Avatare und Dispatch-Feed-Integration ergänzen",
+  "description": "Nutze kleine Agentenbilder in den operativen Flows, damit Dispatches, Reviews und Meldungen schneller lesbar werden.\n\n**Was zu implementieren ist:**\n\n1. Notification-Avatar-Komponente für Agenten bereitstellen\n2. Integration in Notifications, Timeline, Dispatch-Feed und Review-Events\n3. Fallback-Verhalten definieren, falls Assets fehlen\n4. Kleine Bilder auf Lesbarkeit und Performance optimieren\n\n**Wichtig:** Kleine Agentenbilder müssen funktional bleiben und dürfen nicht nur Deko sein.",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Notifications können kleine Agenten-Avatare anzeigen",
+      "Dispatch- und Review-Events nutzen die Avatare konsistent",
+      "Es gibt ein robustes Fallback ohne Assets",
+      "Die Avatare bleiben in kleinen Größen lesbar"
+    ]
+  },
+  "tags": ["frontend", "notifications", "avatars", "dispatch"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "notification-dispatch"],
+  "linked_wiki": ["frontend-component-architektur"],
+  "source_doc": "docs/ui/agent-character-cards.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-CARDS-004"]
+}

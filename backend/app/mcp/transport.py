@@ -119,17 +119,20 @@ async def call_mcp_tool(
 
     Wraps the internal call_tool function — no JSON-RPC overhead.
     """
-    if body.tool not in _tool_handlers:
+    # Backward compat: accept legacy "hivemind/xxx" names, normalize to "hivemind-xxx"
+    tool_name = body.tool.replace("hivemind/", "hivemind-", 1) if body.tool.startswith("hivemind/") else body.tool
+
+    if tool_name not in _tool_handlers:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tool '{body.tool}' not found",
+            detail=f"Tool '{tool_name}' not found",
         )
 
     args = dict(body.arguments or {})
     args["_actor_id"] = str(actor.id)
     args["_actor_role"] = actor.role
 
-    result = await call_tool(body.tool, args)
+    result = await call_tool(tool_name, args)
     return McpCallResponse(result=[{"type": r.type, "text": r.text} for r in result])
 
 

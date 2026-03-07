@@ -101,6 +101,7 @@ async def test_review_calls_notify_for_delegated_task():
     task.qa_failed_count = 0
     task.epic_id = epic_id
     task.assigned_node_id = assigned_node
+    task.assigned_to = None
     task.result = "completed"
     task.version = 1
 
@@ -115,7 +116,10 @@ async def test_review_calls_notify_for_delegated_task():
     with patch.object(svc, "get_by_key", new_callable=AsyncMock, return_value=task), \
          patch("app.services.task_service._get_epic", new_callable=AsyncMock, return_value=epic), \
          patch("app.services.task_service._all_sibling_states", new_callable=AsyncMock, return_value=["done"]), \
-         patch("app.services.federation_service.notify_peer_task_update", new_callable=AsyncMock) as mock_notify:
+         patch("app.services.federation_service.notify_peer_task_update", new_callable=AsyncMock) as mock_notify, \
+         patch("app.services.learning_artifacts.record_learning_outcome_for_task", new_callable=AsyncMock), \
+         patch("app.services.review_workflow._check_epic_completion", new_callable=AsyncMock, return_value=False), \
+         patch("app.services.conductor.conductor.on_task_state_change", new_callable=AsyncMock):
 
         await svc.review("TASK-REV-1", body)
 

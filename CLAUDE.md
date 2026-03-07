@@ -20,12 +20,13 @@
 
 ## Persistente Memory
 
-Memory-Datei (projektübergreifend): `~/.claude/projects/c--projects-hivemind/memory/MEMORY.md`
+Memory-Datei (projektübergreifend): `~/.claude/projects/c--projects-hivemind-memory/MEMORY.md`
 
 ## Codebase-Konventionen (Kurzreferenz)
 
 Vollständige Konventionen → [AGENTS.md](AGENTS.md)
 
+- **Unified Key System:** Alle Keys via PG-Sequences in `backend/app/services/key_generator.py` — Format `{PREFIX}-{n}` (EPIC-, TASK-, SKILL-, WIKI-, GUARD-, DOC-)
 - APScheduler-Jobs: `backend/app/services/scheduler.py` → `start_scheduler()` — **nie** `main.py`
 - SyncOutbox: NUR `'pending'` und `'dead_letter'` — kein `'delivered'`, `'failed'`, `'dead'`
 - Outbound-Erfolg: `db.delete(entry)` — kein Status-Update

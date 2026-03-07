@@ -33,7 +33,7 @@ Kurzfassung des Ablaufs:
 **Precondition:** Prüfe ob `scripts/health_check.py` im Projektroot existiert.
 
 - **Vorhanden:** Führe den Scan aus (siehe Schritte unten).
-- **Fehlt:** Hinweis im Wiki festhalten: *"Health Scanner nicht verfügbar — manuell prüfen oder skiptool installieren."* Optional: Epic-Proposal für Scanner-Installation mit `hivemind/propose_epic` erstellen (Titel: "Health Scanner installieren", Beschreibung: "scripts/health_check.py fehlt — Analyzer-Toolkit einrichten für automatisches Code-Quality-Scanning").
+- **Fehlt:** Hinweis im Wiki festhalten: *"Health Scanner nicht verfügbar — manuell prüfen oder skiptool installieren."* Optional: Epic-Proposal für Scanner-Installation mit `hivemind-propose_epic` erstellen (Titel: "Health Scanner installieren", Beschreibung: "scripts/health_check.py fehlt — Analyzer-Toolkit einrichten für automatisches Code-Quality-Scanning").
 
 **Schritte (wenn health_check.py vorhanden):**
 
@@ -50,7 +50,7 @@ Kurzfassung des Ablaufs:
 3. **Wiki-Artikel erstellen** (Tag: `diagnostics`, `technical-debt`):
    - Titel: `Repo Health Report`
    - Template: siehe `docs/features/health-report-template.md`
-   - Nutze `hivemind/create_wiki_article` mit `tags: ["diagnostics", "technical-debt"]`
+   - Nutze `hivemind-create_wiki_article` mit `tags: ["diagnostics", "technical-debt"]`
 
 4. **Guard-Proposals ableiten** — für jeden Analyzer mit `severity=error`-Findings:
    ```
@@ -59,10 +59,10 @@ Kurzfassung des Ablaufs:
    Exit-Code:     0 = passed, 1 = failed
    Beschreibung:  Kein <analyzer-name>-Fehler erlaubt (abgeleitet aus Health-Scan-Findings)
    ```
-   Nutze `hivemind/propose_guard` für jeden abgeleiteten Guard.
+   Nutze `hivemind-propose_guard` für jeden abgeleiteten Guard.
 
 5. **Epic-Empfehlungen** für schwere Findings (>5 errors pro Analyzer):
-   - Erstelle Restructure-Proposal oder Epic-Empfehlung via `hivemind/propose_epic`
+   - Erstelle Restructure-Proposal oder Epic-Empfehlung via `hivemind-propose_epic`
    - Beispiel: "Hardcoded-CSS bereinigen" wenn `hardcoded-css`-Analyzer >5 Errors hat
 
 #### B) Code-Analyse

@@ -21,6 +21,12 @@ class SyncOutbox(Base):
         Text, nullable=False, server_default="inbound"
     )
     system: Mapped[str] = mapped_column(Text, nullable=False)
+    project_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True
+    )
+    integration_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("project_integrations.id"), nullable=True
+    )
     target_node_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("nodes.id")
     )
@@ -34,6 +40,7 @@ class SyncOutbox(Base):
     routing_state: Mapped[Optional[str]] = mapped_column(
         Text, server_default="unrouted"
     )
+    routing_detail: Mapped[Optional[dict]] = mapped_column(JSONB)
     # embedding column omitted from ORM (managed by raw SQL, pgvector type)
     embedding_model: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(

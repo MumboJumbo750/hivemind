@@ -19,3 +19,11 @@ from app.models.context_boundary import ContextBoundary, TaskSkill  # noqa: F401
 from app.models.node_bug_report import NodeBugReport  # noqa: F401
 from app.models.ai_provider import AIProviderConfig  # noqa: F401
 from app.models.ai_credential import AICredential  # noqa: F401
+from app.models.agent_thread_session import AgentThreadSession  # noqa: F401
+from app.models.project_integration import ProjectIntegration  # noqa: F401
+from app.models.conductor import ConductorDispatch  # noqa: F401
+from app.models.epic_run import EpicRun  # noqa: F401
+from app.models.epic_run_artifact import EpicRunArtifact  # noqa: F401
+from app.models.review import ReviewRecommendation  # noqa: F401
+from app.models.governance_recommendation import GovernanceRecommendation  # noqa: F401
+from app.models.learning_artifact import LearningArtifact  # noqa: F401

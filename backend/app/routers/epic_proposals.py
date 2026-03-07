@@ -23,6 +23,7 @@ from app.schemas.epic_proposal import (
 )
 from app.services.audit import write_audit
 from app.services.epic_proposal_service import EpicProposalService
+from app.services.intake_service import IntakeService
 from app.services.prompt_generator import PromptGenerator, count_tokens
 
 router = APIRouter(prefix="/epic-proposals", tags=["epic-proposals"])
@@ -208,14 +209,13 @@ async def draft_requirement(
     Creates an epic_proposals entry with state='draft' and returns the
     ready-to-use prompt together with enrichment metadata.
     """
-    from app.models.epic_proposal import EpicProposal
-
     t0 = time.perf_counter()
 
     # Generate enriched Stratege prompt
     gen = PromptGenerator(db)
     try:
-        prompt = await gen._stratege_requirement(
+        prompt = await gen.generate(
+            "stratege_requirement",
             project_id=str(body.project_id),
             requirement_text=body.text,
             priority_hint=body.priority_hint,
@@ -225,18 +225,15 @@ async def draft_requirement(
 
     token_count = count_tokens(prompt)
 
-    # Persist draft proposal so the user can later promote it to 'proposed'
-    draft = EpicProposal(
+    intake_service = IntakeService(db)
+    intake = await intake_service.prepare_requirement_capture(
         project_id=body.project_id,
-        proposed_by=actor.id,
-        title=body.text[:80] + ("…" if len(body.text) > 80 else ""),
-        description=body.text,
-        rationale="",
-        state="draft",
-        raw_requirement=body.text,
+        text=body.text,
     )
-    db.add(draft)
-    await db.flush()
+
+    # Persist or reuse draft proposal so the user can later promote it to 'proposed'
+    svc = EpicProposalService(db)
+    draft = intake["existing_draft"] or await svc.create_draft(body.project_id, actor.id, body.text)
     await db.commit()
 
     duration = int((time.perf_counter() - t0) * 1000)
@@ -254,4 +251,5 @@ async def draft_requirement(
         token_count=token_count,
         draft_id=draft.id,
         enrichment={"priority_hint": body.priority_hint, "tags": body.tags or []},
+        intake=intake["intake"],
     )

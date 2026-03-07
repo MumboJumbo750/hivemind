@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from fastapi import HTTPException, status
@@ -16,11 +17,12 @@ from app.services.state_machine import (
     validate_task_transition,
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def _next_task_key(db: AsyncSession) -> str:
-    result = await db.execute(text("SELECT nextval('task_key_seq')"))
-    seq_val = result.scalar_one()
-    return f"TASK-{seq_val}"
+    from app.services.key_generator import next_task_key
+    return await next_task_key(db)
 
 
 async def _get_epic(db: AsyncSession, epic_id: uuid.UUID) -> Epic:
@@ -130,8 +132,14 @@ class TaskService:
         await self.db.refresh(task)
         return task
 
-    async def transition_state(self, task_key: str, body: TaskStateTransition) -> Task:
-        """State-Transition mit vollständiger Validierung + Epic-Auto-Transition."""
+    async def _transition_state(
+        self,
+        task_key: str,
+        body: TaskStateTransition,
+        *,
+        skip_conductor: bool,
+    ) -> Task:
+        """Internal transition helper with optional conductor suppression."""
         task = await self.get_by_key(task_key)
         current_state = task.state
         requested_state = body.state
@@ -179,10 +187,24 @@ class TaskService:
             await self.db.flush()
 
         await self.db.refresh(task)
+        if not skip_conductor:
+            await self._trigger_conductor_task_state_change(task, current_state, effective_state)
         return task
+
+    async def transition_state(
+        self,
+        task_key: str,
+        body: TaskStateTransition,
+        *,
+        skip_conductor: bool = False,
+    ) -> Task:
+        """State-Transition mit vollständiger Validierung + optionalem Conductor-Hook."""
+        return await self._transition_state(task_key, body, skip_conductor=skip_conductor)
 
     async def review(self, task_key: str, body: TaskReview) -> Task:
         """approve_review oder reject_review."""
+        from app.services.review_workflow import approve_task_review, reject_task_review
+
         task = await self.get_by_key(task_key)
 
         if task.state != "in_review":
@@ -192,47 +214,52 @@ class TaskService:
             )
 
         if body.action == "approve":
-            new_state = "done"
+            await approve_task_review(
+                self.db,
+                task,
+                comment=body.comment or "Review approved",
+            )
         elif body.action == "reject":
-            new_state = "qa_failed"
-            task.qa_failed_count += 1
-            if body.comment:
-                task.review_comment = body.comment
+            await reject_task_review(
+                self.db,
+                task,
+                comment=body.comment or "Review rejected",
+            )
         else:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="action muss 'approve' oder 'reject' sein.",
             )
 
-        task.state = new_state
-        task.version += 1
-        await self.db.flush()
-
         # Federation: notify peer if task is delegated
         if task.assigned_node_id:
             from app.services.federation_service import notify_peer_task_update
             await notify_peer_task_update(
-                self.db, task.id, task.task_key, new_state, task.assigned_node_id,
+                self.db, task.id, task.task_key, task.state, task.assigned_node_id,
                 result_text=task.result,
             )
-
-        # Epic Auto-Transition (atomar)
-        epic = await _get_epic(self.db, task.epic_id)
-        sibling_states = await _all_sibling_states(self.db, task.epic_id)
-        new_epic_state = calculate_epic_state_after_task_transition(
-            epic.state, new_state, sibling_states
-        )
-        if new_epic_state:
-            epic.state = new_epic_state
-            epic.version += 1
-            await self.db.flush()
 
         await self.db.refresh(task)
         return task
 
-    async def reenter_from_qa_failed(self, task_key: str) -> Task:
+    async def reenter_from_qa_failed(
+        self,
+        task_key: str,
+        *,
+        skip_conductor: bool = False,
+    ) -> Task:
         """qa_failed → in_progress: Guard-Reset + Eskalations-Check (TASK-5-005)."""
+        return await self._reenter_from_qa_failed(task_key, skip_conductor=skip_conductor)
+
+    async def _reenter_from_qa_failed(
+        self,
+        task_key: str,
+        *,
+        skip_conductor: bool,
+    ) -> Task:
+        """Internal qa_failed re-entry helper with optional conductor suppression."""
         task = await self.get_by_key(task_key)
+        previous_state = task.state
 
         if task.state != "qa_failed":
             raise HTTPException(
@@ -271,7 +298,21 @@ class TaskService:
 
         await self.db.flush()
         await self.db.refresh(task)
+        if not skip_conductor:
+            await self._trigger_conductor_task_state_change(task, previous_state, task.state)
         return task
+
+    async def get_context_boundary(self, task_key: str):
+        """Resolve task_key → ContextBoundary (or None if unset)."""
+        from app.models.context_boundary import ContextBoundary
+        result = await self.db.execute(select(Task.id).where(Task.task_key == task_key))
+        task_id = result.scalar_one_or_none()
+        if task_id is None:
+            raise HTTPException(status_code=404, detail=f"Task {task_key} not found")
+        result2 = await self.db.execute(
+            select(ContextBoundary).where(ContextBoundary.task_id == task_id)
+        )
+        return result2.scalar_one_or_none()
 
     async def _notify_escalation(self, task: Task) -> None:
         """Send escalation notification to epic owner + admins (TASK-6-003)."""
@@ -328,3 +369,30 @@ class TaskService:
         except Exception:
             import logging
             logging.getLogger(__name__).exception("_notify_escalation failed (non-critical)")
+
+    async def _trigger_conductor_task_state_change(
+        self,
+        task: Task,
+        old_state: str,
+        new_state: str,
+    ) -> None:
+        if old_state == new_state:
+            return
+
+        try:
+            from app.services.conductor import conductor
+
+            await conductor.on_task_state_change(
+                task.task_key,
+                str(task.id),
+                old_state,
+                new_state,
+                self.db,
+            )
+        except Exception:
+            logger.exception(
+                "Conductor hook failed for task %s (%s -> %s)",
+                task.task_key,
+                old_state,
+                new_state,
+            )

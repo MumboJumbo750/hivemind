@@ -21,7 +21,7 @@ def _json_response(data: list) -> list[dict]:
 
 register_tool(
     Tool(
-        name="hivemind/semantic_search",
+        name="hivemind-semantic_search",
         description=(
             "Semantic similarity search across embedding-enabled tables. "
             "Returns top-N most similar records by cosine distance. "

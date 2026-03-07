@@ -7,7 +7,7 @@ linked_epics: [EPIC-IDE-AUTOMATION]
 
 # IDE MCP-Integration — Hivemind in der IDE einrichten
 
-Hivemind läuft als MCP-Server (Model Context Protocol). Jede IDE die MCP unterstützt bekommt automatisch alle `hivemind/*`-Tools — keine manuelle Konfiguration der Tool-Definitionen nötig.
+Hivemind läuft als MCP-Server (Model Context Protocol). Jede IDE die MCP unterstützt bekommt automatisch alle `hivemind-*`-Tools — keine manuelle Konfiguration der Tool-Definitionen nötig.
 
 **Voraussetzung:** Backend läuft (`make up` → `http://localhost:8000` erreichbar).
 
@@ -86,7 +86,7 @@ curl http://localhost:8000/api/mcp/discovery
 
 ## Verfügbare Tools
 
-Nach der Verbindung sind alle `hivemind/*`-Tools verfügbar:
+Nach der Verbindung sind alle `hivemind-*`-Tools verfügbar:
 
 - **Read:** `get_task`, `get_epic`, `get_skills`, `get_wiki_article`, `search_wiki`, `get_prompt`
 - **Write (Worker):** `submit_result`, `update_task_state`

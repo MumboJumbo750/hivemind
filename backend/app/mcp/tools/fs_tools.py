@@ -1,11 +1,11 @@
 """MCP Filesystem-Tools — TASK-WFS-002.
 
 Tools:
-  hivemind/fs_read    — Datei lesen (Line-Range optional)
-  hivemind/fs_write   — Datei schreiben/erstellen (atomisch, temp+rename)
-  hivemind/fs_list    — Verzeichnis auflisten (rekursiv/flach, ignore-Patterns)
-  hivemind/fs_search  — Grep/Glob-Suche über Workspace
-  hivemind/fs_stat    — Metadaten (Größe, Typ, mtime)
+  hivemind-fs_read    — Datei lesen (Line-Range optional)
+  hivemind-fs_write   — Datei schreiben/erstellen (atomisch, temp+rename)
+  hivemind-fs_list    — Verzeichnis auflisten (rekursiv/flach, ignore-Patterns)
+  hivemind-fs_search  — Grep/Glob-Suche über Workspace
+  hivemind-fs_stat    — Metadaten (Größe, Typ, mtime)
 
 Sicherheit:
   - Path-Sandboxing: alle Pfade auf HIVEMIND_WORKSPACE_ROOT eingesperrt
@@ -134,7 +134,7 @@ def _err(code: str, message: str) -> list[TextContent]:
 # ── Tool: fs_read ──────────────────────────────────────────────────────────
 
 async def _handle_fs_read(args: dict) -> list[TextContent]:
-    _check_rate_limit("hivemind/fs_read")
+    _check_rate_limit("hivemind-fs_read")
     path_str = args.get("path", "")
     start_line: int | None = args.get("start_line")
     end_line: int | None = args.get("end_line")
@@ -176,7 +176,7 @@ async def _handle_fs_read(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/fs_read",
+        name="hivemind-fs_read",
         description=(
             "Lese eine Datei aus dem Workspace. "
             "Optionale line_range über start_line/end_line (1-basiert). "
@@ -200,7 +200,7 @@ register_tool(
 # ── Tool: fs_write ─────────────────────────────────────────────────────────
 
 async def _handle_fs_write(args: dict) -> list[TextContent]:
-    _check_rate_limit("hivemind/fs_write")
+    _check_rate_limit("hivemind-fs_write")
     path_str = args.get("path", "")
     content = args.get("content", "")
     encoding = args.get("encoding", "utf-8")
@@ -240,7 +240,7 @@ async def _handle_fs_write(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/fs_write",
+        name="hivemind-fs_write",
         description=(
             "Schreibe oder erstelle eine Datei im Workspace (atomisch via temp+rename). "
             "Erstellt Verzeichnisse automatisch. Überschreibt vorhandene Dateien."
@@ -273,7 +273,7 @@ _DEFAULT_IGNORE = {
 
 
 async def _handle_fs_list(args: dict) -> list[TextContent]:
-    _check_rate_limit("hivemind/fs_list")
+    _check_rate_limit("hivemind-fs_list")
     path_str = args.get("path", ".")
     recursive = args.get("recursive", False)
     ignore_raw: list[str] = args.get("ignore", [])
@@ -353,7 +353,7 @@ async def _handle_fs_list(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/fs_list",
+        name="hivemind-fs_list",
         description=(
             "Liste den Inhalt eines Verzeichnisses im Workspace. "
             "Unterstützt rekursive Auflistung und ignore-Patterns. "
@@ -393,7 +393,7 @@ register_tool(
 # ── Tool: fs_search ────────────────────────────────────────────────────────
 
 async def _handle_fs_search(args: dict) -> list[TextContent]:
-    _check_rate_limit("hivemind/fs_search")
+    _check_rate_limit("hivemind-fs_search")
     pattern = args.get("pattern", "")
     search_path = args.get("path", ".")
     glob = args.get("glob", "**/*")
@@ -474,7 +474,7 @@ async def _handle_fs_search(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/fs_search",
+        name="hivemind-fs_search",
         description=(
             "Durchsuche Dateien im Workspace nach einem Text- oder Regex-Muster. "
             "Unterstützt Glob-Patterns für Dateiauswahl, optionale Kontextzeilen. "
@@ -525,7 +525,7 @@ register_tool(
 # ── Tool: fs_stat ──────────────────────────────────────────────────────────
 
 async def _handle_fs_stat(args: dict) -> list[TextContent]:
-    _check_rate_limit("hivemind/fs_stat")
+    _check_rate_limit("hivemind-fs_stat")
     path_str = args.get("path", "")
 
     try:
@@ -562,7 +562,7 @@ async def _handle_fs_stat(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/fs_stat",
+        name="hivemind-fs_stat",
         description=(
             "Metadaten einer Datei oder eines Verzeichnisses im Workspace abfragen. "
             "Gibt Typ, Größe, Änderungszeitpunkt, Permissions und Symlink-Status zurück."

@@ -50,8 +50,9 @@ Während einer Ausführung meldet die Extension Progress an:
 
 Zusätzlich pollt sie `/api/audit` und erkennt MCP-Aktivität:
 
-- Tool-Calls (`hivemind/*`) werden als Progress gemeldet
-- `hivemind/submit_result` oder `hivemind/update_task_state` (Completion-State) markieren den Dispatch als `completed`
+- Tool-Calls (`hivemind-*`) werden als Progress gemeldet
+- `hivemind-submit_result` oder `hivemind-update_task_state` (Completion-State) markieren den Dispatch als `completed`
+- Wenn innerhalb von `hivemind.noMcpActivityTimeoutSeconds` kein MCP-Tool-Call erkannt wird, bricht die Extension den Dispatch mit `failed` ab (Fail-Fast statt langem Hängen auf `running`)
 
 Finale Statusmeldung:
 
@@ -63,6 +64,7 @@ Setze:
 
 - `hivemind.executionTarget = "cli"`
 - optional `hivemind.copilotCliCommandTemplate`
+- optional `hivemind.noMcpActivityTimeoutSeconds` (Default `90`, `0` deaktiviert)
 
 Default-Template:
 

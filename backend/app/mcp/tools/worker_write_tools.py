@@ -1,8 +1,8 @@
 """MCP Worker Write-Tools — TASK-5-001.
 
 Worker agent tools for task execution:
-- hivemind/submit_result      — Save result + artifacts on a task (state stays in_progress)
-- hivemind/report_guard_result — Report guard check outcome (passed|failed|skipped)
+- hivemind-submit_result      — Save result + artifacts on a task (state stays in_progress)
+- hivemind-report_guard_result — Report guard check outcome (passed|failed|skipped)
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import AsyncSessionLocal
 from app.mcp.server import register_tool
+from app.services.guard_materialization import materialize_task_guards
 
 logger = logging.getLogger(__name__)
 
@@ -34,16 +35,16 @@ def _err(code: str, message: str, status: int = 400) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/submit_result  — save result + artifacts (state stays in_progress)
+# hivemind-submit_result  — save result + artifacts (state stays in_progress)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/submit_result",
+        name="hivemind-submit_result",
         description=(
             "Save a worker's result and artifacts on a task. "
             "The task state remains in_progress (this tool does NOT change state!). "
-            "NEXT STEP: call hivemind/update_task_state with target_state='in_review'. "
+            "NEXT STEP: call hivemind-update_task_state with target_state='in_review'. "
             "Param is 'result' (NOT 'result_text'!). "
             "Param is 'task_key' (NOT 'task_id'!). "
             "Idempotent: calling again overwrites result/artifacts."
@@ -74,6 +75,7 @@ register_tool(
 
 async def _handle_submit_result(args: dict) -> list[TextContent]:
     from app.models.task import Task
+    from app.services.learning_artifacts import create_execution_learning_artifacts
 
     # Normalize common alias mistakes
     if "task_id" in args and "task_key" not in args:
@@ -113,6 +115,20 @@ async def _handle_submit_result(args: dict) -> list[TextContent]:
                 task.artifacts = artifacts
                 task.version += 1
                 await db.flush()
+                await create_execution_learning_artifacts(
+                    db,
+                    source_type="worker_result",
+                    source_ref=f"{task.task_key}:v{task.version}",
+                    summary=result_text,
+                    detail={
+                        "task_key": task.task_key,
+                        "artifacts": artifacts,
+                        "qa_failed_count": task.qa_failed_count or 0,
+                    },
+                    agent_role="worker",
+                    epic_id=str(task.epic_id) if task.epic_id else None,
+                    task_id=str(task.id),
+                )
 
                 return _ok({
                     "data": {
@@ -129,12 +145,12 @@ async def _handle_submit_result(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/report_guard_result  — report guard check outcome
+# hivemind-report_guard_result  — report guard check outcome
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/report_guard_result",
+        name="hivemind-report_guard_result",
         description=(
             "Report the result of a guard check for a task. "
             "Sets task_guards.status to passed|failed|skipped with a result text. "
@@ -150,7 +166,7 @@ register_tool(
                 },
                 "guard_id": {
                     "type": "string",
-                    "description": "UUID of the guard to report on",
+                    "description": "Guard-Identifier (UUID oder Key, z.B. 'GUARD-3')",
                 },
                 "status": {
                     "type": "string",
@@ -172,14 +188,9 @@ register_tool(
 async def _handle_report_guard_result(args: dict) -> list[TextContent]:
     from app.models.guard import Guard, TaskGuard
     from app.models.task import Task
+    from app.services.key_generator import resolve_guard
 
     task_key = args["task_key"]
-
-    try:
-        guard_id = uuid.UUID(args["guard_id"])
-    except (KeyError, ValueError) as exc:
-        return _err("VALIDATION_ERROR", f"Ungültige guard_id: {exc}", 422)
-
     status = args.get("status", "")
     if status not in ("passed", "failed", "skipped"):
         return _err("VALIDATION_ERROR", f"status muss passed|failed|skipped sein, ist '{status}'", 422)
@@ -191,6 +202,12 @@ async def _handle_report_guard_result(args: dict) -> list[TextContent]:
     try:
         async with AsyncSessionLocal() as db:
             async with db.begin():
+                # Resolve guard by UUID or guard_key
+                guard = await resolve_guard(db, args.get("guard_id", ""))
+                if not guard:
+                    return _err("ENTITY_NOT_FOUND", f"Guard '{args.get('guard_id')}' nicht gefunden", 404)
+                guard_id = guard.id
+
                 # Verify task exists and is in_progress
                 t_result = await db.execute(
                     select(Task).where(Task.task_key == task_key)
@@ -205,6 +222,8 @@ async def _handle_report_guard_result(args: dict) -> list[TextContent]:
                         f"Task muss in_progress sein, ist aber '{task.state}'",
                         409,
                     )
+
+                await materialize_task_guards(db, task)
 
                 # Find the task_guard for this task+guard combo
                 tg_result = await db.execute(

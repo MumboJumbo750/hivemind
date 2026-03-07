@@ -2,7 +2,7 @@
   "external_id": "TASK-5-001",
   "epic_ref": "EPIC-PHASE-5",
   "title": "Worker-Write-Tools: submit_result & report_guard_result",
-  "description": "MCP-Write-Tools für den Worker:\n\n1. hivemind/submit_result — Speichert result (Text) + artifacts (JSON-Array) auf Task. State bleibt in_progress. Idempotent. Validierung: Task muss in_progress sein (409).\n\n2. hivemind/report_guard_result — Setzt task_guards.status auf passed|failed|skipped + result-Text (Pflichtfeld). Bei skippable=false: skipped wird mit 422 abgelehnt. Setzt checked_at, checked_by. Source=self-reported.\n\nDatei: backend/app/mcp/tools/worker_write_tools.py",
+  "description": "MCP-Write-Tools für den Worker:\n\n1. hivemind-submit_result — Speichert result (Text) + artifacts (JSON-Array) auf Task. State bleibt in_progress. Idempotent. Validierung: Task muss in_progress sein (409).\n\n2. hivemind-report_guard_result — Setzt task_guards.status auf passed|failed|skipped + result-Text (Pflichtfeld). Bei skippable=false: skipped wird mit 422 abgelehnt. Setzt checked_at, checked_by. Source=self-reported.\n\nDatei: backend/app/mcp/tools/worker_write_tools.py",
   "state": "done",
   "priority": "critical",
   "definition_of_done": {

@@ -148,7 +148,7 @@ async function activate(context) {
         const promptResp = await (0, api_1.fetchPromptForTask)('worker', taskKey);
         const prompt = promptResp.data?.prompt ?? `@hivemind /task ${taskKey}`;
         try {
-            await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt });
+            await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt, mode: 'agent' });
         }
         catch {
             await vscode.env.clipboard.writeText(prompt);
@@ -164,7 +164,7 @@ async function activate(context) {
         const promptResp = await (0, api_1.fetchPromptForTask)('review', taskKey);
         const prompt = promptResp.data?.prompt ?? `@hivemind /task ${taskKey}`;
         try {
-            await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt });
+            await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt, mode: 'agent' });
         }
         catch {
             await vscode.env.clipboard.writeText(prompt);

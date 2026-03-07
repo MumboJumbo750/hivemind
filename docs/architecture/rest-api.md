@@ -178,7 +178,7 @@ POST   /api/skills/:id/fork                   → Federierten Skill lokal forken
                                                 Body: { "node_id": "<origin-peer-uuid>" }
                                                 → 201 { "skill_id": "<uuid>", "lifecycle": "draft", "extends": "<origin-id>" }
                                                 → Intern: erstellt lokalen Draft mit extends-Link auf Origin-Skill
-                                                → Selber Service wie MCP-Tool hivemind/fork_federated_skill
+                                                → Selber Service wie MCP-Tool hivemind-fork_federated_skill
 GET    /api/guards                            → Guards mit Filter (scope, lifecycle, project_id)
 GET    /api/guards/:id                        → Guard-Detail
 POST   /api/guards                            → Guard anlegen (admin, ab Phase 3)
@@ -234,7 +234,7 @@ POST   /api/triage/quarantined/:id/discard    → Quarantined-Eintrag verwerfen 
                                                 Body (optional): { "reason": "..." }
 POST   /api/triage/bugs/:id/assign            → Bug manuell einem Epic zuweisen (ab Phase 7, admin)
                                                 Body: { "epic_id": "<uuid>" }
-                                                → Intern: hivemind/assign_bug; setzt routing_state=routed
+                                                → Intern: hivemind-assign_bug; setzt routing_state=routed
 ```
 
 ### Prompt Station

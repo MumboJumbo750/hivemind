@@ -1,9 +1,9 @@
 """MCP Skill Write-Tools — TASK-4-006.
 
 MCP tools for the Skill Lifecycle workflow:
-- hivemind/submit_skill_proposal  (draft → pending_merge)
-- hivemind/merge_skill            (pending_merge → active)
-- hivemind/reject_skill           (pending_merge → rejected)
+- hivemind-submit_skill_proposal  (draft → pending_merge)
+- hivemind-merge_skill            (pending_merge → active)
+- hivemind-reject_skill           (pending_merge → rejected)
 """
 from __future__ import annotations
 
@@ -35,12 +35,12 @@ def _err(code: str, message: str, status: int = 400) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/submit_skill_proposal
+# hivemind-submit_skill_proposal
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/submit_skill_proposal",
+        name="hivemind-submit_skill_proposal",
         description=(
             "Submit a draft skill for review (draft → pending_merge). "
             "Only the skill owner or admin may submit."
@@ -50,7 +50,7 @@ register_tool(
             "properties": {
                 "skill_id": {
                     "type": "string",
-                    "description": "UUID of the skill to submit",
+                    "description": "Skill-Identifier (UUID oder Key, z.B. 'SKILL-7')",
                 },
             },
             "required": ["skill_id"],
@@ -62,23 +62,21 @@ register_tool(
 
 async def _handle_submit_skill_proposal(args: dict) -> list[TextContent]:
     t0 = time.perf_counter()
-    try:
-        skill_id = uuid.UUID(args["skill_id"])
-    except (KeyError, ValueError) as exc:
-        return _err("validation_error", f"Ungültige skill_id: {exc}")
 
     from app.models.skill import Skill
     from app.schemas.auth import CurrentActor
+    from app.services.key_generator import resolve_skill
     from app.services.skill_service import SkillService
 
     async with AsyncSessionLocal() as session:
         svc = SkillService(session)
         actor = CurrentActor(id=ADMIN_ID, username="solo", role="admin")
 
-        # Check skill exists
-        skill = await svc.get_by_id(skill_id)
+        # Resolve skill by UUID or skill_key
+        skill = await resolve_skill(session, args.get("skill_id", ""))
         if not skill:
-            return _err("not_found", f"Skill '{skill_id}' nicht gefunden", 404)
+            return _err("not_found", f"Skill '{args.get('skill_id')}' nicht gefunden", 404)
+        skill_id = skill.id
 
         # Check ownership (non-admin must own the skill)
         if actor.role != "admin" and skill.owner_id != actor.id:
@@ -103,7 +101,7 @@ async def _handle_submit_skill_proposal(args: dict) -> list[TextContent]:
 
         duration = int((time.perf_counter() - t0) * 1000)
         await write_audit(
-            tool_name="hivemind/submit_skill_proposal",
+            tool_name="hivemind-submit_skill_proposal",
             actor_id=actor.id,
             actor_role=actor.role,
             input_payload=args,
@@ -121,12 +119,12 @@ async def _handle_submit_skill_proposal(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/merge_skill
+# hivemind-merge_skill
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/merge_skill",
+        name="hivemind-merge_skill",
         description=(
             "Merge a pending skill proposal (pending_merge → active). "
             "Admin only. Creates a skill_version entry with diff_from_previous."
@@ -136,7 +134,7 @@ register_tool(
             "properties": {
                 "skill_id": {
                     "type": "string",
-                    "description": "UUID of the skill to merge",
+                    "description": "Skill-Identifier (UUID oder Key, z.B. 'SKILL-7')",
                 },
                 "version": {
                     "type": "integer",
@@ -152,15 +150,12 @@ register_tool(
 
 async def _handle_merge_skill(args: dict) -> list[TextContent]:
     t0 = time.perf_counter()
-    try:
-        skill_id = uuid.UUID(args["skill_id"])
-    except (KeyError, ValueError) as exc:
-        return _err("validation_error", f"Ungültige skill_id: {exc}")
 
     from sqlalchemy import select
 
     from app.models.skill import Skill, SkillVersion
     from app.schemas.auth import CurrentActor
+    from app.services.key_generator import resolve_skill
     from app.services.locking import check_version
     from app.services.skill_service import SKILL_TRANSITIONS, SkillService
 
@@ -168,9 +163,11 @@ async def _handle_merge_skill(args: dict) -> list[TextContent]:
         svc = SkillService(session)
         actor = CurrentActor(id=ADMIN_ID, username="solo", role="admin")
 
-        skill = await svc.get_by_id(skill_id)
+        # Resolve skill by UUID or skill_key
+        skill = await resolve_skill(session, args.get("skill_id", ""))
         if not skill:
-            return _err("not_found", f"Skill '{skill_id}' nicht gefunden", 404)
+            return _err("not_found", f"Skill '{args.get('skill_id')}' nicht gefunden", 404)
+        skill_id = skill.id
 
         # RBAC: admin only
         if actor.role != "admin":
@@ -229,7 +226,7 @@ async def _handle_merge_skill(args: dict) -> list[TextContent]:
 
         duration = int((time.perf_counter() - t0) * 1000)
         await write_audit(
-            tool_name="hivemind/merge_skill",
+            tool_name="hivemind-merge_skill",
             actor_id=actor.id,
             actor_role=actor.role,
             input_payload=args,
@@ -251,12 +248,12 @@ async def _handle_merge_skill(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/reject_skill
+# hivemind-reject_skill
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/reject_skill",
+        name="hivemind-reject_skill",
         description=(
             "Reject a pending skill proposal (pending_merge → rejected). "
             "Admin only. Sends SkillRejectedEvent with rationale to proposed_by."
@@ -266,7 +263,7 @@ register_tool(
             "properties": {
                 "skill_id": {
                     "type": "string",
-                    "description": "UUID of the skill to reject",
+                    "description": "Skill-Identifier (UUID oder Key, z.B. 'SKILL-7')",
                 },
                 "rationale": {
                     "type": "string",
@@ -286,10 +283,6 @@ register_tool(
 
 async def _handle_reject_skill(args: dict) -> list[TextContent]:
     t0 = time.perf_counter()
-    try:
-        skill_id = uuid.UUID(args["skill_id"])
-    except (KeyError, ValueError) as exc:
-        return _err("validation_error", f"Ungültige skill_id: {exc}")
 
     rationale = args.get("rationale", "").strip()
     if not rationale:
@@ -298,6 +291,7 @@ async def _handle_reject_skill(args: dict) -> list[TextContent]:
     from app.models.skill import Skill
     from app.schemas.auth import CurrentActor
     from app.schemas.skill import SkillReject
+    from app.services.key_generator import resolve_skill
     from app.services.locking import check_version
     from app.services.skill_service import SKILL_TRANSITIONS, SkillService
 
@@ -305,9 +299,11 @@ async def _handle_reject_skill(args: dict) -> list[TextContent]:
         svc = SkillService(session)
         actor = CurrentActor(id=ADMIN_ID, username="solo", role="admin")
 
-        skill = await svc.get_by_id(skill_id)
+        # Resolve skill by UUID or skill_key
+        skill = await resolve_skill(session, args.get("skill_id", ""))
         if not skill:
-            return _err("not_found", f"Skill '{skill_id}' nicht gefunden", 404)
+            return _err("not_found", f"Skill '{args.get('skill_id')}' nicht gefunden", 404)
+        skill_id = skill.id
 
         # RBAC: admin only
         if actor.role != "admin":
@@ -343,7 +339,7 @@ async def _handle_reject_skill(args: dict) -> list[TextContent]:
 
         duration = int((time.perf_counter() - t0) * 1000)
         await write_audit(
-            tool_name="hivemind/reject_skill",
+            tool_name="hivemind-reject_skill",
             actor_id=actor.id,
             actor_role=actor.role,
             input_payload=args,

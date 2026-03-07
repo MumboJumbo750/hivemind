@@ -2,13 +2,13 @@
   "external_id": "TASK-3-005",
   "epic_ref": "EPIC-PHASE-3",
   "title": "Prompt-Generator Service + get_prompt Tool",
-  "description": "Prompt-Generator-Service implementieren (`app/services/prompt_generator.py`) und als MCP-Tool `hivemind/get_prompt { type, task_id?, epic_id?, project_id? }` bereitstellen. Unterstützte Prompt-Typen: `bibliothekar` (task_id Pflicht), `worker` (task_id Pflicht), `review` (task_id Pflicht), `gaertner` (task_id oder epic_id, mind. eines Pflicht), `architekt` (epic_id Pflicht), `stratege` (project_id Pflicht), `kartograph` (keine Parameter nötig), `triage` (admin only). Jeder Aufruf schreibt `prompt_history`-Eintrag (agent_type, prompt_type, prompt_text, token_count, generated_by). Token-Counting via `tiktoken` (cl100k_base) oder Wörter×1.3 Approximation. Retention: max 500 Einträge pro Task (FIFO), plus täglicher Cron-Job löscht Einträge älter als `HIVEMIND_PROMPT_HISTORY_RETENTION_DAYS` (Default: 180). Phase 1-2 Modus: Bibliothekar gibt alle aktiven Skills zurück (kein pgvector-Filtering).",
+  "description": "Prompt-Generator-Service implementieren (`app/services/prompt_generator.py`) und als MCP-Tool `hivemind-get_prompt { type, task_id?, epic_id?, project_id? }` bereitstellen. Unterstützte Prompt-Typen: `bibliothekar` (task_id Pflicht), `worker` (task_id Pflicht), `review` (task_id Pflicht), `gaertner` (task_id oder epic_id, mind. eines Pflicht), `architekt` (epic_id Pflicht), `stratege` (project_id Pflicht), `kartograph` (keine Parameter nötig), `triage` (admin only). Jeder Aufruf schreibt `prompt_history`-Eintrag (agent_type, prompt_type, prompt_text, token_count, generated_by). Token-Counting via `tiktoken` (cl100k_base) oder Wörter×1.3 Approximation. Retention: max 500 Einträge pro Task (FIFO), plus täglicher Cron-Job löscht Einträge älter als `HIVEMIND_PROMPT_HISTORY_RETENTION_DAYS` (Default: 180). Phase 1-2 Modus: Bibliothekar gibt alle aktiven Skills zurück (kein pgvector-Filtering).",
   "state": "done",
   "priority": "critical",
   "definition_of_done": {
     "criteria": [
       "Prompt-Generator-Service in `app/services/prompt_generator.py` implementiert",
-      "`hivemind/get_prompt` MCP-Tool registriert und aufrufbar",
+      "`hivemind-get_prompt` MCP-Tool registriert und aufrufbar",
       "Alle 8 Prompt-Typen erzeugen korrekten Markdown-Output",
       "Pflicht-Parameter-Validierung: fehlender Parameter → Fehlermeldung",
       "Jeder Aufruf schreibt `prompt_history`-Eintrag mit korrekt gezählten Tokens",

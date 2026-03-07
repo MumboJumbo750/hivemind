@@ -20,6 +20,7 @@ from app.models.project import Project
 from app.models.skill import Skill
 from app.models.task import Task
 from app.models.wiki import WikiArticle
+from app.services.guard_materialization import materialize_task_guards
 from app.services.prompt_generator import PromptGenerator
 from mcp.types import Resource
 
@@ -33,7 +34,8 @@ _CLOSED_STATES = ("done", "cancelled")
 
 
 def _slugify(text: str) -> str:
-    return re.sub(r"[^a-z0-9-]+", "-", text.lower()).strip("-")
+    from app.services.key_generator import slugify
+    return slugify(text)
 
 
 def _parse_resource_uri(uri: str) -> tuple[str, str]:
@@ -314,6 +316,8 @@ async def _read_task_resource(db: AsyncSession, task_key: str) -> str:
     if not task:
         return json.dumps({"error": f"Task nicht gefunden: {task_key}"})
 
+    await materialize_task_guards(db, task)
+
     guard_rows = (
         await db.execute(
             select(Guard.title, Guard.type, Guard.command, Guard.skippable, TaskGuard.status, TaskGuard.result)
@@ -531,7 +535,9 @@ async def read_resource(uri: Any) -> str:
         res_type, res_id = _parse_resource_uri(uri_str)
         async with AsyncSessionLocal() as db:
             if res_type == "task":
-                return await _read_task_resource(db, res_id)
+                payload = await _read_task_resource(db, res_id)
+                await db.commit()
+                return payload
             if res_type == "epic":
                 return await _read_epic_resource(db, res_id)
             if res_type == "wiki":

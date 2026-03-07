@@ -4,14 +4,14 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
 from app.db import AsyncSessionLocal
 from app.models.epic import Epic
 from app.models.federation import Node
 from app.models.project import Project
 from app.models.user import User
-from app.models.wiki import WikiArticle
+from app.models.wiki import WikiArticle, WikiVersion
 from app.services.prompt_generator import (
     CLEANUP_EPIC_TEMPLATES,
     HEALTH_FINDINGS_TO_GUARD_MAPPING,
@@ -78,6 +78,25 @@ async def _create_diagnostics_article(content: str) -> dict[str, str]:
         db.add(article)
         await db.commit()
         return {"article_id": str(article.id), "user_id": str(user.id)}
+
+
+async def _clear_diagnostics_articles() -> None:
+    async with AsyncSessionLocal() as db:
+        article_ids = list(
+            (
+                await db.execute(
+                    select(WikiArticle.id).where(WikiArticle.tags.any("diagnostics"))
+                )
+            ).scalars().all()
+        )
+        if article_ids:
+            await db.execute(
+                delete(WikiVersion).where(WikiVersion.article_id.in_(article_ids))
+            )
+        await db.execute(
+            delete(WikiArticle).where(WikiArticle.tags.any("diagnostics"))
+        )
+        await db.commit()
 
 
 async def _cleanup(data: dict[str, str], article_data: dict[str, str] | None = None) -> None:
@@ -168,6 +187,7 @@ def test_health_findings_to_guard_mapping_covers_key_analyzers() -> None:
 @pytest.mark.asyncio(loop_scope="session")
 async def test_stratege_prompt_warns_when_no_diagnostics_wiki() -> None:
     """Stratege warns if no diagnostics wiki article exists (and repo has code nodes, or no nodes)."""
+    await _clear_diagnostics_articles()
     data = await _seed_project()
     try:
         async with AsyncSessionLocal() as db:
@@ -236,3 +256,22 @@ async def test_stratege_prompt_health_section_contains_guard_mapping_hint() -> N
         assert "layer-boundaries" in prompt or "Guard" in prompt or "guard" in prompt
     finally:
         await _cleanup(data, article_data)
+
+
+@pytest.mark.asyncio(loop_scope="session")
+async def test_stratege_requirement_prompt_is_available_via_public_generate() -> None:
+    data = await _seed_project()
+    try:
+        async with AsyncSessionLocal() as db:
+            gen = PromptGenerator(db=db, settings=None)
+            prompt = await gen.generate(
+                "stratege_requirement",
+                project_id=data["project_id"],
+                requirement_text="Bitte Suchfunktion für Projekte ergänzen",
+                priority_hint="high",
+            )
+        assert "Neue Anforderung" in prompt
+        assert "Suchfunktion für Projekte" in prompt
+        assert "Prioritäts-Hint" in prompt
+    finally:
+        await _cleanup(data)

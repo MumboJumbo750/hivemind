@@ -1,0 +1,122 @@
+[
+  {
+    "task_key": "TASK-5",
+    "response": {
+      "data": {
+        "task_key": "TASK-5",
+        "state": "done",
+        "exp_awarded": 50,
+        "epic_auto_transitioned": false,
+        "comment": "Review abgeschlossen: DoD erfüllt, keine regressionskritischen Findings, Tests grün."
+      }
+    }
+  },
+  {
+    "task_key": "TASK-6",
+    "response": {
+      "data": {
+        "task_key": "TASK-6",
+        "state": "done",
+        "exp_awarded": 50,
+        "epic_auto_transitioned": false,
+        "comment": "Review abgeschlossen: DoD erfüllt, keine regressionskritischen Findings, Tests grün."
+      }
+    }
+  },
+  {
+    "task_key": "TASK-7",
+    "response": {
+      "data": {
+        "task_key": "TASK-7",
+        "state": "done",
+        "exp_awarded": 50,
+        "epic_auto_transitioned": false,
+        "comment": "Review abgeschlossen: DoD erfüllt, keine regressionskritischen Findings, Tests grün."
+      }
+    }
+  },
+  {
+    "task_key": "TASK-8",
+    "response": {
+      "data": {
+        "task_key": "TASK-8",
+        "state": "done",
+        "exp_awarded": 50,
+        "epic_auto_transitioned": false,
+        "comment": "Review abgeschlossen: DoD erfüllt, keine regressionskritischen Findings, Tests grün."
+      }
+    }
+  },
+  {
+    "task_key": "TASK-9",
+    "response": {
+      "data": {
+        "task_key": "TASK-9",
+        "state": "done",
+        "exp_awarded": 50,
+        "epic_auto_transitioned": false,
+        "comment": "Review abgeschlossen: DoD erfüllt, keine regressionskritischen Findings, Tests grün."
+      }
+    }
+  },
+  {
+    "task_key": "TASK-10",
+    "response": {
+      "data": {
+        "task_key": "TASK-10",
+        "state": "done",
+        "exp_awarded": 50,
+        "epic_auto_transitioned": false,
+        "comment": "Review abgeschlossen: DoD erfüllt, keine regressionskritischen Findings, Tests grün."
+      }
+    }
+  },
+  {
+    "task_key": "TASK-11",
+    "response": {
+      "data": {
+        "task_key": "TASK-11",
+        "state": "done",
+        "exp_awarded": 50,
+        "epic_auto_transitioned": false,
+        "comment": "Review abgeschlossen: DoD erfüllt, keine regressionskritischen Findings, Tests grün."
+      }
+    }
+  },
+  {
+    "task_key": "TASK-12",
+    "response": {
+      "data": {
+        "task_key": "TASK-12",
+        "state": "done",
+        "exp_awarded": 50,
+        "epic_auto_transitioned": false,
+        "comment": "Review abgeschlossen: DoD erfüllt, keine regressionskritischen Findings, Tests grün."
+      }
+    }
+  },
+  {
+    "task_key": "TASK-13",
+    "response": {
+      "data": {
+        "task_key": "TASK-13",
+        "state": "done",
+        "exp_awarded": 50,
+        "epic_auto_transitioned": false,
+        "comment": "Review abgeschlossen: DoD erfüllt, keine regressionskritischen Findings, Tests grün."
+      }
+    }
+  },
+  {
+    "task_key": "TASK-14",
+    "response": {
+      "data": {
+        "task_key": "TASK-14",
+        "state": "done",
+        "exp_awarded": 50,
+        "epic_auto_transitioned": true,
+        "comment": "Review abgeschlossen: DoD erfüllt, keine regressionskritischen Findings, Tests grün."
+      }
+    }
+  }
+]

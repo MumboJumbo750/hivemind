@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import enum
+import hashlib
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -16,12 +17,21 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import httpx
+from sqlalchemy import bindparam
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+EMBEDDABLE_TABLES = {"skills", "wiki_articles", "epics", "docs", "code_nodes", "sync_outbox"}
+EMBEDDING_TEXT_COLS: dict[str, str] = {
+    "epics": "COALESCE(title, '') || ' ' || COALESCE(description, '')",
+    "skills": "COALESCE(title, '') || ' ' || COALESCE(content, '')",
+    "wiki_articles": "COALESCE(title, '') || ' ' || COALESCE(content, '')",
+    "docs": "COALESCE(title, '') || ' ' || COALESCE(content, '')",
+}
 
 
 # ── Provider abstraction ─────────────────────────────────────────────────────
@@ -202,10 +212,12 @@ class EmbeddingPriority(enum.IntEnum):
 
 @dataclass(order=True)
 class EmbeddingJob:
+    available_at: float
     priority: int
     table: str = field(compare=False)
     record_id: str = field(compare=False)
     text: str = field(compare=False)
+    attempts: int = field(default=0, compare=False)
     created_at: float = field(default_factory=time.monotonic, compare=False)
 
 
@@ -221,6 +233,7 @@ class EmbeddingService:
         self._queue: asyncio.PriorityQueue[EmbeddingJob] = asyncio.PriorityQueue()
         self._running = False
         self._worker_task: asyncio.Task | None = None
+        self._query_cache: dict[str, tuple[float, list[float]]] = {}
 
     # ── public API ────────────────────────────────────────────────────────
 
@@ -262,13 +275,20 @@ class EmbeddingService:
         record_id: str,
         text_input: str,
         priority: EmbeddingPriority = EmbeddingPriority.ON_WRITE,
+        *,
+        attempts: int = 0,
+        available_at: float | None = None,
     ) -> None:
         """Add an embedding job to the priority queue."""
+        if table not in EMBEDDABLE_TABLES:
+            raise ValueError(f"Unsupported embedding table: {table}")
         job = EmbeddingJob(
+            available_at=available_at or time.monotonic(),
             priority=priority.value,
             table=table,
             record_id=record_id,
             text=text_input,
+            attempts=attempts,
         )
         await self._queue.put(job)
 
@@ -290,6 +310,50 @@ class EmbeddingService:
             except asyncio.CancelledError:
                 pass
         logger.info("Embedding queue worker stopped")
+
+    async def enqueue_missing_embeddings(
+        self,
+        *,
+        tables: list[str] | None = None,
+        limit_per_table: int | None = None,
+    ) -> dict[str, int]:
+        """Scan for rows without embeddings and enqueue batch jobs."""
+        from app.db import AsyncSessionLocal
+
+        selected_tables = tables or list(EMBEDDING_TEXT_COLS.keys())
+        counts: dict[str, int] = {}
+        batch_limit = limit_per_table or settings.hivemind_embedding_backfill_limit
+
+        async with AsyncSessionLocal() as db:
+            for table in selected_tables:
+                text_expr = EMBEDDING_TEXT_COLS.get(table)
+                if not text_expr:
+                    continue
+                rows = (
+                    await db.execute(
+                        text(
+                            f"SELECT id, {text_expr} AS txt "
+                            f"FROM {table} "
+                            "WHERE embedding IS NULL "
+                            "LIMIT :limit"
+                        ),
+                        {"limit": batch_limit},
+                    )
+                ).all()
+                queued = 0
+                for row in rows:
+                    text_input = (row.txt or "").strip()
+                    if not text_input:
+                        continue
+                    await self.enqueue(
+                        table,
+                        str(row.id),
+                        text_input,
+                        priority=EmbeddingPriority.BATCH,
+                    )
+                    queued += 1
+                counts[table] = queued
+        return counts
 
     # ── on-write hooks ────────────────────────────────────────────────────
 
@@ -316,26 +380,61 @@ class EmbeddingService:
         table: str,
         query_text: str,
         limit: int = 5,
+        candidate_ids: list[str] | None = None,
     ) -> list[dict]:
         """Semantic similarity search across any embedding-enabled table.
 
         Returns empty list when embeddings unavailable (feature-degradation).
         """
-        query_embedding = await self.embed(query_text)
+        if table not in EMBEDDABLE_TABLES:
+            raise ValueError(f"Unsupported embedding table: {table}")
+        query_embedding = await self.embed_query(query_text)
         if query_embedding is None:
             return []
 
+        candidate_ids = [str(candidate_id) for candidate_id in (candidate_ids or []) if str(candidate_id)]
         stmt = text(f"""
-            SELECT id, 1 - (embedding <=> :query::vector) AS similarity
+            SELECT id, 1 - (embedding <=> CAST(:query AS vector)) AS similarity
             FROM {table}
             WHERE embedding IS NOT NULL
-            ORDER BY embedding <=> :query::vector
+              AND (:candidate_filter = FALSE OR id::text IN :candidate_ids)
+            ORDER BY embedding <=> CAST(:query AS vector)
             LIMIT :limit
-        """)
+        """).bindparams(bindparam("candidate_ids", expanding=True))
         result = await db.execute(
-            stmt, {"query": str(query_embedding), "limit": limit}
+            stmt,
+            {
+                "query": str(query_embedding),
+                "limit": limit,
+                "candidate_filter": bool(candidate_ids),
+                "candidate_ids": candidate_ids,
+            },
         )
         return [{"id": str(row.id), "similarity": float(row.similarity)} for row in result]
+
+    async def embed_query(self, text_input: str) -> list[float] | None:
+        """Embed query text with a small TTL cache to avoid repeated request blocking."""
+        if not text_input.strip():
+            return None
+
+        now = time.monotonic()
+        cache_key = hashlib.sha1(text_input.encode("utf-8")).hexdigest()
+        cached = self._query_cache.get(cache_key)
+        if cached and cached[0] > now:
+            return cached[1]
+        if cached and cached[0] <= now:
+            self._query_cache.pop(cache_key, None)
+
+        embedding = await self.embed(text_input)
+        if embedding is None:
+            return None
+
+        self._query_cache[cache_key] = (
+            now + settings.hivemind_embedding_query_cache_ttl,
+            embedding,
+        )
+        self._trim_query_cache()
+        return embedding
 
     # ── internal ──────────────────────────────────────────────────────────
 
@@ -350,7 +449,7 @@ class EmbeddingService:
         if embedding is not None:
             stmt = text(f"""
                 UPDATE {table}
-                SET embedding = :embedding::vector, embedding_model = :model
+                SET embedding = CAST(:embedding AS vector), embedding_model = :model
                 WHERE id = :id
             """)
             await db.execute(
@@ -382,19 +481,75 @@ class EmbeddingService:
                 continue
             except asyncio.CancelledError:
                 break
+            if job.available_at > time.monotonic():
+                await self._queue.put(job)
+                delay = max(job.available_at - time.monotonic(), 0.0)
+                await asyncio.sleep(min(delay, 1.0))
+                continue
 
-            embedding = await self.embed(job.text)
             try:
                 async with AsyncSessionLocal() as db:
-                    await self._store_embedding(db, job.table, job.record_id, embedding)
-                logger.debug(
-                    "Processed embedding job: %s/%s (prio=%d)",
-                    job.table,
-                    job.record_id,
-                    job.priority,
-                )
+                    await self._process_job(db, job)
             except Exception as exc:
-                logger.error("Failed to store embedding: %s", exc)
+                logger.error("Failed to process embedding job %s/%s: %s", job.table, job.record_id, exc)
+
+    async def _process_job(self, db: AsyncSession, job: EmbeddingJob) -> None:
+        embedding = await self.embed(job.text)
+        if embedding is None:
+            await self._retry_job(job, reason="embedding_unavailable")
+            return
+
+        await self._store_embedding(db, job.table, job.record_id, embedding)
+        logger.debug(
+            "Processed embedding job: %s/%s (prio=%d attempts=%d)",
+            job.table,
+            job.record_id,
+            job.priority,
+            job.attempts,
+        )
+
+    async def _retry_job(self, job: EmbeddingJob, *, reason: str) -> None:
+        next_attempt = job.attempts + 1
+        if next_attempt >= settings.hivemind_embedding_retry_max_attempts:
+            logger.warning(
+                "Dropping embedding job after %d attempts: %s/%s (%s)",
+                next_attempt,
+                job.table,
+                job.record_id,
+                reason,
+            )
+            return
+
+        backoff_seconds = min(
+            settings.hivemind_embedding_retry_backoff_base * (2 ** max(job.attempts, 0)),
+            settings.hivemind_embedding_retry_backoff_max,
+        )
+        await self.enqueue(
+            job.table,
+            job.record_id,
+            job.text,
+            priority=EmbeddingPriority(job.priority),
+            attempts=next_attempt,
+            available_at=time.monotonic() + backoff_seconds,
+        )
+        logger.info(
+            "Retrying embedding job in %ss: %s/%s (%s, attempt %d/%d)",
+            backoff_seconds,
+            job.table,
+            job.record_id,
+            reason,
+            next_attempt + 1,
+            settings.hivemind_embedding_retry_max_attempts,
+        )
+
+    def _trim_query_cache(self) -> None:
+        max_entries = max(settings.hivemind_embedding_query_cache_size, 1)
+        expired = [key for key, (expires_at, _) in self._query_cache.items() if expires_at <= time.monotonic()]
+        for key in expired:
+            self._query_cache.pop(key, None)
+        while len(self._query_cache) > max_entries:
+            oldest_key = next(iter(self._query_cache))
+            self._query_cache.pop(oldest_key, None)
 
 
 # ── Singleton ────────────────────────────────────────────────────────────────

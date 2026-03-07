@@ -41,26 +41,26 @@ Der Worker arbeitet als `developer` oder `admin`:
    → Prompt Station zeigt: "Jetzt: Worker"
 
 2. User fügt Worker-Prompt in AI-Client ein
-   → AI liest Task via hivemind/get_task
-   → AI liest Guards via hivemind/get_guards
+   → AI liest Task via hivemind-get_task
+   → AI liest Guards via hivemind-get_guards
 
 3. AI führt Task aus (Code schreiben, Tests, etc.)
 
 4. AI prüft Guards und meldet Ergebnisse:
-   hivemind/report_guard_result {
-     "task_id": "TASK-88", "guard_id": "uuid",
+   hivemind-report_guard_result {
+     "task_key": "TASK-88", "guard_id": "uuid",
      "status": "passed", "result": "All 42 tests passed"
    }
 
 5. AI reicht Ergebnis ein:
-   hivemind/submit_result {
-     "task_id": "TASK-88",
+   hivemind-submit_result {
+     "task_key": "TASK-88",
      "result": "Auth-Endpoint implementiert...",
      "artifacts": [{"type": "file", "path": "src/auth/endpoint.py"}]
    }
 
 6. AI setzt Status auf in_review:
-   hivemind/update_task_state { "task_id": "TASK-88", "state": "in_review" }
+   hivemind-update_task_state { "task_key": "TASK-88", "target_state": "in_review" }
    → Backend prüft: Guards vollständig? Result vorhanden?
    → Notification an Owner: review_requested
 
@@ -75,9 +75,9 @@ Wenn der Worker nicht weiterkommt:
 
 ```text
 Worker stellt fest: Blocker (z.B. unklare API-Spezifikation)
-  → hivemind/create_decision_request {
-      "task_id": "TASK-88",
-      "blocker": "API-Format unklar: JSON oder XML?",
+  → hivemind-create_decision_request {
+      "task_key": "TASK-88",
+      "question": "API-Format unklar: JSON oder XML?",
       "options": [
         {"id": "A", "description": "JSON + OpenAPI", "tradeoffs": "Standard, einfacher"},
         {"id": "B", "description": "XML + XSD", "tradeoffs": "Legacy-kompatibel"}
@@ -95,16 +95,16 @@ Worker stellt fest: Blocker (z.B. unklare API-Spezifikation)
 > **Phase-abhängiges Verhalten:** Die kanonische Guard-Enforcement-Timeline steht in [guards.md](../features/guards.md#kanonische-guard-enforcement-timeline). Phase 2–4: Guards sind **informativ** (kein Blocker für `in_review`). Ab Phase 5: Guards sind **blockierend** (422 bei offenen Guards).
 
 ```text
-1. hivemind/get_guards { "task_id": "TASK-88" }
+1. hivemind-get_guards { "task_key": "TASK-88" }
    → Alle Guards laden (global + project + skill + task)
 
 2. Jeden Guard ausführen und Ergebnis melden:
-   hivemind/report_guard_result { ..., "status": "passed|failed|skipped", "result": "..." }
+   hivemind-report_guard_result { ..., "status": "passed|failed|skipped", "result": "..." }
    → skipped nur bei Guards mit skippable = true, mit Begründung
 
-3. hivemind/submit_result { "task_id": "TASK-88", "result": "...", "artifacts": [...] }
+3. hivemind-submit_result { "task_key": "TASK-88", "result": "...", "artifacts": [...] }
 
-4. hivemind/update_task_state { "task_id": "TASK-88", "state": "in_review" }
+4. hivemind-update_task_state { "task_key": "TASK-88", "target_state": "in_review" }
    → Phase 2–4: 422 nur wenn Result fehlt (Guards nicht geprüft)
    → Ab Phase 5: 422 wenn Guards offen oder Result fehlt
 ```
@@ -117,13 +117,13 @@ Worker stellt fest: Blocker (z.B. unklare API-Spezifikation)
 Owner rejected TASK-88 (1. Mal):
   → qa_failed, review_comment gesetzt
   → Worker liest Kommentar
-  → Worker: update_task_state { "state": "in_progress" }
+  → Worker: update_task_state { "task_key": "TASK-88", "target_state": "in_progress" }
   → Guards werden auf pending zurückgesetzt
   → Worker behebt Probleme, wiederholt Guard-Sequenz + submit_result
 
 Owner rejected TASK-88 (3. Mal):
   → qa_failed, qa_failed_count = 3
-  → Worker versucht: update_task_state { "state": "in_progress" }
+  → Worker versucht: update_task_state { "task_key": "TASK-88", "target_state": "in_progress" }
   → System intercepted: qa_failed_count >= 3 → Task auf escalated
   → Admin muss resolve_escalation aufrufen
 ```
@@ -142,7 +142,7 @@ Alle MCP-Tools laufen über **einen** Endpoint. Es gibt **keine** individuellen 
 # ✅ RICHTIG:
 curl -X POST http://localhost:8000/api/mcp/call \
   -H "Content-Type: application/json" \
-  -d '{"tool": "hivemind/submit_result", "arguments": {"task_key": "TASK-88", "result": "..."}}'
+  -d '{"tool": "hivemind-submit_result", "arguments": {"task_key": "TASK-88", "result": "..."}}'
 
 # ❌ FALSCH (404!):
 curl http://localhost:8000/api/mcp/submit_result
@@ -155,7 +155,7 @@ curl http://localhost:8000/api/mcp/update_task_state
 - Scripts müssen via Container ausgeführt werden:
   ```bash
   podman compose exec backend /app/.venv/bin/python /workspace/scripts/mcp_call.py \
-    "hivemind/get_task" '{"task_key": "TASK-88"}'
+    "hivemind-get_task" '{"task_key": "TASK-88"}'
   ```
 - Alternativ: `curl` oder PowerShell `Invoke-WebRequest` direkt vom Host.
 
@@ -165,22 +165,28 @@ curl http://localhost:8000/api/mcp/update_task_state
 - Markdown mit Code-Backticks in JSON-Bodys führt zu **Parse-Errors**
 - **Lösung:** JSON in Datei auslagern und mit `Get-Content payload.json -Raw` einlesen
 
+### Manueller Run in der Prompt Station
+
+- Der Button `Ausführen` muss erst den agent-spezifischen Prompt serverseitig generieren.
+- An den Provider wird danach der generierte Worker- oder Reviewer-Prompt gesendet, nicht nur `task.description`.
+- Der Workspace bleibt dabei `/workspace` im Backend-Container; MCP-Filesystem-Tools arbeiten nie gegen einen ungemounteten Host-Pfad.
+
 ---
 
 ## MCP-Tools
 
 ```text
 -- Lesen
-hivemind/get_task           { "id": "TASK-88" }
-hivemind/get_guards         { "task_id": "TASK-88" }
+hivemind-get_task           { "task_key": "TASK-88" }
+hivemind-get_guards         { "task_key": "TASK-88" }
 
 -- Schreiben
-hivemind/report_guard_result     { "task_id": "TASK-88", "guard_id": "uuid",
+hivemind-report_guard_result     { "task_key": "TASK-88", "guard_id": "uuid",
                                    "status": "passed|failed|skipped",
                                    "result": "output text" }
-hivemind/submit_result           { "task_id": "TASK-88", "result": "...", "artifacts": [...] }
-hivemind/update_task_state       { "task_id": "TASK-88", "state": "in_review" }
-hivemind/create_decision_request { "task_id": "TASK-88", "blocker": "...", "options": [...] }
+hivemind-submit_result           { "task_key": "TASK-88", "result": "...", "artifacts": [...] }
+hivemind-update_task_state       { "task_key": "TASK-88", "target_state": "in_review" }
+hivemind-create_decision_request { "task_key": "TASK-88", "question": "...", "options": [...] }
 ```
 
 ---

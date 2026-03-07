@@ -45,5 +45,5 @@ async def create_task(body: TaskCreate, db: AsyncSession = Depends(get_db)):
 ```
 
 ### Verfügbare Tools
-- `hivemind/get_task` — Task-Details laden
-- `hivemind/submit_result` — Ergebnis schreiben
+- `hivemind-get_task` — Task-Details laden
+- `hivemind-submit_result` — Ergebnis schreiben

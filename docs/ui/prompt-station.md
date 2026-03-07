@@ -92,7 +92,7 @@ Der Prompt wird standardmäßig **kompakt** angezeigt — Skill- und Doc-Referen
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Technisch:** Der Button ruft `hivemind/get_prompt { "type": "worker", "task_id": "TASK-88", "assembled": true }` auf. Das Backend liefert den vollständig aufgelösten Prompt-Text. Gerendert als **TipTap read-only** (→ [Markdown-Rendering-Strategie](./concept.md#markdown-rendering-strategie)).
+**Technisch:** Der Button ruft `hivemind-get_prompt { "type": "worker", "task_id": "TASK-88", "assembled": true }` auf. Das Backend liefert den vollständig aufgelösten Prompt-Text. Gerendert als **TipTap read-only** (→ [Markdown-Rendering-Strategie](./concept.md#markdown-rendering-strategie)).
 
 > **Markdown-Minifizierung beim Kopieren:** Die Buttons [KOPIEREN] und [VOLLTEXT KOPIEREN] liefern den **minifizierten** Prompt-Text in die Zwischenablage (überflüssige Leerzeilen, Trailing Whitespace entfernt via [QMD](https://github.com/ajithraghavan/qmd)). Die Anzeige im Modal bleibt unverändert lesbar. Spart ~10–20 % Tokens. Steuerbar via `HIVEMIND_PROMPT_MINIFY` (→ [Prompt-Minifizierung](../agents/prompt-pipeline.md#prompt-minifizierung-markdown-kompression)).
 

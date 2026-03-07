@@ -8,27 +8,24 @@ DELETE /api/projects/{id}/members/{user_id}
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models.project import Project, ProjectMember
-from app.models.user import User
 from app.routers.deps import get_current_actor
 from app.schemas.auth import CurrentActor
 from app.schemas.members import MemberAdd, MemberResponse, MemberUpdate
+from app.schemas.project import ProjectMemberAdd
+from app.services.auth_service import get_user_by_id
+from app.services.project_service import ProjectService
 
 router = APIRouter(prefix="/projects", tags=["members"])
 
 
-async def _get_project_or_404(db: AsyncSession, project_id: uuid.UUID) -> Project:
-    project = await db.get(Project, project_id)
-    if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Projekt nicht gefunden")
-    return project
+async def _get_project_or_404(db: AsyncSession, project_id: uuid.UUID):
+    return await ProjectService(db).get(project_id)
 
 
-def _require_project_admin(actor: CurrentActor, project: Project) -> None:
+def _require_project_admin(actor: CurrentActor, project) -> None:
     """Admin oder Project-Owner darf Members verwalten."""
     if actor.role == "admin":
         return
@@ -55,23 +52,12 @@ async def add_member(
     _require_project_admin(actor, project)
 
     # User existiert?
-    user = await db.get(User, body.user_id)
-    if not user:
+    if not await get_user_by_id(db, body.user_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User nicht gefunden")
 
-    # Duplikat-Schutz
-    existing = await db.execute(
-        select(ProjectMember).where(
-            ProjectMember.project_id == project_id,
-            ProjectMember.user_id == body.user_id,
-        )
+    member = await ProjectService(db).add_member(
+        project_id, ProjectMemberAdd(user_id=body.user_id, role=body.role)
     )
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User ist bereits Mitglied")
-
-    member = ProjectMember(project_id=project_id, user_id=body.user_id, role=body.role)
-    db.add(member)
-    await db.flush()
     return member  # type: ignore[return-value]
 
 
@@ -82,10 +68,7 @@ async def list_members(
     actor: CurrentActor = Depends(get_current_actor),
 ) -> list[MemberResponse]:
     await _get_project_or_404(db, project_id)
-    result = await db.execute(
-        select(ProjectMember).where(ProjectMember.project_id == project_id)
-    )
-    return list(result.scalars().all())  # type: ignore[return-value]
+    return await ProjectService(db).list_members(project_id)  # type: ignore[return-value]
 
 
 @router.patch("/{project_id}/members/{user_id}", response_model=MemberResponse)
@@ -99,18 +82,7 @@ async def update_member_role(
     project = await _get_project_or_404(db, project_id)
     _require_project_admin(actor, project)
 
-    result = await db.execute(
-        select(ProjectMember).where(
-            ProjectMember.project_id == project_id,
-            ProjectMember.user_id == user_id,
-        )
-    )
-    member = result.scalar_one_or_none()
-    if not member:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mitglied nicht gefunden")
-
-    member.role = body.role
-    await db.flush()
+    member = await ProjectService(db).update_member_role(project_id, user_id, body.role)
     return member  # type: ignore[return-value]
 
 
@@ -124,15 +96,4 @@ async def remove_member(
     project = await _get_project_or_404(db, project_id)
     _require_project_admin(actor, project)
 
-    result = await db.execute(
-        select(ProjectMember).where(
-            ProjectMember.project_id == project_id,
-            ProjectMember.user_id == user_id,
-        )
-    )
-    member = result.scalar_one_or_none()
-    if not member:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Mitglied nicht gefunden")
-
-    await db.delete(member)
-    await db.flush()
+    await ProjectService(db).remove_member(project_id, user_id)

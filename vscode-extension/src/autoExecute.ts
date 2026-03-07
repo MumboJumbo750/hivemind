@@ -20,6 +20,7 @@ import {
   completeDispatch,
   fetchAuditEntries,
   fetchGovernanceConfig,
+  fetchPromptForTask,
   HivemindDispatch,
   markDispatchRunning,
   reportDispatchProgress,
@@ -41,6 +42,7 @@ interface DispatchRunState {
   startedAtIso: string;
   startedAtMs: number;
   seenAuditIds: Set<string>;
+  firstMcpSeenAtMs?: number;
   finished: boolean;
   cancelRequested: boolean;
 }
@@ -81,6 +83,16 @@ export class AutoExecuteManager {
       1000,
       vscode.workspace.getConfiguration('hivemind').get<number>('progressPollIntervalMs', 4000)
     );
+  }
+
+  private getNoMcpActivityTimeoutSeconds(): number {
+    const configured = vscode.workspace
+      .getConfiguration('hivemind')
+      .get<number>('noMcpActivityTimeoutSeconds', 90);
+    if (!Number.isFinite(configured ?? NaN) || (configured ?? 0) < 0) {
+      return 90;
+    }
+    return Math.floor(configured ?? 90);
   }
 
   private shouldAutoExecute(level: GovernanceLevel, dispatch: HivemindDispatch): boolean {
@@ -189,7 +201,7 @@ export class AutoExecuteManager {
     );
   }
 
-  private dispatchPrompt(dispatch: HivemindDispatch): string {
+  private fallbackPrompt(dispatch: HivemindDispatch): string {
     if (dispatch.trigger_id.toUpperCase().startsWith('TASK-')) {
       return `@hivemind task ${dispatch.trigger_id}`;
     }
@@ -199,9 +211,39 @@ export class AutoExecuteManager {
     return `@hivemind status\n#hivemind:task=${dispatch.trigger_id}`;
   }
 
+  private dispatchPrompt(dispatch: HivemindDispatch): string {
+    // Use the dispatch prompt directly if the backend provided one — this is the
+    // full agent prompt that should be sent to Copilot Agent Mode.  Routing through
+    // the @hivemind participant only displays static info and never starts execution.
+    if (dispatch.prompt) {
+      return dispatch.prompt;
+    }
+    return this.fallbackPrompt(dispatch);
+  }
+
   private async openCopilotChat(dispatch: HivemindDispatch): Promise<void> {
-    const query = this.dispatchPrompt(dispatch);
-    await vscode.commands.executeCommand('workbench.action.chat.open', { query });
+    let query = dispatch.prompt;
+
+    // If the dispatch has no inline prompt, fetch the full worker/role prompt
+    // from the backend so Agent Mode receives the actual instructions.
+    if (!query) {
+      const triggerKey = dispatch.trigger_id;
+      const role = dispatch.agent_role ?? 'worker';
+      try {
+        const result = await fetchPromptForTask(role, triggerKey);
+        if (result.data?.prompt) {
+          query = result.data.prompt;
+        }
+      } catch {
+        // If fetch fails, fall through to the participant-based fallback.
+      }
+    }
+
+    query = query || this.fallbackPrompt(dispatch);
+    await vscode.commands.executeCommand('workbench.action.chat.open', {
+      query,
+      mode: 'agent',
+    });
   }
 
   private async writeCliTaskfile(dispatch: HivemindDispatch): Promise<vscode.Uri> {
@@ -225,7 +267,7 @@ export class AutoExecuteManager {
       '',
       '## Completion Rule',
       '',
-      "Run `hivemind/submit_result` for this task, then `hivemind/update_task_state` to `in_review`.",
+      "Run `hivemind-submit_result` for this task, then `hivemind-update_task_state` to `in_review`.",
       '',
     ].join('\n');
     await vscode.workspace.fs.writeFile(file, new TextEncoder().encode(content));
@@ -262,7 +304,7 @@ export class AutoExecuteManager {
   }
 
   private isSubmitResultForDispatch(dispatch: HivemindDispatch, entry: AuditEntry): boolean {
-    if (entry.tool_name !== 'hivemind/submit_result') {
+    if (entry.tool_name !== 'hivemind-submit_result') {
       return false;
     }
     const trigger = dispatch.trigger_id.toUpperCase();
@@ -274,7 +316,7 @@ export class AutoExecuteManager {
   }
 
   private isUpdateStateCompletionForDispatch(dispatch: HivemindDispatch, entry: AuditEntry): boolean {
-    if (entry.tool_name !== 'hivemind/update_task_state') {
+    if (entry.tool_name !== 'hivemind-update_task_state') {
       return false;
     }
     const trigger = dispatch.trigger_id.toUpperCase();
@@ -293,6 +335,7 @@ export class AutoExecuteManager {
   private async monitorExecution(run: DispatchRunState): Promise<void> {
     const timeoutAt = run.startedAtMs + this.getTimeoutSeconds() * 1000;
     const pollIntervalMs = this.getPollIntervalMs();
+    const noMcpTimeoutSeconds = this.getNoMcpActivityTimeoutSeconds();
 
     while (!run.finished) {
       if (run.cancelRequested) {
@@ -313,6 +356,26 @@ export class AutoExecuteManager {
         return;
       }
 
+      if (
+        noMcpTimeoutSeconds > 0 &&
+        run.firstMcpSeenAtMs === undefined &&
+        Date.now() - run.startedAtMs >= noMcpTimeoutSeconds * 1000
+      ) {
+        const msg = `Kein MCP-Tool-Call innerhalb von ${noMcpTimeoutSeconds}s erkannt`;
+        await this.safeProgress(run.dispatch, 'no_mcp_activity', msg, {
+          hint: 'Copilot hat vermutlich nur Text geantwortet oder MCP-Tools sind nicht verbunden.',
+        });
+        await this.finalizeDispatch(
+          run,
+          'failed',
+          `${msg}. Prüfe Copilot Agent Mode, MCP-Verbindung und Ausführungsziel (chat/cli).`
+        );
+        void vscode.window.showWarningMessage(
+          `Hivemind: ${run.dispatch.trigger_id} ohne MCP-Aktivität abgebrochen (${noMcpTimeoutSeconds}s).`
+        );
+        return;
+      }
+
       const entries = await fetchAuditEntries(run.startedAtIso, 100);
       const sorted = [...entries].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
 
@@ -322,7 +385,10 @@ export class AutoExecuteManager {
         }
         run.seenAuditIds.add(entry.id);
 
-        if (entry.tool_name.startsWith('hivemind/')) {
+        if (entry.tool_name.startsWith('hivemind-')) {
+          if (run.firstMcpSeenAtMs === undefined) {
+            run.firstMcpSeenAtMs = Date.now();
+          }
           await this.safeProgress(run.dispatch, 'mcp_call', entry.tool_name, {
             audit_id: entry.id,
             created_at: entry.created_at,
@@ -357,6 +423,7 @@ export class AutoExecuteManager {
       startedAtIso: new Date().toISOString(),
       startedAtMs: Date.now(),
       seenAuditIds: new Set<string>(),
+      firstMcpSeenAtMs: undefined,
       finished: false,
       cancelRequested: false,
     };
@@ -437,6 +504,7 @@ export class AutoExecuteManager {
           startedAtIso: new Date().toISOString(),
           startedAtMs: Date.now(),
           seenAuditIds: new Set<string>(),
+          firstMcpSeenAtMs: undefined,
           finished: false,
           cancelRequested: false,
         };

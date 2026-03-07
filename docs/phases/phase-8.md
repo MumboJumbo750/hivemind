@@ -42,7 +42,7 @@
     | `pipeline.failed` | Triage `[UNROUTED]` (als Bug-Kandidat) |
     | `push` | Kartograph-Trigger (Code-Änderung → Follow-up-Session) |
 
-  - **MCP-Tool-Wrapper:** `hivemind/get_gitlab_mr`, `hivemind/get_gitlab_pipeline` — Read-only, für Architekt/Worker-Kontext
+  - **MCP-Tool-Wrapper:** `hivemind-get_gitlab_mr`, `hivemind-get_gitlab_pipeline` — Read-only, für Architekt/Worker-Kontext
 - [ ] **GitHub Webhook Consumer**: GitHub als Datenquelle (Issues, PRs, Actions, Projects V2) — parallel zum GitLab-Consumer
   - **Auth:** HMAC-SHA256 Signatur-Validierung (`X-Hub-Signature-256` Header) + PAT via `HIVEMIND_GITHUB_TOKEN` oder GitHub App Installation Token
   - **Ingest-Mechanismus:** Webhook-basiert — schreibt `direction='inbound'` in `sync_outbox` (selber Pfad wie GitLab/Sentry/YouTrack)
@@ -60,7 +60,7 @@
     | `projects_v2_item.edited` | GitHub Projects Sync (→ s.u.) |
     | `release.published` | Informational (Wiki/Notification) |
 
-  - **MCP-Tool-Wrapper:** `hivemind/get_github_pr`, `hivemind/get_github_issue`, `hivemind/get_github_check_status` — Read-only, für Architekt/Worker-Kontext
+  - **MCP-Tool-Wrapper:** `hivemind-get_github_pr`, `hivemind-get_github_issue`, `hivemind-get_github_check_status` — Read-only, für Architekt/Worker-Kontext
   - **Env-Vars:** `HIVEMIND_GITHUB_WEBHOOK_SECRET` (HMAC), `HIVEMIND_GITHUB_TOKEN` (PAT), `HIVEMIND_GITHUB_URL` (Default: `https://api.github.com`, für GitHub Enterprise: custom)
 - [ ] **GitHub Models Provider**: GitHub Models API als AI-Provider — Zugang zu GPT-4o, Claude, Llama, Mistral etc. über einen einzigen GitHub PAT
   - Neuer Provider-Typ `github_models` in `ai_provider_configs`
@@ -73,11 +73,11 @@
 - [ ] **GitHub Actions Agent**: Hivemind-Agents und Guards in GitHub Actions Pipelines ausführen
   - **3 Betriebsmodi:**
     1. **AI-Provider-Modus:** GitHub Actions Workflow ruft GitHub Models API als AI-Provider (günstig, GITHUB_TOKEN nativ verfügbar)
-    2. **Guard-Modus:** CI-Guards (Lint, Test, Security) laufen als GitHub Actions Steps → Ergebnis wird via `hivemind/report_guard_result` zurückgemeldet
+    2. **Guard-Modus:** CI-Guards (Lint, Test, Security) laufen als GitHub Actions Steps → Ergebnis wird via `hivemind-report_guard_result` zurückgemeldet
     3. **Agent-in-CI-Modus:** Kompletter Hivemind-Agent läuft im CI-Runner (für Code-Generierung + sofortigen Commit)
   - **Conductor-Integration:** Neues Feld `execution_mode` in `conductor_dispatches`: `local` (Default, Backend-intern) oder `github_actions` (→ Workflow Dispatch)
   - **GitHub Actions Workflow Dispatch:** Conductor triggert via `POST /repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches` mit Task-Key als Input
-  - **Ergebnis-Rückmeldung:** Agent im CI ruft `POST /api/mcp/call` mit `hivemind/submit_result` am Ende des Workflow
+  - **Ergebnis-Rückmeldung:** Agent im CI ruft `POST /api/mcp/call` mit `hivemind-submit_result` am Ende des Workflow
   - **Commit Status Checks:** Guard-Ergebnisse werden als GitHub Commit Status (`POST /repos/{owner}/{repo}/statuses/{sha}`) zurückgeschrieben
   - **Security:** `HIVEMIND_API_TOKEN` als GitHub Actions Secret; Workflow hat `contents: write` + `statuses: write` Permissions
 - [ ] **GitHub Projects V2 Sync**: Bidirektionale Synchronisation Hivemind ↔ GitHub Projects V2
@@ -90,7 +90,7 @@
   - **Rate-Limit:** GitHub GraphQL: 5000 Points/h — Batch-Operationen beachten
 - [ ] **MCP Bridge / Gateway (Meta-MCP)**: Hivemind als zentraler MCP-Proxy für externe MCP-Server
   - **Konzept:** Hivemind ist MCP-Server (für Agents) UND MCP-Client (zu GitHub MCP, GitLab MCP, Slack MCP, etc.)
-  - **Namespace-Isolation:** Tools unter `hivemind/*` (lokal), `github/*` (proxied), `gitlab/*` (proxied), etc.
+  - **Namespace-Isolation:** Tools unter `hivemind-*` (lokal), `github/*` (proxied), `gitlab/*` (proxied), etc.
   - **Proxy-Layer:** Jeder Tool-Call durchläuft RBAC → Audit → Rate-Limiting → Forward an externen MCP-Server
   - **Transport:** stdio, SSE, HTTP — konfigurierbar pro Bridge
   - **Datenmodell:** `mcp_bridge_configs`-Tabelle (Name, Namespace, Transport, Command/URL, Env-Vars encrypted, Tool Allow/Blocklist)
@@ -124,6 +124,7 @@
   - Gespeichert in `app_settings.governance` (JSON)
   - Auto-Bedingungen + Safeguards pro Typ (z.B. Review: nie auto-reject, immer Grace Period)
   - `review_recommendations` Tabelle für AI-Review-Audit-Trail
+  - Ist-Stand: Der explizite `assisted`/`auto` Split ist derzeit produktiv nur fuer `review` umgesetzt; die anderen Governance-Typen nutzen aktuell denselben AI-Dispatch-Gate und unterscheiden sich erst wieder, wenn der jeweilige Domain-Flow erweitert wird
 - [ ] **Worker-Endpoint-Pool** (optional): Mehrere Self-Hosted-Endpoints für eine Agent-Rolle (→ [data-model.md — ai_provider_configs](../architecture/data-model.md))
   - `endpoints` JSONB-Array in `ai_provider_configs` statt Single-`endpoint`: `[{"url": "http://gpu1:11434", "weight": 1}, ...]`
   - Pool-Strategien: `round_robin` (Default), `weighted` (nach GPU-Stärke), `least_busy` (wenigste aktive Dispatches)
@@ -191,7 +192,7 @@ Phase 8 (Auto-Modus — per Agent-Rolle konfigurierbar):
     → execution_mode: 'local' (Backend) oder 'github_actions' (CI-Runner)
     → Nicht konfiguriert: Fallback auf app_settings.ai_provider
     → Kein Provider: BYOAI-Modus (Prompt Station zeigt Prompt)
-  AI-Provider → ruft MCP-Tools auf (lokal hivemind/* + proxied github/*, gitlab/*)
+  AI-Provider → ruft MCP-Tools auf (lokal hivemind-* + proxied github/*, gitlab/*)
     → MCP Gateway proxied externe Tools transparent (RBAC + Audit)
   State-Transition → Conductor dispatcht nächsten Agent
     → z.B. Task done → Gaertner, Task in_review → Reviewer
@@ -201,6 +202,8 @@ Phase 8 (Auto-Modus — per Agent-Rolle konfigurierbar):
     auto:     AI entscheidet, Grace Period für Veto
   User → sieht Monitoring, greift nur bei Bedarf ein
 ```
+
+> Praktisch gilt aktuell: `review=auto` fuehrt nach Reviewer-Empfehlung zu Grace-Period + Auto-Approve. Die anderen Typen (`epic_proposal`, `epic_scoping`, `skill_merge`, `decision_request`, `escalation`) aktivieren derzeit denselben Agentenpfad wie `assisted`.
 
 **Kein Architekturbruch:** Gleicher Prompt, gleiche MCP-Calls, gleiche Validierung. Nur der manuelle Copy-Paste-Schritt entfällt — und jede Rolle kann ihren optimalen Provider nutzen. Der MCP Gateway erweitert das Tool-Ökosystem transparent um externe MCP-Server (GitHub, GitLab, etc.) — Agents merken keinen Unterschied zwischen lokalen und proxied Tools.
 

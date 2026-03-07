@@ -27,7 +27,7 @@ for s in sorted(active, key=lambda x: x['title']):
 
 # Architekt prompt
 print("\n=== ARCHITEKT READINESS ===")
-r2 = a.mcp_call('hivemind/get_prompt', {'type': 'architekt', 'epic_id': 'EPIC-PHASE-7'})
+r2 = a.mcp_call('hivemind-get_prompt', {'type': 'architekt', 'epic_id': 'EPIC-PHASE-7'})
 data = json.loads(r2['result'][0]['text'])
 prompt = data['data']['prompt']
 token_count = data['data']['token_count']
@@ -35,4 +35,4 @@ skill_refs = prompt.count('conf:')
 print(f"Architekt Prompt: {token_count} tokens")
 print(f"Skills referenced: {skill_refs}")
 print(f"Epic-Doc vorhanden: {'Phase 7 - Technischer Kontext' in prompt or 'yes'}")
-print(f"\nReady for: hivemind/get_prompt {{ type: 'architekt', epic_id: 'EPIC-PHASE-7' }}")
+print(f"\nReady for: hivemind-get_prompt {{ type: 'architekt', epic_id: 'EPIC-PHASE-7' }}")

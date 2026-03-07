@@ -19,7 +19,7 @@ from app.db import AsyncSessionLocal
 from app.models.node_bug_report import NodeBugReport
 from app.models.settings import AppSettings
 from app.services import event_bus
-from app.services.embedding_service import EmbeddingService
+from app.services.embedding_service import get_embedding_service
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ _threshold_cache: dict[str, float] = {}
 _threshold_cache_ts: float = 0.0
 _THRESHOLD_TTL = 60.0
 
-EMBEDDING_SVC = EmbeddingService()
+EMBEDDING_SVC = get_embedding_service()
 
 
 @dataclass
@@ -92,7 +92,7 @@ async def route_bug_to_epic(
             event_bus.publish("bug_unrouted", payload, channel="triage")
 
         try:
-            embedding = await EMBEDDING_SVC.embed(text_for_embedding)
+            embedding = await EMBEDDING_SVC.embed_query(text_for_embedding)
         except Exception as exc:
             logger.warning("Embedding failed for bug %s: %s", bug_report_id, exc)
             _publish_unrouted(score=0.0, reason="embedding_error")
@@ -120,7 +120,7 @@ async def route_bug_to_epic(
         row = (
             await db.execute(
                 text(
-                    "SELECT id, 1 - (embedding <=> (:vec)::vector) AS score "
+                    "SELECT id, 1 - (embedding <=> CAST(:vec AS vector)) AS score "
                     "FROM epics WHERE embedding IS NOT NULL "
                     "ORDER BY score DESC LIMIT 1"
                 ),

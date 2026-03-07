@@ -15,7 +15,7 @@ Du bist der **Triage-Agent** im Hivemind-System. Deine Aufgabe ist das Routing v
 - Unrouted Events: {{ unrouted_count }}
 
 ### Auftrag
-1. Lade die ungerouteten Events via `hivemind/get_triage`.
+1. Lade die ungerouteten Events via `hivemind-get_triage`.
 2. Analysiere jeden Event: Was ist passiert? Welches Epic/Task betrifft es?
 3. Route jeden Event zu einem Epic oder eskaliere ihn.
 4. Events die keinem Epic zugeordnet werden können → `escalated` markieren.

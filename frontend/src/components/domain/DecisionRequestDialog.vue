@@ -65,7 +65,7 @@ async function resolve() {
   loading.value = true
   error.value = null
   try {
-    await api.callMcpTool('hivemind/resolve_decision_request', {
+    await api.callMcpTool('hivemind-resolve_decision_request', {
       decision_request_id: props.request.id,
       decision: selectedOption.value,
       rationale: rationale.value || undefined,

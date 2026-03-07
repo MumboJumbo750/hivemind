@@ -140,11 +140,11 @@ async function callMcpTool(tool, args) {
 /** Fetch tasks that need attention: incoming, scoped, ready (startable), in_progress, in_review */
 async function fetchActiveTasks() {
     const [incomingResult, scopedResult, readyResult, inProgressResult, inReviewResult] = await Promise.all([
-        callMcpTool('hivemind/list_tasks', { state: 'incoming', limit: 20, offset: 0 }),
-        callMcpTool('hivemind/list_tasks', { state: 'scoped', limit: 20, offset: 0 }),
-        callMcpTool('hivemind/list_tasks', { state: 'ready', limit: 50, offset: 0 }),
-        callMcpTool('hivemind/list_tasks', { state: 'in_progress', limit: 50, offset: 0 }),
-        callMcpTool('hivemind/list_tasks', { state: 'in_review', limit: 50, offset: 0 }),
+        callMcpTool('hivemind-list_tasks', { state: 'incoming', limit: 20, offset: 0 }),
+        callMcpTool('hivemind-list_tasks', { state: 'scoped', limit: 20, offset: 0 }),
+        callMcpTool('hivemind-list_tasks', { state: 'ready', limit: 50, offset: 0 }),
+        callMcpTool('hivemind-list_tasks', { state: 'in_progress', limit: 50, offset: 0 }),
+        callMcpTool('hivemind-list_tasks', { state: 'in_review', limit: 50, offset: 0 }),
     ]);
     const tasks = [
         ...(incomingResult.data ?? []),
@@ -156,7 +156,7 @@ async function fetchActiveTasks() {
     if (tasks.length === 0) {
         return [];
     }
-    const epicResult = await callMcpTool('hivemind/list_epics', {
+    const epicResult = await callMcpTool('hivemind-list_epics', {
         limit: 200,
         offset: 0,
     });
@@ -180,7 +180,7 @@ async function fetchActiveTasks() {
 }
 /** Transition task to a new state via MCP */
 async function transitionTaskState(taskKey, targetState) {
-    return callMcpTool('hivemind/update_task_state', {
+    return callMcpTool('hivemind-update_task_state', {
         task_key: taskKey,
         target_state: targetState,
     });
@@ -197,7 +197,7 @@ async function fetchPendingDispatches() {
 }
 /** Generate the next prompt */
 async function fetchNextPrompt() {
-    return callMcpTool('hivemind/get_prompt', { type: 'worker' });
+    return callMcpTool('hivemind-get_prompt', { type: 'worker' });
 }
 /** Generate prompt for a specific task and type */
 async function fetchPromptForTask(promptType, taskKey) {
@@ -206,19 +206,19 @@ async function fetchPromptForTask(promptType, taskKey) {
         args.task_key = taskKey;
         args.task_id = taskKey; // backward-compatible with current backend prompt tool
     }
-    return callMcpTool('hivemind/get_prompt', args);
+    return callMcpTool('hivemind-get_prompt', args);
 }
 /** Fetch task details (state, DoD, guards) */
 async function fetchTask(taskKey) {
-    return callMcpTool('hivemind/get_task', { task_key: taskKey });
+    return callMcpTool('hivemind-get_task', { task_key: taskKey });
 }
 /** Fetch full guard list for task */
 async function fetchGuards(taskKey) {
-    return callMcpTool('hivemind/get_guards', { task_key: taskKey });
+    return callMcpTool('hivemind-get_guards', { task_key: taskKey });
 }
 /** Report guard result */
 async function reportGuardResult(taskKey, guardId, status, result) {
-    return callMcpTool('hivemind/report_guard_result', {
+    return callMcpTool('hivemind-report_guard_result', {
         task_key: taskKey,
         guard_id: guardId,
         status,
@@ -227,7 +227,7 @@ async function reportGuardResult(taskKey, guardId, status, result) {
 }
 /** Submit task result via worker write-tool */
 async function submitTaskResult(taskKey, result, artifacts = []) {
-    return callMcpTool('hivemind/submit_result', {
+    return callMcpTool('hivemind-submit_result', {
         task_key: taskKey,
         result,
         artifacts,
@@ -235,14 +235,14 @@ async function submitTaskResult(taskKey, result, artifacts = []) {
 }
 /** Approve a task in review (transition → done via review gate) */
 async function approveTask(taskKey, comment = '') {
-    return callMcpTool('hivemind/approve_review', {
+    return callMcpTool('hivemind-approve_review', {
         task_key: taskKey,
         comment,
     });
 }
 /** Reject a task in review (transition → qa_failed) */
 async function rejectTask(taskKey, comment) {
-    return callMcpTool('hivemind/reject_review', {
+    return callMcpTool('hivemind-reject_review', {
         task_key: taskKey,
         comment,
     });

@@ -157,7 +157,7 @@ Tasks werden von einem bestehenden Epic in ein anderes verschoben (kein neues Ep
 2. Ausführung (atomar):
    a) Für jedes resulting_epic in payload.resulting_epics:
       → INSERT neues Epic (state übernommen vom Source-Epic; owner = Source-Epic owner)
-      → epic_key via Sequence generieren (EPIC-N+1, EPIC-N+2, ...)
+      → epic_key via Sequence generieren (EPIC-{n}, fortlaufend)
    b) Für jeden Task in resulting_epics[].task_ids:
       → UPDATE tasks SET epic_id = <neues_epic_id>
       → task_node_links, decision_requests.epic_id migrieren
@@ -278,7 +278,7 @@ CREATE INDEX ON epic_restructure_proposals (state) WHERE state NOT IN ('applied'
 
 ```json
 {
-  "name": "hivemind/propose_epic_restructure",
+  "name": "hivemind-propose_epic_restructure",
   "description": "Schlägt eine Restrukturierung der Epic-Hierarchie vor. Nur erlaubt wenn der Kartograph strukturelle Diskrepanzen zwischen Code-Organisation und Epic-Struktur erkannt hat.",
   "input_schema": {
     "restructure_type": "split | merge | task_move",

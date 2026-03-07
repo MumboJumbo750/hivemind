@@ -2,7 +2,7 @@
   "external_id": "TASK-5-006",
   "epic_ref": "EPIC-PHASE-5",
   "title": "cancel_task MCP-Tool (Admin)",
-  "description": "hivemind/cancel_task: Admin cancelt Task aus incoming|scoped|ready|in_progress|blocked|escalated. Nicht aus done/in_review (ausser force). Force-Cancel nur bei in_review+epic cancelled+owner_inactive>=72h. Offene decision_requests auf expired. Epic-Auto-Transition.",
+  "description": "hivemind-cancel_task: Admin cancelt Task aus incoming|scoped|ready|in_progress|blocked|escalated. Nicht aus done/in_review (ausser force). Force-Cancel nur bei in_review+epic cancelled+owner_inactive>=72h. Offene decision_requests auf expired. Epic-Auto-Transition.",
   "state": "done",
   "priority": "medium",
   "definition_of_done": {

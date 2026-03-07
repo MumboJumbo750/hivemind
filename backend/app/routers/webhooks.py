@@ -14,15 +14,17 @@ import hashlib
 import hmac
 import json
 import uuid
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Path, Request, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Header, Path, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db import get_db
-from app.models.sync import SyncOutbox
 from app.services.audit import write_audit
+from app.services.intake_service import IntakeService
+from app.services.project_integration_service import ProjectIntegrationService
+from app.services.sync_service import add_outbox_entry, get_outbox_by_dedup_key
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -43,14 +45,6 @@ def _verify_hmac(secret: str, body: bytes, signature: str | None) -> None:
         )
 
 
-async def _check_idempotency(db: AsyncSession, dedup_key: str) -> SyncOutbox | None:
-    """Return existing outbox entry if dedup_key already exists."""
-    result = await db.execute(
-        select(SyncOutbox).where(SyncOutbox.dedup_key == dedup_key)
-    )
-    return result.scalar_one_or_none()
-
-
 # ── Normalizers ────────────────────────────────────────────────────────────
 
 def _verify_token(expected: str, actual: str | None) -> None:
@@ -67,10 +61,13 @@ def _verify_token(expected: str, actual: str | None) -> None:
 def _normalize_youtrack(raw: dict) -> dict:
     """Normalize YouTrack webhook payload to internal format."""
     issue = raw.get("issue") or {}
+    project = issue.get("project") or {}
     return {
         "source": "youtrack",
         "external_id": issue.get("id") or issue.get("idReadable"),
         "summary": issue.get("summary"),
+        "project_key": project.get("shortName") or project.get("id"),
+        "project_name": project.get("name"),
         "state": (issue.get("customFields") or [{}])[0].get("value", {}).get("name")
         if issue.get("customFields")
         else None,
@@ -299,12 +296,37 @@ _NORMALIZERS = {
 }
 
 
+async def _resolve_project_context(
+    *,
+    provider: str,
+    normalized: dict[str, Any],
+    raw: dict[str, Any],
+    db: AsyncSession,
+    request: Request,
+    project_id: str | None,
+    project_slug: str | None,
+    integration_key: str | None,
+) -> dict[str, Any]:
+    svc = ProjectIntegrationService(db)
+    return await svc.resolve_inbound_target(
+        provider=provider,
+        normalized_payload=normalized,
+        raw_payload=raw,
+        explicit_project_id=project_id or request.headers.get("x-hivemind-project-id"),
+        explicit_project_slug=project_slug or request.headers.get("x-hivemind-project"),
+        explicit_integration_key=integration_key or request.headers.get("x-hivemind-integration-key"),
+    )
+
+
 # ── Endpoints ──────────────────────────────────────────────────────────────
 
 @router.post("/youtrack", status_code=status.HTTP_202_ACCEPTED)
 async def youtrack_webhook(
     request: Request,
     x_hub_signature_256: str | None = Header(None),
+    project_id: str | None = Query(None),
+    project_slug: str | None = Query(None),
+    integration_key: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Receive a YouTrack webhook event."""
@@ -320,38 +342,60 @@ async def youtrack_webhook(
     # 2. Parse payload
     raw = json.loads(body_bytes)
 
+    normalized = _normalize_youtrack(raw)
+    context = await _resolve_project_context(
+        provider="youtrack",
+        normalized=normalized,
+        raw=raw,
+        db=db,
+        request=request,
+        project_id=project_id,
+        project_slug=project_slug,
+        integration_key=integration_key,
+    )
+
     # 3. Derive dedup key
     issue = raw.get("issue") or {}
     event_id = issue.get("id") or issue.get("idReadable") or raw.get("timestamp") or str(uuid.uuid4())
-    dedup_key = f"youtrack:{event_id}:{raw.get('timestamp', '')}"
+    dedup_scope = context["project_slug"] or context["integration_key"] or "unmatched"
+    dedup_key = f"youtrack:{dedup_scope}:{event_id}:{raw.get('timestamp', '')}"
 
     # 4. Idempotency check
-    existing = await _check_idempotency(db, dedup_key)
+    existing = await get_outbox_by_dedup_key(db, dedup_key)
     if existing:
         return {"status": "duplicate", "id": str(existing.id)}
 
-    # 5. Normalize & store
-    normalized = _normalize_youtrack(raw)
-    entry = SyncOutbox(
+    # 5. Store with project context
+    intake = IntakeService(db).build_inbound_capture(
+        source_kind="youtrack_update",
+        project_context=context,
+        payload=normalized,
+    )
+    entry = await add_outbox_entry(
+        db,
         dedup_key=dedup_key,
         direction="inbound",
         system="youtrack",
+        project_id=uuid.UUID(context["project_id"]) if context["project_id"] else None,
+        integration_id=uuid.UUID(context["integration_id"]) if context["integration_id"] else None,
         entity_type="youtrack_issue_update",
         entity_id=str(normalized.get("external_id") or event_id),
-        payload=normalized,
+        payload={**normalized, "project_context": context, "_intake": intake},
         raw_payload=raw,
         routing_state="unrouted",
+        routing_detail={"matched_by": context["matched_by"], "reason": context["reason"], "intake_stage": intake["stage"]},
     )
-    db.add(entry)
-    await db.flush()
-    await db.refresh(entry)
+    await ProjectIntegrationService(db).mark_inbound_accepted(
+        uuid.UUID(context["integration_id"]) if context["integration_id"] else None,
+        detail="YouTrack event accepted",
+    )
     await db.commit()
 
     await write_audit(
         tool_name="webhook_youtrack",
         actor_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
         actor_role="system",
-        input_payload={"dedup_key": dedup_key},
+        input_payload={"dedup_key": dedup_key, "project_context": context},
         target_id=str(entry.id),
     )
 
@@ -362,6 +406,9 @@ async def youtrack_webhook(
 async def sentry_webhook(
     request: Request,
     sentry_hook_signature: str | None = Header(None),
+    project_id: str | None = Query(None),
+    project_slug: str | None = Query(None),
+    integration_key: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Receive a Sentry webhook event."""
@@ -377,39 +424,61 @@ async def sentry_webhook(
     # 2. Parse payload
     raw = json.loads(body_bytes)
 
+    normalized = _normalize_sentry(raw)
+    context = await _resolve_project_context(
+        provider="sentry",
+        normalized=normalized,
+        raw=raw,
+        db=db,
+        request=request,
+        project_id=project_id,
+        project_slug=project_slug,
+        integration_key=integration_key,
+    )
+
     # 3. Derive dedup key
     data_obj = raw.get("data") or {}
     event = data_obj.get("event") or data_obj.get("issue") or {}
     event_id = event.get("event_id") or event.get("id") or str(uuid.uuid4())
-    dedup_key = f"sentry:{event_id}"
+    dedup_scope = context["project_slug"] or context["integration_key"] or "unmatched"
+    dedup_key = f"sentry:{dedup_scope}:{event_id}"
 
     # 4. Idempotency check
-    existing = await _check_idempotency(db, dedup_key)
+    existing = await get_outbox_by_dedup_key(db, dedup_key)
     if existing:
         return {"status": "duplicate", "id": str(existing.id)}
 
-    # 5. Normalize & store
-    normalized = _normalize_sentry(raw)
-    entry = SyncOutbox(
+    # 5. Store with project context
+    intake = IntakeService(db).build_inbound_capture(
+        source_kind="sentry_event",
+        project_context=context,
+        payload=normalized,
+    )
+    entry = await add_outbox_entry(
+        db,
         dedup_key=dedup_key,
         direction="inbound",
         system="sentry",
+        project_id=uuid.UUID(context["project_id"]) if context["project_id"] else None,
+        integration_id=uuid.UUID(context["integration_id"]) if context["integration_id"] else None,
         entity_type="sentry_error",
         entity_id=str(normalized.get("external_id") or event_id),
-        payload=normalized,
+        payload={**normalized, "project_context": context, "_intake": intake},
         raw_payload=raw,
         routing_state="unrouted",
+        routing_detail={"matched_by": context["matched_by"], "reason": context["reason"], "intake_stage": intake["stage"]},
     )
-    db.add(entry)
-    await db.flush()
-    await db.refresh(entry)
+    await ProjectIntegrationService(db).mark_inbound_accepted(
+        uuid.UUID(context["integration_id"]) if context["integration_id"] else None,
+        detail="Sentry event accepted",
+    )
     await db.commit()
 
     await write_audit(
         tool_name="webhook_sentry",
         actor_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
         actor_role="system",
-        input_payload={"dedup_key": dedup_key},
+        input_payload={"dedup_key": dedup_key, "project_context": context},
         target_id=str(entry.id),
     )
 
@@ -444,12 +513,13 @@ async def gitlab_webhook(
     dedup_key = f"gitlab:{event_type}:{external_id}"
 
     # 6. Idempotency check
-    existing = await _check_idempotency(db, dedup_key)
+    existing = await get_outbox_by_dedup_key(db, dedup_key)
     if existing:
         return {"status": "duplicate", "id": str(existing.id)}
 
     # 7. Store
-    entry = SyncOutbox(
+    entry = await add_outbox_entry(
+        db,
         dedup_key=dedup_key,
         direction="inbound",
         system="gitlab",
@@ -459,9 +529,6 @@ async def gitlab_webhook(
         raw_payload=raw,
         routing_state="unrouted",
     )
-    db.add(entry)
-    await db.flush()
-    await db.refresh(entry)
     await db.commit()
 
     await write_audit(
@@ -508,13 +575,14 @@ async def github_webhook(
     dedup_key = f"github:{event_type}:{delivery_id}"
 
     # 6. Idempotency check
-    existing = await _check_idempotency(db, dedup_key)
+    existing = await get_outbox_by_dedup_key(db, dedup_key)
     if existing:
         return {"status": "duplicate", "id": str(existing.id)}
 
     # 7. Store
     external_id = normalized.get("external_id") or delivery_id
-    entry = SyncOutbox(
+    entry = await add_outbox_entry(
+        db,
         dedup_key=dedup_key,
         direction="inbound",
         system="github",
@@ -524,9 +592,6 @@ async def github_webhook(
         raw_payload=raw,
         routing_state="unrouted",
     )
-    db.add(entry)
-    await db.flush()
-    await db.refresh(entry)
     await db.commit()
 
     await write_audit(
@@ -544,6 +609,9 @@ async def github_webhook(
 async def generic_ingest_webhook(
     request: Request,
     token: str = Path(..., description="Ingest token for authentication"),
+    project_id: str | None = Query(None),
+    project_slug: str | None = Query(None),
+    integration_key: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     """Generic ingest endpoint that routes to the correct normalizer based on 'source' field (TASK-8-009)."""
@@ -574,34 +642,55 @@ async def generic_ingest_webhook(
         or str(uuid.uuid4())
     )
     timestamp = normalized.get("timestamp") or raw.get("timestamp") or ""
-    dedup_key = f"ingest:{source}:{external_id}:{timestamp}"
+    context = await _resolve_project_context(
+        provider=system,
+        normalized=normalized,
+        raw=raw,
+        db=db,
+        request=request,
+        project_id=project_id or raw.get("project_id"),
+        project_slug=project_slug or raw.get("project_slug"),
+        integration_key=integration_key or raw.get("integration_key"),
+    )
+    dedup_scope = context["project_slug"] or context["integration_key"] or "unmatched"
+    dedup_key = f"ingest:{source}:{dedup_scope}:{external_id}:{timestamp}"
 
     # 5. Idempotency check
-    existing = await _check_idempotency(db, dedup_key)
+    existing = await get_outbox_by_dedup_key(db, dedup_key)
     if existing:
         return {"status": "duplicate", "id": str(existing.id)}
 
     # 6. Store
-    entry = SyncOutbox(
+    intake = IntakeService(db).build_inbound_capture(
+        source_kind=f"{system}_event",
+        project_context=context,
+        payload=normalized,
+    )
+    entry = await add_outbox_entry(
+        db,
         dedup_key=dedup_key,
         direction="inbound",
         system=system,
+        project_id=uuid.UUID(context["project_id"]) if context["project_id"] else None,
+        integration_id=uuid.UUID(context["integration_id"]) if context["integration_id"] else None,
         entity_type=f"{system}_event",
         entity_id=str(external_id),
-        payload=normalized,
+        payload={**normalized, "project_context": context, "_intake": intake},
         raw_payload=raw,
         routing_state="unrouted",
+        routing_detail={"matched_by": context["matched_by"], "reason": context["reason"], "intake_stage": intake["stage"]},
     )
-    db.add(entry)
-    await db.flush()
-    await db.refresh(entry)
+    await ProjectIntegrationService(db).mark_inbound_accepted(
+        uuid.UUID(context["integration_id"]) if context["integration_id"] else None,
+        detail=f"{system} ingest accepted",
+    )
     await db.commit()
 
     await write_audit(
         tool_name="webhook_ingest",
         actor_id=uuid.UUID("00000000-0000-0000-0000-000000000001"),
         actor_role="system",
-        input_payload={"dedup_key": dedup_key, "source": source},
+        input_payload={"dedup_key": dedup_key, "source": source, "project_context": context},
         target_id=str(entry.id),
     )
 

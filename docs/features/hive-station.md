@@ -65,7 +65,7 @@ Die Hive Station ist ein **leichtgewichtiger Control-Plane-Server** für Hivemin
 | Runtime | Python 3.12 + FastAPI (uvicorn) |
 | Storage | SQLite (Peer Registry, Relay Queue) |
 | Presence | In-Memory Dict (TTL-basiert) |
-| Container | Docker Image `hivemind/hive-station:latest` |
+| Container | Docker Image `hivemind-hive-station:latest` |
 | Größe | < 500 LOC, < 50 MB Docker Image |
 
 ### Docker Compose (eigenständig)
@@ -74,7 +74,7 @@ Die Hive Station ist ein **leichtgewichtiger Control-Plane-Server** für Hivemin
 # hive-station/docker-compose.yml
 services:
   hive-station:
-    image: hivemind/hive-station:latest
+    image: hivemind-hive-station:latest
     ports:
       - "9000:9000"
     environment:
@@ -545,7 +545,7 @@ Die folgenden Features sind **bewusst nicht** Teil der Hive Station v1 und werde
 | **Typ** | Eigenständiger Microservice |
 | **Stack** | Python + FastAPI + SQLite |
 | **Größe** | < 500 LOC |
-| **Docker** | `hivemind/hive-station:latest` |
+| **Docker** | `hivemind-hive-station:latest` |
 | **Port** | 9000 (Default) |
 | **Auth** | Shared Bearer Token |
 | **Persistence** | SQLite (Peer Registry + Relay Queue) |

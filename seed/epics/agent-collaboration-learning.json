@@ -1,0 +1,20 @@
+{
+  "external_id": "EPIC-AGENT-LOOP",
+  "title": "Agenten-Zusammenspiel und Lern-Loop härten",
+  "description": "**Problem:** Das agentische Zusammenspiel in Hivemind ist bereits weit genug, um produktive Teilflüsse auszuführen, aber nicht alle Gates verhalten sich fachlich unterschiedlich pro Governance-Level. Außerdem fehlt noch ein belastbarer Lern-Loop, der hochwertige Agenten-Ausgaben systematisch in bessere Skills, Prompts, Entscheidungsgrundlagen und Wissensartefakte überführt. Dadurch ist das System zwar funktionsfähig, lernt aber noch nicht konsequent aus seinen eigenen Ergebnissen.\n\n**Zielbild:** Die Agenten arbeiten über klar definierte Handoffs, Governance-Regeln und Dispatch-Policies zusammen. Jeder relevante Output eines Agenten kann — kontrolliert und mit Qualitätsfiltern — in verwertbare Lernartefakte überführt werden: Skill-Kandidaten, Prompt-Verbesserungen, Decision Records, Wiki-/Doc-Updates, Routing-Hinweise und Review-Heuristiken. So entsteht aus der operativen Arbeit ein nachvollziehbarer, messbarer Lern- und Verbesserungszyklus.\n\n**Scope dieses Epics:**\n\n1. **Governance pro Gate schärfen:** `manual`, `assisted` und `auto` bekommen fachlich unterscheidbares Verhalten für alle relevanten Entscheidungsarten.\n2. **Agent-Handoffs stabilisieren:** Conductor, Intake, Review und Folge-Dispatches werden als klare Orchestrierungskette mit definierten Übergaben modelliert.\n3. **Dispatch-Policies härten:** Parallelität, Cooldowns, Fallback-Ketten und Provider-Limits werden pro Agent-Rolle sauber gesteuert.\n4. **Lern-Loop aus Agenten-Ausgaben:** Outputs von Worker, Reviewer, Gaertner, Triage, Stratege und Architekt werden strukturiert ausgewertet und in wiederverwendbare Wissensartefakte überführt.\n5. **Qualitätsfilter gegen Lernrauschen:** Nur hochwertige, nachvollziehbare und deduplizierte Erkenntnisse gehen in Wissen oder Automatisierung über.\n6. **Messbarkeit:** Handoffs, Review-Qualität, Rework, Lern-Ertrag und Prompt-/Skill-Verbesserungen werden sichtbar.\n7. **Belastbare E2E-Absicherung:** Vollständige Orchestrierungsflüsse werden mit Stub-Providern und reproduzierbaren Szenarien getestet.\n\n**Nicht-Ziel:** Dieses Epic führt keinen unkontrollierten Selbstoptimierungs-Loop ein. Lernen bleibt nachvollziehbar, auditierbar und dort reviewbar, wo Änderungen an Skills, Guards, Prompts oder Wissen entstehen.",
+  "state": "in_progress",
+  "priority": "high",
+  "sla_deadline": null,
+  "definition_of_done": "Governance-Levels verhalten sich pro Gate fachlich unterscheidbar. Agent-Handoffs und Dispatch-Regeln sind konsistent und robust gegen Doppeltrigger, Stau und Fallbacks. Relevante Agenten-Ausgaben werden strukturiert in Lernartefakte überführt und mit Qualitätsfiltern abgesichert. Der Lern-Ertrag und die Kollaborationsqualität sind messbar. Ein deterministischer End-to-End-Orchestrierungstest deckt den Gesamtfluss vom Intake bis zum Review- und Lern-Loop ab.",
+  "tags": [
+    "agents",
+    "conductor",
+    "governance",
+    "learning",
+    "prompts",
+    "skills",
+    "observability"
+  ],
+  "depends_on": ["EPIC-PHASE-8", "EPIC-PROJ-AUTO"],
+  "source_doc": "docs/features/autonomy-loop.md"
+}

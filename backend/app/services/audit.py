@@ -91,3 +91,58 @@ async def write_audit_sync(
     )
     db.add(invocation)
     await db.flush()
+
+
+async def query_invocations(
+    db: AsyncSession,
+    *,
+    own_actor_id: uuid.UUID | None = None,
+    actor_role: str = "developer",
+    actor_id_filter: uuid.UUID | None = None,
+    tool_name: str | None = None,
+    entity_type: str | None = None,
+    target_id: str | None = None,
+    from_date=None,
+    to_date=None,
+    page: int = 1,
+    page_size: int = 50,
+) -> tuple[list, int]:
+    """Gibt (entries, total) mit RBAC zurück. developer sieht nur eigene Einträge."""
+    from sqlalchemy import func, select as _select
+
+    base = _select(McpInvocation)
+    if actor_role not in ("admin", "triage") and own_actor_id is not None:
+        base = base.where(McpInvocation.actor_id == own_actor_id)
+    if actor_id_filter:
+        base = base.where(McpInvocation.actor_id == actor_id_filter)
+    if tool_name:
+        base = base.where(McpInvocation.tool_name == tool_name)
+    if target_id:
+        base = base.where(McpInvocation.target_id == target_id)
+    if entity_type:
+        base = base.where(McpInvocation.tool_name.ilike(f"%{entity_type}%"))
+    if from_date:
+        base = base.where(McpInvocation.created_at >= from_date)
+    if to_date:
+        base = base.where(McpInvocation.created_at <= to_date)
+
+    count_q = _select(func.count()).select_from(base.subquery())
+    total = (await db.execute(count_q)).scalar() or 0
+
+    offset = (page - 1) * page_size
+    query = base.order_by(McpInvocation.created_at.desc()).limit(page_size).offset(offset)
+    result = await db.execute(query)
+    return list(result.scalars().all()), total
+
+
+async def resolve_usernames(
+    db: AsyncSession, user_ids: "set[uuid.UUID]"
+) -> "dict[uuid.UUID, str]":
+    """Gibt {user_id: username} für die gegebenen IDs zurück."""
+    from app.models.user import User
+    from sqlalchemy import select as _select
+
+    if not user_ids:
+        return {}
+    result = await db.execute(_select(User).where(User.id.in_(user_ids)))
+    return {u.id: u.username for u in result.scalars().all()}

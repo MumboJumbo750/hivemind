@@ -2,16 +2,16 @@
   "external_id": "TASK-3-004",
   "epic_ref": "EPIC-PHASE-3",
   "title": "MCP Read-Tools: Lists & Admin",
-  "description": "Dritte Gruppe von MCP-Read-Tools: List-Endpoints und Admin-only Tools. List-Tools (developer-Rolle): `hivemind/list_projects { limit, offset }`, `hivemind/list_epics { project_id, state?, limit, offset }`, `hivemind/list_tasks { epic_id?, state?, assigned_to?, limit, offset }`, `hivemind/get_project_members { project_id }`, `hivemind/list_peers { state }` (Phase F Aktivierung). Admin-only Tools (triage + read_audit_log Permission): `hivemind/get_triage { state: unrouted|escalated|dead|all }` — zeigt alle Event-Typen inkl. Federation-Events. `hivemind/get_audit_log { epic_id?, actor_id?, tool_name?, from?, to?, limit, offset }` — MCP-Invocations mit Payloads. RBAC-Enforcement serverseitig: developer sieht nur eigene Projekte/Listen, admin sieht alles.",
+  "description": "Dritte Gruppe von MCP-Read-Tools: List-Endpoints und Admin-only Tools. List-Tools (developer-Rolle): `hivemind-list_projects { limit, offset }`, `hivemind-list_epics { project_id, state?, limit, offset }`, `hivemind-list_tasks { epic_id?, state?, assigned_to?, limit, offset }`, `hivemind-get_project_members { project_id }`, `hivemind-list_peers { state }` (Phase F Aktivierung). Admin-only Tools (triage + read_audit_log Permission): `hivemind-get_triage { state: unrouted|escalated|dead|all }` — zeigt alle Event-Typen inkl. Federation-Events. `hivemind-get_audit_log { epic_id?, actor_id?, tool_name?, from?, to?, limit, offset }` — MCP-Invocations mit Payloads. RBAC-Enforcement serverseitig: developer sieht nur eigene Projekte/Listen, admin sieht alles.",
   "state": "done",
   "priority": "high",
   "definition_of_done": {
     "criteria": [
-      "`hivemind/list_projects`, `list_epics`, `list_tasks` geben paginierte Listen zurück",
-      "`hivemind/get_project_members` gibt Members mit Rollen und Epic-Counts zurück",
-      "`hivemind/list_peers` gibt Peer-Nodes mit Status und federated Skills zurück",
-      "`hivemind/get_triage` gibt unrouted/escalated/dead Items zurück (admin only)",
-      "`hivemind/get_audit_log` gibt paginierte Audit-Einträge mit Filtern zurück (admin only)",
+      "`hivemind-list_projects`, `list_epics`, `list_tasks` geben paginierte Listen zurück",
+      "`hivemind-get_project_members` gibt Members mit Rollen und Epic-Counts zurück",
+      "`hivemind-list_peers` gibt Peer-Nodes mit Status und federated Skills zurück",
+      "`hivemind-get_triage` gibt unrouted/escalated/dead Items zurück (admin only)",
+      "`hivemind-get_audit_log` gibt paginierte Audit-Einträge mit Filtern zurück (admin only)",
       "RBAC korrekt: developer-Tools → developer-Rolle; Admin-Tools → triage/read_audit_log Permission",
       "Nicht-autorisierter Zugriff → passende Fehlermeldung",
       "Unit-Test: List-Paginierung, RBAC-Verweigerung, Admin-Tool-Zugriff"

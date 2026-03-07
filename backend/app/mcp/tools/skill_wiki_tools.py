@@ -1,10 +1,10 @@
 """MCP Read-Tools: Skills, Wiki & Search — TASK-3-003.
 
 Tools:
-  hivemind/get_skills         — Active skills for a task (Phase 1-2: all active)
-  hivemind/list_skills        — Browse all skills with filters
-  hivemind/get_wiki_article   — Wiki article by UUID or slug
-  hivemind/search_wiki        — Text search across wiki articles
+  hivemind-get_skills         — Active skills for a task (Phase 1-2: all active)
+  hivemind-list_skills        — Browse all skills with filters
+  hivemind-get_wiki_article   — Wiki article by UUID or slug
+  hivemind-search_wiki        — Text search across wiki articles
 """
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ async def _handle_get_skills(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_skills",
+        name="hivemind-get_skills",
         description="Aktive Skills für einen Task (Phase 1-2: alle aktiven Skills).",
         inputSchema={
             "type": "object",
@@ -131,7 +131,7 @@ async def _handle_list_skills(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/list_skills",
+        name="hivemind-list_skills",
         description="Alle Skills durchsuchen mit optionalen Filtern (service_scope, stack, lifecycle).",
         inputSchema={
             "type": "object",
@@ -151,23 +151,13 @@ register_tool(
 # ── get_wiki_article ──────────────────────────────────────────────────────
 
 async def _handle_get_wiki_article(args: dict) -> list[TextContent]:
-    """Load wiki article by UUID or slug."""
+    """Load wiki article by UUID, wiki_key (e.g. 'WIKI-5'), or slug."""
+    from app.services.key_generator import resolve_wiki_article
+
     identifier = args.get("id") or args.get("slug", "")
     async with AsyncSessionLocal() as db:
-        # Try UUID first
-        try:
-            article_id = uuid.UUID(identifier)
-            result = await db.execute(
-                select(WikiArticle).where(WikiArticle.id == article_id, WikiArticle.deleted_at.is_(None))
-            )
-        except (ValueError, AttributeError):
-            # Fall back to slug
-            result = await db.execute(
-                select(WikiArticle).where(WikiArticle.slug == identifier, WikiArticle.deleted_at.is_(None))
-            )
-
-        article = result.scalar_one_or_none()
-        if not article:
+        article = await resolve_wiki_article(db, identifier)
+        if not article or article.deleted_at is not None:
             return _not_found("WikiArticle", identifier)
 
         return _json_response({
@@ -188,12 +178,12 @@ async def _handle_get_wiki_article(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_wiki_article",
+        name="hivemind-get_wiki_article",
         description="Wiki-Artikel per UUID oder Slug laden.",
         inputSchema={
             "type": "object",
             "properties": {
-                "id": {"type": "string", "description": "Article UUID or slug"},
+                "id": {"type": "string", "description": "Wiki-Identifier (UUID, Key z.B. 'WIKI-5', oder Slug)"},
             },
             "required": ["id"],
         },
@@ -283,7 +273,7 @@ async def _handle_search_wiki(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/search_wiki",
+        name="hivemind-search_wiki",
         description="Wiki-Volltextsuche mit PostgreSQL tsvector/tsquery + Tag-Filter. Fallback auf ILIKE.",
         inputSchema={
             "type": "object",

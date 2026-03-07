@@ -24,7 +24,7 @@ Automatisiertes Code-Review gegen DoD, Guard-Ergebnisse und Skill-Instruktionen.
 3 Stufen pro Entscheidungstyp: `manual` (Mensch entscheidet), `assisted` (AI empfiehlt, Mensch bestätigt), `auto` (AI entscheidet mit Grace Period). 7 konfigurierbare Entscheidungstypen.
 
 ### MCP Bridge / Gateway (Meta-MCP)
-Hivemind als MCP-Server UND MCP-Client. Namespace-Isolation: `hivemind/*` (lokal), `github/*` (proxied), `gitlab/*` (proxied). Zentrale RBAC-, Audit- und Rate-Limiting-Schicht für alle Tool-Quellen.
+Hivemind als MCP-Server UND MCP-Client. Namespace-Isolation: `hivemind-*` (lokal), `github/*` (proxied), `gitlab/*` (proxied). Zentrale RBAC-, Audit- und Rate-Limiting-Schicht für alle Tool-Quellen.
 
 ### GitHub Models Provider
 GitHub PAT → Zugang zu GPT-4o, Claude, Llama via Azure-Infrastruktur. Ein Token, viele Modelle.

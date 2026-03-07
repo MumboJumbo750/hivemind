@@ -153,7 +153,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const promptResp = await fetchPromptForTask('worker', taskKey);
       const prompt = promptResp.data?.prompt ?? `@hivemind /task ${taskKey}`;
       try {
-        await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt });
+        await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt, mode: 'agent' });
       } catch {
         await vscode.env.clipboard.writeText(prompt);
         vscode.window.showInformationMessage(`Prompt für ${taskKey} in Zwischenablage kopiert.`);
@@ -168,7 +168,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const promptResp = await fetchPromptForTask('review', taskKey);
       const prompt = promptResp.data?.prompt ?? `@hivemind /task ${taskKey}`;
       try {
-        await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt });
+        await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt, mode: 'agent' });
       } catch {
         await vscode.env.clipboard.writeText(prompt);
         vscode.window.showInformationMessage(`Review-Prompt für ${taskKey} in Zwischenablage kopiert.`);

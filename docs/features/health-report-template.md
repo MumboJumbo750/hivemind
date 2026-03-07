@@ -1,6 +1,6 @@
 # Repo Health Report — Wiki-Template
 
-> **Verwendung:** Kopiere dieses Template als Basis für den `hivemind/create_wiki_article`-Aufruf.
+> **Verwendung:** Kopiere dieses Template als Basis für den `hivemind-create_wiki_article`-Aufruf.
 > Tags: `diagnostics`, `technical-debt`
 > Scan-Datum im Titel angeben: z.B. `Repo Health Report 2026-03-04`
 
@@ -51,7 +51,7 @@ Für jeden Analyzer mit `severity=error`-Findings wird ein Guard-Proposal generi
 |------------|-----------|------------|
 | `{{analyzer}}-check` | `python scripts/health_check.py --analyzers {{analyzer}} --severity error` | {{N}} Errors beim initialen Scan |
 
-> Diese Guards wurden via `hivemind/propose_guard` eingetragen.
+> Diese Guards wurden via `hivemind-propose_guard` eingetragen.
 
 ---
 
@@ -72,11 +72,11 @@ Für jeden Analyzer mit `severity=error`-Findings wird ein Guard-Proposal generi
 
 ---
 
-## Guard-Template (Copy-Paste für `hivemind/propose_guard`)
+## Guard-Template (Copy-Paste für `hivemind-propose_guard`)
 
 ```json
 {
-  "tool": "hivemind/propose_guard",
+  "tool": "hivemind-propose_guard",
   "arguments": {
     "name": "{{analyzer-name}}-check",
     "description": "Kein {{analyzer-name}}-Fehler erlaubt — abgeleitet aus Repo Health Scan vom {{DATUM}}.",
@@ -93,7 +93,7 @@ Für jeden Analyzer mit `severity=error`-Findings wird ein Guard-Proposal generi
 
 ```json
 {
-  "tool": "hivemind/propose_epic",
+  "tool": "hivemind-propose_epic",
   "arguments": {
     "title": "{{Analyzer-Name}}: Findings bereinigen",
     "description": "Health-Scan vom {{DATUM}} hat {{N}} Errors in `{{analyzer-name}}` gefunden. Systematisches Cleanup erforderlich.",

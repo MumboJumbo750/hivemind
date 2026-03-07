@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AGENT-006",
+  "epic_ref": "EPIC-AGENT-LOOP",
+  "title": "Kollaboration und Lern-Ertrag messbar machen",
+  "description": "Schaffe Sichtbarkeit darüber, wie gut die Agenten zusammenarbeiten und ob der Lern-Loop wirklich bessere Ergebnisse liefert.\n\n**Was zu implementieren ist:**\n\n1. **Metriken definieren:**\n- Dispatch-Erfolgsquote pro Rolle\n- Handoff-Latenz\n- Review-Approve/Reject-Rate\n- QA-Rework-Zyklen\n- Anteil verwertbarer Lernartefakte\n- Übernahmequote von Skill-/Prompt-/Wiki-Verbesserungen\n\n2. **Auswertungen bereitstellen:**\n- Backend-API oder Dashboard-Daten\n- Verlauf über Zeit statt nur Momentaufnahme\n\n3. **Lern-Erfolg sichtbar machen:**\n- welche Learnings führten später zu weniger Rejects, besserem Routing oder besseren Prompts?\n- welche Agenten produzieren viel Rauschen?\n\n4. **Operator-Feedback unterstützen:**\n- Hinweise auf schwache Handoffs oder schlecht konfigurierte Rollen\n\n**Wichtig:** Ohne Metriken bleibt der Lern-Loop eine Hypothese statt eines steuerbaren Systems.",
+  "state": "done",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Kernmetriken für Agenten-Zusammenspiel und Lern-Ertrag sind definiert",
+      "Die Metriken sind systemseitig abrufbar",
+      "Verlauf und Problemfelder sind sichtbar",
+      "Operatoren können schwache Agentenpfade erkennen"
+    ]
+  },
+  "tags": ["metrics", "observability", "learning", "dashboard", "backend"],
+  "subtasks": [],
+  "pinned_skills": ["kpi-aggregation-dashboard-api", "auto-mode-monitoring"],
+  "linked_wiki": ["memory-ledger"],
+  "source_doc": "docs/features/autonomy-loop.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-AGENT-003", "TASK-AGENT-004", "TASK-AGENT-005"]
+}

@@ -154,7 +154,7 @@ Graduierte Einträge werden in der Summary als `graduated: true` markiert. Sie w
 Jeder Agent kann Pattern-Beobachtungen als potentielle Skills markieren indem er den reservierten Tag **`skill-candidate`** verwendet:
 
 ```text
-hivemind/save_memory {
+hivemind-save_memory {
   "scope": "project", "scope_id": "uuid",
   "content": "Repo nutzt überall Repository-Pattern: Service-Layer + Depends(). Könnte ein Skill werden.",
   "tags": ["pattern", "skill-candidate", "fastapi"]
@@ -251,7 +251,7 @@ Session 3:
 ### Write-Tools (alle Agenten)
 
 ```text
-hivemind/save_memory {
+hivemind-save_memory {
   "scope": "project|epic|task|global",
   "scope_id": "uuid",                    -- project/epic/task ID (NULL bei global)
   "content": "...",                        -- L0: Freiform-Beobachtung (Markdown)
@@ -260,7 +260,7 @@ hivemind/save_memory {
 -- Erstellt L0 memory_entry
 -- Trigger: Automatische L1-Faktenextraktion (async, Backend oder Agent)
 
-hivemind/extract_facts {
+hivemind-extract_facts {
   "entry_ids": ["uuid", "uuid"],           -- Welche L0-Entries
   "facts": [
     { "entity": "auth/jwt", "key": "algorithm", "value": "RS256" },
@@ -270,7 +270,7 @@ hivemind/extract_facts {
 -- Agent extrahiert selbst Fakten aus L0-Entries → L1
 -- Alternativ: Backend extrahiert automatisch (Phase 5+ mit LLM)
 
-hivemind/compact_memories {
+hivemind-compact_memories {
   "entry_ids": ["uuid", "uuid", "..."],    -- Welche L0-Entries zusammenfassen
   "summary": "...",                         -- L2: Verdichtete Zusammenfassung
   "open_questions": ["...", "..."],         -- Offene Fragen aus der Analyse
@@ -279,7 +279,7 @@ hivemind/compact_memories {
 -- Erstellt L2 memory_summary, verlinkt source_entry_ids
 -- Entries bleiben unverändert (append-only)
 
-hivemind/graduate_memory {
+hivemind-graduate_memory {
   "summary_id": "uuid",                    -- Welche L2-Summary
   "target": "wiki|skill|doc",              -- Wohin graduiert werden soll
   "target_id": "uuid"                      -- ID des erstellten Wiki/Skill/Doc (nach Create)
@@ -291,7 +291,7 @@ hivemind/graduate_memory {
 ### Read-Tools (alle Agenten)
 
 ```text
-hivemind/get_memory_context {
+hivemind-get_memory_context {
   "scope": "project|epic|task|global",
   "scope_id": "uuid",
   "max_tokens": 2000                       -- Token-Budget für Memory-Kontext
@@ -299,7 +299,7 @@ hivemind/get_memory_context {
 -- Returns: L2-Summaries (neueste zuerst) + L1-Facts + Integrity-Warnings
 -- Respektiert Token-Budget: Summaries zuerst, dann Facts, dann L0 on-demand
 
-hivemind/search_memories {
+hivemind-search_memories {
   "query": "authentication JWT",
   "scope": "project|epic|global",
   "scope_id": "uuid",
@@ -308,14 +308,14 @@ hivemind/search_memories {
 -- Similarity-Search über Memory Entries (nutzt pgvector ab Phase 3)
 -- Phase 1-2: Volltextsuche (ILIKE / tsvector)
 
-hivemind/get_uncovered_entries {
+hivemind-get_uncovered_entries {
   "scope": "project|epic|task",
   "scope_id": "uuid"
 }
 -- Gibt L0-Entries zurück die von KEINER L2-Summary abgedeckt sind
 -- Integrity-Check: "Was habe ich noch nicht verdichtet?"
 
-hivemind/get_open_questions {
+hivemind-get_open_questions {
   "scope": "project|epic|global",
   "scope_id": "uuid"
 }
@@ -341,9 +341,9 @@ hivemind/get_open_questions {
 ```text
 1. Agent sammelt alle unkompaktierten L0-Entries für den aktuellen Scope
 2. Agent extrahiert L1-Facts (falls noch nicht geschehen):
-   hivemind/extract_facts { "entry_ids": [...], "facts": [...] }
+   hivemind-extract_facts { "entry_ids": [...], "facts": [...] }
 3. Agent schreibt L2-Summary:
-   hivemind/compact_memories {
+   hivemind-compact_memories {
      "entry_ids": [...],
      "summary": "Zusammenfassung...",
      "open_questions": ["Was ist mit X?", "Y noch unklar"]
@@ -431,11 +431,11 @@ L2-Summary ist stabil (keine offenen Fragen, mehrfach bestätigt)
   ↓
 Agent: "Diese Erkenntnis ist reif für Wiki/Skill"
   ↓
-Kartograph: hivemind/create_wiki_article { ... }
-Gaertner:   hivemind/propose_skill { ... }
-Stratege:   hivemind/propose_epic { ... }
+Kartograph: hivemind-create_wiki_article { ... }
+Gaertner:   hivemind-propose_skill { ... }
+Stratege:   hivemind-propose_epic { ... }
   ↓
-hivemind/graduate_memory { "summary_id": "...", "target": "wiki", "target_id": "..." }
+hivemind-graduate_memory { "summary_id": "...", "target": "wiki", "target_id": "..." }
   ↓
 Summary markiert als graduated → wird bei Resume nicht mehr geladen
 Wiki/Skill übernimmt → Bibliothekar liefert es über den normalen Kanal

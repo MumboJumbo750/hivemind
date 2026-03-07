@@ -17,12 +17,12 @@ guards:
 ## Skill: Triage-Routing & Event-Klassifizierung
 
 ### Rolle
-Du implementierst die Triage-Logik — das Routing von `[UNROUTED]` Events aus der `sync_outbox` zu Epics/Tasks. Die MCP-Write-Tools `hivemind/route_event` und `hivemind/ignore_event` ermöglichen manuelle Triage-Entscheidungen.
+Du implementierst die Triage-Logik — das Routing von `[UNROUTED]` Events aus der `sync_outbox` zu Epics/Tasks. Die MCP-Write-Tools `hivemind-route_event` und `hivemind-ignore_event` ermöglichen manuelle Triage-Entscheidungen.
 
 ### Konventionen
 - Service: `app/services/triage_service.py`
-- MCP-Tools: `hivemind/route_event`, `hivemind/ignore_event` (admin-only, `triage`-Permission)
-- MCP-Read: `hivemind/get_triage { "state": "unrouted|escalated|dead|all" }`
+- MCP-Tools: `hivemind-route_event`, `hivemind-ignore_event` (admin-only, `triage`-Permission)
+- MCP-Read: `hivemind-get_triage { "state": "unrouted|escalated|dead|all" }`
 - Routing-States in `sync_outbox.routing_state`:
   - `unrouted` — neu eingetroffen, noch nicht zugeordnet
   - `routed` — einem Epic/Task zugeordnet

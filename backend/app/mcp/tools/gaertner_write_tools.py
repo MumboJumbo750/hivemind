@@ -1,10 +1,10 @@
 """MCP Gaertner Write-Tools — TASK-5-009.
 
 Gaertner agent tools for knowledge consolidation:
-- hivemind/propose_skill             — Propose a new skill (lifecycle=draft)
-- hivemind/propose_skill_change      — Propose changes to an existing skill
-- hivemind/create_decision_record    — Document an epic decision (max 3/day anti-spam)
-- hivemind/update_doc                — Update an epic-doc with optimistic locking
+- hivemind-propose_skill             — Propose a new skill (lifecycle=draft)
+- hivemind-propose_skill_change      — Propose changes to an existing skill
+- hivemind-create_decision_record    — Document an epic decision (max 3/day anti-spam)
+- hivemind-update_doc                — Update an epic-doc with optimistic locking
 """
 from __future__ import annotations
 
@@ -32,16 +32,23 @@ def _ok(data: dict) -> list[TextContent]:
 def _err(code: str, message: str, status: int = 400) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps({
         "error": {"code": code, "message": message, "status": status}
-    }))]
+    }))] 
+
+
+def _actor_uuid(args: dict) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(args.get("_actor_id") or ADMIN_ID))
+    except ValueError:
+        return ADMIN_ID
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/propose_skill  — new skill with lifecycle=draft
+# hivemind-propose_skill  — new skill with lifecycle=draft
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/propose_skill",
+        name="hivemind-propose_skill",
         description=(
             "Propose a new skill (lifecycle=draft). Includes circular-dependency "
             "check and depth ≤ 3 validation for parent_skill_ids."
@@ -61,7 +68,7 @@ register_tool(
                 },
                 "parent_skill_ids": {
                     "type": "array", "items": {"type": "string"},
-                    "description": "UUIDs of parent skills (max depth 3)",
+                    "description": "Parent-Skill-Identifier (UUID oder Key, z.B. 'SKILL-7'), max depth 3",
                 },
                 "skill_type": {
                     "type": "string", "enum": ["system", "domain", "runtime"],
@@ -106,27 +113,24 @@ async def _check_skill_depth(db, parent_ids: list[uuid.UUID], max_depth: int = 3
 
 async def _handle_propose_skill(args: dict) -> list[TextContent]:
     from app.models.skill import Skill, SkillParent
+    from app.services.key_generator import resolve_skill
 
     title = args.get("title", "").strip()
     content = args.get("content", "").strip()
     if not title or not content:
         return _err("VALIDATION_ERROR", "title und content sind Pflichtfelder", 422)
-
-    parent_ids = []
-    for pid_str in args.get("parent_skill_ids", []):
-        try:
-            parent_ids.append(uuid.UUID(pid_str))
-        except ValueError:
-            return _err("VALIDATION_ERROR", f"Ungültige parent_skill_id: {pid_str}", 422)
+    actor_id = _actor_uuid(args)
 
     try:
         async with AsyncSessionLocal() as db:
             async with db.begin():
-                # Verify parents exist
-                for pid in parent_ids:
-                    result = await db.execute(select(Skill).where(Skill.id == pid))
-                    if not result.scalar_one_or_none():
-                        return _err("ENTITY_NOT_FOUND", f"Parent-Skill '{pid}' nicht gefunden", 404)
+                # Resolve parent skill identifiers (UUID or key)
+                parent_ids = []
+                for pid_str in args.get("parent_skill_ids", []):
+                    parent = await resolve_skill(db, pid_str)
+                    if not parent:
+                        return _err("ENTITY_NOT_FOUND", f"Parent-Skill '{pid_str}' nicht gefunden", 404)
+                    parent_ids.append(parent.id)
 
                 # Depth check
                 if parent_ids:
@@ -147,10 +151,14 @@ async def _handle_propose_skill(args: dict) -> list[TextContent]:
                     stack=args.get("stack", []),
                     skill_type=args.get("skill_type", "domain"),
                     lifecycle="draft",
-                    owner_id=ADMIN_ID,
-                    proposed_by=ADMIN_ID,
+                    owner_id=actor_id,
+                    proposed_by=actor_id,
                     project_id=project_id,
                 )
+                # Generate skill_key via sequence
+                from app.services.key_generator import next_skill_key
+                skill.skill_key = await next_skill_key(db)
+
                 db.add(skill)
                 await db.flush()
                 await db.refresh(skill)
@@ -162,6 +170,7 @@ async def _handle_propose_skill(args: dict) -> list[TextContent]:
                 return _ok({
                     "data": {
                         "skill_id": str(skill.id),
+                        "skill_key": skill.skill_key,
                         "title": skill.title,
                         "lifecycle": skill.lifecycle,
                         "parent_count": len(parent_ids),
@@ -173,12 +182,12 @@ async def _handle_propose_skill(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/propose_skill_change  — propose changes to an existing skill
+# hivemind-propose_skill_change  — propose changes to an existing skill
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/propose_skill_change",
+        name="hivemind-propose_skill_change",
         description=(
             "Propose a change to an existing skill. Creates a change proposal "
             "that needs admin review (accept/reject)."
@@ -186,7 +195,7 @@ register_tool(
         inputSchema={
             "type": "object",
             "properties": {
-                "skill_id": {"type": "string", "description": "UUID of the skill to change"},
+                "skill_id": {"type": "string", "description": "Skill-Identifier (UUID oder Key, z.B. 'SKILL-7')"},
                 "proposed_content": {"type": "string", "description": "New content for the skill"},
                 "rationale": {"type": "string", "description": "Reason for the change"},
             },
@@ -199,24 +208,21 @@ register_tool(
 
 async def _handle_propose_skill_change(args: dict) -> list[TextContent]:
     from app.models.skill import Skill
-
-    try:
-        skill_id = uuid.UUID(args["skill_id"])
-    except (KeyError, ValueError) as exc:
-        return _err("VALIDATION_ERROR", f"Ungültige skill_id: {exc}", 422)
+    from app.services.key_generator import resolve_skill
 
     proposed_content = args.get("proposed_content", "").strip()
     rationale = args.get("rationale", "").strip()
     if not proposed_content or not rationale:
         return _err("VALIDATION_ERROR", "proposed_content und rationale sind Pflichtfelder", 422)
+    actor_id = _actor_uuid(args)
 
     try:
         async with AsyncSessionLocal() as db:
             async with db.begin():
-                result = await db.execute(select(Skill).where(Skill.id == skill_id))
-                skill = result.scalar_one_or_none()
+                skill = await resolve_skill(db, args.get("skill_id", ""))
                 if not skill:
-                    return _err("ENTITY_NOT_FOUND", f"Skill '{skill_id}' nicht gefunden", 404)
+                    return _err("ENTITY_NOT_FOUND", f"Skill '{args.get('skill_id')}' nicht gefunden", 404)
+                skill_id = skill.id
 
                 if skill.lifecycle not in ("active", "draft"):
                     return _err(
@@ -234,8 +240,8 @@ async def _handle_propose_skill_change(args: dict) -> list[TextContent]:
                     stack=skill.stack,
                     skill_type=skill.skill_type,
                     lifecycle="draft",
-                    owner_id=ADMIN_ID,
-                    proposed_by=ADMIN_ID,
+                    owner_id=actor_id,
+                    proposed_by=actor_id,
                     project_id=skill.project_id,
                 )
                 db.add(change_skill)
@@ -257,12 +263,12 @@ async def _handle_propose_skill_change(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/create_decision_record  — document an epic decision (max 3/day)
+# hivemind-create_decision_record  — document an epic decision (max 3/day)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/create_decision_record",
+        name="hivemind-create_decision_record",
         description=(
             "Document a decision for an epic. Anti-spam: max 3 decision records "
             "per day per user."
@@ -288,6 +294,7 @@ async def _handle_create_decision_record(args: dict) -> list[TextContent]:
     rationale = args.get("rationale", "").strip()
     if not decision_text:
         return _err("VALIDATION_ERROR", "decision darf nicht leer sein", 422)
+    actor_id = _actor_uuid(args)
 
     epic_id = None
     if args.get("epic_id"):
@@ -305,7 +312,7 @@ async def _handle_create_decision_record(args: dict) -> list[TextContent]:
                     select(sa_func.count())
                     .select_from(DecisionRecord)
                     .where(
-                        DecisionRecord.decided_by == ADMIN_ID,
+                        DecisionRecord.decided_by == actor_id,
                         DecisionRecord.created_at >= today_start,
                     )
                 )
@@ -321,7 +328,7 @@ async def _handle_create_decision_record(args: dict) -> list[TextContent]:
                     epic_id=epic_id,
                     decision=decision_text,
                     rationale=rationale or None,
-                    decided_by=ADMIN_ID,
+                    decided_by=actor_id,
                 )
                 db.add(record)
                 await db.flush()
@@ -341,12 +348,12 @@ async def _handle_create_decision_record(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/update_doc  — update epic doc with optimistic locking
+# hivemind-update_doc  — update epic doc with optimistic locking
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/update_doc",
+        name="hivemind-update_doc",
         description=(
             "Update an epic-doc's content with optimistic locking. "
             "Provide the expected version to prevent concurrent writes."
@@ -354,7 +361,7 @@ register_tool(
         inputSchema={
             "type": "object",
             "properties": {
-                "doc_id": {"type": "string", "description": "Doc UUID"},
+                "doc_id": {"type": "string", "description": "Doc-Identifier (UUID oder Key, z.B. 'DOC-8')"},
                 "content": {"type": "string", "description": "New content (Markdown)"},
                 "version": {
                     "type": "integer",
@@ -370,11 +377,7 @@ register_tool(
 
 async def _handle_update_doc(args: dict) -> list[TextContent]:
     from app.models.doc import Doc
-
-    try:
-        doc_id = uuid.UUID(args["doc_id"])
-    except (KeyError, ValueError) as exc:
-        return _err("VALIDATION_ERROR", f"Ungültige doc_id: {exc}", 422)
+    from app.services.key_generator import resolve_doc
 
     new_content = args.get("content", "").strip()
     if not new_content:
@@ -387,10 +390,9 @@ async def _handle_update_doc(args: dict) -> list[TextContent]:
     try:
         async with AsyncSessionLocal() as db:
             async with db.begin():
-                result = await db.execute(select(Doc).where(Doc.id == doc_id))
-                doc = result.scalar_one_or_none()
+                doc = await resolve_doc(db, args.get("doc_id", ""))
                 if not doc:
-                    return _err("ENTITY_NOT_FOUND", f"Doc '{doc_id}' nicht gefunden", 404)
+                    return _err("ENTITY_NOT_FOUND", f"Doc '{args.get('doc_id')}' nicht gefunden", 404)
 
                 # Optimistic locking check
                 if doc.version != expected_version:

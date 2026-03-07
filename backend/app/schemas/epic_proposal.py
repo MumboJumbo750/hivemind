@@ -65,3 +65,4 @@ class RequirementDraftResponse(BaseModel):
     token_count: int
     draft_id: uuid.UUID
     enrichment: dict
+    intake: dict

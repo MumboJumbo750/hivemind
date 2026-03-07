@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-PROJ-002",
+  "epic_ref": "EPIC-PROJ-AUTO",
+  "title": "Repo-Onboarding-Flow ohne manuelle Compose-Anpassung",
+  "description": "Baue einen geführten Onboarding-Flow, der ein lokales Repository für ein Projekt vorbereitet, validiert und für Hivemind nutzbar macht.\n\n**Was zu implementieren ist:**\n\n1. **Onboarding-Service/Assistent:**\n- prüft ob der angegebene Host-Pfad existiert und ein Repo ist\n- erkennt typische Stack-Merkmale (`package.json`, `pyproject.toml`, etc.)\n- erzeugt oder aktualisiert die nötige Workspace-/Mount-Konfiguration kontrolliert\n- zeigt dem User klar, ob ein Restart nötig ist\n\n2. **Integration des bestehenden `hivemind_init`-Flows:**\n- Script/Logik wiederverwenden statt paralleles Setup zu erfinden\n- Dry-Run/Preview im UI oder API verfügbar machen\n- Umschalten zwischen Repos nachvollziehbar machen\n\n3. **Projektstatus aktualisieren:**\n- `pending` → `ready` bei erfolgreichem Onboarding\n- `error` mit sprechender Fehlermeldung bei Validierungs- oder Mount-Problemen\n\n4. **Discovery/Diagnose:**\n- sichtbare Diagnose: aktuelles Repo, effektiver Workspace-Pfad, Deny-Patterns, Analyzer-Erreichbarkeit\n\n**Wichtig:** Der User soll nicht händisch in `docker-compose.override.yml` arbeiten müssen, außer als bewusster Fallback.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Repo-Onboarding ist über API oder UI anstoßbar",
+      "Bestehende Init-Logik wird wiederverwendet oder sauber integriert",
+      "Repo-Pfad, Workspace-Pfad und Status sind nach Onboarding sichtbar",
+      "Fehlerfälle werden verständlich gemeldet",
+      "Repo-Wechsel ist kontrolliert dokumentiert"
+    ]
+  },
+  "tags": ["dx", "tooling", "workspace", "onboarding"],
+  "subtasks": [],
+  "pinned_skills": ["repo-onboarding", "podman-exec"],
+  "linked_wiki": ["ide-mcp-integration"],
+  "source_doc": null,
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-PROJ-001"]
+}

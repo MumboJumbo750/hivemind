@@ -20,19 +20,19 @@ def get_tasks():
 def move_task_to_in_review(task_key: str, result_text: str):
     """Move a task from scoped → ready → in_progress → submit_result → in_review."""
     # 1. Assign
-    r = mcp_call("hivemind/assign_task", {"task_key": task_key, "user_id": USER_ID})
+    r = mcp_call("hivemind-assign_task", {"task_key": task_key, "user_id": USER_ID})
     print(f"  assign: {_status(r)}")
 
     # 2. scoped → ready
-    r = mcp_call("hivemind/update_task_state", {"task_key": task_key, "target_state": "ready"})
+    r = mcp_call("hivemind-update_task_state", {"task_key": task_key, "target_state": "ready"})
     print(f"  → ready: {_status(r)}")
 
     # 3. ready → in_progress
-    r = mcp_call("hivemind/update_task_state", {"task_key": task_key, "target_state": "in_progress"})
+    r = mcp_call("hivemind-update_task_state", {"task_key": task_key, "target_state": "in_progress"})
     print(f"  → in_progress: {_status(r)}")
 
     # 4. submit_result
-    r = mcp_call("hivemind/submit_result", {
+    r = mcp_call("hivemind-submit_result", {
         "task_key": task_key,
         "result": result_text,
         "artifacts": []
@@ -40,7 +40,7 @@ def move_task_to_in_review(task_key: str, result_text: str):
     print(f"  submit_result: {_status(r)}")
 
     # 5. in_progress → in_review
-    r = mcp_call("hivemind/update_task_state", {"task_key": task_key, "target_state": "in_review"})
+    r = mcp_call("hivemind-update_task_state", {"task_key": task_key, "target_state": "in_review"})
     print(f"  → in_review: {_status(r)}")
 
 
@@ -68,7 +68,7 @@ TASK_RESULTS = {
     "TASK-8-011": "GitHub Models Provider using OpenAI-compatible SDK with base_url=models.inference.ai.azure.com. Auth via GitHub PAT. Model catalog loading. Implemented in ai_providers/github_models.py.",
     "TASK-8-012": "GitHub Actions Agent: 3 modes (AI-Provider, Guard, Agent-in-CI). Conductor integration with execution_mode field. Workflow Dispatch trigger via GitHub API. Guard results via report_guard_result MCP tool. Commit status checks.",
     "TASK-8-013": "GitHub Projects V2 bidirectional sync via GraphQL. State mapping (incoming→Backlog, scoped→Todo, etc.). Outbound via sync_outbox, inbound via webhooks. project_integrations table for config. Board changes never auto-change Hivemind state.",
-    "TASK-8-014": "MCP Bridge/Gateway core: MCP client implementation, bridge registry, proxy dispatch layer. Namespace isolation (hivemind/*, github/*, gitlab/*). Transport support: stdio, SSE, HTTP. Tool discovery from external MCP servers.",
+    "TASK-8-014": "MCP Bridge/Gateway core: MCP client implementation, bridge registry, proxy dispatch layer. Namespace isolation (hivemind-*, github/*, gitlab/*). Transport support: stdio, SSE, HTTP. Tool discovery from external MCP servers.",
     "TASK-8-015": "MCP Bridge RBAC + Audit: All proxied tool calls go through RBAC check, audit logging, rate-limiting. Admin API: GET/POST /api/admin/mcp-bridges. Tool blocklist (delete_repository always blocked). Env vars AES-256-GCM encrypted.",
     "TASK-8-016": "Bibliothekar Auto-Modus extension: per-agent-role provider routing integrated with Conductor dispatch. Provider-specific token calibration. Adaptive token budget based on provider capabilities.",
     "TASK-8-017": "Nexus Grid 3D Backend: GET /api/nexus/graph3d endpoint returning optimized graph data for large codebases. Aggregation for 1000+ node rendering.",
@@ -105,18 +105,18 @@ if __name__ == "__main__":
         elif state == "in_progress":
             # Just need submit_result + transition
             result_text = TASK_RESULTS.get(tk, f"Phase 8 implementation for {tk}")
-            r = mcp_call("hivemind/submit_result", {"task_key": tk, "result": result_text, "artifacts": []})
+            r = mcp_call("hivemind-submit_result", {"task_key": tk, "result": result_text, "artifacts": []})
             print(f"  submit_result: {_status(r)}")
-            r = mcp_call("hivemind/update_task_state", {"task_key": tk, "target_state": "in_review"})
+            r = mcp_call("hivemind-update_task_state", {"task_key": tk, "target_state": "in_review"})
             print(f"  → in_review: {_status(r)}")
             continue
         elif state == "ready":
             result_text = TASK_RESULTS.get(tk, f"Phase 8 implementation for {tk}")
-            r = mcp_call("hivemind/update_task_state", {"task_key": tk, "target_state": "in_progress"})
+            r = mcp_call("hivemind-update_task_state", {"task_key": tk, "target_state": "in_progress"})
             print(f"  → in_progress: {_status(r)}")
-            r = mcp_call("hivemind/submit_result", {"task_key": tk, "result": result_text, "artifacts": []})
+            r = mcp_call("hivemind-submit_result", {"task_key": tk, "result": result_text, "artifacts": []})
             print(f"  submit_result: {_status(r)}")
-            r = mcp_call("hivemind/update_task_state", {"task_key": tk, "target_state": "in_review"})
+            r = mcp_call("hivemind-update_task_state", {"task_key": tk, "target_state": "in_review"})
             print(f"  → in_review: {_status(r)}")
             continue
         elif state != "scoped":

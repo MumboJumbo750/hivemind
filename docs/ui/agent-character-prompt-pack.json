@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "style_system": {
+    "global_style_prompt": "stylized realistic sci-fi character portrait, premium game character card art, dark futuristic command interface aesthetic, high readability silhouette, cinematic rim light, subtle holographic overlays, clean background composition, no text, no watermark, dark navy and neon compatible palette, polished concept art, sharp face lighting, role-specific equipment, high contrast, premium UI key art",
+    "global_negative_prompt": "blurry, low contrast, unreadable face, chibi, cartoon, anime exaggeration, childish, fantasy armor overload, weapon focus, text, logo, watermark, extra limbs, deformed hands, cluttered background, washed out colors, oversaturated neon mess",
+    "style_notes": [
+      "same universe across all agents",
+      "dark-ui compatible palette",
+      "clear face readability",
+      "clean silhouette",
+      "no text inside image"
+    ]
+  },
+  "asset_spec": {
+    "hero": {
+      "aspect_ratio": "4:5",
+      "target_size": "1536x1920",
+      "export": "webp"
+    },
+    "portrait": {
+      "aspect_ratio": "1:1",
+      "target_size": "1024x1024",
+      "export": "webp"
+    },
+    "avatar": {
+      "aspect_ratio": "1:1",
+      "target_size": "512x512",
+      "export": "webp"
+    }
+  },
+  "agents": [
+    {
+      "agent_key": "kartograph",
+      "display_name": "Kartograph",
+      "palette": ["cyan", "teal"],
+      "shape_language": "triangular, sensoric, scouting",
+      "production_priority": 1,
+      "hero_prompt": "Kartograph, explorer-analyst agent of a futuristic software hivemind, androgynous tactical scout, cyan and teal palette, triangular sensor motifs, holographic map shards floating around, scanning the unknown architecture of a digital world, calm focused expression, layered field jacket with lightweight high-tech fabric, subtle reconnaissance visor, background hints of star-map meets code topology, premium concept art, 4:5 portrait",
+      "avatar_prompt": "close portrait avatar of Kartograph, futuristic scout analyst, cyan teal palette, clean face lighting, readable silhouette, subtle sensor visor, minimal holographic map motif, square composition",
+      "tags": ["exploration", "mapping", "sensor-overlays"]
+    },
+    {
+      "agent_key": "stratege",
+      "display_name": "Stratege",
+      "palette": ["violet", "magenta"],
+      "shape_language": "elegant, tactical, orchestrating",
+      "production_priority": 2,
+      "hero_prompt": "Stratege, strategic planner agent of a futuristic software hivemind, composed tactical commander, violet and magenta palette, elegant long coat with subtle geometric command patterns, holographic dependency lines and campaign-map overlays, analytical gaze, chess-like planning symbolism without literal chessboard overload, refined command deck atmosphere, premium concept art, 4:5 portrait",
+      "avatar_prompt": "close portrait avatar of Stratege, strategic commander, violet magenta palette, intelligent calm expression, minimal command overlay, square composition",
+      "tags": ["planning", "campaign-map", "dependency-web"]
+    },
+    {
+      "agent_key": "architekt",
+      "display_name": "Architekt",
+      "palette": ["blue", "white"],
+      "shape_language": "geometric, blueprint, structural",
+      "production_priority": 2,
+      "hero_prompt": "Architekt, systems designer agent of a futuristic software hivemind, blue and white palette, blueprint holograms, modular construction motifs, precise engineer aesthetic, structured high-tech coat with hard surface detailing, calm and exact posture, digital schematic overlays, composition suggesting building complex systems from clean modules, premium concept art, 4:5 portrait",
+      "avatar_prompt": "close portrait avatar of Architekt, systems designer, blue white palette, blueprint glow, precise technical aesthetic, square composition",
+      "tags": ["blueprint", "construction", "system-design"]
+    },
+    {
+      "agent_key": "worker",
+      "display_name": "Worker",
+      "palette": ["orange", "steel"],
+      "shape_language": "robust, practical, execution-focused",
+      "production_priority": 1,
+      "hero_prompt": "Worker, implementation specialist agent of a futuristic software hivemind, orange and steel palette, practical operator gear, compact tools integrated into suit, focused execution posture, field-console overlays, subtle sparks of active work, grounded competent look, not militaristic, not heavy combat, premium concept art, 4:5 portrait",
+      "avatar_prompt": "close portrait avatar of Worker, practical implementation specialist, orange steel palette, focused expression, compact tool motif, square composition",
+      "tags": ["execution", "field-console", "implementation"]
+    },
+    {
+      "agent_key": "reviewer",
+      "display_name": "Reviewer",
+      "palette": ["red", "silver"],
+      "shape_language": "sharp, strict, inspection-oriented",
+      "production_priority": 2,
+      "hero_prompt": "Reviewer, quality inspector agent of a futuristic software hivemind, red and silver palette, precise inspection optics, thin scanning monocle or visor, judgment and verification motifs, controlled stern expression, elegant inspector uniform with high-detail trim, holographic approval and warning frames, premium concept art, 4:5 portrait",
+      "avatar_prompt": "close portrait avatar of Reviewer, strict quality inspector, red silver palette, scanning lens, sharp expression, square composition",
+      "tags": ["inspection", "verification", "judgment"]
+    },
+    {
+      "agent_key": "gaertner",
+      "display_name": "Gaertner",
+      "palette": ["green", "gold"],
+      "shape_language": "organic-digital, curated, refined",
+      "production_priority": 2,
+      "hero_prompt": "Gaertner, knowledge cultivator agent of a futuristic software hivemind, green and gold palette, organic-digital refinement motifs, archive garden symbolism rendered as elegant holographic growth patterns, calm reflective expression, curator robes mixed with technical utility, subtle seed-to-structure visual language, premium concept art, 4:5 portrait",
+      "avatar_prompt": "close portrait avatar of Gaertner, knowledge curator, green gold palette, calm cultivated look, subtle growth pattern motif, square composition",
+      "tags": ["cultivation", "knowledge", "distillation"]
+    },
+    {
+      "agent_key": "triage",
+      "display_name": "Triage",
+      "palette": ["amber", "electric blue"],
+      "shape_language": "radial, command-center, routing",
+      "production_priority": 1,
+      "hero_prompt": "Triage, command-and-routing controller agent of a futuristic software hivemind, amber and electric blue palette, command center operator, radial queue and alert overlays, highly attentive expression, dispatch console atmosphere, controlled urgency, clean officer silhouette, routing matrix visuals, premium concept art, 4:5 portrait",
+      "avatar_prompt": "close portrait avatar of Triage, routing controller, amber electric blue palette, alert command-center feel, minimal radial UI motif, square composition",
+      "tags": ["routing", "queues", "alerts"]
+    }
+  ]
+}

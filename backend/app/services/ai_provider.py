@@ -131,13 +131,18 @@ async def get_provider(agent_role: str, db: AsyncSession) -> Any:
     config = result.scalar_one_or_none()
 
     if config:
-        return _build_provider_from_config(config)
+        provider = _build_provider_from_config(config)
+        setattr(provider, "_hivemind_rpm_limit", config.rpm_limit or settings.hivemind_ai_rpm_limit)
+        setattr(provider, "_hivemind_token_budget_daily", config.token_budget_daily)
+        return provider
 
     # 2. Global env-var fallback
     global_key = settings.hivemind_ai_api_key
     if global_key:
         from app.services.ai_providers.anthropic import AnthropicProvider
-        return AnthropicProvider(api_key=global_key)
+        provider = AnthropicProvider(api_key=global_key)
+        setattr(provider, "_hivemind_rpm_limit", settings.hivemind_ai_rpm_limit)
+        return provider
 
     # 3. No provider → BYOAI
     raise NeedsManualMode(f"No AI provider configured for role '{agent_role}'")
@@ -257,6 +262,13 @@ async def send_with_retry(
             raise
 
     raise last_error
+
+
+async def acquire_provider_capacity(agent_role: str, provider: Any) -> None:
+    """Apply the effective per-role RPM limiter before a provider request."""
+    rpm_limit = getattr(provider, "_hivemind_rpm_limit", settings.hivemind_ai_rpm_limit)
+    limiter = _get_rate_limiter(agent_role, int(rpm_limit or 0))
+    await limiter.acquire()
 
 
 # ── Model Listing ─────────────────────────────────────────────────────────────
@@ -473,3 +485,163 @@ async def _list_openai_compatible_models(api_key: str, endpoint: str) -> list[di
     except Exception as e:
         logger.warning("Custom endpoint model listing failed (%s)", e)
         return []
+
+
+# ── Credential CRUD (used by settings router) ─────────────────────────────────
+
+async def list_credentials_with_usage(db: AsyncSession) -> list:
+    """Return all AICredentials joined with their usage count in ai_provider_configs."""
+    from sqlalchemy import func, select
+    from app.models.ai_credential import AICredential
+    from app.models.ai_provider import AIProviderConfig
+
+    usage_sq = (
+        select(
+            AIProviderConfig.credential_id,
+            func.count().label("cnt"),
+        )
+        .where(AIProviderConfig.credential_id.isnot(None))
+        .group_by(AIProviderConfig.credential_id)
+        .subquery()
+    )
+
+    result = await db.execute(
+        select(AICredential, func.coalesce(usage_sq.c.cnt, 0).label("usage_count"))
+        .outerjoin(usage_sq, AICredential.id == usage_sq.c.credential_id)
+    )
+    return result.all()
+
+
+async def get_credential_by_id(db: AsyncSession, credential_id: Any) -> Any:
+    """Return AICredential by UUID (string or UUID), or None."""
+    import uuid as _uuid
+    from sqlalchemy import select
+    from app.models.ai_credential import AICredential
+
+    if not isinstance(credential_id, _uuid.UUID):
+        credential_id = _uuid.UUID(str(credential_id))
+    result = await db.execute(
+        select(AICredential).where(AICredential.id == credential_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_credential_record(
+    db: AsyncSession,
+    *,
+    name: str,
+    provider_type: str,
+    api_key_encrypted: Any = None,
+    api_key_nonce: Any = None,
+    endpoint: str | None = None,
+    note: str | None = None,
+) -> Any:
+    """Insert a new AICredential row. Does NOT commit — caller must commit."""
+    from app.models.ai_credential import AICredential
+
+    cred = AICredential(
+        name=name,
+        provider_type=provider_type,
+        api_key_encrypted=api_key_encrypted,
+        api_key_nonce=api_key_nonce,
+        endpoint=endpoint,
+        note=note,
+    )
+    db.add(cred)
+    return cred
+
+
+async def get_credential_usage_count(db: AsyncSession, cred_id: Any) -> int:
+    """Return number of provider configs referencing this credential."""
+    from sqlalchemy import func, select
+    from app.models.ai_provider import AIProviderConfig
+
+    result = await db.execute(
+        select(func.count()).where(AIProviderConfig.credential_id == cred_id)
+    )
+    return result.scalar() or 0
+
+
+# ── Provider Config CRUD ───────────────────────────────────────────────────────
+
+async def list_provider_configs(db: AsyncSession) -> list:
+    """Return all AIProviderConfig rows."""
+    from sqlalchemy import select
+    from app.models.ai_provider import AIProviderConfig
+
+    result = await db.execute(select(AIProviderConfig))
+    return list(result.scalars().all())
+
+
+async def get_provider_config_by_role(db: AsyncSession, agent_role: str) -> Any:
+    """Return AIProviderConfig for the given agent_role, or None."""
+    from sqlalchemy import select
+    from app.models.ai_provider import AIProviderConfig
+
+    result = await db.execute(
+        select(AIProviderConfig).where(AIProviderConfig.agent_role == agent_role)
+    )
+    return result.scalar_one_or_none()
+
+
+async def upsert_provider_config(
+    db: AsyncSession,
+    agent_role: str,
+    *,
+    provider: str,
+    model: str | None,
+    endpoint: str | None,
+    credential_id: Any,
+    rpm_limit: int,
+    tpm_limit: int | None,
+    token_budget_daily: int | None,
+    thread_policy: str | None,
+    enabled: bool,
+    api_key_encrypted: Any = None,
+    api_key_nonce: Any = None,
+) -> Any:
+    """Create or update AIProviderConfig. Does NOT commit — caller must commit."""
+    from datetime import UTC, datetime
+    from app.models.ai_provider import AIProviderConfig
+
+    config = await get_provider_config_by_role(db, agent_role)
+    if config is None:
+        config = AIProviderConfig(
+            agent_role=agent_role,
+            provider=provider,
+            model=model,
+            endpoint=endpoint,
+            credential_id=credential_id,
+            rpm_limit=rpm_limit,
+            tpm_limit=tpm_limit,
+            token_budget_daily=token_budget_daily,
+            thread_policy=thread_policy,
+            enabled=enabled,
+        )
+        if api_key_encrypted is not None:
+            config.api_key_encrypted = api_key_encrypted
+            config.api_key_nonce = api_key_nonce
+        db.add(config)
+    else:
+        config.provider = provider
+        config.model = model
+        config.endpoint = endpoint
+        config.credential_id = credential_id
+        config.rpm_limit = rpm_limit
+        config.tpm_limit = tpm_limit
+        config.token_budget_daily = token_budget_daily
+        config.thread_policy = thread_policy
+        config.enabled = enabled
+        config.updated_at = datetime.now(UTC)
+        if api_key_encrypted is not None:
+            config.api_key_encrypted = api_key_encrypted
+            config.api_key_nonce = api_key_nonce
+    return config
+
+
+async def delete_provider_config_by_role(db: AsyncSession, agent_role: str) -> Any:
+    """Delete AIProviderConfig for role. Returns the config if found, else None."""
+    config = await get_provider_config_by_role(db, agent_role)
+    if config is not None:
+        await db.delete(config)
+    return config

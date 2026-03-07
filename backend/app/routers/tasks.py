@@ -4,12 +4,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models.context_boundary import ContextBoundary
-from app.models.task import Task
 from app.routers.deps import get_current_actor
 from app.schemas.auth import CurrentActor
 from app.schemas.task import TaskResponse, TaskReview, TaskStateTransition, TaskUpdate
@@ -155,17 +152,8 @@ async def get_context_boundary(
     db: AsyncSession = Depends(get_db),
 ) -> Optional[ContextBoundaryResponse]:
     """Return the context boundary for a task, or null if none is set."""
-    # resolve task_key → task.id
-    result = await db.execute(select(Task.id).where(Task.task_key == task_key))
-    task_id = result.scalar_one_or_none()
-    if task_id is None:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail=f"Task {task_key} not found")
-
-    result2 = await db.execute(
-        select(ContextBoundary).where(ContextBoundary.task_id == task_id)
-    )
-    cb = result2.scalar_one_or_none()
+    svc = TaskService(db)
+    cb = await svc.get_context_boundary(task_key)
     if cb is None:
         return None
     return ContextBoundaryResponse(

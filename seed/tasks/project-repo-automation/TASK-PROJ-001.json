@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-PROJ-001",
+  "epic_ref": "EPIC-PROJ-AUTO",
+  "title": "Projektmodell um Repo- und Workspace-Bindung erweitern",
+  "description": "Erweitere das Projektmodell so, dass ein Hivemind-Projekt sauber an genau ein lokales Repository gebunden werden kann.\n\n**Was zu implementieren ist:**\n\n1. **Datenmodell erweitern:**\n- Repo-Host-Pfad oder referenzierte Workspace-Quelle\n- Container-Workspace-Pfad / effektiver Mount-Pfad\n- Modus: `read_only` vs. `read_write`\n- Onboarding-Status (`pending`, `ready`, `error`)\n- optionale Repo-Metadaten: Default-Branch, Remote-URL, erkannter Stack\n\n2. **API erweitern:**\n- `POST /api/projects` und `PATCH /api/projects/:id` können Repo-/Workspace-Daten annehmen\n- Read-Endpoints geben den Onboarding-/Workspace-Status zurück\n- Validierung für doppelte oder ungültige Repo-Zuordnungen\n\n3. **UI erweitern:**\n- Projekt-Anlage und Projekt-Edit erhalten Felder für Repo-Pfad/Workspace-Modus\n- Sichtbarer Status: \"noch nicht angebunden\", \"bereit\", \"Fehler\"\n\n4. **Abwärtskompatibilität:**\n- Bestehende Projekte ohne Repo-Zuordnung bleiben lesbar\n- Migrationspfad für Alt-Daten klar definieren\n\n**Wichtig:** Ziel ist nicht nur Metadatenablage, sondern eine belastbare projektbezogene Referenz für alle späteren Intake- und Automationspfade.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Projekte besitzen strukturierte Repo-/Workspace-Felder",
+      "Create/Update/Get-APIs liefern die neuen Felder konsistent",
+      "Projekt-UI unterstützt Repo-Bindung und Statusanzeige",
+      "Ungültige oder doppelte Repo-Zuordnungen werden validiert",
+      "Bestehende Projekte bleiben kompatibel"
+    ]
+  },
+  "tags": ["backend", "frontend", "project", "workspace"],
+  "subtasks": [],
+  "pinned_skills": ["repo-onboarding"],
+  "linked_wiki": ["monorepo-struktur"],
+  "source_doc": null,
+  "estimated_complexity": "large",
+  "depends_on": []
+}

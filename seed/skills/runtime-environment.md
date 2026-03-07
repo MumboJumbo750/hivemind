@@ -113,6 +113,10 @@ Trigger: Neuer Service hinzugefügt
 
 Trigger: Port-Mapping geändert
   → Aktualisiere Port-Tabelle in AGENTS.md
+
+Trigger: Manueller Agent-Run / Prompt Station Workflow geändert
+  → Aktualisiere `AGENTS.md`, Runtime-Skills und Prompt-Doku gemeinsam
+  → Dokumentiere explizit: ausgewählter Agent, serverseitig generierter Prompt, Container-/Workspace-Kontext
 ```
 
 ### AI-spezifische Config-Files (Thin Wrapper)

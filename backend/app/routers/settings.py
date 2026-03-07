@@ -21,13 +21,14 @@ import uuid as _uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import has_routing_threshold_env_override, settings
 from app.db import get_db
-from app.models.settings import AppSettings
 from app.routers.deps import get_current_actor, require_role
+from app.services import ai_provider as ai_provider_svc
+from app.services.agent_threading import resolve_thread_policy_for_role
+from app.services.settings_service import get_setting, get_setting_row, upsert_setting
 from app.schemas.auth import CurrentActor
 from app.schemas.ai_provider import AIProviderConfigIn, AIProviderConfigOut
 from app.schemas.ai_credential import AICredentialCreate, AICredentialUpdate, AICredentialOut
@@ -47,9 +48,7 @@ class SettingsUpdate(BaseModel):
 
 
 async def _get_setting(db: AsyncSession, key: str, default: str = "") -> str:
-    result = await db.execute(select(AppSettings).where(AppSettings.key == key))
-    row = result.scalar_one_or_none()
-    return row.value if row else default
+    return await get_setting(db, key, default)
 
 
 @router.get("", response_model=SettingsResponse)
@@ -68,16 +67,7 @@ async def update_settings(
     db: AsyncSession = Depends(get_db),
     actor: CurrentActor = Depends(get_current_actor),
 ) -> SettingsResponse:
-    result = await db.execute(
-        select(AppSettings).where(AppSettings.key == "hivemind_mode")
-    )
-    row = result.scalar_one_or_none()
-    if row:
-        row.value = body.mode
-        row.updated_by = actor.id
-    else:
-        db.add(AppSettings(key="hivemind_mode", value=body.mode, updated_by=actor.id))
-
+    await upsert_setting(db, "hivemind_mode", body.mode, updated_by=actor.id)
     await db.flush()
     # _get_app_mode in deps.py liest bei jedem Request frisch aus der DB → kein Cache nötig
 
@@ -112,10 +102,7 @@ async def get_routing_threshold(
             source="env",
         )
 
-    result = await db.execute(
-        select(AppSettings).where(AppSettings.key == "routing_threshold")
-    )
-    row = result.scalar_one_or_none()
+    row = await get_setting_row(db, "routing_threshold")
     if row:
         try:
             value = float(row.value)
@@ -138,26 +125,7 @@ async def update_routing_threshold(
     db: AsyncSession = Depends(get_db),
     actor: CurrentActor = Depends(require_role("admin")),
 ) -> RoutingThresholdResponse:
-    result = await db.execute(
-        select(AppSettings).where(AppSettings.key == "routing_threshold")
-    )
-    row = result.scalar_one_or_none()
-    new_value_str = str(body.value)
-
-    if row:
-        row.value = new_value_str
-        row.updated_by = actor.id
-        row.updated_at = datetime.now(UTC)
-    else:
-        db.add(
-            AppSettings(
-                key="routing_threshold",
-                value=new_value_str,
-                updated_by=actor.id,
-                updated_at=datetime.now(UTC),
-            )
-        )
-
+    updated_row = await upsert_setting(db, "routing_threshold", str(body.value), updated_by=actor.id)
     await db.flush()
 
     await write_audit(
@@ -171,14 +139,10 @@ async def update_routing_threshold(
     from app.services.routing_service import invalidate_threshold_cache
     invalidate_threshold_cache()
 
-    result2 = await db.execute(
-        select(AppSettings).where(AppSettings.key == "routing_threshold")
-    )
-    updated = result2.scalar_one_or_none()
     return RoutingThresholdResponse(
         current_value=body.value,
         source="db",
-        last_updated=updated.updated_at if updated else None,
+        last_updated=updated_row.updated_at if updated_row else None,
         updated_by=str(actor.id),
     )
 
@@ -209,18 +173,13 @@ async def list_provider_models(
 
     # Try credential_id
     if not resolved_key and credential_id:
-        from app.models.ai_credential import AICredential
-        cred = await db.get(AICredential, _uuid.UUID(credential_id))
+        cred = await ai_provider_svc.get_credential_by_id(db, _uuid.UUID(credential_id))
         if cred and cred.api_key_encrypted and settings.hivemind_key_passphrase:
             resolved_key = decrypt_api_key(cred.api_key_encrypted, cred.api_key_nonce, settings.hivemind_key_passphrase)
 
     # Try existing provider config for role
     if not resolved_key and agent_role:
-        from app.models.ai_provider import AIProviderConfig
-        result = await db.execute(
-            select(AIProviderConfig).where(AIProviderConfig.agent_role == agent_role)
-        )
-        cfg = result.scalar_one_or_none()
+        cfg = await ai_provider_svc.get_provider_config_by_role(db, agent_role)
         if cfg:
             if cfg.credential and cfg.credential.api_key_encrypted and settings.hivemind_key_passphrase:
                 resolved_key = decrypt_api_key(cfg.credential.api_key_encrypted, cfg.credential.api_key_nonce, settings.hivemind_key_passphrase)
@@ -238,9 +197,7 @@ async def list_ai_providers(
     actor: CurrentActor = Depends(require_role("admin")),
 ) -> list[AIProviderConfigOut]:
     """List all AI provider configurations."""
-    from app.models.ai_provider import AIProviderConfig
-    result = await db.execute(select(AIProviderConfig))
-    configs = result.scalars().all()
+    configs = await ai_provider_svc.list_provider_configs(db)
     return [
         AIProviderConfigOut(
             agent_role=c.agent_role,
@@ -250,6 +207,8 @@ async def list_ai_providers(
             rpm_limit=c.rpm_limit,
             tpm_limit=c.tpm_limit,
             token_budget_daily=c.token_budget_daily,
+            thread_policy=resolve_thread_policy_for_role(c.agent_role, c.thread_policy),
+            configured_thread_policy=c.thread_policy,
             enabled=c.enabled,
             has_api_key=bool(c.api_key_encrypted),
             credential_id=str(c.credential_id) if c.credential_id else None,
@@ -267,14 +226,7 @@ async def upsert_ai_provider(
     actor: CurrentActor = Depends(require_role("admin")),
 ) -> AIProviderConfigOut:
     """Create or update AI provider config for an agent role."""
-    from app.models.ai_provider import AIProviderConfig
     from app.services.ai_provider import encrypt_api_key
-    import uuid as _uuid
-
-    result = await db.execute(
-        select(AIProviderConfig).where(AIProviderConfig.agent_role == agent_role)
-    )
-    config = result.scalar_one_or_none()
 
     # Encrypt API key if provided (inline key)
     api_key_encrypted = None
@@ -290,37 +242,21 @@ async def upsert_ai_provider(
     # Resolve credential_id
     cred_id = _uuid.UUID(body.credential_id) if body.credential_id else None
 
-    if config is None:
-        config = AIProviderConfig(
-            agent_role=agent_role,
-            provider=body.provider,
-            model=body.model,
-            endpoint=body.endpoint,
-            credential_id=cred_id,
-            rpm_limit=body.rpm_limit,
-            tpm_limit=body.tpm_limit,
-            token_budget_daily=body.token_budget_daily,
-            enabled=body.enabled,
-        )
-        if api_key_encrypted is not None:
-            config.api_key_encrypted = api_key_encrypted
-            config.api_key_nonce = api_key_nonce
-        db.add(config)
-    else:
-        config.provider = body.provider
-        config.model = body.model
-        config.endpoint = body.endpoint
-        config.credential_id = cred_id
-        config.rpm_limit = body.rpm_limit
-        config.tpm_limit = body.tpm_limit
-        config.token_budget_daily = body.token_budget_daily
-        config.enabled = body.enabled
-        config.updated_at = datetime.now(UTC)
-        if api_key_encrypted is not None:
-            config.api_key_encrypted = api_key_encrypted
-            config.api_key_nonce = api_key_nonce
-        # If credential_id set and inline key provided, clear inline key
-        # (credential takes precedence — but allow override)
+    config = await ai_provider_svc.upsert_provider_config(
+        db,
+        agent_role,
+        provider=body.provider,
+        model=body.model,
+        endpoint=body.endpoint,
+        credential_id=cred_id,
+        rpm_limit=body.rpm_limit,
+        tpm_limit=body.tpm_limit,
+        token_budget_daily=body.token_budget_daily,
+        thread_policy=body.thread_policy,
+        enabled=body.enabled,
+        api_key_encrypted=api_key_encrypted,
+        api_key_nonce=api_key_nonce,
+    )
 
     await db.commit()
     await db.refresh(config)
@@ -333,6 +269,8 @@ async def upsert_ai_provider(
         rpm_limit=config.rpm_limit,
         tpm_limit=config.tpm_limit,
         token_budget_daily=config.token_budget_daily,
+        thread_policy=resolve_thread_policy_for_role(config.agent_role, config.thread_policy),
+        configured_thread_policy=config.thread_policy,
         enabled=config.enabled,
         has_api_key=bool(config.api_key_encrypted),
         credential_id=str(config.credential_id) if config.credential_id else None,
@@ -347,15 +285,9 @@ async def delete_ai_provider(
     actor: CurrentActor = Depends(require_role("admin")),
 ) -> None:
     """Delete AI provider config for an agent role."""
-    from app.models.ai_provider import AIProviderConfig
-
-    result = await db.execute(
-        select(AIProviderConfig).where(AIProviderConfig.agent_role == agent_role)
-    )
-    config = result.scalar_one_or_none()
+    config = await ai_provider_svc.delete_provider_config_by_role(db, agent_role)
     if config is None:
         raise HTTPException(status_code=404, detail="AI provider config not found")
-    await db.delete(config)
     await db.commit()
 
 
@@ -392,26 +324,7 @@ async def list_credentials(
     actor: CurrentActor = Depends(require_role("admin")),
 ) -> list[AICredentialOut]:
     """List all AI credentials."""
-    from app.models.ai_credential import AICredential
-    from app.models.ai_provider import AIProviderConfig
-    from sqlalchemy import func
-
-    # Subquery: count how many provider configs reference each credential
-    usage_sq = (
-        select(
-            AIProviderConfig.credential_id,
-            func.count().label("cnt"),
-        )
-        .where(AIProviderConfig.credential_id.isnot(None))
-        .group_by(AIProviderConfig.credential_id)
-        .subquery()
-    )
-
-    result = await db.execute(
-        select(AICredential, func.coalesce(usage_sq.c.cnt, 0).label("usage_count"))
-        .outerjoin(usage_sq, AICredential.id == usage_sq.c.credential_id)
-    )
-    rows = result.all()
+    rows = await ai_provider_svc.list_credentials_with_usage(db)
     return [
         AICredentialOut(
             id=str(cred.id),
@@ -433,7 +346,6 @@ async def create_credential(
     actor: CurrentActor = Depends(require_role("admin")),
 ) -> AICredentialOut:
     """Create a new AI credential."""
-    from app.models.ai_credential import AICredential
     from app.services.ai_provider import encrypt_api_key
 
     api_key_encrypted = None
@@ -446,7 +358,8 @@ async def create_credential(
             detail="HIVEMIND_KEY_PASSPHRASE must be set to store encrypted API keys",
         )
 
-    cred = AICredential(
+    cred = await ai_provider_svc.create_credential_record(
+        db,
         name=body.name,
         provider_type=body.provider_type,
         api_key_encrypted=api_key_encrypted,
@@ -454,7 +367,6 @@ async def create_credential(
         endpoint=body.endpoint,
         note=body.note,
     )
-    db.add(cred)
     await db.commit()
     await db.refresh(cred)
 
@@ -477,16 +389,9 @@ async def update_credential(
     actor: CurrentActor = Depends(require_role("admin")),
 ) -> AICredentialOut:
     """Update an existing AI credential."""
-    from app.models.ai_credential import AICredential
-    from app.models.ai_provider import AIProviderConfig
     from app.services.ai_provider import encrypt_api_key
-    from sqlalchemy import func
-    import uuid as _uuid
 
-    result = await db.execute(
-        select(AICredential).where(AICredential.id == _uuid.UUID(credential_id))
-    )
-    cred = result.scalar_one_or_none()
+    cred = await ai_provider_svc.get_credential_by_id(db, credential_id)
     if cred is None:
         raise HTTPException(status_code=404, detail="Credential not found")
 
@@ -513,10 +418,7 @@ async def update_credential(
     await db.refresh(cred)
 
     # Count usage
-    usage_result = await db.execute(
-        select(func.count()).where(AIProviderConfig.credential_id == cred.id)
-    )
-    usage_count = usage_result.scalar() or 0
+    usage_count = await ai_provider_svc.get_credential_usage_count(db, cred.id)
 
     return AICredentialOut(
         id=str(cred.id),
@@ -536,13 +438,7 @@ async def delete_credential(
     actor: CurrentActor = Depends(require_role("admin")),
 ) -> None:
     """Delete an AI credential. FK on provider configs is SET NULL."""
-    from app.models.ai_credential import AICredential
-    import uuid as _uuid
-
-    result = await db.execute(
-        select(AICredential).where(AICredential.id == _uuid.UUID(credential_id))
-    )
-    cred = result.scalar_one_or_none()
+    cred = await ai_provider_svc.get_credential_by_id(db, credential_id)
     if cred is None:
         raise HTTPException(status_code=404, detail="Credential not found")
     await db.delete(cred)

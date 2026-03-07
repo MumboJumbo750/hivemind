@@ -1,10 +1,10 @@
 """MCP Epic-Proposal Write-Tools — TASK-4-001.
 
 MCP tools for the Epic-Proposal workflow:
-- hivemind/propose_epic
-- hivemind/update_epic_proposal
-- hivemind/accept_epic_proposal
-- hivemind/reject_epic_proposal
+- hivemind-propose_epic
+- hivemind-update_epic_proposal
+- hivemind-accept_epic_proposal
+- hivemind-reject_epic_proposal
 """
 from __future__ import annotations
 
@@ -33,12 +33,12 @@ def _err(code: str, message: str, status: int = 400) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/propose_epic
+# hivemind-propose_epic
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/propose_epic",
+        name="hivemind-propose_epic",
         description=(
             "Create a new epic proposal (state='proposed'). "
             "Supports optional idempotency_key to prevent duplicates."
@@ -112,6 +112,12 @@ async def _handle_propose_epic(args: dict) -> list[TextContent]:
                 db.add(proposal)
                 await db.flush()
                 await db.refresh(proposal)
+                try:
+                    from app.services.conductor import conductor
+
+                    await conductor.on_epic_proposal_submitted(str(proposal.id), db)
+                except Exception:
+                    logger.exception("Conductor hook failed for epic proposal %s", proposal.id)
 
                 return _ok({
                     "data": {
@@ -127,12 +133,12 @@ async def _handle_propose_epic(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/update_epic_proposal
+# hivemind-update_epic_proposal
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/update_epic_proposal",
+        name="hivemind-update_epic_proposal",
         description=(
             "Update an epic proposal. Only allowed when state='proposed'. "
             "Uses optimistic locking (version field required)."
@@ -209,12 +215,12 @@ async def _handle_update_epic_proposal(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/accept_epic_proposal
+# hivemind-accept_epic_proposal
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/accept_epic_proposal",
+        name="hivemind-accept_epic_proposal",
         description=(
             "Accept an epic proposal. Creates a real Epic (state='incoming') "
             "and sets resulting_epic_id on the proposal."
@@ -276,6 +282,12 @@ async def _handle_accept_epic_proposal(args: dict) -> list[TextContent]:
                 proposal.resulting_epic_id = epic.id
                 proposal.version += 1
                 await db.flush()
+                try:
+                    from app.services.conductor import conductor
+
+                    await conductor.on_epic_created(str(epic.id), db)
+                except Exception:
+                    logger.exception("Conductor hook failed for accepted epic %s", epic.id)
 
                 # Notify proposer
                 publish(
@@ -304,12 +316,12 @@ async def _handle_accept_epic_proposal(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/reject_epic_proposal
+# hivemind-reject_epic_proposal
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/reject_epic_proposal",
+        name="hivemind-reject_epic_proposal",
         description=(
             "Reject an epic proposal with a reason. Sends notification to proposer "
             "and warns dependent proposals."
@@ -405,12 +417,12 @@ async def _handle_reject_epic_proposal(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/draft_requirement
+# hivemind-draft_requirement
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/draft_requirement",
+        name="hivemind-draft_requirement",
         description=(
             "Generate an enriched Stratege prompt from a free-text requirement. "
             "Creates an epic_proposals entry with state='draft'. "
@@ -454,7 +466,8 @@ async def _handle_draft_requirement(args: dict) -> list[TextContent]:
         async with AsyncSessionLocal() as db:
             gen = PromptGenerator(db)
             try:
-                prompt = await gen._stratege_requirement(
+                prompt = await gen.generate(
+                    "stratege_requirement",
                     project_id=str(project_id),
                     requirement_text=text,
                     priority_hint=priority_hint,

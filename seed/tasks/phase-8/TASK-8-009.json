@@ -2,7 +2,7 @@
   "external_id": "TASK-8-009",
   "epic_ref": "EPIC-PHASE-8",
   "title": "GitLab Webhook Consumer: Events → sync_outbox Ingest",
-  "description": "GitLab-Webhook-Handler schreibt Events als `direction='inbound'` in `sync_outbox`.\n\n**Dateien:**\n- `app/services/gitlab_webhook_handler.py` — Event-Normalisierung + Mapping\n- Erweiterung von `app/routers/webhooks.py` (bestehender generischer Ingest-Router)\n\n**Auth:**\n- Personal Access Token (PAT) via `HIVEMIND_GITLAB_TOKEN` Env-Var\n- Alternativ: verschlüsselt in app_settings (AES-256-GCM, selbes Pattern wie AI-Key)\n- GitLab Webhook Secret Token: Validierung über `X-Gitlab-Token` Header\n\n**Event-Mapping:**\n| GitLab Event | Hivemind event_type |\n|---|---|\n| `Issue Hook` (opened/reopened) | `gitlab_issue_opened` |\n| `Merge Request Hook` (merged) | `gitlab_mr_merged` |\n| `Pipeline Hook` (failed) | `gitlab_pipeline_failed` |\n| `Push Hook` | `gitlab_push` |\n\n**Normalisierung:**\n- `normalize_gitlab_event(headers, payload) -> NormalizedEvent`\n- NormalizedEvent: `{source, event_type, entity_type, entity_id, title, url, raw_payload}`\n- Schreibt in sync_outbox: `direction='inbound', system='gitlab', routing_state='unrouted'`\n\n**MCP Read-Tools:**\n- `hivemind/get_gitlab_mr` — MR-Details via GitLab API abrufen\n- `hivemind/get_gitlab_pipeline` — Pipeline-Status via GitLab API\n- Beide read-only, für Worker/Architekt-Kontext\n- Auth: `HIVEMIND_GITLAB_TOKEN` als Bearer\n\n**Env-Vars:** `HIVEMIND_GITLAB_TOKEN`, `HIVEMIND_GITLAB_URL` (Default: `https://gitlab.com`)",
+  "description": "GitLab-Webhook-Handler schreibt Events als `direction='inbound'` in `sync_outbox`.\n\n**Dateien:**\n- `app/services/gitlab_webhook_handler.py` — Event-Normalisierung + Mapping\n- Erweiterung von `app/routers/webhooks.py` (bestehender generischer Ingest-Router)\n\n**Auth:**\n- Personal Access Token (PAT) via `HIVEMIND_GITLAB_TOKEN` Env-Var\n- Alternativ: verschlüsselt in app_settings (AES-256-GCM, selbes Pattern wie AI-Key)\n- GitLab Webhook Secret Token: Validierung über `X-Gitlab-Token` Header\n\n**Event-Mapping:**\n| GitLab Event | Hivemind event_type |\n|---|---|\n| `Issue Hook` (opened/reopened) | `gitlab_issue_opened` |\n| `Merge Request Hook` (merged) | `gitlab_mr_merged` |\n| `Pipeline Hook` (failed) | `gitlab_pipeline_failed` |\n| `Push Hook` | `gitlab_push` |\n\n**Normalisierung:**\n- `normalize_gitlab_event(headers, payload) -> NormalizedEvent`\n- NormalizedEvent: `{source, event_type, entity_type, entity_id, title, url, raw_payload}`\n- Schreibt in sync_outbox: `direction='inbound', system='gitlab', routing_state='unrouted'`\n\n**MCP Read-Tools:**\n- `hivemind-get_gitlab_mr` — MR-Details via GitLab API abrufen\n- `hivemind-get_gitlab_pipeline` — Pipeline-Status via GitLab API\n- Beide read-only, für Worker/Architekt-Kontext\n- Auth: `HIVEMIND_GITLAB_TOKEN` als Bearer\n\n**Env-Vars:** `HIVEMIND_GITLAB_TOKEN`, `HIVEMIND_GITLAB_URL` (Default: `https://gitlab.com`)",
   "state": "done",
   "priority": "high",
   "definition_of_done": {
@@ -10,8 +10,8 @@
       "GitLab-Webhooks werden korrekt empfangen und X-Gitlab-Token validiert",
       "Events werden normalisiert und in sync_outbox (direction='inbound') geschrieben",
       "Event-Mapping: issue→gitlab_issue_opened, MR→gitlab_mr_merged, Pipeline→gitlab_pipeline_failed, Push→gitlab_push",
-      "MCP-Tool hivemind/get_gitlab_mr gibt MR-Details zurück (read-only)",
-      "MCP-Tool hivemind/get_gitlab_pipeline gibt Pipeline-Status zurück (read-only)",
+      "MCP-Tool hivemind-get_gitlab_mr gibt MR-Details zurück (read-only)",
+      "MCP-Tool hivemind-get_gitlab_pipeline gibt Pipeline-Status zurück (read-only)",
       "Env-Var HIVEMIND_GITLAB_URL für self-hosted GitLab",
       "Unit-Tests für Normalisierung + Event-Mapping"
     ]

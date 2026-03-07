@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -29,6 +29,7 @@ class PromptHistory(Base):
     prompt_type: Mapped[str] = mapped_column(Text, nullable=False)
     prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
     override_text: Mapped[Optional[str]] = mapped_column(Text)
+    context_refs: Mapped[list | None] = mapped_column(JSONB, server_default="[]")
     token_count: Mapped[Optional[int]] = mapped_column(Integer)
     token_count_minified: Mapped[Optional[int]] = mapped_column(Integer)
     generated_by: Mapped[Optional[uuid.UUID]] = mapped_column(

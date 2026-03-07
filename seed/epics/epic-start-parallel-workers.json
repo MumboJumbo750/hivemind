@@ -1,0 +1,20 @@
+{
+  "external_id": "EPIC-WORKER-ORCH",
+  "title": "Epic-Start, Parallel-Worker und Resume-Loop",
+  "description": "**Problem:** Das bestehende agentische System kann Worker, Reviewer und Folge-Agenten bereits dispatchen, aber nicht als explizit orchestrierten Epic-Run. Es fehlt ein kontrollierter Startmechanismus für ein Epic, eine belastbare Auswahl parallel ausführbarer Tasks, ein strukturierter Shared-Context für mehrere Worker und ein sauberer Resume-Loop nach `qa_failed`. Außerdem ist noch nicht entschieden, welche Agenten stateful Threads nutzen sollten und welche besser stateless pro Attempt arbeiten.\n\n**Zielbild:** Ein Operator startet ein Epic aktiv über einen `Epic Start`-Pfad. Hivemind bestimmt ausführbare Tasks, dispatcht mehrere Worker kontrolliert parallel, schützt vor Konflikten, triggert Reviews automatisch, erzeugt Resume-Pakete bei `qa_failed` und nutzt die entstehenden Ergebnisse gezielt für besseren Lerneffekt. Stateful Threads werden nur dort aktiviert, wo sie fachlich wirklich helfen.\n\n**Scope dieses Epics:**\n\n1. **Epic-Start-Orchestrierung** statt rein impliziter Einzel-Dispatches\n2. **Runnable-Task-Graph** für echte parallele Ausführbarkeit\n3. **Parallel-Worker-Scheduler** mit Slot-Management und Konfliktschutz\n4. **Geteilter Kontext** über Scratchpads, Handoffs, File-Claims und Resume-Pakete\n5. **Automatische Review-Kette** pro Task nach Worker-Ausführung\n6. **Selektive Thread-Persistenz** pro Agent-Rolle statt globalem Ansatz\n7. **Lern-Effekt aus Worker-/Reviewer-Ausgaben** ohne unkontrollierte Chat-Recycling-Loops\n8. **UI, Sichtbarkeit und E2E-Absicherung** für den vollständigen Epic-Run\n\n**Nicht-Ziel:** Dieses Epic führt keinen unkontrollierten freien Worker-Schwarm oder eine frei chatbasierte Agent-zu-Agent-Kommunikation ein. Koordination bleibt strukturiert, auditierbar und governable.",
+  "state": "scoped",
+  "priority": "high",
+  "sla_deadline": null,
+  "definition_of_done": "Ein Epic kann aktiv gestartet werden. Das System erkennt parallel ausführbare Tasks, dispatcht mehrere Worker kontrolliert, schützt vor Konflikten, triggert Reviews automatisch und erzeugt bei `qa_failed` gezielte Resume-Pakete. Shared Context und Thread-Policy sind pro Rolle sauber modelliert. Der Lerneffekt aus Worker-/Reviewer-Ausgaben wird strukturiert genutzt. Der Gesamtfluss ist über UI, API und E2E-Tests nachvollziehbar.",
+  "tags": [
+    "epic-start",
+    "workers",
+    "parallelism",
+    "review",
+    "resume",
+    "learning",
+    "orchestration"
+  ],
+  "depends_on": ["EPIC-AGENT-LOOP", "EPIC-PHASE-8"],
+  "source_doc": "docs/features/epic-start-parallel-workers.md"
+}

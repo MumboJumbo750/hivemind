@@ -925,7 +925,7 @@ Im Skill Lab erscheint bei federierten Skills ein Origin-Badge:
 ```
 
 `[ÜBERNEHMEN]` erzeugt einen lokalen Draft-Fork via
-`hivemind/fork_federated_skill { "source_skill_id": "...", "target_project_id": "uuid|null" }`.
+`hivemind-fork_federated_skill { "source_skill_id": "...", "target_project_id": "uuid|null" }`.
 
 **Leer-State (keine Peers konfiguriert):**
 

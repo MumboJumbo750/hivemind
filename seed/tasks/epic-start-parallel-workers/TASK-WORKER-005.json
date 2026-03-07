@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-WORKER-005",
+  "epic_ref": "EPIC-WORKER-ORCH",
+  "title": "Review-Trigger und Resume-Pakete nach qa_failed sauber aufbauen",
+  "description": "Baue den Folgepfad nach Worker-Ausführung so aus, dass Reviews automatisch angestoßen und Rejects gezielt in einen neuen Versuch überführt werden.\n\n**Was zu implementieren ist:**\n\n1. Review pro Worker-Task verlässlich in die Epic-Run-Orchestrierung einhängen\n2. Resume-Paket für `qa_failed` definieren: Kommentar, Guard-Fails, Artefakt-Diff, offene DoD-Lücken\n3. Optionalen Auto-Resume-Pfad unter Governance/Operator-Kontrolle ergänzen\n4. Alten Chat-Verlauf nicht blind weiterverwenden, sondern Resume-Paket als neue Ausgangsbasis nutzen\n5. QA-Loop und Eskalationsgrenzen sauber sichtbar machen\n\n**Wichtig:** Das System soll nach Rejects gezielt besser neu ansetzen, nicht nur wiederholen.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Reviews hängen sauber am Worker-Folgepfad",
+      "qa_failed erzeugt ein strukturiertes Resume-Paket",
+      "Ein neuer Worker-Run kann aus dem Resume-Paket starten",
+      "Review- und Retry-Verhalten ist nachvollziehbar und testbar"
+    ]
+  },
+  "tags": ["review", "resume", "worker", "qa", "backend"],
+  "subtasks": [],
+  "pinned_skills": ["review-workflow", "review-recommendation", "conductor-orchestrator"],
+  "linked_wiki": ["state-machine-guide"],
+  "source_doc": "docs/features/epic-start-parallel-workers.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-WORKER-003", "TASK-WORKER-004"]
+}

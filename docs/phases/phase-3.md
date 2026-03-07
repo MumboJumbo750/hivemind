@@ -6,7 +6,7 @@
 
 **AI-Integration:** Ollama `nomic-embed-text` für Embeddings. Bibliothekar als manueller Prompt (Wizard of Oz).
 
-> **Falls Phase F bereits abgeschlossen:** Die Federation-REST-Endpoints existieren bereits. Phase 3 aktiviert die MCP-Tool-Wrapper (`hivemind/fork_federated_skill`, `hivemind/start_discovery_session`, `hivemind/end_discovery_session`) und registriert die Federation-Read-Tools (`hivemind/list_peers`) im MCP-Server.
+> **Falls Phase F bereits abgeschlossen:** Die Federation-REST-Endpoints existieren bereits. Phase 3 aktiviert die MCP-Tool-Wrapper (`hivemind-fork_federated_skill`, `hivemind-start_discovery_session`, `hivemind-end_discovery_session`) und registriert die Federation-Read-Tools (`hivemind-list_peers`) im MCP-Server.
 
 ---
 
@@ -15,17 +15,17 @@
 ### Backend
 - [x] MCP-Server via FastAPI (MCP 1.0 Standard: SSE/JSON-RPC 2.0 + Convenience REST + stdio)
 - [ ] Read-Tools implementiert:
-  - `hivemind/get_epic`
-  - `hivemind/get_task`
-  - `hivemind/get_skills` (Bibliothekar-gefiltert, Phase 1-2: alle aktiven Skills)
-  - `hivemind/get_skill_versions`
-  - `hivemind/get_guards` (liefert alle Guards für einen Task, global+project+skill+task)
-  - `hivemind/get_doc`
-  - `hivemind/get_triage`
-  - `hivemind/get_audit_log`
-  - `hivemind/get_wiki_article`
-  - `hivemind/search_wiki`
-  - `hivemind/get_prompt` (Prompt-Generator-Endpunkt)
+  - `hivemind-get_epic`
+  - `hivemind-get_task`
+  - `hivemind-get_skills` (Bibliothekar-gefiltert, Phase 1-2: alle aktiven Skills)
+  - `hivemind-get_skill_versions`
+  - `hivemind-get_guards` (liefert alle Guards für einen Task, global+project+skill+task)
+  - `hivemind-get_doc`
+  - `hivemind-get_triage`
+  - `hivemind-get_audit_log`
+  - `hivemind-get_wiki_article`
+  - `hivemind-search_wiki`
+  - `hivemind-get_prompt` (Prompt-Generator-Endpunkt)
 - [ ] Prompt-Generator: generiert Bibliothekar-Prompt, Worker-Prompt, Kartograph-Prompt etc.
   - **`prompt_history` Write-Zeitpunkt:** Jeder `get_prompt`-Call schreibt ab Phase 3 einen Eintrag in `prompt_history` (agent_type, prompt_type, prompt_text, token_count, generated_by). Das Backend-Schema existiert seit Phase 1. Die UI-Ansicht (kollabierbare History in der Prompt Station) wird erst in Phase 4 implementiert — aber das Backend schreibt schon ab Phase 3.
   - **Retention-Policy für `prompt_history`:** Max. 500 Einträge pro Task (FIFO bei Überschreitung). Zusätzlich Retention-Cron: Einträge älter als `HIVEMIND_PROMPT_HISTORY_RETENTION_DAYS` (Default: 180 Tage) werden gelöscht. Cron läuft täglich zusammen mit dem Audit-Retention-Job.
@@ -41,7 +41,7 @@
   - Die MCP-Tool-Wrapper für diese Endpoints kommen in Phase 5; die REST-Endpoints sind die technische Grundlage
 - [ ] Webhook-Ingest: YouTrack + Sentry Events empfangen und als `direction='inbound'` in `sync_outbox` schreiben
 - [ ] Triage: `[UNROUTED]`-Items für `inbound`-Events erzeugen wenn kein Routing möglich (Phase 1-2: alle Events unrouted)
-- [ ] Triage-Write-Tools: `hivemind/route_event` (routing_state → routed) und `hivemind/ignore_event` (routing_state → ignored) — manuelle Zuweisung aus Triage Station
+- [ ] Triage-Write-Tools: `hivemind-route_event` (routing_state → routed) und `hivemind-ignore_event` (routing_state → ignored) — manuelle Zuweisung aus Triage Station
 - [ ] SSE-Infrastruktur: Server-Sent Events für Echtzeit-Updates (→ [rest-api.md — SSE](../architecture/rest-api.md#sse-event-schema-server-sent-events))
   - Kanäle: `/events/notifications`, `/events/tasks`, `/events/triage`
   - Stream-Token-Handshake (`POST /api/auth/stream-token`)
@@ -102,7 +102,7 @@ ollama-init:
 
 ## Bibliothekar als Prompt (Phase 1-2 Modus)
 
-Der Prompt-Generator (`hivemind/get_prompt { "type": "bibliothekar", "task_id": "TASK-88" }`) gibt zurück:
+Der Prompt-Generator (`hivemind-get_prompt { "type": "bibliothekar", "task_id": "TASK-88" }`) gibt zurück:
 
 ```
 ## Rolle: Bibliothekar
@@ -127,15 +127,15 @@ Baue danach den Worker-Prompt mit diesen Inhalten.
 ## Acceptance Criteria
 
 - [ ] AI-Client (z.B. Claude Desktop) kann sich mit Hivemind MCP verbinden
-- [ ] `hivemind/get_epic` gibt korrektes Epic zurück
-- [ ] `hivemind/get_task` gibt Task mit State zurück
-- [ ] `hivemind/get_skills` gibt gefilterte Skills zurück (alle aktiven in Phase 1-2)
-- [ ] `hivemind/get_prompt { "type": "bibliothekar", "task_id": "TASK-1" }` gibt korrekt generierten Prompt zurück
+- [ ] `hivemind-get_epic` gibt korrektes Epic zurück
+- [ ] `hivemind-get_task` gibt Task mit State zurück
+- [ ] `hivemind-get_skills` gibt gefilterte Skills zurück (alle aktiven in Phase 1-2)
+- [ ] `hivemind-get_prompt { "type": "bibliothekar", "task_id": "TASK-1" }` gibt korrekt generierten Prompt zurück
 - [ ] Ollama läuft und `nomic-embed-text` ist verfügbar
 - [ ] Webhook-Endpoint empfängt YouTrack/Sentry Events und schreibt `direction='inbound'` in `sync_outbox`
 - [ ] Triage Station zeigt `[UNROUTED]`-Items aus `sync_outbox` für `direction='inbound'`
-- [ ] `hivemind/route_event` setzt `routing_state → routed` und weist Event dem Epic zu
-- [ ] `hivemind/ignore_event` setzt `routing_state → ignored`
+- [ ] `hivemind-route_event` setzt `routing_state → routed` und weist Event dem Epic zu
+- [ ] `hivemind-ignore_event` setzt `routing_state → ignored`
 - [ ] Token Radar zeigt 0/8000 Tokens animiert in Prompt Station
 - [ ] MCP-Verbindungsstatus in System Bar korrekt (● verbunden / ◌ getrennt)
 - [ ] Prompt Queue zeigt pro Eintrag einen nachvollziehbaren Priorisierungsgrund ("Warum jetzt?")

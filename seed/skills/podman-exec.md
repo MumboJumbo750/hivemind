@@ -99,7 +99,16 @@ podman compose exec backend /app/.venv/bin/pytest --tb=short -q
 ### Seed-Daten importieren
 
 ```bash
-podman compose exec backend /app/.venv/bin/python -m app.cli seed
+podman compose exec backend /app/.venv/bin/python /app/scripts/seed_import.py
+```
+
+### Seed-Skills in die Datenbank synchronisieren
+
+`backend/scripts/seed_import.py` spielt auch geaenderte Inhalte aus `seed/skills/*.md` in die bestehende DB zurueck.
+
+```bash
+# Vollstaendige Seed-Synchronisation (idempotent)
+podman compose exec backend /app/.venv/bin/python /app/scripts/seed_import.py
 ```
 
 ### Datenbank direkt (psql)
@@ -117,11 +126,11 @@ Wenn kein MCP-Client (VS Code, Cursor, Claude Desktop) verfügbar ist, können M
 # ✅ RICHTIG — Alle MCP-Tools über EINEN Endpoint:
 curl -X POST http://localhost:8000/api/mcp/call \
   -H "Content-Type: application/json" \
-  -d '{"tool": "hivemind/submit_result", "arguments": {"task_key": "TASK-88", "result": "..."}}'
+  -d '{"tool": "hivemind-submit_result", "arguments": {"task_key": "TASK-88", "result": "..."}}'
 
 # ✅ Alternativ via mcp_call.py Helper (im Container!):
 podman compose exec backend /app/.venv/bin/python /workspace/scripts/mcp_call.py \
-  "hivemind/get_task" '{"task_key": "TASK-88"}'
+  "hivemind-get_task" '{"task_key": "TASK-88"}'
 ```
 
 ```bash
@@ -130,12 +139,12 @@ curl http://localhost:8000/api/mcp/submit_result      # 404!
 curl http://localhost:8000/api/mcp/update_task_state   # 404!
 
 # ❌ FALSCH — Python existiert NICHT auf dem Windows-Host:
-python scripts/mcp_call.py "hivemind/get_task" ...     # scheitert!
+python scripts/mcp_call.py "hivemind-get_task" ...     # scheitert!
 ```
 
 **Merke:**
 - Es gibt **keine** individuellen REST-Endpoints pro MCP-Tool
-- **Alle** Tools laufen über `POST /api/mcp/call` mit Body `{"tool": "hivemind/TOOLNAME", "arguments": {...}}`
+- **Alle** Tools laufen über `POST /api/mcp/call` mit Body `{"tool": "hivemind-TOOLNAME", "arguments": {...}}`
 - Python-Scripts müssen via `podman compose exec backend` ausgeführt werden — der Host hat kein Python
 - Alternativ: `curl` / `Invoke-WebRequest` direkt vom Host — kein Python nötig
 
@@ -145,7 +154,7 @@ python scripts/mcp_call.py "hivemind/get_task" ...     # scheitert!
 # ✅ RICHTIG — JSON in einfachen Anführungszeichen, keine Backticks:
 Invoke-WebRequest -Uri "http://localhost:8000/api/mcp/call" `
   -Method POST -ContentType "application/json" `
-  -Body '{"tool": "hivemind/submit_result", "arguments": {"task_key": "TASK-88", "result": "Ergebnis ohne Backticks"}}'
+  -Body '{"tool": "hivemind-submit_result", "arguments": {"task_key": "TASK-88", "result": "Ergebnis ohne Backticks"}}'
 
 # ❌ FALSCH — Backticks (`) in Strings werden als Escape-Zeichen interpretiert:
 $body = @"

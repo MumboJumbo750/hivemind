@@ -1,17 +1,15 @@
 """MCP Read-Tools: Entity Reads — TASK-3-002.
 
 Tools:
-  hivemind/get_epic          — Epic with state, priority, DoD
-  hivemind/get_task          — Task with state, assigned_to, pinned_skills, guards
-  hivemind/get_skill_versions — Immutable version history of a skill
-  hivemind/get_doc           — Epic-Doc by UUID
-  hivemind/get_guards        — All guards for a task (global + project + skill + task)
+  hivemind-get_epic          — Epic with state, priority, DoD
+  hivemind-get_task          — Task with state, assigned_to, pinned_skills, guards
+  hivemind-get_skill_versions — Immutable version history of a skill
+  hivemind-get_doc           — Epic-Doc by UUID
+  hivemind-get_guards        — All guards for a task (global + project + skill + task)
 """
 from __future__ import annotations
 
 import json
-import uuid
-
 from mcp.types import TextContent, Tool
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +21,7 @@ from app.models.guard import Guard, TaskGuard
 from app.models.skill import Skill, SkillVersion
 from app.models.task import Task
 from app.models.epic import Epic
+from app.services.guard_materialization import materialize_task_guards
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -65,7 +64,7 @@ async def _handle_get_epic(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_epic",
+        name="hivemind-get_epic",
         description="Epic mit State, Priority, DoD zurückgeben.",
         inputSchema={
             "type": "object",
@@ -88,6 +87,10 @@ async def _handle_get_task(args: dict) -> list[TextContent]:
         task = result.scalar_one_or_none()
         if not task:
             return _not_found("Task", task_key)
+
+        created = await materialize_task_guards(db, task)
+        if created:
+            await db.commit()
 
         # Fetch guard summary
         guard_result = await db.execute(
@@ -128,7 +131,7 @@ async def _handle_get_task(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_task",
+        name="hivemind-get_task",
         description="Task-Details inkl. State, assigned_to, pinned_skills, Guards-Übersicht.",
         inputSchema={
             "type": "object",
@@ -145,18 +148,16 @@ register_tool(
 # ── get_skill_versions ────────────────────────────────────────────────────
 
 async def _handle_get_skill_versions(args: dict) -> list[TextContent]:
+    from app.services.key_generator import resolve_skill
+
     skill_id_raw = args.get("skill_id", "")
-    try:
-        skill_id = uuid.UUID(skill_id_raw)
-    except (ValueError, AttributeError):
-        return _not_found("Skill", skill_id_raw)
 
     async with AsyncSessionLocal() as db:
-        # Check skill exists
-        skill_result = await db.execute(select(Skill).where(Skill.id == skill_id))
-        skill = skill_result.scalar_one_or_none()
+        # Resolve by UUID or skill_key (e.g. 'SKILL-7')
+        skill = await resolve_skill(db, skill_id_raw)
         if not skill:
             return _not_found("Skill", skill_id_raw)
+        skill_id = skill.id
 
         # Fetch versions
         versions_result = await db.execute(
@@ -186,12 +187,12 @@ async def _handle_get_skill_versions(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_skill_versions",
+        name="hivemind-get_skill_versions",
         description="Immutable Versionshistorie eines Skills.",
         inputSchema={
             "type": "object",
             "properties": {
-                "skill_id": {"type": "string", "description": "Skill-UUID"},
+                "skill_id": {"type": "string", "description": "Skill-Identifier (UUID oder Key, z.B. 'SKILL-7')"},
             },
             "required": ["skill_id"],
         },
@@ -203,15 +204,13 @@ register_tool(
 # ── get_doc ────────────────────────────────────────────────────────────────
 
 async def _handle_get_doc(args: dict) -> list[TextContent]:
+    from app.services.key_generator import resolve_doc
+
     doc_id_raw = args.get("id", "")
-    try:
-        doc_id = uuid.UUID(doc_id_raw)
-    except (ValueError, AttributeError):
-        return _not_found("Doc", doc_id_raw)
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Doc).where(Doc.id == doc_id))
-        doc = result.scalar_one_or_none()
+        # Resolve by UUID or doc_key (e.g. 'DOC-8')
+        doc = await resolve_doc(db, doc_id_raw)
         if not doc:
             return _not_found("Doc", doc_id_raw)
         return _json_response({
@@ -227,12 +226,12 @@ async def _handle_get_doc(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_doc",
+        name="hivemind-get_doc",
         description="Epic-Doc laden.",
         inputSchema={
             "type": "object",
             "properties": {
-                "id": {"type": "string", "description": "Doc-UUID"},
+                "id": {"type": "string", "description": "Doc-Identifier (UUID oder Key, z.B. 'DOC-8')"},
             },
             "required": ["id"],
         },
@@ -257,14 +256,17 @@ async def _handle_get_guards(args: dict) -> list[TextContent]:
         epic = epic_result.scalar_one_or_none()
         project_id = epic.project_id if epic else None
 
-        # Collect all applicable guard IDs
-        # 1) Task-level guards (explicit task_guards link)
+        created = await materialize_task_guards(db, task)
+        if created:
+            await db.commit()
+
         tg_result = await db.execute(
             select(TaskGuard, Guard)
             .join(Guard, TaskGuard.guard_id == Guard.id)
             .where(TaskGuard.task_id == task.id)
+            .order_by(Guard.title.asc())
         )
-        task_guards = [
+        guards = [
             {
                 "guard_id": str(tg.guard_id),
                 "title": g.title,
@@ -273,96 +275,26 @@ async def _handle_get_guards(args: dict) -> list[TextContent]:
                 "status": tg.status,
                 "result": tg.result,
                 "skippable": g.skippable,
-                "scope": "task",
+                "scope": (
+                    "skill"
+                    if g.skill_id
+                    else "project"
+                    if project_id and g.project_id == project_id
+                    else "global"
+                ),
             }
             for tg, g in tg_result.all()
         ]
-        task_guard_ids = {tg["guard_id"] for tg in task_guards}
-
-        # 2) Global guards (no project_id, no skill_id)
-        global_result = await db.execute(
-            select(Guard).where(
-                Guard.project_id.is_(None),
-                Guard.skill_id.is_(None),
-                Guard.lifecycle == "active",
-            )
-        )
-        global_guards = [
-            {
-                "guard_id": str(g.id),
-                "title": g.title,
-                "type": g.type,
-                "command": g.command,
-                "status": "inherited",
-                "skippable": g.skippable,
-                "scope": "global",
-            }
-            for g in global_result.scalars().all()
-            if str(g.id) not in task_guard_ids
-        ]
-
-        # 3) Project guards
-        project_guards = []
-        if project_id:
-            proj_result = await db.execute(
-                select(Guard).where(
-                    Guard.project_id == project_id,
-                    Guard.skill_id.is_(None),
-                    Guard.lifecycle == "active",
-                )
-            )
-            project_guards = [
-                {
-                    "guard_id": str(g.id),
-                    "title": g.title,
-                    "type": g.type,
-                    "command": g.command,
-                    "status": "inherited",
-                    "skippable": g.skippable,
-                    "scope": "project",
-                }
-                for g in proj_result.scalars().all()
-                if str(g.id) not in task_guard_ids
-            ]
-
-        # 4) Skill guards (from pinned_skills)
-        skill_guards = []
-        pinned = task.pinned_skills or []
-        for skill_ref in pinned:
-            try:
-                sid = uuid.UUID(str(skill_ref))
-            except ValueError:
-                continue
-            skill_result = await db.execute(
-                select(Guard).where(
-                    Guard.skill_id == sid,
-                    Guard.lifecycle == "active",
-                )
-            )
-            for g in skill_result.scalars().all():
-                if str(g.id) not in task_guard_ids:
-                    skill_guards.append({
-                        "guard_id": str(g.id),
-                        "title": g.title,
-                        "type": g.type,
-                        "command": g.command,
-                        "status": "inherited",
-                        "skippable": g.skippable,
-                        "scope": "skill",
-                        "skill_id": str(sid),
-                    })
-
-        all_guards = task_guards + global_guards + project_guards + skill_guards
         return _json_response({
             "task_key": task.task_key,
-            "guards": all_guards,
-            "total": len(all_guards),
+            "guards": guards,
+            "total": len(guards),
         })
 
 
 register_tool(
     Tool(
-        name="hivemind/get_guards",
+        name="hivemind-get_guards",
         description="Alle Guards (global + project + skill + task) für einen Task.",
         inputSchema={
             "type": "object",

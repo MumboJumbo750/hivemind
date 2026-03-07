@@ -23,12 +23,12 @@
   - 48h → Backup-Owner benachrichtigen (bei `backup_owner_id = NULL` → Schritt überspringen)
   - 72h → **System-Automatik:** Task `blocked → escalated`; Decision Request `state → expired`; alle Admins erhalten Notification (`decision_escalated_admin`) — kein automatischer Beschluss; Admin löst `escalated` danach manuell auf
 - [ ] Decision-Write:
-  - `hivemind/resolve_decision_request` — Decision Request auflösen (Owner oder Admin; Admin immer erlaubt)
+  - `hivemind-resolve_decision_request` — Decision Request auflösen (Owner oder Admin; Admin immer erlaubt)
 - [ ] Eskalations-Write:
-  - `hivemind/resolve_escalation` — `escalated → in_progress` (Admin only; gilt für beide Quellen: 3x qa_failed und Decision-SLA > 72h)
+  - `hivemind-resolve_escalation` — `escalated → in_progress` (Admin only; gilt für beide Quellen: 3x qa_failed und Decision-SLA > 72h)
 - [ ] Admin-Writes:
-  - `hivemind/reassign_epic_owner` — Owner wechseln
-  - _(hivemind/assign_bug gehört **nicht** in Phase 6 — Sentry-Bug-Daten stehen erst ab Phase 7 zur Verfügung. Manuelles Bug→Epic Routing ist ein Deliverable von Phase 7.)_
+  - `hivemind-reassign_epic_owner` — Owner wechseln
+  - _(hivemind-assign_bug gehört **nicht** in Phase 6 — Sentry-Bug-Daten stehen erst ab Phase 7 zur Verfügung. Manuelles Bug→Epic Routing ist ein Deliverable von Phase 7.)_
 - [ ] Eskalations-Logik: nach 3x `qa_failed` → Task auf `escalated`
 - [ ] Triage-Prompt-Generator für `[UNROUTED]`-Items
 - [ ] Notification-Service (in-DB, kein externer Service): schreibt in `notifications`-Tabelle
@@ -77,11 +77,11 @@ Task in_progress
 - [ ] SLA-Notification erscheint 4h vor Deadline in Notification Tray
 - [ ] Decision Request eskaliert nach 72h ohne Auflösung
 - [ ] `escalated`-Tasks erscheinen priorisiert in Triage Station
-- [ ] `hivemind/resolve_escalation` setzt `escalated → in_progress` (Admin only)
-- [ ] `hivemind/resolve_decision_request` löst Decision Request auf und setzt Task automatisch `blocked → in_progress`
+- [ ] `hivemind-resolve_escalation` setzt `escalated → in_progress` (Admin only)
+- [ ] `hivemind-resolve_decision_request` löst Decision Request auf und setzt Task automatisch `blocked → in_progress`
 - [ ] Epic-Cancel: offene `decision_requests` werden auf `expired` gesetzt; SLA-Timer gestoppt
-- [ ] `hivemind/route_event` setzt `routing_state → routed` und weist Event dem Epic zu (implementiert in Phase 3)
-- [ ] `hivemind/ignore_event` setzt `routing_state → ignored` (implementiert in Phase 3)
+- [ ] `hivemind-route_event` setzt `routing_state → routed` und weist Event dem Epic zu (implementiert in Phase 3)
+- [ ] `hivemind-ignore_event` setzt `routing_state → ignored` (implementiert in Phase 3)
 - [ ] Backup-Owner-Feld auf Epics ist editierbar (Admin)
 - [ ] SLA-Timer auf Epic-Cards färbt sich korrekt (grün → amber → rot)
 - [ ] Notification Tray gruppiert Eintraege korrekt in `ACTION NOW`, `SOON`, `FYI`

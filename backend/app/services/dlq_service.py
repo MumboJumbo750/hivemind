@@ -1,14 +1,18 @@
-"""DLQ service — shared logic for MCP tools and REST endpoints (TASK-7-009).
+"""DLQ service — shared logic for MCP tools, REST endpoints and admin sync-status.
 
-Both ``hivemind/requeue_dead_letter`` and ``POST /api/triage/dead-letters/{id}/requeue``
+Both ``hivemind-requeue_dead_letter`` and ``POST /api/triage/dead-letters/{id}/requeue``
 delegate to this service to avoid code duplication.
+
+Admin-Query-Helfer (get_queue_stats, get_admin_*_rows) werden von admin.py genutzt,
+um directe Model-Imports dort zu vermeiden.
 """
 from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -149,3 +153,133 @@ async def discard_dead_letter(
         "discarded_by": str(actor_id),
         "discarded_at": dead_letter.discarded_at.isoformat(),
     }
+
+
+# ── Admin sync-status query helpers ──────────────────────────────────────────
+
+
+async def get_queue_stats(db: AsyncSession, today_start: datetime) -> dict[str, int]:
+    """Zähle Queue-Metriken für den Admin-Sync-Status-Endpoint.
+
+    Returns dict mit Schlüsseln: pending_outbound, pending_inbound,
+    dead_letters, delivered_today.
+    """
+    pending_outbound = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(SyncOutbox)
+                .where(SyncOutbox.direction == "outbound", SyncOutbox.state == "pending")
+            )
+        ).scalar_one()
+        or 0
+    )
+    pending_inbound = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(SyncOutbox)
+                .where(
+                    SyncOutbox.direction == "inbound",
+                    SyncOutbox.state == "pending",
+                    SyncOutbox.routing_state == "unrouted",
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    dead_letters = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(SyncDeadLetter)
+                .where(SyncDeadLetter.discarded_at.is_(None))
+            )
+        ).scalar_one()
+        or 0
+    )
+    delivered_today = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(SyncOutbox)
+                .where(
+                    and_(
+                        SyncOutbox.direction == "inbound",
+                        SyncOutbox.routing_state == "routed",
+                    ),
+                    SyncOutbox.created_at >= today_start,
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    return {
+        "pending_outbound": pending_outbound,
+        "pending_inbound": pending_inbound,
+        "dead_letters": dead_letters,
+        "delivered_today": delivered_today,
+    }
+
+
+async def get_admin_delivered_rows(db: AsyncSession, limit: int = 10) -> list[Any]:
+    """Zuletzt zugestellte Inbound-Einträge für den Admin-Endpoint."""
+    return list(
+        (
+            await db.execute(
+                select(
+                    SyncOutbox.id,
+                    SyncOutbox.created_at,
+                    SyncOutbox.direction,
+                    SyncOutbox.entity_type,
+                )
+                .where(
+                    SyncOutbox.direction == "inbound",
+                    SyncOutbox.routing_state == "routed",
+                )
+                .order_by(SyncOutbox.created_at.desc())
+                .limit(limit)
+            )
+        ).all()
+    )
+
+
+async def get_admin_dead_letter_rows(db: AsyncSession, limit: int = 5) -> list[Any]:
+    """Dead-Letter-Zeilen mit dem Outbox-Attempts-Count für den Admin-Endpoint."""
+    return list(
+        (
+            await db.execute(
+                select(
+                    SyncDeadLetter.id,
+                    SyncDeadLetter.failed_at,
+                    SyncDeadLetter.error,
+                    SyncOutbox.attempts,
+                )
+                .join(SyncOutbox, SyncOutbox.id == SyncDeadLetter.outbox_id, isouter=True)
+                .where(SyncDeadLetter.discarded_at.is_(None))
+                .order_by(SyncDeadLetter.failed_at.desc())
+                .limit(limit)
+            )
+        ).all()
+    )
+
+
+async def get_admin_retry_rows(db: AsyncSession, limit: int = 5) -> list[Any]:
+    """Outbox-Einträge mit mindestens einem fehlgeschlagenen Versuch für den Admin-Endpoint."""
+    return list(
+        (
+            await db.execute(
+                select(
+                    SyncOutbox.id,
+                    SyncOutbox.created_at,
+                    SyncOutbox.attempts,
+                )
+                .where(
+                    SyncOutbox.state == "pending",
+                    SyncOutbox.attempts > 0,
+                )
+                .order_by(SyncOutbox.created_at.desc())
+                .limit(limit)
+            )
+        ).all()
+    )

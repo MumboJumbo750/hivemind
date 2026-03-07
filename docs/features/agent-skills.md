@@ -64,7 +64,7 @@ eine wachsende Systemkarte auf. Du siehst nur was du aktiv abfragst — Fog of W
 
 ## Workflow
 1. Prüfe was bereits kartiert ist:
-   hivemind/search_wiki { "query": "<Themenbereich>" }
+   hivemind-search_wiki { "query": "<Themenbereich>" }
    → Treffer = bereits kartiert, überspringen oder vertiefen
    → Kein Treffer = muss noch kartiert werden
 
@@ -72,24 +72,24 @@ eine wachsende Systemkarte auf. Du siehst nur was du aktiv abfragst — Fog of W
    Lies relevante Dateien, erkenne Patterns, Abhängigkeiten, Architektur
 
 3. Schreibe Erkenntnisse in Hivemind:
-   hivemind/create_wiki_article { "title": "...", "slug": "...", "content": "...", "tags": [...] }
-   hivemind/create_epic_doc { "epic_id": "EPIC-12", "title": "...", "content": "..." }
+   hivemind-create_wiki_article { "title": "...", "slug": "...", "content": "...", "tags": [...] }
+   hivemind-create_epic_doc { "epic_id": "EPIC-12", "title": "...", "content": "..." }
 
 4. Wenn Muster erkannt: Schlage Guards vor
-   hivemind/propose_guard { "title": "...", "command": "...", "scope": [...] }
+   hivemind-propose_guard { "title": "...", "command": "...", "scope": [...] }
 
 5. Wenn Codebase-weites Coding-Pattern erkannt: Schlage Skill vor
-   hivemind/propose_skill {
+   hivemind-propose_skill {
      "title": "Repository-Pattern mit Service-Layer",
      "content": "## Skill: Repository-Pattern\n\n### Konvention\n...",
      "service_scope": ["backend"],
      "stack": ["python", "fastapi"]
    }
-   hivemind/submit_skill_proposal { "skill_id": "uuid" }
+   hivemind-submit_skill_proposal { "skill_id": "uuid" }
    → Nur für Codebase-weite Patterns — task-spezifische Destillation macht der Gaertner
 
 6. Wenn Epic schlecht geschnitten: Schlage Restructuring vor
-   hivemind/propose_epic_restructure { "epic_id": "...", "rationale": "...", "proposal": "..." }
+   hivemind-propose_epic_restructure { "epic_id": "...", "rationale": "...", "proposal": "..." }
 
 ## Qualitätskriterien für Wiki-Artikel
 - Handlungsorientiert: "Wie funktioniert X?" nicht "Was ist X?"
@@ -121,17 +121,17 @@ stack: ["hivemind", "federation"]
 Bevor du einen neuen Bereich erkundest:
 
 1. Aktive Sessions prüfen:
-   hivemind/list_discovery_sessions { "state": "active" }
+   hivemind-list_discovery_sessions { "state": "active" }
    → Peer erkundet denselben Bereich? Wähle anderen Bereich oder koordiniere direkt.
    → Kein Konflikt? Weiter.
 
 2. Eigene Session ankündigen:
-   hivemind/start_discovery_session { "area": "auth/", "description": "JWT + Session-Handling" }
+   hivemind-start_discovery_session { "area": "auth/", "description": "JWT + Session-Handling" }
    → Backend broadcastet Session-Start an alle Peers
    → Peers sehen im Nexus Grid: [◬ <node-name> erkundet auth/ ...]
 
 3. Nach Abschluss:
-   hivemind/end_discovery_session { "area": "auth/" }
+   hivemind-end_discovery_session { "area": "auth/" }
    → exploring_node_id wird auf NULL gesetzt
    → Peers sehen: Bereich wieder verfügbar
 
@@ -173,13 +173,13 @@ und leitest daraus eine strukturierte Epic-Landschaft mit Abhängigkeiten ab.
 
 ## Workflow
 1. Plan-Dokumente laden:
-   hivemind/search_wiki { "query": "masterplan OR roadmap OR plan", "tags": ["plan"] }
+   hivemind-search_wiki { "query": "masterplan OR roadmap OR plan", "tags": ["plan"] }
 
 2. Bestehende Epics prüfen (Duplikatvermeidung):
-   hivemind/list_epics { "project_id": "uuid" }
+   hivemind-list_epics { "project_id": "uuid" }
 
 3. Team kennenlernen (für Owner-Empfehlung):
-   hivemind/get_project_members { "project_id": "uuid" }
+   hivemind-get_project_members { "project_id": "uuid" }
 
 4. Plan analysieren:
    - Welche logischen Arbeitspakete ergeben sich?
@@ -188,7 +188,7 @@ und leitest daraus eine strukturierte Epic-Landschaft mit Abhängigkeiten ab.
    - Welche Pakete sind parallel bearbeitbar?
 
 5. Epics vorschlagen:
-   hivemind/propose_epic {
+   hivemind-propose_epic {
      "project_id": "uuid",
      "title": "...",
      "description": "...",
@@ -200,7 +200,7 @@ und leitest daraus eine strukturierte Epic-Landschaft mit Abhängigkeiten ab.
    }
 
 6. Roadmap dokumentieren:
-   hivemind/create_wiki_article {
+   hivemind-create_wiki_article {
      "title": "Roadmap — Epic-Abhängigkeiten",
      "slug": "roadmap-dependencies",
      "content": "...",
@@ -248,37 +248,37 @@ setzt Context Boundaries und weist Tasks zu.
 
 ## Workflow
 1. Epic-Kontext laden:
-   hivemind/get_epic { "id": "uuid" }
+   hivemind-get_epic { "epic_key": "EPIC-12" }
 
 2. Verfügbare Skills und Docs lesen:
-   hivemind/get_skills { "task_id": "..." }
-   hivemind/get_doc { "id": "uuid" }
+   hivemind-get_skills { "task_key": "..." }
+   hivemind-get_doc { "doc_id": "DOC-8" }
 
 3. Epic zerlegen:
-   hivemind/decompose_epic {
+   hivemind-decompose_epic {
      "epic_id": "EPIC-12",
      "tasks": [
        { "title": "...", "description": "...", "definition_of_done": {...} }
      ]
    }
-   Alternativ einzeln: hivemind/create_task, hivemind/create_subtask
+   Alternativ einzeln: hivemind-create_task, hivemind-create_subtask
 
 4. Context Boundaries setzen (pro Task):
-   hivemind/set_context_boundary {
-     "task_id": "TASK-88",
+   hivemind-set_context_boundary {
+     "task_key": "TASK-88",
      "allowed_skills": ["uuid-1"],
      "allowed_docs": ["uuid-doc-1"],
      "max_token_budget": 6000
    }
 
 5. Skills verknüpfen:
-   hivemind/link_skill { "task_id": "TASK-88", "skill_id": "uuid" }
+   hivemind-link_skill { "task_key": "TASK-88", "skill_id": "uuid" }
 
 6. Tasks zuweisen:
-   hivemind/assign_task { "task_id": "TASK-88", "user_id": "uuid" }
+   hivemind-assign_task { "task_key": "TASK-88", "user_id": "uuid" }
 
 7. Tasks auf ready setzen:
-   hivemind/update_task_state { "task_id": "TASK-88", "state": "ready" }
+   hivemind-update_task_state { "task_key": "TASK-88", "target_state": "ready" }
    → Backend prüft: assigned_to gesetzt? Context Boundary vorhanden?
 
 ## Zerlegungsregeln
@@ -299,10 +299,10 @@ setzt Context Boundaries und weist Tasks zu.
 
 ### Federated Skills im Loadout
 
-`hivemind/get_skills` gibt auch federated Skills zurück — erkennbar am `origin_node_id`-Feld.
+`hivemind-get_skills` gibt auch federated Skills zurück — erkennbar am `origin_node_id`-Feld.
 Federated Skills können wie lokale Skills via `link_skill` verknüpft werden:
 
-  hivemind/link_skill { "task_id": "TASK-88", "skill_id": "<uuid-federated-skill>" }
+  hivemind-link_skill { "task_key": "TASK-88", "skill_id": "<uuid-federated-skill>" }
 
 Im generierten Prompt erscheinen federated Skills mit Origin-Badge: [◈ ben-hivemind]
 Loadout-Regel: Lokale Skills bevorzugen; federated Skills wenn lokal kein passendes vorhanden.
@@ -311,7 +311,7 @@ Loadout-Regel: Lokale Skills bevorzugen; federated Skills wenn lokal kein passen
 
 Tasks können an Peer-Nodes delegiert werden:
 
-  hivemind/assign_task { "task_id": "TASK-88", "user_id": "<peer-user-uuid>",
+  hivemind-assign_task { "task_key": "TASK-88", "user_id": "<peer-user-uuid>",
                          "assigned_node_id": "<peer-node-uuid>" }
 
 → Task erscheint in der Prompt Station des Peers
@@ -336,40 +336,46 @@ gemäß Definition of Done und Guards.
 
 ## Workflow
 1. Task-Details laden:
-   hivemind/get_task { "id": "TASK-88" }
+   hivemind-get_task { "task_key": "TASK-88" }
 
 2. Guards laden und verstehen:
-   hivemind/get_guards { "task_id": "TASK-88" }
+   hivemind-get_guards { "task_key": "TASK-88" }
 
 3. Aufgabe ausführen gemäß Description und DoD
 
 4. Guards prüfen und Ergebnis melden:
-   hivemind/report_guard_result {
-     "task_id": "TASK-88", "guard_id": "uuid",
+   hivemind-report_guard_result {
+     "task_key": "TASK-88", "guard_id": "uuid",
      "status": "passed|failed|skipped", "result": "output"
    }
    → Phase 2–4: Guards sind informativ (empfohlen, kein Blocker)
    → Ab Phase 5: Alle Guards müssen passed|skipped sein
 
 5. Ergebnis einreichen:
-   hivemind/submit_result {
-     "task_id": "TASK-88",
+   hivemind-submit_result {
+     "task_key": "TASK-88",
      "result": "...",
      "artifacts": [{"type": "file", "path": "..."}]
    }
 
 6. Status auf in_review setzen:
-   hivemind/update_task_state { "task_id": "TASK-88", "state": "in_review" }
+   hivemind-update_task_state { "task_key": "TASK-88", "target_state": "in_review" }
    → Phase 2–4: fehlschlägt nur wenn Result fehlt
    → Ab Phase 5: fehlschlägt wenn Guards offen oder Result fehlt
    (Siehe [guards.md — Kanonische Guard-Enforcement-Timeline](../features/guards.md#kanonische-guard-enforcement-timeline))
 
 7. Wenn blockiert:
-   hivemind/create_decision_request {
-     "task_id": "TASK-88",
-     "blocker": "...",
+   hivemind-create_decision_request {
+     "task_key": "TASK-88",
+     "question": "...",
      "options": [{"id": "A", "description": "...", "tradeoffs": "..."}]
    }
+
+### Manueller Run in der Prompt Station
+
+- `Ausfuehren` generiert zuerst den agent-spezifischen Prompt serverseitig.
+- Der Dispatch sendet danach den generierten Prompt an den ausgewaehlten Agenten.
+- Die rohe `task.description` ist kein Ersatz fuer den Worker- oder Reviewer-Prompt.
 
 ## Einschränkungen
 - Nicht: Direkt auf done setzen (immer in_review → Owner reviewed)
@@ -407,38 +413,38 @@ in wiederverwendbare Skills und dokumentierst Entscheidungen.
 
 ## Workflow
 1. Abgeschlossenen Task analysieren:
-   hivemind/get_task { "id": "TASK-88" }
+   hivemind-get_task { "task_key": "TASK-88" }
    → result, artifacts, definition_of_done studieren
 
 2. Skill-Candidates anderer Agenten prüfen:
-   hivemind/search_memories { "query": "skill-candidate", "scope": "project", "level": "all" }
+   hivemind-search_memories { "query": "skill-candidate", "scope": "project", "level": "all" }
    → Kartograph/Stratege/Worker haben Patterns markiert? → Mitverarbeiten
 
 3. Prüfe ob wiederverwendbare Muster entstanden sind:
-   hivemind/get_skills { "task_id": "TASK-88" }
+   hivemind-get_skills { "task_key": "TASK-88" }
    → Gibt es bereits ähnliche Skills?
 
 4a. Neuen Skill destillieren (aus Task ODER Skill-Candidate):
-    hivemind/propose_skill {
+    hivemind-propose_skill {
       "title": "...", "content": "...",
       "service_scope": [...], "stack": [...]
     }
-    hivemind/submit_skill_proposal { "skill_id": "uuid" }
+    hivemind-submit_skill_proposal { "skill_id": "uuid" }
 
 4b. Bestehenden Skill verbessern (falls Erweiterung):
-    hivemind/propose_skill_change {
+    hivemind-propose_skill_change {
       "skill_id": "uuid", "diff": "...", "rationale": "..."
     }
 
 5. Entscheidungen dokumentieren:
-   hivemind/create_decision_record {
+   hivemind-create_decision_record {
      "epic_id": "EPIC-12",
      "decision": "...",
      "rationale": "..."
    }
 
 6. Epic-Docs aktualisieren:
-   hivemind/update_doc { "id": "uuid", "content": "...", "expected_version": 3 }
+   hivemind-update_doc { "id": "uuid", "content": "...", "expected_version": 3 }
 
 ## Skill-Qualität — Checkliste
 - [ ] Wiederverwendbar? (nicht task-spezifisch)
@@ -484,7 +490,7 @@ und triffst Entscheidungen über Proposals und Eskalationen.
 
 ## Workflow
 1. Offene Triage-Items laden:
-   hivemind/get_triage { "state": "all" }
+   hivemind-get_triage { "state": "all" }
 
 2. Für jedes [UNROUTED]-Item:
    a. Event-Payload analysieren (Titel, Beschreibung, Stacktrace)
@@ -495,8 +501,8 @@ und triffst Entscheidungen über Proposals und Eskalationen.
    a. Proposal-Rationale lesen — Bezug zum Plan-Dokument prüfen
    b. Duplikat-Check: Gibt es bereits ein Epic das diesen Bereich abdeckt?
    c. Abhängigkeiten prüfen: Sind depends_on-Proposals bereits akzeptiert?
-   d. Akzeptieren: hivemind/accept_epic_proposal { "proposal_id": "uuid" }
-   e. Ablehnen: hivemind/reject_epic_proposal { "proposal_id": "uuid", "reason": "..." }
+   d. Akzeptieren: hivemind-accept_epic_proposal { "proposal_id": "uuid" }
+   e. Ablehnen: hivemind-reject_epic_proposal { "proposal_id": "uuid", "reason": "..." }
 
 4. Für [SKILL PROPOSAL] / [GUARD PROPOSAL]:
    a. Diff lesen und bewerten
@@ -505,8 +511,8 @@ und triffst Entscheidungen über Proposals und Eskalationen.
 
 5. Für [ESCALATED] Tasks:
    a. Eskalationsgrund prüfen (3x qa_failed? SLA? Decision-Timeout?)
-   b. Owner wechseln wenn nötig: hivemind/reassign_epic_owner { "epic_id": "EPIC-12", "new_owner_id": "uuid" }
-   c. Task auflösen: hivemind/resolve_escalation { "task_id": "TASK-88", "comment": "..." }
+   b. Owner wechseln wenn nötig: hivemind-reassign_epic_owner { "epic_id": "EPIC-12", "new_owner_id": "uuid" }
+   c. Task auflösen: hivemind-resolve_escalation { "task_key": "TASK-88", "comment": "..." }
       → escalated → in_progress
 
 5. Für [DEAD LETTER]:
@@ -541,7 +547,7 @@ Neue Item-Typen in der Triage-Queue:
 
 **[FEDERATION ERROR]:** Sync-Fehler bei peer_outbound (z.B. gescheiterte Skill-Übertragung).
 → Analog zu [DEAD LETTER]: Fehlerursache lesen, Requeue oder verwerfen
-→ hivemind/get_triage { "state": "dead" } zeigt betroffene Outbox-Einträge
+→ hivemind-get_triage { "state": "dead" } zeigt betroffene Outbox-Einträge
 ```
 
 ### 🔍 Reviewer-Skill *(Phase 8)*
@@ -561,11 +567,11 @@ Definition of Done, Guard-Ergebnisse und Skill-Instruktionen.
 
 ## Workflow
 1. Task-Kontext laden:
-   hivemind/get_task { "id": "TASK-88" }
+   hivemind-get_task { "task_key": "TASK-88" }
    → result, artifacts, definition_of_done studieren
 
 2. Guard-Ergebnisse prüfen:
-   hivemind/get_guards { "task_id": "TASK-88" }
+   hivemind-get_guards { "task_key": "TASK-88" }
    → Alle Guards passed/skipped? Begründungen bei skipped plausibel?
 
 3. Definition of Done abgleichen:
@@ -573,7 +579,7 @@ Definition of Done, Guard-Ergebnisse und Skill-Instruktionen.
    → Fehlende Kriterien explizit benennen
 
 4. Skill-Konformität prüfen:
-   hivemind/get_skills { "task_id": "TASK-88" }
+   hivemind-get_skills { "task_key": "TASK-88" }
    → Folgt die Implementierung den Skill-Instruktionen?
 
 5. Code-Qualität bewerten (falls Artefakte Code enthalten):
@@ -581,8 +587,8 @@ Definition of Done, Guard-Ergebnisse und Skill-Instruktionen.
    → Bekannte Anti-Patterns erkennen
 
 6. Empfehlung abgeben:
-   hivemind/submit_review_recommendation {
-     "task_id": "TASK-88",
+   hivemind-submit_review_recommendation {
+     "task_key": "TASK-88",
      "recommendation": "approve|reject|needs_human_review",
      "confidence": 0.92,
      "summary": "...",
@@ -718,29 +724,29 @@ Hypothesen und offene Fragen zwischen Sessions zu bewahren.
 Wenn du eine Aufgabe fortsetzt oder einen Bereich erneut bearbeitest:
 
 1. Memory-Kontext laden:
-   hivemind/get_memory_context { "scope": "project|epic|task", "scope_id": "uuid" }
+   hivemind-get_memory_context { "scope": "project|epic|task", "scope_id": "uuid" }
    → Liefert: Summaries, Fakten, offene Fragen, Integrity-Warnungen
 
 2. Offene Fragen prüfen:
-   hivemind/get_open_questions { "scope": "...", "scope_id": "uuid" }
+   hivemind-get_open_questions { "scope": "...", "scope_id": "uuid" }
    → Priorität: Offene Fragen zuerst klären, dann Neues erkunden
 
 3. Bei Bedarf tiefer graben:
-   hivemind/search_memories { "query": "...", "level": "L0" }
+   hivemind-search_memories { "query": "...", "level": "L0" }
    → Zugriff auf Rohdaten früherer Sessions
 
 ## Schreiben (während der Session)
 Speichere Beobachtungen sobald sie entstehen — nicht erst am Session-Ende:
 
 1. Beobachtung persistieren:
-   hivemind/save_memory {
+   hivemind-save_memory {
      "scope": "project", "scope_id": "uuid",
      "content": "In /src/auth/jwt.py: JWTValidator nutzt RS256 via python-jose",
      "tags": ["auth", "jwt"]
    }
 
 2. Strukturierte Fakten extrahieren (optional, empfohlen):
-   hivemind/extract_facts {
+   hivemind-extract_facts {
      "entry_ids": ["uuid"],
      "facts": [
        { "entity": "auth/jwt", "key": "algorithm", "value": "RS256" }
@@ -751,7 +757,7 @@ Speichere Beobachtungen sobald sie entstehen — nicht erst am Session-Ende:
 Wenn du eine Session beendest oder der Kontext zu voll wird:
 
 1. Fasse zusammen was du in dieser Session gelernt hast:
-   hivemind/compact_memories {
+   hivemind-compact_memories {
      "entry_ids": ["uuid", "uuid", "..."],
      "summary": "Auth-Subsystem: JWT-basiert (RS256, python-jose)...",
      "open_questions": ["Warum ist OAuth deaktiviert?"]
@@ -766,7 +772,7 @@ Wenn du eine Session beendest oder der Kontext zu voll wird:
 ## Graduieren (wenn Wissen reif ist)
 Wenn eine Zusammenfassung stabil ist und keine offenen Fragen mehr hat:
 
-  hivemind/graduate_memory { "summary_id": "uuid", "target": "wiki|skill|doc", "target_id": "uuid" }
+  hivemind-graduate_memory { "summary_id": "uuid", "target": "wiki|skill|doc", "target_id": "uuid" }
   → Zusammenfassung wird nicht mehr bei Session-Resume geladen
   → Wiki/Skill/Doc übernimmt das Wissen dauerhaft
 
@@ -780,7 +786,7 @@ Wenn eine Zusammenfassung stabil ist und keine offenen Fragen mehr hat:
 ## Skill-Candidates markieren
 Wenn du ein wiederverwendbares Pattern entdeckst das ein Skill werden könnte:
 
-  hivemind/save_memory {
+  hivemind-save_memory {
     "scope": "project", "scope_id": "uuid",
     "content": "Pattern: [Beschreibung]. Könnte ein Skill werden weil [Begründung].",
     "tags": ["skill-candidate", "<thema>"]
@@ -788,7 +794,7 @@ Wenn du ein wiederverwendbares Pattern entdeckst das ein Skill werden könnte:
 
 Der Gaertner wird den Kandidaten bei seiner nächsten Session aufgreifen und formalisieren.
 Wenn du als Kartograph ein Codebase-weites Pattern siehst, kannst du es auch
-direkt als Skill vorschlagen: hivemind/propose_skill { ... }
+direkt als Skill vorschlagen: hivemind-propose_skill { ... }
 ```
 
 ### Memory Skill — Agenten-spezifische Ergänzungen
@@ -809,7 +815,7 @@ Das Memory Skill wird in **jeden** Agenten-Prompt injiziert. So nutzen die versc
 Jeder Agent kann Pattern-Beobachtungen als Skill-Kandidaten markieren indem er den Tag `skill-candidate` nutzt:
 
 ```text
-hivemind/save_memory {
+hivemind-save_memory {
   "scope": "project", "scope_id": "uuid",
   "content": "Repo nutzt überall Repository-Pattern: Service-Layer + Depends(). Könnte ein Skill werden.",
   "tags": ["pattern", "skill-candidate", "fastapi"]

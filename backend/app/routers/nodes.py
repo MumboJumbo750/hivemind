@@ -13,13 +13,12 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from datetime import datetime
 
 from app.db import get_db
-from app.models.federation import Node, NodeIdentity
+import app.services.federation_service as fed_svc
 
 router = APIRouter(tags=["nodes"])
 
@@ -82,13 +81,11 @@ async def get_node_identity(
     db: AsyncSession = Depends(get_db),
 ) -> NodeIdentityResponse:
     """Get the local node's identity."""
-    result = await db.execute(select(NodeIdentity))
-    identity = result.scalar_one_or_none()
+    identity = await fed_svc.get_own_identity(db)
     if identity is None:
         raise HTTPException(status_code=404, detail="Node identity not configured")
 
-    node_result = await db.execute(select(Node).where(Node.id == identity.node_id))
-    node = node_result.scalar_one_or_none()
+    node = await fed_svc.get_node_by_id(db, identity.node_id)
 
     return NodeIdentityResponse(
         node_id=identity.node_id,
@@ -105,15 +102,9 @@ async def list_nodes(
     db: AsyncSession = Depends(get_db),
 ) -> list[PeerResponse]:
     """List all known peer nodes (excluding soft-deleted)."""
-    result = await db.execute(
-        select(Node).where(Node.deleted_at.is_(None)).order_by(Node.node_name)
-    )
-    nodes = result.scalars().all()
-
-    # Exclude own node
-    identity_result = await db.execute(select(NodeIdentity))
-    identity = identity_result.scalar_one_or_none()
+    identity = await fed_svc.get_own_identity(db)
     own_id = identity.node_id if identity else None
+    nodes = await fed_svc.list_peer_nodes(db)
 
     return [
         PeerResponse(
@@ -135,26 +126,13 @@ async def create_node(
     db: AsyncSession = Depends(get_db),
 ) -> PeerResponse:
     """Add a new peer node."""
-    # Check for duplicate URL
-    existing = await db.execute(
-        select(Node).where(Node.node_url == body.node_url)
-    )
-    if existing.scalar_one_or_none():
+    if await fed_svc.get_peer_node_by_url(db, body.node_url):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A node with this URL already exists",
         )
 
-    node = Node(
-        node_name=body.node_name,
-        node_url=body.node_url,
-        public_key=body.public_key,
-        status="active",
-    )
-    db.add(node)
-    await db.flush()
-    await db.refresh(node)
-    await db.commit()
+    node = await fed_svc.create_peer_node(db, body.node_name, body.node_url, body.public_key)
 
     return PeerResponse(
         id=node.id,
@@ -173,23 +151,12 @@ async def update_node(
     db: AsyncSession = Depends(get_db),
 ) -> PeerResponse:
     """Update a peer node's status or name."""
-    result = await db.execute(
-        select(Node).where(Node.id == node_id, Node.deleted_at.is_(None))
-    )
-    node = result.scalar_one_or_none()
+    if body.status is not None and body.status not in ("active", "inactive", "blocked"):
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    node = await fed_svc.update_peer_node(db, node_id, status=body.status, node_name=body.node_name)
     if node is None:
         raise HTTPException(status_code=404, detail="Node not found")
-
-    if body.status is not None:
-        if body.status not in ("active", "inactive", "blocked"):
-            raise HTTPException(status_code=400, detail="Invalid status")
-        node.status = body.status
-    if body.node_name is not None:
-        node.node_name = body.node_name
-
-    await db.flush()
-    await db.refresh(node)
-    await db.commit()
 
     return PeerResponse(
         id=node.id,
@@ -207,18 +174,9 @@ async def delete_node(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """Soft-delete a peer node."""
-    from datetime import datetime, timezone
-
-    result = await db.execute(
-        select(Node).where(Node.id == node_id, Node.deleted_at.is_(None))
-    )
-    node = result.scalar_one_or_none()
-    if node is None:
+    found = await fed_svc.delete_peer_node(db, node_id)
+    if not found:
         raise HTTPException(status_code=404, detail="Node not found")
-
-    node.deleted_at = datetime.now(timezone.utc)
-    await db.flush()
-    await db.commit()
 
 
 # ─── Federation Settings ──────────────────────────────────────────────────────

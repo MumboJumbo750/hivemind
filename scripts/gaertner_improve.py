@@ -65,7 +65,7 @@ for title, upgrade in CONFIDENCE_UPGRADES.items():
     sid = skill['id']
     print(f"  Improving: {title} ({sid[:8]}...)")
     
-    r = a.mcp_call('hivemind/propose_skill_change', {
+    r = a.mcp_call('hivemind-propose_skill_change', {
         'skill_id': sid,
         'diff': upgrade['diff'],
         'rationale': upgrade['rationale'],
@@ -74,7 +74,7 @@ for title, upgrade in CONFIDENCE_UPGRADES.items():
     print(f"    propose_change: {result_text}")
     
     # Accept the change (admin in solo mode)
-    r2 = a.mcp_call('hivemind/accept_skill_change', {
+    r2 = a.mcp_call('hivemind-accept_skill_change', {
         'skill_id': sid,
     })
     result_text2 = json.dumps(r2)[:200]

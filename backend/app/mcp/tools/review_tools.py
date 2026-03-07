@@ -1,11 +1,11 @@
 """MCP Review & Decision Tools — TASK-5-003, TASK-5-004, TASK-5-005, TASK-5-006.
 
 Review and decision management MCP tools:
-- hivemind/create_decision_request  — Worker → Blocked (atomic transition)
-- hivemind/approve_review           — in_review → done + EXP + epic auto-transition
-- hivemind/reject_review            — in_review → qa_failed + comment + count++
-- hivemind/reenter_from_qa_failed   — qa_failed → in_progress + guard reset + escalation
-- hivemind/cancel_task              — Cancel task from allowed states
+- hivemind-create_decision_request  — Worker → Blocked (atomic transition)
+- hivemind-approve_review           — in_review → done + EXP + epic auto-transition
+- hivemind-reject_review            — in_review → qa_failed + comment + count++
+- hivemind-reenter_from_qa_failed   — qa_failed → in_progress + guard reset + escalation
+- hivemind-cancel_task              — Cancel task from allowed states
 """
 from __future__ import annotations
 
@@ -39,12 +39,12 @@ def _err(code: str, message: str, status: int = 400) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/create_decision_request — TASK-5-003
+# hivemind-create_decision_request — TASK-5-003
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/create_decision_request",
+        name="hivemind-create_decision_request",
         description=(
             "Create a decision request for a task, atomically transitioning it "
             "from in_progress to blocked. Returns 409 if not in_progress. "
@@ -125,6 +125,12 @@ async def _handle_create_decision_request(args: dict) -> list[TextContent]:
                 db.add(dr)
                 await db.flush()
                 await db.refresh(dr)
+                try:
+                    from app.services.conductor import conductor
+
+                    await conductor.on_decision_request(str(dr.id), db)
+                except Exception:
+                    logger.exception("Conductor hook failed for decision request %s", dr.id)
 
                 # Fire SSE event
                 publish(
@@ -152,12 +158,12 @@ async def _handle_create_decision_request(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/approve_review — TASK-5-004
+# hivemind-approve_review — TASK-5-004
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/approve_review",
+        name="hivemind-approve_review",
         description=(
             "Approve a task review: transitions in_review → done. "
             "This is the ONLY way to reach 'done' — do NOT use update_task_state for this! "
@@ -182,7 +188,7 @@ register_tool(
 
 async def _handle_approve_review(args: dict) -> list[TextContent]:
     from app.models.task import Task
-    from app.models.epic import Epic
+    from app.services.review_workflow import approve_task_review
 
     task_key = args.get("task_key", "")
     comment = args.get("comment", "Review approved")
@@ -203,55 +209,20 @@ async def _handle_approve_review(args: dict) -> list[TextContent]:
                         f"Task muss in_review sein, ist '{task.state}'",
                         422,
                     )
-
-                # Transition in_review → done
-                task.state = "done"
-                task.version += 1
-
-                # Award EXP (+50 for completing a task)
-                exp_awarded = 50
-                if task.assigned_to:
-                    await _award_exp(db, task.assigned_to, exp_awarded, "task_done", task_key)
-
-                await db.flush()
-
-                # Fire SSE event
-                publish(
-                    "task_done",
-                    {
-                        "task_key": task_key,
-                        "comment": comment,
-                        "exp_awarded": exp_awarded,
-                    },
-                    channel="tasks",
-                )
-
-                # Check epic auto-transition (all tasks done → epic done)
-                epic_transitioned = False
-                if task.epic_id:
-                    epic_transitioned = await _check_epic_completion(db, task.epic_id)
-
-                return _ok({
-                    "data": {
-                        "task_key": task_key,
-                        "state": "done",
-                        "exp_awarded": exp_awarded,
-                        "epic_auto_transitioned": epic_transitioned,
-                        "comment": comment,
-                    },
-                })
+                payload = await approve_task_review(db, task, comment=comment)
+                return _ok({"data": payload})
     except Exception as exc:
         logger.exception("approve_review failed")
         return _err("INTERNAL_ERROR", str(exc), 500)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/reject_review — TASK-5-004
+# hivemind-reject_review — TASK-5-004
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/reject_review",
+        name="hivemind-reject_review",
         description=(
             "Reject a task review: transitions in_review → qa_failed. "
             "Increments qa_failed_count and optionally adds a comment."
@@ -271,6 +242,7 @@ register_tool(
 
 async def _handle_reject_review(args: dict) -> list[TextContent]:
     from app.models.task import Task
+    from app.services.review_workflow import reject_task_review
 
     task_key = args.get("task_key") or args.get("task_id", "")
     comment = args.get("comment", "").strip()
@@ -293,48 +265,20 @@ async def _handle_reject_review(args: dict) -> list[TextContent]:
                         f"Task muss in_review sein, ist '{task.state}'",
                         422,
                     )
-
-                # Transition in_review → qa_failed
-                task.state = "qa_failed"
-                task.qa_failed_count = (task.qa_failed_count or 0) + 1
-                task.version += 1
-
-                # Store review comment
-                task.review_comment = comment
-
-                await db.flush()
-
-                # Fire SSE event
-                publish(
-                    "task_qa_failed",
-                    {
-                        "task_key": task_key,
-                        "qa_failed_count": task.qa_failed_count,
-                        "comment": comment,
-                    },
-                    channel="tasks",
-                )
-
-                return _ok({
-                    "data": {
-                        "task_key": task_key,
-                        "state": "qa_failed",
-                        "qa_failed_count": task.qa_failed_count,
-                        "comment": comment,
-                    },
-                })
+                payload = await reject_task_review(db, task, comment=comment)
+                return _ok({"data": payload})
     except Exception as exc:
         logger.exception("reject_review failed")
         return _err("INTERNAL_ERROR", str(exc), 500)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/reenter_from_qa_failed — TASK-5-005
+# hivemind-reenter_from_qa_failed — TASK-5-005
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/reenter_from_qa_failed",
+        name="hivemind-reenter_from_qa_failed",
         description=(
             "Worker re-entry from qa_failed: transitions qa_failed → in_progress. "
             "Resets all guards to pending. Escalates to 'escalated' if "
@@ -353,95 +297,35 @@ register_tool(
 
 
 async def _handle_reenter_from_qa_failed(args: dict) -> list[TextContent]:
-    from app.models.task import Task
-    from app.models.guard import TaskGuard
+    from fastapi import HTTPException
+
+    from app.services.task_service import TaskService
 
     task_key = args.get("task_key") or args.get("task_id", "")
 
     try:
         async with AsyncSessionLocal() as db:
             async with db.begin():
-                result = await db.execute(
-                    select(Task).where(Task.task_key == task_key)
-                )
-                task = result.scalar_one_or_none()
-                if not task:
-                    return _err("ENTITY_NOT_FOUND", f"Task '{task_key}' nicht gefunden", 404)
-
-                if task.state != "qa_failed":
-                    return _err(
-                        "INVALID_STATE_TRANSITION",
-                        f"Task muss qa_failed sein, ist '{task.state}'",
-                        422,
-                    )
-
-                # Escalation check: qa_failed_count >= 3 → escalated
-                if (task.qa_failed_count or 0) >= 3:
-                    task.state = "escalated"
-                    task.version += 1
-                    await db.flush()
-
-                    publish(
-                        "task_escalated",
-                        {
-                            "task_key": task_key,
-                            "qa_failed_count": task.qa_failed_count,
-                            "reason": "qa_failed_count >= 3",
-                        },
-                        channel="tasks",
-                    )
-
-                    return _err(
-                        "ESCALATED",
-                        f"Task '{task_key}' wurde nach {task.qa_failed_count}x QA-Failure eskaliert. "
-                        "Manueller Eingriff erforderlich.",
-                        422,
-                    )
-
-                # Normal re-entry: qa_failed → in_progress
-                task.state = "in_progress"
-                task.version += 1
-
-                # Reset all guards to pending
-                guard_result = await db.execute(
-                    select(TaskGuard).where(TaskGuard.task_id == task.id)
-                )
-                guards = guard_result.scalars().all()
-                reset_count = 0
-                for tg in guards:
-                    if tg.status != "pending":
-                        tg.status = "pending"
-                        tg.output = None
-                        tg.source = None
-                        tg.checked_at = None
-                        reset_count += 1
-
-                await db.flush()
-
-                publish(
-                    "task_reenter",
-                    {
-                        "task_key": task_key,
-                        "guards_reset": reset_count,
-                    },
-                    channel="tasks",
-                )
+                task = await TaskService(db).reenter_from_qa_failed(task_key)
 
                 return _ok({
                     "data": {
                         "task_key": task_key,
-                        "state": "in_progress",
-                        "guards_reset": reset_count,
+                        "state": task.state,
                         "qa_failed_count": task.qa_failed_count,
                     },
                 })
+    except HTTPException as exc:
+        if exc.status_code == 422 and "eskaliert" in str(exc.detail).lower():
+            return _err("ESCALATED", str(exc.detail), 422)
+        return _err("INVALID_STATE_TRANSITION", str(exc.detail), exc.status_code)
     except Exception as exc:
         logger.exception("reenter_from_qa_failed failed")
         return _err("INTERNAL_ERROR", str(exc), 500)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/cancel_task — TASK-5-006
+# hivemind-cancel_task — TASK-5-006
 # ═══════════════════════════════════════════════════════════════════════════════
 
 CANCELLABLE_STATES = {"incoming", "scoped", "ready", "in_progress", "blocked", "qa_failed", "escalated"}
@@ -449,7 +333,7 @@ FORCE_REQUIRED_STATES = {"in_review"}
 
 register_tool(
     Tool(
-        name="hivemind/cancel_task",
+        name="hivemind-cancel_task",
         description=(
             "Cancel a task. Allowed from most states. "
             "Requires force=true for tasks in_review. "

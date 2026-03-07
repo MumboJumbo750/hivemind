@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-CARDS-007",
+  "epic_ref": "EPIC-AGENT-CARDS",
+  "title": "Agenten-Galerie und Produktions-Workflow dokumentieren",
+  "description": "Dokumentiere, wie die Agentenbilder produziert, ausgewählt, geprüft und in Hivemind eingebunden werden.\n\n**Was zu implementieren ist:**\n\n1. Produktionsreihenfolge für Hero- und Avatar-Bilder beschreiben\n2. Qualitätskriterien für Asset-Auswahl definieren\n3. Vorschau- oder Galerieansicht für die Agenten vorbereiten oder konzipieren\n4. Dokumentation für spätere Erweiterung um neue Agenten oder Statusvarianten ergänzen\n\n**Wichtig:** Die Bildproduktion soll teamfähig und nachvollziehbar werden.",
+  "state": "open",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "Produktions-Workflow ist dokumentiert",
+      "Qualitätskriterien für Asset-Auswahl sind definiert",
+      "Es gibt eine klare Erweiterungsstrategie für neue Agenten oder Varianten",
+      "Die Dokumentation ist für Designer und Entwickler nutzbar"
+    ]
+  },
+  "tags": ["documentation", "art", "workflow", "ui"],
+  "subtasks": [],
+  "pinned_skills": ["runtime-environment"],
+  "linked_wiki": ["progressive-disclosure"],
+  "source_doc": "docs/ui/agent-character-cards.md",
+  "estimated_complexity": "small",
+  "depends_on": ["TASK-CARDS-001", "TASK-CARDS-002", "TASK-CARDS-006"]
+}

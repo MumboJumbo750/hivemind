@@ -54,12 +54,12 @@ Der Stratege hat zwei Eingangskanäle:
    → Prompt Station zeigt: "Jetzt: Stratege"
 
 2. User fügt Strategie-Prompt in AI-Client ein
-   → AI liest Plan-Dokument(e): hivemind/search_wiki { "query": "...", "tags": ["plan"] }
-   → AI liest bestehende Epics: hivemind/list_epics { "project_id": "uuid" }
-   → AI liest Team-Roster: hivemind/get_project_members { "project_id": "uuid" }
+   → AI liest Plan-Dokument(e): hivemind-search_wiki { "query": "...", "tags": ["plan"] }
+   → AI liest bestehende Epics: hivemind-list_epics { "project_id": "uuid" }
+   → AI liest Team-Roster: hivemind-get_project_members { "project_id": "uuid" }
 
 3. AI leitet Epics ab:
-   hivemind/propose_epic {
+   hivemind-propose_epic {
      "project_id": "uuid",
      "title": "Phase 1 — Datenfundament",
      "description": "Schema, State Machine, Docker Setup...",
@@ -70,7 +70,7 @@ Der Stratege hat zwei Eingangskanäle:
      "suggested_owner_id": "uuid"
    }
 
-   hivemind/propose_epic {
+   hivemind-propose_epic {
      "project_id": "uuid",
      "title": "Phase 2 — Identity & RBAC",
      "description": "Auth, Rollen, Command Deck...",
@@ -87,7 +87,7 @@ Der Stratege hat zwei Eingangskanäle:
    → Ablehnen mit Begründung → Notification an Strategen
 
 5. Stratege dokumentiert Roadmap-Entscheidungen:
-   hivemind/create_wiki_article {
+   hivemind-create_wiki_article {
      "title": "Roadmap — Epic-Abhängigkeiten",
      "slug": "roadmap-dependencies",
      "content": "...",
@@ -138,14 +138,14 @@ Der Stratege hat zwei Eingangskanäle:
 
 ```text
 -- Read-Tools (geteilt mit anderen Agenten)
-hivemind/search_wiki          { "query": "...", "tags": [...] }
-hivemind/list_epics           { "project_id": "uuid" }
-hivemind/get_epic             { "id": "uuid" }
-hivemind/get_project_members  { "project_id": "uuid" }
-hivemind/list_skills          { "service_scope": [...] }
+hivemind-search_wiki          { "query": "...", "tags": [...] }
+hivemind-list_epics           { "project_id": "uuid" }
+hivemind-get_epic             { "id": "uuid" }
+hivemind-get_project_members  { "project_id": "uuid" }
+hivemind-list_skills          { "service_scope": [...] }
 
 -- Write-Tools (Stratege-spezifisch)
-hivemind/propose_epic         { "project_id": "uuid", "title": "...", "description": "...",
+hivemind-propose_epic         { "project_id": "uuid", "title": "...", "description": "...",
                                 "rationale": "...", "suggested_priority": "critical|high|medium|low",
                                 "suggested_phase": 1, "depends_on": ["uuid"],
                                 "suggested_owner_id": "uuid" }
@@ -153,10 +153,10 @@ hivemind/propose_epic         { "project_id": "uuid", "title": "...", "descripti
                                 -- Landet als [EPIC PROPOSAL] in Triage Station
                                 -- Optional: depends_on verweist auf andere Proposal-UUIDs oder Epic-UUIDs
 
-hivemind/update_epic_proposal { "proposal_id": "uuid", "title": "...", "description": "..." }
+hivemind-update_epic_proposal { "proposal_id": "uuid", "title": "...", "description": "..." }
                                 -- Proposal nachbessern (nur solange state = proposed)
 
-hivemind/draft_requirement    { "text": "...", "priority_hint": "high|medium|low",
+hivemind-draft_requirement    { "text": "...", "priority_hint": "high|medium|low",
                                 "tags": ["string"] }
                                 -- Erzeugt enriched Stratege-Prompt aus Freitext-Anforderung
                                 -- Erstellt epic_proposals-Eintrag (state: draft)
@@ -164,8 +164,8 @@ hivemind/draft_requirement    { "text": "...", "priority_hint": "high|medium|low
                                 -- Phase 3+: pgvector Similar Epics + Relevant Skills
 
 -- Write-Tools (geteilt — Wiki für Roadmap-Dokumentation)
-hivemind/create_wiki_article  { "title": "...", "slug": "...", "content": "...", "tags": [...] }
-hivemind/update_wiki_article  { "id": "uuid", "content": "..." }
+hivemind-create_wiki_article  { "title": "...", "slug": "...", "content": "...", "tags": [...] }
+hivemind-update_wiki_article  { "id": "uuid", "content": "..." }
 ```
 
 ---

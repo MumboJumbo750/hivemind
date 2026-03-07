@@ -5,21 +5,17 @@ Endpoints:
   GET /api/nexus/graph3d     — Returns 3D-optimised graph for Three.js (TASK-8-017).
   GET /api/nexus/bug-counts  — Bug-count aggregation per code_node (TASK-7-014).
 """
-import hashlib
-import random
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models.code_node import CodeEdge, CodeNode
-from app.models.node_bug_report import NodeBugReport
 from app.routers.deps import get_current_actor
 from app.schemas.auth import CurrentActor
+from app.services import nexus_service
 
 router = APIRouter(prefix="/nexus", tags=["nexus"])
 
@@ -59,26 +55,7 @@ async def get_nexus_graph(
     db: AsyncSession = Depends(get_db),
 ):
     """Return code nodes + edges for Nexus Grid visualization."""
-    nodes_query = select(CodeNode)
-    if project_id:
-        nodes_query = nodes_query.where(CodeNode.project_id == project_id)
-
-    result = await db.execute(nodes_query)
-    nodes = result.scalars().all()
-    node_ids = {n.id for n in nodes}
-
-    # Fetch edges connected to these nodes
-    edges_list: list[CodeEdge] = []
-    if node_ids:
-        edges_result = await db.execute(
-            select(CodeEdge).where(
-                or_(
-                    CodeEdge.source_id.in_(node_ids),
-                    CodeEdge.target_id.in_(node_ids),
-                )
-            )
-        )
-        edges_list = list(edges_result.scalars().all())
+    nodes, edges_list = await nexus_service.get_graph_data(db, project_id)
 
     explored = sum(1 for n in nodes if n.explored_at is not None)
 
@@ -111,24 +88,6 @@ async def get_nexus_graph(
 
 
 # ── Nexus Grid 3D endpoint (TASK-8-017) ───────────────────────────────────────
-
-# Y-layer per node_type (used as stable "depth" hint for Three.js)
-_NODE_TYPE_Y: dict[str, float] = {
-    "file": 0.0,
-    "module": 10.0,
-    "class": 20.0,
-    "function": 30.0,
-}
-
-
-def _stable_coords(node_id: uuid.UUID, node_type: str) -> tuple[float, float, float]:
-    """Return deterministic (x, y, z) coordinates seeded from the node UUID."""
-    seed_int = int(hashlib.md5(node_id.bytes, usedforsecurity=False).hexdigest(), 16)  # noqa: S324
-    rng = random.Random(seed_int)  # noqa: S311
-    x = round(rng.uniform(-50.0, 50.0), 3)
-    y = _NODE_TYPE_Y.get(node_type, 15.0)
-    z = round(rng.uniform(-25.0, 25.0), 3)
-    return x, y, z
 
 
 class Node3DItem(BaseModel):
@@ -168,35 +127,13 @@ async def get_nexus_graph3d(
 
     Positions are seeded from the node UUID so they are stable across requests.
     """
-    # Total count for pagination metadata
-    count_stmt = select(func.count()).select_from(CodeNode)
-    if project_id:
-        count_stmt = count_stmt.where(CodeNode.project_id == project_id)
-    total_nodes: int = (await db.execute(count_stmt)).scalar_one()
-
-    # Paginated node query
-    nodes_stmt = select(CodeNode).offset(page * page_size).limit(page_size)
-    if project_id:
-        nodes_stmt = nodes_stmt.where(CodeNode.project_id == project_id)
-    nodes = list((await db.execute(nodes_stmt)).scalars().all())
-    node_ids = {n.id for n in nodes}
-
-    # Edges connected to the returned nodes
-    edges_list: list[CodeEdge] = []
-    if node_ids:
-        edges_result = await db.execute(
-            select(CodeEdge).where(
-                or_(
-                    CodeEdge.source_id.in_(node_ids),
-                    CodeEdge.target_id.in_(node_ids),
-                )
-            )
-        )
-        edges_list = list(edges_result.scalars().all())
+    total_nodes, nodes, edges_list = await nexus_service.get_graph3d_data(
+        db, project_id, page, page_size
+    )
 
     node_items: list[Node3DItem] = []
     for n in nodes:
-        x, y, z = _stable_coords(n.id, n.node_type)
+        x, y, z = nexus_service.stable_coords(n.id, n.node_type)
         node_items.append(
             Node3DItem(
                 id=str(n.id),
@@ -254,49 +191,7 @@ async def get_bug_counts(
     """Return aggregated bug counts per code_node for the Bug-Heatmap layer."""
     del actor
 
-    # Aggregate bug reports grouped by node_id
-    stmt = (
-        select(
-            NodeBugReport.node_id,
-            func.sum(NodeBugReport.count).label("total_count"),
-            func.json_agg(
-                func.json_build_object(
-                    "sentry_issue_id", NodeBugReport.sentry_issue_id,
-                    "count", NodeBugReport.count,
-                    "last_seen", NodeBugReport.last_seen,
-                    "stack_trace_hash", NodeBugReport.stack_trace_hash,
-                )
-            ).label("issues"),
-        )
-        .where(NodeBugReport.node_id.is_not(None))
-        .group_by(NodeBugReport.node_id)
-    )
-
-    if project_id:
-        # Join code_nodes to filter by project
-        stmt = (
-            select(
-                NodeBugReport.node_id,
-                func.sum(NodeBugReport.count).label("total_count"),
-                func.json_agg(
-                    func.json_build_object(
-                        "sentry_issue_id", NodeBugReport.sentry_issue_id,
-                        "count", NodeBugReport.count,
-                        "last_seen", NodeBugReport.last_seen,
-                        "stack_trace_hash", NodeBugReport.stack_trace_hash,
-                    )
-                ).label("issues"),
-            )
-            .join(CodeNode, CodeNode.id == NodeBugReport.node_id)
-            .where(
-                NodeBugReport.node_id.is_not(None),
-                CodeNode.project_id == project_id,
-            )
-            .group_by(NodeBugReport.node_id)
-        )
-
-    result = await db.execute(stmt)
-    rows = result.all()
+    rows = await nexus_service.get_bug_counts_data(db, project_id)
 
     items: list[NodeBugCountItem] = []
     for row in rows:

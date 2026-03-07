@@ -29,7 +29,7 @@
   - `GET /api/projects/{id}/members` — Mitglieder-Liste
 - [ ] `app_settings`-Tabelle mit Solo/Team-Modus-Persistenz (Laufzeit-Switch)
 - [ ] **Node-Bootstrap:** Beim ersten Start `node_identity` auto-generieren (UUID + Ed25519-Keypair via `cryptography`-Lib) + eigenen Node in `nodes`-Tabelle eintragen
-- [ ] Manuelles Task-Assignment: `PATCH /api/tasks/{task_key}` mit `assigned_to`-Feld. Die `task_assigned`-Notification wird ab Phase 6 backend-generiert; in Phase 2 wird die Zuweisung client-seitig als Notification abgeleitet. Das MCP-Tool `hivemind/assign_task` (mit Context-Boundary-Integration) kommt in Phase 4; bis dahin ist die REST-Zuweisung der einzige Weg.
+- [ ] Manuelles Task-Assignment: `PATCH /api/tasks/{task_key}` mit `assigned_to`-Feld. Die `task_assigned`-Notification wird ab Phase 6 backend-generiert; in Phase 2 wird die Zuweisung client-seitig als Notification abgeleitet. Das MCP-Tool `hivemind-assign_task` (mit Context-Boundary-Integration) kommt in Phase 4; bis dahin ist die REST-Zuweisung der einzige Weg.
 
 ### Frontend
 

@@ -17,17 +17,25 @@ guards:
 ## Skill: Review-Recommendation (Reviewer-Agent Write-Tool)
 
 ### Rolle
-Du implementierst das MCP-Write-Tool `hivemind/submit_review_recommendation` und den zugehörigen Governance-Flow. Der Reviewer ist der 7. AI-Agent — er prüft Task-Ergebnisse gegen DoD, Guards und Skills und gibt eine Confidence-basierte Empfehlung ab. Das Tool ändert **nie** direkt den Task-State.
+Du implementierst das MCP-Write-Tool `hivemind-submit_review_recommendation` und den zugehörigen Governance-Flow. Der Reviewer ist der 7. AI-Agent — er prüft Task-Ergebnisse gegen DoD, Guards und Skills und gibt eine Confidence-basierte Empfehlung ab. Das Tool ändert **nie** direkt den Task-State.
 
 ### Kontext
 Der Reviewer-Agent wird vom Conductor dispatcht wenn `governance.review ≠ 'manual'`. Seine Empfehlung wird in `review_recommendations` gespeichert. Je nach Governance-Level:
 - `assisted`: Owner sieht AI-Empfehlung + 1-Click Approve/Reject
 - `auto`: Bei Confidence ≥ Threshold → Auto-Approve mit Grace Period
+- Vor Worker-/Review-Prompts und spaetestens am `in_review`-Gate materialisiert das Backend alle passenden aktiven Guards in `task_guards`, damit der Reviewer denselben Guard-Stand sieht, den auch das State-Gate enforced.
+- Der Auto-Approve-Pfad darf den Task-State nie direkt setzen. Er muss denselben kanonischen Abschluss-Service wie `approve_review` nutzen, damit EXP, `task_done`, Epic-Abschlusspruefung und der nachgelagerte Gaertner-Dispatch erhalten bleiben.
+- `reject`-Empfehlungen fuehren nie zu Auto-Reject. Reale Rejects laufen weiterhin ueber den kanonischen `reject_review`-Pfad und erzeugen `task_qa_failed`, damit der Gaertner gezielt Review-Feedback destillieren kann.
+
+Ist-Stand-Hinweis:
+- Der Review-Flow ist derzeit der Governance-Typ mit dem saubersten Unterschied zwischen `assisted` und `auto`.
+- Andere Governance-Typen koennen ebenfalls AI-Dispatch aktivieren, besitzen aber aktuell noch keinen gleichwertig ausmodellierten Auto-Abschluss.
 
 ### Konventionen
 - MCP-Tool in `app/mcp/tools/reviewer_write_tools.py`
 - Model in `app/models/review_recommendation.py`
-- Service in `app/services/review_service.py` (ergänzt bestehenden Review-Flow)
+- Reviewer-spezifische Ablage/Abfragen in `app/services/review_service.py`
+- Kanonischer State-Abschluss in `app/services/review_workflow.py`
 - Das Tool erfordert die `reviewer`-Permission (system-intern, nicht user-aufrufbar)
 - `submit_review_recommendation` speichert nur — es ruft **nie** `approve_review` oder `reject_review` auf
 - Die Governance-Logik entscheidet nach dem Speichern über den nächsten Schritt
@@ -153,10 +161,19 @@ async def check_auto_review_grace_periods():
         for rec in expired:
             task = await db.get(Task, rec.task_id)
             if task.state == "in_review":  # Noch nicht manuell entschieden
-                await ReviewService(db).approve(task, auto=True)
+                await approve_task_review(
+                    db,
+                    task,
+                    comment="Auto-approved after grace period",
+                )
                 rec.auto_approved = True
                 await db.commit()
 ```
+
+Dabei gilt zwingend:
+- kein direktes `task.state = "done"` im Cron-Job
+- derselbe Abschluss-Service fuer manuellen und automatischen Review-Approve
+- der komplette Folgepfad (`task_done` → Gaertner) muss identisch bleiben
 
 ### Veto-Endpoint (Owner unterbricht Grace Period)
 
@@ -181,5 +198,6 @@ async def veto_auto_review(
 - **Auto-Reject gibt es NICHT** — `reject`-Empfehlung erfordert immer menschliche Bestätigung
 - **Grace Period** — Owner kann innerhalb des Zeitfensters widersprechen (Veto)
 - `submit_review_recommendation` ändert **nie** direkt den Task-State
+- Auto-Approve nutzt den kanonischen Review-Workflow-Service statt Sonderlogik im Cron-Job
 - Jede Empfehlung wird vollständig im Audit-Trail geloggt
 - Confidence < Threshold → immer Fallback auf `assisted` (nie blockieren)

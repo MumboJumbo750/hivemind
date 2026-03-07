@@ -50,7 +50,7 @@ Der Host hat kein Python-Virtualenv. `alembic`, `pytest`, `pip` existieren nur i
 # ✅ RICHTIG — im Container ausführen:
 podman compose exec backend alembic upgrade head
 podman compose exec backend pytest tests/
-podman compose exec backend python -m app.cli seed
+podman compose exec backend /app/.venv/bin/python /app/scripts/seed_import.py
 
 # ❌ FALSCH — funktioniert nicht auf dem Host:
 alembic upgrade head        # kein alembic auf dem Host!
@@ -120,7 +120,7 @@ podman compose exec backend /app/.venv/bin/pytest tests/integration/ -v
 podman compose exec backend /app/.venv/bin/pytest tests/ -k "test_name" -v
 
 # Seed-Daten
-podman compose exec backend /app/.venv/bin/python -m app.cli seed
+podman compose exec backend /app/.venv/bin/python /app/scripts/seed_import.py
 ```
 
 ### Datenbank
@@ -158,21 +158,21 @@ Der MCP-Server ist **Teil der FastAPI-App** und läuft im `backend`-Container au
 | `result_text` | `result` |
 ### MCP-Tool-Aufrufe vom Host (ohne MCP-Client)
 
-**Alle MCP-Tools laufen über EINEN Endpoint:** `POST /api/mcp/call` mit Body `{"tool": "hivemind/TOOLNAME", "arguments": {...}}`.
+**Alle MCP-Tools laufen über EINEN Endpoint:** `POST /api/mcp/call` mit Body `{"tool": "hivemind-TOOLNAME", "arguments": {...}}`.
 Es gibt **keine** individuellen REST-Endpoints pro Tool (kein `/api/mcp/submit_result` etc.).
 
 ```bash
 # ✅ RICHTIG — curl vom Host:
 curl -X POST http://localhost:8000/api/mcp/call \
   -H "Content-Type: application/json" \
-  -d '{"tool": "hivemind/get_task", "arguments": {"task_key": "TASK-88"}}'
+  -d '{"tool": "hivemind-get_task", "arguments": {"task_key": "TASK-88"}}'
 
 # ✅ RICHTIG — mcp_call.py im Container:
 podman compose exec backend /app/.venv/bin/python /workspace/scripts/mcp_call.py \
-  "hivemind/get_task" '{"task_key": "TASK-88"}'
+  "hivemind-get_task" '{"task_key": "TASK-88"}'
 
 # ❌ FALSCH — Python auf dem Host (existiert nicht):
-python scripts/mcp_call.py "hivemind/get_task" ...    # Kein Python auf dem Host!
+python scripts/mcp_call.py "hivemind-get_task" ...    # Kein Python auf dem Host!
 
 # ❌ FALSCH — Individuelle Endpoints (existieren nicht):
 curl http://localhost:8000/api/mcp/submit_result       # 404!
@@ -189,7 +189,7 @@ curl http://localhost:8000/api/mcp/submit_result       # 404!
 # ✅ RICHTIG — Einfache Anführungszeichen:
 Invoke-WebRequest -Uri "http://localhost:8000/api/mcp/call" `
   -Method POST -ContentType "application/json" `
-  -Body '{"tool": "hivemind/get_task", "arguments": {"task_key": "TASK-88"}}'
+  -Body '{"tool": "hivemind-get_task", "arguments": {"task_key": "TASK-88"}}'
 
 # ✅ RICHTIG — JSON aus Datei:
 $body = Get-Content payload.json -Raw
@@ -245,7 +245,7 @@ Alle Variablen haben Defaults in `docker-compose.yml`. Overrides via `.env` im P
 
 ## IDE MCP-Integration
 
-Hivemind läuft als MCP-Server — jede IDE die MCP unterstützt bekommt alle `hivemind/*`-Tools.
+Hivemind läuft als MCP-Server — jede IDE die MCP unterstützt bekommt alle `hivemind-*`-Tools.
 
 ### VS Code / Copilot Agent Mode
 
@@ -320,6 +320,25 @@ Nützlich für automatische Einrichtungsskripte.
 
 ## Codebase-Konventionen (für AI-Agents)
 
+### Unified Key System
+Alle Entity-Keys werden über PostgreSQL Sequences generiert — zentrale Implementierung in `backend/app/services/key_generator.py`.
+
+```
+Format: {PREFIX}-{n}  (n = nextval('{entity}_key_seq'))
+
+  Epic:  EPIC-{n}    (epic_key_seq)
+  Task:  TASK-{n}    (task_key_seq)
+  Skill: SKILL-{n}   (skill_key_seq)
+  Wiki:  WIKI-{n}    (wiki_key_seq)
+  Guard: GUARD-{n}   (guard_key_seq)
+  Doc:   DOC-{n}     (doc_key_seq)
+```
+
+- Keys sind **immutable** (DB-Trigger), **unique**, und werden **nie recycled**
+- KEIN phasen-spezifisches Format mehr (kein `TASK-{prefix}-NNN`)
+- API-seitig werden Entitäten per Key referenziert, intern auf UUID aufgelöst
+- `external_id` bleibt für externe System-IDs (z.B. YouTrack) reserviert
+
 ### APScheduler
 Jobs **immer** in `backend/app/services/scheduler.py` → `start_scheduler()` registrieren — **nie** in `main.py`.
 
@@ -340,7 +359,7 @@ node_bug_reports.node_id → code_nodes.id  (NICHT nodes.id!)
 
 ### Workspace-FS Tools
 
-Die MCP-Filesystem-Tools (`hivemind/fs_read`, `fs_write`, `fs_list`, `fs_search`, `fs_stat`) laufen im `backend`-Container und greifen via Volume-Mount auf den Workspace zu.
+Die MCP-Filesystem-Tools (`hivemind-fs_read`, `fs_write`, `fs_list`, `fs_search`, `fs_stat`) laufen im `backend`-Container und greifen via Volume-Mount auf den Workspace zu.
 
 **Implementierung:** `backend/app/mcp/tools/fs_tools.py`
 **Vollständige Doku:** `docs/features/workspace-fs.md`

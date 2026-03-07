@@ -64,7 +64,7 @@
   - DoD-Checkliste (read-only, manuelle Abhakung)
   - Kommentar-Feld (optional)
   - Buttons: `[✗ ABLEHNEN → qa_failed]` und `[✓ GENEHMIGEN → done]`
-  - Ruft `hivemind/approve_review` bzw. `hivemind/reject_review` auf (ohne Auth in Phase 1)
+  - Ruft `hivemind-approve_review` bzw. `hivemind-reject_review` auf (ohne Auth in Phase 1)
   - Ab Phase 2 delegiert die Prompt Station an den Command Deck (vollständiges Review Panel dort)
 - [ ] **Prompt Station: Inline-Scoping Mini-Formular** (Phase 1 ohne Command Deck):
   - Wenn Epic `incoming` → Prompt Station zeigt eingebettetes Scoping-Formular
@@ -213,7 +213,7 @@ hivemind/
 - [ ] Projekt-Anlegen-Dialog funktioniert: Projekt wird erstellt und ist in System Bar wählbar
 - [ ] **Inline-Review:** Wenn ein Task `in_review` geht, erscheint das Mini-Formular in der Prompt Station mit DoD-Checkliste + Approve/Reject-Buttons
 - [ ] **Inline-Scoping:** Wenn ein Epic `incoming` ist, erscheint das Scoping-Formular in der Prompt Station mit Priorität-Auswahl (low/medium/high/critical) + optionalem Deadline-Feld
-- [ ] `POST /api/tasks/{task_key}/review { "action": "approve" }` über Inline-Formular setzt Task auf `done` (logische Operation `hivemind/approve_review` — in Phase 1 als REST-Endpoint, ab Phase 3 auch als MCP-Tool)
+- [ ] `POST /api/tasks/{task_key}/review { "action": "approve" }` über Inline-Formular setzt Task auf `done` (logische Operation `hivemind-approve_review` — in Phase 1 als REST-Endpoint, ab Phase 3 auch als MCP-Tool)
 - [ ] `POST /api/tasks/{task_key}/review { "action": "reject" }` über Inline-Formular setzt Task auf `qa_failed`
 
 ---

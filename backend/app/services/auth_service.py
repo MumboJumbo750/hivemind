@@ -44,3 +44,65 @@ def create_refresh_token(user_id: str) -> str:
 def decode_token(token: str) -> dict:
     """Validiert und dekodiert Token. Wirft JWTError bei Fehler."""
     return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+
+
+# ─── DB-Helfer (async) ───────────────────────────────────────────────────────
+import uuid as _uuid
+
+from sqlalchemy import select as _select
+from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
+
+
+async def get_user_by_id(db: _AsyncSession, user_id: _uuid.UUID):
+    """Gibt User per UUID zurück oder None."""
+    from app.models.user import User
+    return await db.get(User, user_id)
+
+
+async def get_user_by_username(db: _AsyncSession, username: str):
+    """Gibt User per Username zurück oder None."""
+    from app.models.user import User
+    result = await db.execute(_select(User).where(User.username == username).limit(1))
+    return result.scalar_one_or_none()
+
+
+async def get_any_user(db: _AsyncSession):
+    """Gibt irgendeinen User zurück oder None (Solo-Fallback)."""
+    from app.models.user import User
+    result = await db.execute(_select(User).limit(1))
+    return result.scalar_one_or_none()
+
+
+async def create_user(
+    db: _AsyncSession,
+    user_id: _uuid.UUID,
+    username: str,
+    display_name: str | None,
+    email: str | None,
+    password_hash: str,
+    role: str,
+):
+    """Erstellt und speichert einen neuen User (flush, kein commit)."""
+    from app.models.user import User
+    user = User(
+        id=user_id,
+        username=username,
+        display_name=display_name,
+        email=email,
+        password_hash=password_hash,
+        role=role,
+    )
+    db.add(user)
+    await db.flush()
+    return user
+
+
+async def get_users_by_ids(
+    db: _AsyncSession, user_ids: "set[_uuid.UUID]"
+) -> "dict[_uuid.UUID, str]":
+    """Gibt {user_id: username} für die gegebenen IDs zurück."""
+    from app.models.user import User
+    if not user_ids:
+        return {}
+    result = await db.execute(_select(User).where(User.id.in_(user_ids)))
+    return {u.id: u.username for u in result.scalars().all()}

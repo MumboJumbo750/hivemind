@@ -3,15 +3,13 @@
 Endpoints:
   GET /api/sync-outbox — List outbox entries with optional filters
 """
-import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models.sync import SyncOutbox
+from app.services.sync_service import list_outbox_rows
 
 router = APIRouter(prefix="/sync-outbox", tags=["sync-outbox"])
 
@@ -28,36 +26,13 @@ async def list_outbox_entries(
     db: AsyncSession = Depends(get_db),
 ):
     """List sync outbox entries with optional filters."""
-    q = select(SyncOutbox).order_by(SyncOutbox.created_at.desc())
-
-    if direction:
-        q = q.where(SyncOutbox.direction == direction)
-    if routing_state:
-        q = q.where(SyncOutbox.routing_state == routing_state)
-    if system:
-        q = q.where(SyncOutbox.system == system)
-    if entity_type:
-        q = q.where(SyncOutbox.entity_type == entity_type)
-    if state:
-        q = q.where(SyncOutbox.state == state)
-
-    q = q.offset(offset).limit(limit)
-    result = await db.execute(q)
-    entries = result.scalars().all()
-
-    return [
-        {
-            "id": str(e.id),
-            "dedup_key": e.dedup_key,
-            "direction": e.direction,
-            "system": e.system,
-            "entity_type": e.entity_type,
-            "entity_id": e.entity_id,
-            "payload": e.payload,
-            "state": e.state,
-            "routing_state": e.routing_state,
-            "attempts": e.attempts,
-            "created_at": e.created_at.isoformat() if e.created_at else None,
-        }
-        for e in entries
-    ]
+    return await list_outbox_rows(
+        db,
+        direction=direction,
+        routing_state=routing_state,
+        system=system,
+        entity_type=entity_type,
+        state=state,
+        limit=limit,
+        offset=offset,
+    )

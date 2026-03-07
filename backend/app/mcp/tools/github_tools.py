@@ -3,11 +3,11 @@
 Read-only tools for agents to access GitHub/GitLab data via their REST APIs.
 
 Tools:
-  hivemind/get_github_pr           — GitHub Pull Request details
-  hivemind/get_github_issue        — GitHub Issue details
-  hivemind/get_github_check_status — GitHub Check Run status for a commit ref
-  hivemind/get_gitlab_mr           — GitLab Merge Request details
-  hivemind/get_gitlab_pipeline     — GitLab Pipeline status
+  hivemind-get_github_pr           — GitHub Pull Request details
+  hivemind-get_github_issue        — GitHub Issue details
+  hivemind-get_github_check_status — GitHub Check Run status for a commit ref
+  hivemind-get_gitlab_mr           — GitLab Merge Request details
+  hivemind-get_gitlab_pipeline     — GitLab Pipeline status
 """
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ async def _handle_get_github_pr(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_github_pr",
+        name="hivemind-get_github_pr",
         description="Get GitHub Pull Request details (read-only).",
         inputSchema={
             "type": "object",
@@ -107,7 +107,7 @@ async def _handle_get_github_issue(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_github_issue",
+        name="hivemind-get_github_issue",
         description="Get GitHub Issue details (read-only).",
         inputSchema={
             "type": "object",
@@ -138,7 +138,7 @@ async def _handle_get_github_check_status(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_github_check_status",
+        name="hivemind-get_github_check_status",
         description="Get GitHub Check Run status for a commit (read-only).",
         inputSchema={
             "type": "object",
@@ -171,7 +171,7 @@ async def _handle_get_gitlab_mr(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_gitlab_mr",
+        name="hivemind-get_gitlab_mr",
         description="Get GitLab Merge Request details (read-only).",
         inputSchema={
             "type": "object",
@@ -206,7 +206,7 @@ async def _handle_get_gitlab_pipeline(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_gitlab_pipeline",
+        name="hivemind-get_gitlab_pipeline",
         description="Get GitLab Pipeline status (read-only).",
         inputSchema={
             "type": "object",

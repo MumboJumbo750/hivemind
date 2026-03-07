@@ -83,6 +83,8 @@ async def test_get_embedding_status_returns_counts_per_entity() -> None:
             _scalar_result(1),   # skills with embedding
             _scalar_result(8),   # wiki total
             _scalar_result(8),   # wiki with embedding
+            _scalar_result(3),   # docs total
+            _scalar_result(2),   # docs with embedding
         ]
     )
 
@@ -98,6 +100,9 @@ async def test_get_embedding_status_returns_counts_per_entity() -> None:
     assert by_type["wiki_articles"].total == 8
     assert by_type["wiki_articles"].with_embedding == 8
     assert by_type["wiki_articles"].without_embedding == 0
+    assert by_type["docs"].total == 3
+    assert by_type["docs"].with_embedding == 2
+    assert by_type["docs"].without_embedding == 1
 
 
 @pytest.mark.asyncio

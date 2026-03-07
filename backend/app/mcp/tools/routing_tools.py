@@ -49,7 +49,7 @@ def _parse_uuid(value: object) -> uuid.UUID | None:
 
 register_tool(
     Tool(
-        name="hivemind/assign_bug",
+        name="hivemind-assign_bug",
         description=(
             "Manually assign a node_bug_report to an epic. "
             "Use when pgvector auto-routing score is below threshold. "

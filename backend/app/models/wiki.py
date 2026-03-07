@@ -39,6 +39,7 @@ class WikiArticle(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()
     )
+    wiki_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True, unique=True)
     category_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("wiki_categories.id")
     )

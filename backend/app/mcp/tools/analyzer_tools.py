@@ -1,7 +1,7 @@
 """MCP Analyzer Tool — TASK-WFS-003.
 
 Tool:
-  hivemind/run_analyzer — Führt Health-Analyzer im Container aus und liefert JSON-Report.
+  hivemind-run_analyzer — Führt Health-Analyzer im Container aus und liefert JSON-Report.
 
 Features:
   - analyzer_name : einzelner Name, kommagetrennte Liste, oder "all" (default)
@@ -400,7 +400,7 @@ def _err(code: str, message: str) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/run_analyzer",
+        name="hivemind-run_analyzer",
         description=(
             "Führt den Hivemind Health-Scanner im Container aus und liefert einen JSON-Report.\n"
             "Jeder Analyzer hat ein eigenes Timeout von 60 s. "

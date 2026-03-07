@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-WORKER-001",
+  "epic_ref": "EPIC-WORKER-ORCH",
+  "title": "Epic-Start-Orchestrierung als expliziten Run-Pfad bauen",
+  "description": "Implementiere einen expliziten Epic-Start-Mechanismus, der nicht nur einen einzelnen Agenten dispatcht, sondern einen vollständigen Epic-Run serverseitig arrangiert.\n\n**Was zu implementieren ist:**\n\n1. Startbare Epics definieren und validieren\n2. `Epic Start`-Service/Endpoint mit Dry-Run und echten Run-Parametern bauen\n3. Epic-Run als eigene Ausführung mit Status, Startzeit, Operator und Konfiguration modellieren\n4. Startvoraussetzungen prüfen: Workspace, Governance, Provider, Task-Konsistenz\n5. Ergebnis des Starts sichtbar machen: gestartet, blockiert, Dry-Run-Analyse, Fehlergründe\n\n**Wichtig:** Ein Epic-Run ist ein orchestrierter Vorgang, nicht nur ein kosmetischer Button.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Es gibt einen expliziten Epic-Start-Pfad mit Dry-Run",
+      "Epic-Runs werden als eigene Ausführung nachvollziehbar gespeichert",
+      "Nicht startbare Epics liefern konkrete Gründe",
+      "Operator kann Startparameter kontrollieren"
+    ]
+  },
+  "tags": ["backend", "epic", "orchestration", "api"],
+  "subtasks": [],
+  "pinned_skills": ["conductor-orchestrator", "fastapi-endpoint", "state-machine-transition"],
+  "linked_wiki": ["autonomy-loop"],
+  "source_doc": "docs/features/epic-start-parallel-workers.md",
+  "estimated_complexity": "large",
+  "depends_on": []
+}

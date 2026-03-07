@@ -255,11 +255,11 @@ Guards werden **vor dem Übergang `in_progress → in_review`** geprüft:
 ```text
 Worker arbeitet an TASK-88
   │
-  ├─ Worker: hivemind/get_guards { "task_id": "TASK-88" }
+  ├─ Worker: hivemind-get_guards { "task_id": "TASK-88" }
   │   → System liefert alle Guards (global + project + skill + task)
   │
   ├─ Worker führt Guards aus (manuell oder via AI-Client)
-  │   → hivemind/report_guard_result { "task_id": "TASK-88",
+  │   → hivemind-report_guard_result { "task_id": "TASK-88",
   │                                    "guard_id": "uuid",
   │                                    "status": "passed",
   │                                    "result": "All 42 tests passed" }
@@ -284,7 +284,7 @@ Guards werden im Worker-Prompt explizit aufgelistet (→ [Prompt Pipeline](../ag
 [skill]     ◌ pytest --cov-fail-under=80  — executable
 [task]      ◌ ./tests/integration/auth.sh — executable
 
-Ergebnis melden: hivemind/report_guard_result
+Ergebnis melden: hivemind-report_guard_result
 ```
 
 ### Im Review Panel
@@ -328,13 +328,13 @@ Skills und Guards verfolgen bewusst **unterschiedliche Determinismus-Strategien*
 
 **Rationale:** Skill-Pinning sichert, dass der Worker dieselben Anweisungen sieht die der Architekt erwartet hat. Guard-Dynamik hingegen ist gewollt: wenn ein neues Sicherheits-Guard aktiviert wird, soll es auf alle laufenden Tasks angewendet werden — nicht erst auf zukünftige.
 
-**Konsequenz für laufende Tasks:** Ein Guard der nach `in_progress` hinzugefügt wird, erscheint in `get_guards` mit `status: pending`. Der Worker ist verantwortlich, ihn zu prüfen — er blockiert den `in_review`-Übergang wie jeder andere Guard.
+**Konsequenz für laufende Tasks:** Ein Guard der nach `in_progress` aktiviert wird, wird in `task_guards` materialisiert und erscheint mit `status: pending`. Das passiert beim Aktivieren/Mergen des Guards sowie spaetestens bei `get_guards`, `report_guard_result`, `link_skill`, Prompt-Generierung oder dem `in_review`-Gate. Der Worker ist verantwortlich, ihn zu prüfen — er blockiert den `in_review`-Übergang wie jeder andere Guard.
 
 ---
 
 ### Error Handling — fehlende Guard-Einträge
 
-`hivemind/get_guards` gibt für jeden aktiven Guard einen `task_guards`-Eintrag zurück. Falls ein Guard neu hinzugekommen ist (nach Task-Start), wird er dynamisch mit `status: pending` hinzugefügt.
+`hivemind-get_guards` arbeitet auf materialisierten `task_guards`. Falls ein Guard neu hinzugekommen ist (nach Task-Start), legt das Backend den fehlenden `task_guards`-Eintrag vor der Antwort mit `status: pending` an.
 
 Fehlerfall `report_guard_result`:
 
@@ -375,7 +375,7 @@ Der Kartograph entdeckt Guards automatisch beim Repo-Analyse:
 Kartograph analysiert Repo
   → erkennt: pyproject.toml mit [tool.ruff] + [tool.pytest.ini_options]
   → erstellt Guard-Proposals:
-     hivemind/propose_guard {
+     hivemind-propose_guard {
        "title": "Python Linting",
        "type": "executable",
        "command": "ruff check .",
@@ -383,8 +383,9 @@ Kartograph analysiert Repo
        "project_id": "uuid"
      }
   → Proposer reicht Proposal ein (`submit_guard_proposal`) → lifecycle: draft → pending_merge
-  → Admin mergt → lifecycle: pending_merge → active
-  → Guard wird automatisch auf alle Tasks mit scope=backend angewendet
+  → Bei `governance.guard_merge != manual` dispatcht der Conductor anschliessend Triage fuer den Review-Entscheid
+  → Merge aktiviert den Guard (`pending_merge → active`)
+  → Guard wird automatisch auf alle passenden Tasks in `task_guards` materialisiert
 ```
 
 ---
@@ -437,23 +438,27 @@ Guard-Änderungen laufen über Proposals (wie Skill-Changes) — kein direkter H
 ## MCP-Tools
 
 ```text
-hivemind/get_guards         { "task_id": "TASK-88" }
+hivemind-get_guards         { "task_id": "TASK-88" }
   → liefert alle Guards (global + project + skill + task) mit Status
 
-hivemind/report_guard_result { "task_id": "TASK-88",
+hivemind-report_guard_result { "task_id": "TASK-88",
                                "guard_id": "uuid",
                                "status": "passed|failed|skipped",
                                "result": "output text" }
 
-hivemind/propose_guard      { "title": "...", "type": "executable",
+hivemind-propose_guard      { "title": "...", "type": "executable",
                                "command": "...", "scope": [...],
                                "project_id": "uuid|null",
                                "skill_id": "uuid|null" }
 
-hivemind/propose_guard_change { "guard_id": "uuid", "diff": "...", "rationale": "..." }
+hivemind-propose_guard_change { "guard_id": "uuid", "diff": "...", "rationale": "..." }
 
-hivemind/submit_guard_proposal { "guard_id": "uuid" } -- draft → pending_merge
+hivemind-submit_guard_proposal { "guard_id": "uuid" } -- draft → pending_merge
 ```
+
+`submit_guard_proposal` ist damit nicht das Ende des Flows. Danach folgt je nach Governance:
+- `manual`: Mensch reviewed den Vorschlag
+- `assisted` / `auto`: Triage bekommt einen Review-Prompt (`triage_guard_proposal`)
 
 ---
 
@@ -462,6 +467,7 @@ hivemind/submit_guard_proposal { "guard_id": "uuid" } -- draft → pending_merge
 ```sql
 CREATE TABLE guards (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  guard_key   TEXT UNIQUE,                    -- GUARD-{n} via guard_key_seq (immutable)
   project_id  UUID REFERENCES projects(id),   -- NULL = global
   skill_id    UUID REFERENCES skills(id),      -- NULL = nicht skill-spezifisch
   title       TEXT NOT NULL,

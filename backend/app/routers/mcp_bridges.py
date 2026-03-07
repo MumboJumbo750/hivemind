@@ -7,12 +7,10 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.routers.deps import get_current_actor, require_role
-from app.models.mcp_bridge import MCPBridgeConfig
 from app.schemas.auth import CurrentActor
 from app.services.mcp_bridge import bridge_registry, BridgeClient, BridgeError
 
@@ -55,8 +53,9 @@ async def list_bridges(
     actor: CurrentActor = Depends(require_role("admin")),
 ):
     """List all MCP bridge configurations (admin only)."""
-    result = await db.execute(select(MCPBridgeConfig).order_by(MCPBridgeConfig.name))
-    bridges = result.scalars().all()
+    from app.services.mcp_bridge import list_bridge_configs
+
+    bridges = await list_bridge_configs(db)
     out = []
     for b in bridges:
         registered = await bridge_registry.get_bridge(b.namespace)
@@ -88,10 +87,9 @@ async def create_bridge(
         raise HTTPException(status_code=400, detail="Namespace 'hivemind' is reserved")
 
     # Check for duplicate
-    existing = await db.execute(
-        select(MCPBridgeConfig).where(MCPBridgeConfig.namespace == data.namespace)
-    )
-    if existing.scalar_one_or_none():
+    from app.services.mcp_bridge import create_bridge_config, get_bridge_config_by_namespace
+
+    if await get_bridge_config_by_namespace(db, data.namespace):
         raise HTTPException(status_code=409, detail=f"Namespace '{data.namespace}' already exists")
 
     # Encrypt env_vars if provided
@@ -104,7 +102,8 @@ async def create_bridge(
         if settings.hivemind_key_passphrase:
             encrypted_env, env_nonce = encrypt_api_key(json.dumps(data.env_vars), settings.hivemind_key_passphrase)
 
-    config = MCPBridgeConfig(
+    config = await create_bridge_config(
+        db,
         id=uuid.uuid4(),
         name=data.name,
         namespace=data.namespace,
@@ -118,9 +117,6 @@ async def create_bridge(
         tool_allowlist=data.tool_allowlist,
         tool_blocklist=data.tool_blocklist,
     )
-    db.add(config)
-    await db.commit()
-    await db.refresh(config)
 
     return MCPBridgeOut(
         id=str(config.id),
@@ -144,10 +140,9 @@ async def test_bridge(
     actor: CurrentActor = Depends(require_role("admin")),
 ):
     """Test bridge connectivity."""
-    result = await db.execute(
-        select(MCPBridgeConfig).where(MCPBridgeConfig.id == uuid.UUID(bridge_id))
-    )
-    config = result.scalar_one_or_none()
+    from app.services.mcp_bridge import get_bridge_config_by_id
+
+    config = await get_bridge_config_by_id(db, uuid.UUID(bridge_id))
     if not config:
         raise HTTPException(status_code=404, detail="Bridge not found")
 
@@ -169,10 +164,9 @@ async def get_bridge_tools(
     actor: CurrentActor = Depends(require_role("admin")),
 ):
     """Get discovered tools for a bridge."""
-    result = await db.execute(
-        select(MCPBridgeConfig).where(MCPBridgeConfig.id == uuid.UUID(bridge_id))
-    )
-    config = result.scalar_one_or_none()
+    from app.services.mcp_bridge import get_bridge_config_by_id
+
+    config = await get_bridge_config_by_id(db, uuid.UUID(bridge_id))
     if not config:
         raise HTTPException(status_code=404, detail="Bridge not found")
     return {"tools": config.discovered_tools or [], "namespace": config.namespace}
@@ -185,14 +179,10 @@ async def delete_bridge(
     actor: CurrentActor = Depends(require_role("admin")),
 ):
     """Delete a bridge configuration."""
-    result = await db.execute(
-        select(MCPBridgeConfig).where(MCPBridgeConfig.id == uuid.UUID(bridge_id))
-    )
-    config = result.scalar_one_or_none()
+    from app.services.mcp_bridge import delete_bridge_config, get_bridge_config_by_id
+
+    config = await get_bridge_config_by_id(db, uuid.UUID(bridge_id))
     if not config:
         raise HTTPException(status_code=404, detail="Bridge not found")
 
-    # Unregister from registry if active
-    await bridge_registry.unregister_bridge(config.namespace)
-    await db.delete(config)
-    await db.commit()
+    await delete_bridge_config(db, config)

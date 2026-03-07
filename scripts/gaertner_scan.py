@@ -11,7 +11,7 @@ PHASE_EPICS = [
 
 all_done = []
 for epic_key in PHASE_EPICS:
-    r = a.mcp_call('hivemind/list_tasks', {'epic_key': epic_key})
+    r = a.mcp_call('hivemind-list_tasks', {'epic_key': epic_key})
     data = json.loads(r['result'][0]['text'])
     tasks = data['data']
     done = [t for t in tasks if t['state'] == 'done']

@@ -4,7 +4,7 @@
 
 Hivemind ist selbst ein MCP-Server. Alle Tools folgen demselben Sicherheitsmodell: AuthN + AuthZ + Idempotenz + Audit.
 
-**Tool-Naming-Konvention:** Alle Tools verwenden den Namespace-Prefix `hivemind/` gefolgt vom Tool-Namen in `snake_case`. Beispiel: `hivemind/get_task`, `hivemind/create_epic`. Kein Tool verwendet `hm/` oder einen anderen Prefix. Intern (Code, Logs, Audit) wird der volle Name `hivemind/<tool>` verwendet.
+**Tool-Naming-Konvention:** Alle Tools verwenden den Namespace-Prefix `hivemind-` gefolgt vom Tool-Namen in `snake_case`. Beispiel: `hivemind-get_task`, `hivemind-create_epic`. Kein Tool verwendet `hm/` oder einen anderen Prefix. Intern (Code, Logs, Audit) wird der volle Name `hivemind-<tool>` verwendet.
 
 ---
 
@@ -28,42 +28,42 @@ Die SSE- und REST-Endpoints sind immer aktiv über denselben FastAPI-Service. De
 ### Rollen `developer` | `admin` | `kartograph`
 
 ```text
-hivemind/get_epic           { "id": "uuid" }
-hivemind/get_task           { "id": "TASK-88" }         -- task_key, nicht UUID
-hivemind/get_skills         { "task_id": "TASK-88" }    -- Bibliothekar-gefiltert
-hivemind/get_skill_versions { "skill_id": "uuid" }      -- immutable Versionshistorie
-hivemind/list_skills        { "service_scope": [...],    -- optional Filter (z.B. ["backend"])
+hivemind-get_epic           { "id": "uuid" }
+hivemind-get_task           { "id": "TASK-88" }         -- task_key, nicht UUID
+hivemind-get_skills         { "task_id": "TASK-88" }    -- Bibliothekar-gefiltert
+hivemind-get_skill_versions { "skill_id": "uuid" }      -- immutable Versionshistorie
+hivemind-list_skills        { "service_scope": [...],    -- optional Filter (z.B. ["backend"])
                               "stack": [...],            -- optional Filter (z.B. ["python"])
                               "lifecycle": "active",     -- optional, default: active
                               "limit": 50, "offset": 0 }
                               -- Browsing aller Skills ohne Task-Bezug
                               -- Stratege nutzt das für Überblick über verfügbare Skills
                               -- Unterschied zu get_skills: kein Bibliothekar-Filtering, kein task_id nötig
-hivemind/get_guards         { "task_id": "TASK-88" }    -- alle Guards (global+project+skill+task)
-hivemind/get_doc            { "id": "uuid" }
-hivemind/get_wiki_article   { "id": "uuid" | "slug": "auth-architektur" }
-hivemind/search_wiki        { "query": "authentication", "tags": ["backend"] }
-hivemind/get_project_members { "project_id": "uuid" }   -- Gibt alle Member eines Projekts zurück:
+hivemind-get_guards         { "task_id": "TASK-88" }    -- alle Guards (global+project+skill+task)
+hivemind-get_doc            { "id": "uuid" }
+hivemind-get_wiki_article   { "id": "uuid" | "slug": "auth-architektur" }
+hivemind-search_wiki        { "query": "authentication", "tags": ["backend"] }
+hivemind-get_project_members { "project_id": "uuid" }   -- Gibt alle Member eines Projekts zurück:
                               -- user_id, display_name, role, zugewiesene Epic-Counts
                               -- Stratege nutzt das für Owner-Empfehlung bei propose_epic
-hivemind/list_projects      { "limit": 50, "offset": 0 }
-hivemind/list_epics         { "project_id": "uuid",     -- Pflicht
+hivemind-list_projects      { "limit": 50, "offset": 0 }
+hivemind-list_epics         { "project_id": "uuid",     -- Pflicht
                               "state": "...",            -- optional Filter
                               "limit": 50, "offset": 0 }
-hivemind/list_tasks         { "epic_id": "EPIC-12",     -- optional (epic_key)
+hivemind-list_tasks         { "epic_id": "EPIC-12",     -- optional (epic_key)
                               "state": "...",            -- optional Filter
                               "assigned_to": "uuid",     -- optional Filter
                               "limit": 50, "offset": 0 }
-hivemind/list_peers         { "state": "online|offline|all" }
+hivemind-list_peers         { "state": "online|offline|all" }
                               -- Gibt verbundene Peer-Nodes mit Name, Node-ID, Status, letztem Kontakt
                               -- und deren verfügbaren federated Skills zurück
                               -- Erfordert: developer-Rolle (Phase F)
-hivemind/list_discovery_sessions { "state": "active|ended|all" }
+hivemind-list_discovery_sessions { "state": "active|ended|all" }
                               -- Gibt aktive und kürzlich beendete Discovery Sessions zurück:
                               --   area, description, exploring_node_id, started_at, ended_at
                               -- Kartograph nutzt das um Doppelarbeit bei Federation zu vermeiden
                               -- Erfordert: developer|kartograph|admin (Phase F)
-hivemind/get_prompt         { "type": "...",            -- Pflicht, siehe unten
+hivemind-get_prompt         { "type": "...",            -- Pflicht, siehe unten
                               "task_id": "TASK-88",     -- Pflicht für: bibliothekar, worker, review
                                                         -- optional für: gaertner (mind. eines von task_id/epic_id Pflicht)
                               "epic_id":  "EPIC-12" }   -- epic_key; Pflicht für: architekt
@@ -74,20 +74,20 @@ hivemind/get_prompt         { "type": "...",            -- Pflicht, siehe unten
 ### Rolle `service` (minimale Scopes)
 
 ```text
-hivemind/get_epic           { "id": "uuid" }
-hivemind/get_task           { "id": "TASK-88" }
+hivemind-get_epic           { "id": "uuid" }
+hivemind-get_task           { "id": "TASK-88" }
 ```
 
 ### Nur Admin (`triage` + `read_audit_log` Permission)
 
 ```text
-hivemind/get_triage         { "state": "unrouted|escalated|dead|all" }
+hivemind-get_triage         { "state": "unrouted|escalated|dead|all" }
                               -- Erfordert: triage-Permission (admin only)
                               -- Enthält alle Event-Typen inkl. Federation (Phase F):
                               --   discovery_session (type='start|end'), peer_online, peer_offline,
                               --   federation_error — werden in Triage Station angezeigt
 
-hivemind/get_audit_log      { "epic_id":   "EPIC-12",   -- optional (epic_key)
+hivemind-get_audit_log      { "epic_id":   "EPIC-12",   -- optional (epic_key)
                               "actor_id":  "uuid",      -- optional
                               "tool_name": "string",    -- optional
                               "from":      "ISO8601",   -- optional
@@ -105,16 +105,23 @@ hivemind/get_audit_log      { "epic_id":   "EPIC-12",   -- optional (epic_key)
 
 ## Identifier-Konvention
 
+Alle Entitäten haben einen **menschenlesbaren Key** im Format `{PREFIX}-{n}` (PostgreSQL Sequence, immutable).
+Zentrale Implementierung: `backend/app/services/key_generator.py`.
+
 | Entität | Identifier | Beispiel | Verwendung in MCP-Tools |
 | --- | --- | --- | --- |
-| Task | `task_key` (TEXT) | `"TASK-88"` | `task_key`-Parameter in allen Tools (Alias `task_id` wird akzeptiert) |
+| Task | `task_key` (TEXT) | `"TASK-42"` | `task_key`-Parameter in allen Tools (Alias `task_id` wird akzeptiert) |
 | Epic | `epic_key` (TEXT) | `"EPIC-12"` | `epic_key`-Parameter in allen Tools (Alias `epic_id` wird akzeptiert) |
-| Skill | UUID | `"550e8400-e29b..."` | `skill_id`-Parameter |
-| Guard | UUID | `"550e8400-e29b..."` | `guard_id`-Parameter |
+| Skill | `skill_key` (TEXT) | `"SKILL-7"` | `skill_key`-Parameter (Legacy: `skill_id` UUID wird weiterhin akzeptiert) |
+| Guard | `guard_key` (TEXT) | `"GUARD-3"` | `guard_key`-Parameter (Legacy: `guard_id` UUID wird weiterhin akzeptiert) |
+| Wiki | `wiki_key` (TEXT) | `"WIKI-5"` | `wiki_key`-Parameter (alternativ: `slug`) |
+| Doc | `doc_key` (TEXT) | `"DOC-8"` | `doc_key`-Parameter |
 | User | UUID | `"550e8400-e29b..."` | `actor_id`-Parameter |
 
-> API-seitig werden Epics per `epic_key` referenziert (`"EPIC-12"`). Das Backend löst den Key intern auf `epics.id` (UUID) auf. `epics.external_id` bleibt für externe System-IDs (z.B. YouTrack Issue-Key) reserviert.
-> Task-Requests verwenden weiterhin `task_key` (`"TASK-88"`). Das Backend löst den Key intern auf `tasks.id` (UUID) auf; persistente Relationen speichern die UUID-FKs (z.B. `context_boundaries.task_id`, `decision_requests.task_id`).
+> **Unified Key System:** Alle Entity-Keys werden über PostgreSQL Sequences generiert (`{entity}_key_seq`).
+> Keys sind **immutable** (DB-Trigger) und **unique**. Sie werden nie recycled.
+> API-seitig werden Entitäten per Key referenziert. Das Backend löst den Key intern auf die UUID auf.
+> `epics.external_id` / `tasks.external_id` bleiben für externe System-IDs (z.B. YouTrack) reserviert.
 
 **`get_prompt` Typen:**
 
@@ -127,7 +134,7 @@ hivemind/get_audit_log      { "epic_id":   "EPIC-12",   -- optional (epic_key)
 | `architekt` | `epic_id` | Epic-Decomposition in Tasks |
 | `stratege` | `project_id` | Plan-Analyse, Epic-Ableitung aus Plan-Dokumenten |
 | `kartograph` | — | Repo-Analyse-Prompt (braucht keinen task/epic Kontext) |
-| `triage` | — | Routing-Entscheidung für `[UNROUTED]`-Items — **erfordert `triage`-Permission (admin only)** |
+| `triage` | optional `skill_id` / `guard_id` / `proposal_id` / `decision_id` | Routing- oder Proposal-Entscheidung — **erfordert `triage`-Permission (admin only)** |
 
 ---
 
@@ -136,7 +143,7 @@ hivemind/get_audit_log      { "epic_id":   "EPIC-12",   -- optional (epic_key)
 ### Stratege-Writes
 
 ```text
-hivemind/propose_epic         { "project_id": "uuid", "title": "...", "description": "...",
+hivemind-propose_epic         { "project_id": "uuid", "title": "...", "description": "...",
                                 "rationale": "...", "suggested_priority": "critical|high|medium|low",
                                 "suggested_phase": 1, "depends_on": ["uuid"],
                                 "suggested_owner_id": "uuid" }
@@ -144,7 +151,7 @@ hivemind/propose_epic         { "project_id": "uuid", "title": "...", "descripti
                                 -- Landet als [EPIC PROPOSAL] in Triage Station
                                 -- depends_on: andere epic_proposals.id oder epics.id
                                 -- developer in eigenen Projekten, admin überall
-hivemind/update_epic_proposal { "proposal_id": "uuid", "title": "...", "description": "..." }
+hivemind-update_epic_proposal { "proposal_id": "uuid", "title": "...", "description": "..." }
                                 -- Proposal nachbessern (nur solange state = proposed)
                                 -- Nur der Proposer oder Admin darf ändern
 ```
@@ -152,22 +159,22 @@ hivemind/update_epic_proposal { "proposal_id": "uuid", "title": "...", "descript
 ### Architekt-Writes
 
 ```text
-hivemind/create_epic          { "project_id": "uuid", "title": "...", "description": "..." }
+hivemind-create_epic          { "project_id": "uuid", "title": "...", "description": "..." }
                                 -- Erstellt neues Epic mit state='incoming'; developer in eigenen Projekten, admin überall
-hivemind/decompose_epic       { "epic_key": "EPIC-12", "tasks": [...] }
+hivemind-decompose_epic       { "epic_key": "EPIC-12", "tasks": [...] }
                                 -- Tasks werden im State 'incoming' erstellt
-hivemind/create_task          { "epic_key": "EPIC-12", "title": "...", "description": "..." }
+hivemind-create_task          { "epic_key": "EPIC-12", "title": "...", "description": "..." }
                                 -- Task wird im State 'incoming' erstellt
-hivemind/create_subtask       { "parent_task_key": "TASK-88", "title": "..." }
-hivemind/link_skill           { "task_key": "TASK-88", "skill_id": "uuid" }
-hivemind/set_context_boundary { "task_key": "TASK-88", "allowed_skills": [...], ... }
-hivemind/assign_task          { "task_key": "TASK-88", "user_id": "uuid",
+hivemind-create_subtask       { "parent_task_key": "TASK-88", "title": "..." }
+hivemind-link_skill           { "task_key": "TASK-88", "skill_id": "uuid" }
+hivemind-set_context_boundary { "task_key": "TASK-88", "allowed_skills": [...], ... }
+hivemind-assign_task          { "task_key": "TASK-88", "user_id": "uuid",
                                 "assigned_node_id": "uuid" }   -- optional (Phase F): Peer-Node für Delegation
                                 -- Setzt assigned_to; löst task_assigned-Notification aus
                                 -- Wenn assigned_node_id angegeben: Task.assigned_node_id wird gesetzt,
                                 --   Backend broadcastet task_delegated-Event an Peer-Node
                                 -- Architekt kann innerhalb eigener Epics zuweisen; Admin überall
-hivemind/update_task_state    { "task_key": "TASK-88", "target_state": "ready" }
+hivemind-update_task_state    { "task_key": "TASK-88", "target_state": "ready" }
                                 -- Architekt: scoped → ready (abschließender Schritt nach assign + boundary)
                                 -- Backend prüft: assigned_to gesetzt → sonst 422
                                 -- Hinweis: derselbe Tool-Name wie in Worker-Writes (s.u.);
@@ -181,22 +188,22 @@ hivemind/update_task_state    { "task_key": "TASK-88", "target_state": "ready" }
 ## Worker-Writes
 
 ```text
-hivemind/submit_result           { "task_key": "TASK-88", "result": "...", "artifacts": [...] }
+hivemind-submit_result           { "task_key": "TASK-88", "result": "...", "artifacts": [...] }
                                    -- Speichert Ergebnis + Artefakte; ändert State NICHT
                                    -- Kann jederzeit in in_progress aufgerufen werden
 
-hivemind/update_task_state       { "task_key": "TASK-88", "target_state": "in_review" }
+hivemind-update_task_state       { "task_key": "TASK-88", "target_state": "in_review" }
                                    -- Setzt State auf in_review NUR wenn:
                                    --   (1) submit_result wurde aufgerufen (result vorhanden)
                                    --   (2) Phase 1–4: Keine Guard-Prüfung — Guards dienen als Checkliste, blockieren aber nicht
                                    --   (3) Ab Phase 5: alle Guards status = passed|skipped — sonst 422 mit Liste der offenen Guards
                                    -- Siehe state-machine.md für Phase-basierte Guard-Enforcement-Regeln
 
-hivemind/create_decision_request { "task_key": "TASK-88", "question": "...", "options": [...] }
+hivemind-create_decision_request { "task_key": "TASK-88", "question": "...", "options": [...] }
                                    -- Atomar: erstellt decision_request (state='open')
                                    -- und setzt Task in derselben Transaktion von in_progress -> blocked
                                    -- Falls Task nicht in_progress: 409 Conflict
-hivemind/report_guard_result     { "task_key": "TASK-88", "guard_id": "uuid",
+hivemind-report_guard_result     { "task_key": "TASK-88", "guard_id": "uuid",
                                    "status": "passed|failed|skipped",
                                    "result": "..." }    -- Pflicht, nicht-leer für alle Status;
                                                         -- mindestens relevanter Command-Output oder Begründung
@@ -205,9 +212,9 @@ hivemind/report_guard_result     { "task_key": "TASK-88", "guard_id": "uuid",
 **Sequenz für in_review-Übergang (verpflichtend):**
 
 ```text
-1. Worker: hivemind/report_guard_result  → alle Guards auf passed|skipped setzen
-2. Worker: hivemind/submit_result        → Ergebnis + Artefakte speichern
-3. Worker: hivemind/update_task_state { "target_state": "in_review" }
+1. Worker: hivemind-report_guard_result  → alle Guards auf passed|skipped setzen
+2. Worker: hivemind-submit_result        → Ergebnis + Artefakte speichern
+3. Worker: hivemind-update_task_state { "target_state": "in_review" }
              → Backend prüft: Result vorhanden?
              → Phase 1–4: Ja → State → in_review (Guards nicht enforced)
              → Ab Phase 5: Guards vollständig? Result vorhanden?
@@ -223,24 +230,26 @@ hivemind/report_guard_result     { "task_key": "TASK-88", "guard_id": "uuid",
 ## Gaertner-Writes
 
 ```text
-hivemind/propose_skill        { "title": "...", "content": "...", "service_scope": [...],
+hivemind-propose_skill        { "title": "...", "content": "...", "service_scope": [...],
                                 "federation_scope": "local|federated" }  -- optional (Phase F), default: 'local'
                                 -- Validierung beim Erstellen:
                                 --   (1) Circular-Check: schlägt fehl wenn extends-Chain einen Cycle bildet (422)
                                 --   (2) Depth-Check: schlägt fehl wenn aufgelöste extends-Kette > 3 Ebenen tief ist (422)
                                 --       → Fehlermeldung: "Skill composition exceeds 3 levels. Flatten or split."
                                 -- federation_scope im Draft speichern; Admin kann bei merge_skill überschreiben
-hivemind/propose_skill_change { "skill_id": "uuid", "diff": "...", "rationale": "..." }
-hivemind/fork_federated_skill { "source_skill_id": "uuid",
+hivemind-propose_skill_change { "skill_id": "uuid", "diff": "...", "rationale": "..." }
+hivemind-fork_federated_skill { "source_skill_id": "uuid",
                                 "target_project_id": "uuid|null",
                                 "title": "optional override" }
                                 -- Erstellt lokalen Fork als neuen Skill (lifecycle='draft', federation_scope='local')
                                 -- Parent-Link wird als extends gesetzt (skill_parents: child -> source_skill_id)
                                 -- Source bleibt read-only; es wird keine Remote-Entität mutiert
                                 -- Erfordert: propose_skill-Permission; Source muss federation_scope='federated' haben
-hivemind/submit_skill_proposal { "skill_id": "uuid" }   -- draft → pending_merge
-hivemind/create_decision_record { "epic_id": "EPIC-12", "decision": "...", "rationale": "..." }
-hivemind/update_doc           { "id": "uuid", "content": "...", "expected_version": 3 }
+hivemind-submit_skill_proposal { "skill_id": "uuid" }   -- draft → pending_merge
+                                   -- Nach submit_skill_proposal: bei governance.skill_merge != manual
+                                   --   dispatcht der Conductor triage_skill_proposal
+hivemind-create_decision_record { "epic_id": "EPIC-12", "decision": "...", "rationale": "..." }
+hivemind-update_doc           { "id": "uuid", "content": "...", "expected_version": 3 }
 ```
 
 ---
@@ -248,9 +257,9 @@ hivemind/update_doc           { "id": "uuid", "content": "...", "expected_versio
 ## Kartograph-Writes
 
 ```text
-hivemind/create_epic_doc          { "epic_id": "EPIC-12", "title": "...", "content": "..." }
-hivemind/link_wiki_to_epic        { "article_id": "uuid", "epic_id": "EPIC-12" }
-hivemind/propose_epic_restructure { "restructure_type": "split|merge|task_move",
+hivemind-create_epic_doc          { "epic_id": "EPIC-12", "title": "...", "content": "..." }
+hivemind-link_wiki_to_epic        { "article_id": "uuid", "epic_id": "EPIC-12" }
+hivemind-propose_epic_restructure { "restructure_type": "split|merge|task_move",
                                     "payload": { ... },         -- Typ-spezifisch: Split/Merge/Task-Move-Spec
                                     -- Split:     { "source_epic_id": "EPIC-5", "resulting_epics": [...] }
                                     -- Merge:     { "source_epic_ids": ["EPIC-8", "EPIC-9"], "resulting_epic": {...} }
@@ -258,19 +267,21 @@ hivemind/propose_epic_restructure { "restructure_type": "split|merge|task_move",
                                     "rationale": "string",
                                     "code_node_refs": ["uuid", "..."] }
                                     -- → Vollständige Payload-Specs: docs/features/epic-restructure.md#proposal-typen
-hivemind/propose_guard            { "title": "...", "type": "executable", "command": "...",
+hivemind-propose_guard            { "title": "...", "type": "executable", "command": "...",
                                     "scope": [...], "project_id": "uuid|null",
                                     "skill_id": "uuid|null" }
-hivemind/propose_guard_change     { "guard_id": "uuid", "diff": "...", "rationale": "..." }
-hivemind/submit_guard_proposal    { "guard_id": "uuid" } -- draft → pending_merge
+hivemind-propose_guard_change     { "guard_id": "uuid", "diff": "...", "rationale": "..." }
+hivemind-submit_guard_proposal    { "guard_id": "uuid" } -- draft → pending_merge
+                                    -- Nach submit_guard_proposal: bei governance.guard_merge != manual
+                                    --   dispatcht der Conductor triage_guard_proposal
 
 -- Federation (Phase F):
-hivemind/start_discovery_session  { "area": "auth/",
+hivemind-start_discovery_session  { "area": "auth/",
                                     "description": "JWT + Session-Handling" }
                                     -- Setzt code_nodes.exploring_node_id für diesen Bereich
                                     -- Broadcastet discovery_session-Event (type='start') an alle Peers
                                     -- Erfordert: kartograph- oder admin-Rolle
-hivemind/end_discovery_session    { "area": "auth/" }
+hivemind-end_discovery_session    { "area": "auth/" }
                                     -- Räumt exploring_node_id auf (setzt auf NULL)
                                     -- Broadcastet discovery_session-Event (type='end') an alle Peers
                                     -- Erfordert: kartograph- oder admin-Rolle
@@ -282,12 +293,12 @@ hivemind/end_discovery_session    { "area": "auth/" }
 ## Wiki-Writes (Kartograph, Stratege, Admin)
 
 ```text
-hivemind/create_wiki_article      { "title": "...", "slug": "...", "content": "...", "tags": [...],
+hivemind-create_wiki_article      { "title": "...", "slug": "...", "content": "...", "tags": [...],
                                     "federation_scope": "local|federated" }  -- optional (Phase F), default: 'local'
                                     -- Erfordert: developer|kartograph|admin
                                     -- Kartograph: Code-Dokumentation, Architektur-Wiki
                                     -- Stratege: Roadmap, Dependency-Dokumentation, strategische Wiki-Artikel
-hivemind/update_wiki_article      { "id": "uuid", "content": "..." }
+hivemind-update_wiki_article      { "id": "uuid", "content": "..." }
                                     -- Erfordert: developer|kartograph|admin
 ```
 
@@ -301,13 +312,13 @@ Alle Memory-Tools sind für **jeden authentifizierten Agenten** verfügbar (`dev
 
 ```text
 -- Lesen
-hivemind/get_memory_context     { "scope": "project|epic|task",
+hivemind-get_memory_context     { "scope": "project|epic|task",
                                   "scope_id": "uuid" }
                                   -- Liefert: aktuellste L2-Summaries + L1-Fakten + offene Fragen
                                   -- + Integrity-Warnungen (unbedeckte L0-Entries)
                                   -- Typisch: Session-Resume (erst Kontext laden, dann arbeiten)
 
-hivemind/search_memories        { "query": "...",
+hivemind-search_memories        { "query": "...",
                                   "scope": "project|epic|task",   -- optional
                                   "scope_id": "uuid",             -- optional
                                   "level": "L0|L1|L2|all",       -- optional, default: all
@@ -315,25 +326,25 @@ hivemind/search_memories        { "query": "...",
                                   -- pgvector-Similarity-Search über Memory Entries
                                   -- Gaertner nutzt: search_memories { "query": "skill-candidate" }
 
-hivemind/get_open_questions     { "scope": "project|epic|task",
+hivemind-get_open_questions     { "scope": "project|epic|task",
                                   "scope_id": "uuid" }
                                   -- Alle offenen Fragen aus L2-Summaries für diesen Scope
                                   -- Agenten priorisieren: offene Fragen zuerst klären
 
-hivemind/get_uncovered_entries  { "scope": "project|epic|task",
+hivemind-get_uncovered_entries  { "scope": "project|epic|task",
                                   "scope_id": "uuid" }
                                   -- L0-Entries die noch von keiner L2-Summary abgedeckt sind
                                   -- Integrity-Check: sollten bei nächster Kompaktierung berücksichtigt werden
 
 -- Schreiben
-hivemind/save_memory            { "scope": "project|epic|task",
+hivemind-save_memory            { "scope": "project|epic|task",
                                   "scope_id": "uuid",
                                   "content": "...",
                                   "tags": [...] }                  -- optional; reserviert: "skill-candidate"
                                   -- Erstellt L0 Memory Entry (append-only, immutable)
                                   -- Automatisch: embedding via nomic-embed-text für Similarity-Search
 
-hivemind/extract_facts          { "entry_ids": ["uuid"],
+hivemind-extract_facts          { "entry_ids": ["uuid"],
                                   "facts": [
                                     { "entity": "auth/jwt", "key": "algorithm", "value": "RS256" }
                                   ] }
@@ -341,14 +352,14 @@ hivemind/extract_facts          { "entry_ids": ["uuid"],
                                   -- Strukturierte Schlüsselfakten die jede Verdichtung überleben
                                   -- Empfehlung: vor compact_memories aufrufen
 
-hivemind/compact_memories       { "entry_ids": ["uuid", "..."],
+hivemind-compact_memories       { "entry_ids": ["uuid", "..."],
                                   "summary": "...",
                                   "open_questions": ["..."] }      -- optional
                                   -- Erstellt L2 Session Summary aus einer Gruppe von L0-Entries
                                   -- source_entry_ids + source_fact_ids werden für Coverage-Tracking gespeichert
                                   -- L0-Entries werden NICHT gelöscht (append-only)
 
-hivemind/graduate_memory        { "summary_id": "uuid",
+hivemind-graduate_memory        { "summary_id": "uuid",
                                   "target": "wiki|skill|doc",
                                   "target_id": "uuid" }
                                   -- Markiert L2-Summary als graduated (wird nicht mehr bei Resume geladen)
@@ -361,7 +372,7 @@ hivemind/graduate_memory        { "summary_id": "uuid",
 ## Reviewer-Writes (Phase 8)
 
 ```text
-hivemind/submit_review_recommendation
+hivemind-submit_review_recommendation
                          { "task_key": "TASK-88",
                            "recommendation": "approve|reject|needs_human_review",
                            "confidence": 0.92,
@@ -386,16 +397,18 @@ hivemind/submit_review_recommendation
 ## Review-Writes (Owner/Admin)
 
 ```text
-hivemind/approve_review  { "task_key": "TASK-88" }
+hivemind-approve_review  { "task_key": "TASK-88" }
                            -- in_review → done
                            -- Erfordert: Epic-Owner oder Admin
                            -- Erzeugt Notification: task_done → Assignee + Owner
-                           -- Nach done: Gaertner-Prompt wird in Prompt Station bereitgestellt
+                           -- Nach done: identischer Folgepfad fuer manuell und auto-approve,
+                           --   inkl. Gaertner-Dispatch
 
-hivemind/reject_review   { "task_key": "TASK-88",
+hivemind-reject_review   { "task_key": "TASK-88",
                            "comment": "..." }
                            -- in_review → qa_failed
                            -- Schreibt task.review_comment; qa_failed_count++
+                           -- Triggert task_qa_failed → Gaertner Review-Feedback-Loop
                            -- Hinweis: reject_review setzt IMMER auf qa_failed, nie direkt auf escalated.
                            --   Eskalation greift erst wenn der Worker danach in_progress anfordert
                            --   und qa_failed_count >= 3 ist (→ state-machine.md).
@@ -412,7 +425,7 @@ hivemind/reject_review   { "task_key": "TASK-88",
 ## Decision-Writes (Owner/Admin)
 
 ```text
-hivemind/resolve_decision_request { "decision_request_id": "uuid", "decision": "A", "rationale": "..." }
+hivemind-resolve_decision_request { "decision_request_id": "uuid", "decision": "A", "rationale": "..." }
                                     -- Setzt zugehörigen Task automatisch von blocked → in_progress
                                     -- Erlaubt für: Epic-Owner, Backup-Owner oder admin
 ```
@@ -422,50 +435,50 @@ hivemind/resolve_decision_request { "decision_request_id": "uuid", "decision": "
 ## Admin-Writes
 
 ```text
-hivemind/assign_bug               { "bug_id": "uuid", "epic_id": "EPIC-12" }
-hivemind/merge_skill              { "skill_id": "uuid",           -- lifecycle: pending_merge → active (neuer Skill)
+hivemind-assign_bug               { "bug_id": "uuid", "epic_id": "EPIC-12" }
+hivemind-merge_skill              { "skill_id": "uuid",           -- lifecycle: pending_merge → active (neuer Skill)
                                     "federation_scope": "local|federated" }  -- optional (Phase F): überschreibt Gaertner-Vorschlag
-hivemind/reject_skill             { "skill_id": "uuid",         -- lifecycle: pending_merge → rejected
+hivemind-reject_skill             { "skill_id": "uuid",         -- lifecycle: pending_merge → rejected
                                     "reason": "..." }
-hivemind/accept_skill_change      { "proposal_id": "uuid" }     -- skill_change_proposals: open → accepted
+hivemind-accept_skill_change      { "proposal_id": "uuid" }     -- skill_change_proposals: open → accepted
                                                                  -- wendet diff an → neuer skill_versions-Eintrag
-hivemind/reject_skill_change      { "proposal_id": "uuid",      -- skill_change_proposals: open → rejected
+hivemind-reject_skill_change      { "proposal_id": "uuid",      -- skill_change_proposals: open → rejected
                                     "reason": "..." }
-hivemind/merge_guard              { "guard_id": "uuid" }        -- lifecycle: pending_merge → active (neuer Guard)
-hivemind/reject_guard             { "guard_id": "uuid",         -- lifecycle: pending_merge → rejected
+hivemind-merge_guard              { "guard_id": "uuid" }        -- lifecycle: pending_merge → active (neuer Guard)
+hivemind-reject_guard             { "guard_id": "uuid",         -- lifecycle: pending_merge → rejected
                                     "reason": "..." }
-hivemind/accept_guard_change      { "proposal_id": "uuid" }     -- guard_change_proposals: open → accepted
+hivemind-accept_guard_change      { "proposal_id": "uuid" }     -- guard_change_proposals: open → accepted
                                                                  -- wendet diff an → aktualisiert guard
-hivemind/reject_guard_change      { "proposal_id": "uuid",      -- guard_change_proposals: open → rejected
+hivemind-reject_guard_change      { "proposal_id": "uuid",      -- guard_change_proposals: open → rejected
                                     "reason": "..." }
-hivemind/accept_epic_restructure  { "proposal_id": "uuid" }    -- state: proposed → accepted
-hivemind/reject_epic_restructure  { "proposal_id": "uuid",     -- state: proposed → rejected
+hivemind-accept_epic_restructure  { "proposal_id": "uuid" }    -- state: proposed → accepted
+hivemind-reject_epic_restructure  { "proposal_id": "uuid",     -- state: proposed → rejected
                                     "reason": "..." }
-hivemind/apply_epic_restructure   { "proposal_id": "uuid" }    -- state: accepted → applied
+hivemind-apply_epic_restructure   { "proposal_id": "uuid" }    -- state: accepted → applied
                                     -- Führt die Restrukturierung atomar aus (Split/Merge/Task-Move)
                                     -- Validiert: alle betroffenen Tasks in verschiebbarem State
                                     -- Bei blockierenden Tasks (in_progress/in_review): HTTP 422 mit blocking_tasks-Liste
                                     -- Erzeugt neue Epics (Split), verschiebt Tasks, cancelt Source-Epics (Merge)
                                     -- Erfordert: admin oder manage_epic-Berechtigung
                                     -- → Vollständiger Apply-Flow: docs/features/epic-restructure.md#apply-flow--end-to-end
-hivemind/accept_epic_proposal     { "proposal_id": "uuid" }    -- epic_proposals: proposed → accepted
+hivemind-accept_epic_proposal     { "proposal_id": "uuid" }    -- epic_proposals: proposed → accepted
                                     -- Erstellt Epic (state: incoming) mit Daten aus Proposal
                                     -- Setzt epic_proposals.resulting_epic_id auf das neue Epic
                                     -- Löst depends_on-Referenzen auf echte Epic-UUIDs auf
                                     -- Notification an Proposer: "Epic Proposal akzeptiert"
-hivemind/reject_epic_proposal     { "proposal_id": "uuid",     -- epic_proposals: proposed → rejected
+hivemind-reject_epic_proposal     { "proposal_id": "uuid",     -- epic_proposals: proposed → rejected
                                     "reason": "..." }
                                     -- Notification an Proposer mit Begründung
                                     -- Wenn andere Proposals depends_on dieses Proposal referenzieren:
                                     --   Warnung an Proposer: "Abhängiges Proposal abgelehnt"
-hivemind/reassign_epic_owner      { "epic_key": "EPIC-12", "owner_id": "uuid" }
-hivemind/cancel_task              { "task_key": "TASK-88", "reason": "..." }
-hivemind/resolve_escalation       { "task_key": "TASK-88", "comment": "..." }
+hivemind-reassign_epic_owner      { "epic_key": "EPIC-12", "owner_id": "uuid" }
+hivemind-cancel_task              { "task_key": "TASK-88", "reason": "..." }
+hivemind-resolve_escalation       { "task_key": "TASK-88", "comment": "..." }
                                     -- escalated → in_progress (Admin only)
                                     -- Gilt für beide Eskalationsquellen:
                                     --   (a) 3x qa_failed → escalated
                                     --   (b) blocked → escalated (Decision-SLA > 72h)
-hivemind/route_event              { "outbox_id": "uuid", "epic_id": "EPIC-12",
+hivemind-route_event              { "outbox_id": "uuid", "epic_id": "EPIC-12",
                                     "create_as": "task|bug" }     -- Pflicht: bestimmt ob Task oder Bug-Report erzeugt wird
                                     -- sync_outbox.routing_state: unrouted → routed
                                     -- Weist Event dem Epic zu
@@ -481,17 +494,17 @@ hivemind/route_event              { "outbox_id": "uuid", "epic_id": "EPIC-12",
                                     --   (3) pgvector-Similarity < 0.5 zu bestehenden Tasks → 'task' (neues Thema)
                                     --   (4) pgvector-Similarity >= 0.5 zu bestehendem Bug → 'bug' (Bug-Count erhöhen)
                                     -- Erfordert: triage-Permission (admin only)
-hivemind/ignore_event             { "outbox_id": "uuid" }
+hivemind-ignore_event             { "outbox_id": "uuid" }
                                     -- sync_outbox.routing_state: unrouted → ignored
                                     -- Admin entscheidet: Event ist nicht relevant
                                     -- Erfordert: triage-Permission (admin only)
-hivemind/requeue_dead_letter      { "id": "uuid" }
+hivemind-requeue_dead_letter      { "id": "uuid" }
                                     -- Requeue für sync_dead_letter:
                                     --   (1) zugehöriger sync_outbox-Eintrag: state -> pending
                                     --   (2) attempts -> 0, next_retry_at -> now()
                                     --   (3) sync_dead_letter.requeued_by/requeued_at wird gesetzt
                                     -- Erfordert: triage-Permission (admin only)
-hivemind/discard_dead_letter      { "id": "uuid" }
+hivemind-discard_dead_letter      { "id": "uuid" }
                                     -- Verwirft einen Dead-Letter-Eintrag endgültig:
                                     --   (1) zugehöriger sync_outbox-Eintrag: state bleibt 'dead' (kein Requeue möglich)
                                     --   (2) sync_dead_letter: discarded_by + discarded_at wird gesetzt
@@ -499,7 +512,7 @@ hivemind/discard_dead_letter      { "id": "uuid" }
                                     -- Erfordert: triage-Permission (admin only)
 ```
 
-> **„Neues Epic anlegen + zuweisen“:** Admin erstellt das Epic via `hivemind/create_epic`, dann ruft er `route_event` mit der neuen `epic_id` auf.
+> **„Neues Epic anlegen + zuweisen“:** Admin erstellt das Epic via `hivemind-create_epic`, dann ruft er `route_event` mit der neuen `epic_id` auf.
 
 ---
 

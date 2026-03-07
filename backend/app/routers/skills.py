@@ -8,13 +8,9 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models.federation import Node, NodeIdentity
-from app.models.skill import Skill, SkillParent
-from app.models.user import User
 from app.routers.deps import get_current_actor, require_role
 from app.schemas.auth import CurrentActor
 from app.schemas.federation import FederatedSkillResponse
@@ -35,7 +31,7 @@ router = APIRouter(prefix="/skills", tags=["skills"])
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _skill_to_response(
-    skill: Skill, username_map: dict[uuid.UUID, str] | None = None
+    skill, username_map: dict[uuid.UUID, str] | None = None
 ) -> SkillResponse:
     umap = username_map or {}
     return SkillResponse(
@@ -124,11 +120,7 @@ async def get_skill_versions(
     if not skill:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill nicht gefunden")
     versions = await svc.get_versions(skill_id)
-    user_ids = {v.changed_by for v in versions}
-    umap: dict[uuid.UUID, str] = {}
-    if user_ids:
-        result = await db.execute(select(User).where(User.id.in_(user_ids)))
-        umap = {u.id: u.username for u in result.scalars().all()}
+    umap = await svc.resolve_version_usernames(versions)
     return [
         SkillVersionResponse(
             id=v.id,
@@ -288,48 +280,9 @@ async def fork_skill(
     - Creates new local draft skill with extends link
     - Returns 409 if a fork already exists
     """
-    result = await db.execute(select(Skill).where(Skill.id == skill_id))
-    source = result.scalar_one_or_none()
-    if source is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill nicht gefunden.")
-
-    if source.federation_scope != "federated":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nur federierte Skills können geforkt werden.",
-        )
-
-    existing_fork = await db.execute(
-        select(SkillParent).where(SkillParent.parent_id == skill_id)
-    )
-    if existing_fork.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Skill bereits als lokaler Draft vorhanden.",
-        )
-
-    identity_result = await db.execute(select(NodeIdentity))
-    identity = identity_result.scalar_one_or_none()
-    own_node_id = identity.node_id if identity else None
-
-    forked = Skill(
-        title=f"{source.title} (Fork)",
-        content=source.content,
-        service_scope=source.service_scope,
-        stack=source.stack,
-        skill_type=source.skill_type,
-        lifecycle="draft",
-        federation_scope="local",
-        origin_node_id=own_node_id,
-        version=1,
-    )
-    db.add(forked)
-    await db.flush()
-
-    parent_link = SkillParent(child_id=forked.id, parent_id=source.id)
-    db.add(parent_link)
-    await db.flush()
-    await db.refresh(forked)
+    svc = SkillService(db)
+    forked = await svc.fork(skill_id)
+    await db.commit()
 
     return FederatedSkillResponse(
         id=forked.id,

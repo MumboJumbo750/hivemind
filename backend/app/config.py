@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     hivemind_embedding_cb_threshold: int = 3
     hivemind_embedding_cb_backoff_base: int = 60
     hivemind_embedding_cb_backoff_max: int = 600
+    hivemind_embedding_retry_max_attempts: int = 5
+    hivemind_embedding_retry_backoff_base: int = 30
+    hivemind_embedding_retry_backoff_max: int = 600
+    hivemind_embedding_backfill_interval: int = 300
+    hivemind_embedding_backfill_limit: int = 100
+    hivemind_embedding_query_cache_ttl: int = 300
+    hivemind_embedding_query_cache_size: int = 256
     hivemind_prompt_history_retention_days: int = 180
 
     # Webhook secrets

@@ -228,3 +228,28 @@ def test_build_provider_unknown_raises():
         mock_settings.hivemind_ai_api_key = ""
         with pytest.raises(ValueError, match="Unknown provider type"):
             _build_provider_from_config(config)
+
+
+@pytest.mark.asyncio
+async def test_upsert_provider_config_stores_thread_policy() -> None:
+    from app.services.ai_provider import upsert_provider_config
+
+    db = AsyncMock()
+    db.add = MagicMock()
+
+    with patch("app.services.ai_provider.get_provider_config_by_role", AsyncMock(return_value=None)):
+        config = await upsert_provider_config(
+            db,
+            "architekt",
+            provider="openai",
+            model="gpt-4o",
+            endpoint=None,
+            credential_id=None,
+            rpm_limit=60,
+            tpm_limit=None,
+            token_budget_daily=10_000,
+            thread_policy="epic_stateful",
+            enabled=True,
+        )
+
+    assert config.thread_policy == "epic_stateful"

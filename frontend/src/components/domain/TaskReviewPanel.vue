@@ -38,7 +38,7 @@ const guardsLoading = ref(false)
 async function loadGuards() {
   guardsLoading.value = true
   try {
-    const result = await api.callMcpTool('hivemind/get_task', { task_key: props.task.task_key })
+    const result = await api.callMcpTool('hivemind-get_task', { task_key: props.task.task_key })
     const parsed = JSON.parse(result[0]?.text || '{}')
     const taskData = parsed.data
     if (taskData?.guards) {

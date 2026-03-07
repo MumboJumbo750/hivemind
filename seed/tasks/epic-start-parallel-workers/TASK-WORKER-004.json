@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-WORKER-004",
+  "epic_ref": "EPIC-WORKER-ORCH",
+  "title": "Shared Context Artefakte für mehrere Worker modellieren",
+  "description": "Ersetze freie Worker-Kommunikation durch strukturierte, auditierbare Koordinationsartefakte.\n\n**Was zu implementieren ist:**\n\n1. Epic-Scratchpad für gemeinsame Annahmen, API-Verträge und Risiken modellieren\n2. Handoff-Notes zwischen Rollen definieren\n3. File-Claims oder vergleichbare Besitz-/Konfliktmarker einführen\n4. Sichtbarkeit und Lebenszyklus dieser Artefakte regeln\n5. Worker-Prompts gezielt mit relevantem Shared Context anreichern\n\n**Wichtig:** Worker sollen koordiniert zusammenarbeiten, ohne freie Chat-Räume zu benötigen.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Es gibt strukturierte Shared-Context-Artefakte pro Epic-Run",
+      "File-Claims oder ein gleichwertiger Konfliktmarker existieren",
+      "Handoffs sind auditierbar und kontextbezogen abrufbar",
+      "Worker erhalten nur den relevanten geteilten Kontext"
+    ]
+  },
+  "tags": ["backend", "context", "workers", "audit"],
+  "subtasks": [],
+  "pinned_skills": ["prompt-generator", "review-workflow", "design-token"],
+  "linked_wiki": ["memory-ledger"],
+  "source_doc": "docs/features/epic-start-parallel-workers.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-WORKER-002"]
+}

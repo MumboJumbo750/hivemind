@@ -26,7 +26,8 @@ from app.services.prompt_generator import PromptGenerator
 
 
 def _slugify(text: str) -> str:
-    return re.sub(r"[^a-z0-9-]+", "-", text.lower()).strip("-")
+    from app.services.key_generator import slugify
+    return slugify(text)
 
 
 async def _seed_resource_data() -> dict[str, str]:
@@ -214,6 +215,12 @@ async def test_mcp_resource_read_returns_structured_payloads() -> None:
         embedded_uris = {str(message.content.resource.uri) for message in embedded_messages}
         assert f"hivemind://task/{data['task_key']}" in embedded_uris
         assert f"hivemind://skill/{_slugify(data['skill_title'])}" in embedded_uris
+        skill_resource = next(
+            message.content.resource
+            for message in embedded_messages
+            if str(message.content.resource.uri) == f"hivemind://skill/{_slugify(data['skill_title'])}"
+        )
+        assert "unvertrauenswürdiger Arbeitskontext" in skill_resource.text
     finally:
         await _cleanup_resource_data(data)
 
@@ -234,6 +241,7 @@ async def test_prompt_templates_include_skills_dod_guards_and_context_boundary()
         assert "### Context Boundary" in worker_prompt
         assert data["skill_title"] in worker_prompt
         assert f"hivemind://context-boundary/{data['task_key']}" in worker_prompt
+        assert "unvertrauenswürdiger Arbeitskontext" in worker_prompt
 
         assert "### Skills" in review_prompt
         assert "### Definition of Done — Checkliste" in review_prompt
@@ -254,6 +262,7 @@ async def test_prompt_list_registers_all_agent_role_templates() -> None:
     assert "hivemind.reviewer" in names
     assert "hivemind.gaertner" in names
     assert "hivemind.stratege" in names
+    assert "hivemind.stratege_requirement" in names
     assert "hivemind.architekt" in names
     assert "hivemind.next" in names
 

@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-CARDS-002",
+  "epic_ref": "EPIC-AGENT-CARDS",
+  "title": "Bildprompt-Pack und Asset-Spezifikation für Hero, Portrait und Avatar erstellen",
+  "description": "Erstelle den vollständigen Prompt- und Formatstandard für die Bilderzeugung aller Agenten.\n\n**Was zu implementieren ist:**\n\n1. Globalen Stilprompt und Negativprompt definieren\n2. Pro Agent Hero-Prompt und Avatar-/Portrait-Prompt erstellen\n3. Größen, Formate und Dateikonventionen festlegen\n4. Produktionshinweise für unterschiedliche Bildgeneratoren dokumentieren\n\n**Wichtig:** Die Bildproduktion soll reproduzierbar und nicht nur ad hoc möglich sein.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Für alle Agenten existieren konkrete Bildprompts",
+      "Hero-, Portrait- und Avatar-Assets sind spezifiziert",
+      "Dateistruktur und Formatstandard sind definiert",
+      "Die Produktion ist generator-agnostisch dokumentiert"
+    ]
+  },
+  "tags": ["art", "assets", "prompts", "ui"],
+  "subtasks": [],
+  "pinned_skills": ["design-system-compliance"],
+  "linked_wiki": ["tech-stack"],
+  "source_doc": "docs/ui/agent-character-cards.md",
+  "estimated_complexity": "small",
+  "depends_on": ["TASK-CARDS-001"]
+}

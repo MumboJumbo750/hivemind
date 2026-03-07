@@ -42,7 +42,7 @@ for t in sorted(tasks, key=lambda x: x.get("task_key", "")):
     # Step 1: assign if not assigned
     if not t.get("assigned_to"):
         print(f"  assign_task...")
-        do_mcp("hivemind/assign_task", {"task_key": tk, "user_id": solo_user_id})
+        do_mcp("hivemind-assign_task", {"task_key": tk, "user_id": solo_user_id})
 
     # Step 2: walk through states
     transitions = {
@@ -56,7 +56,7 @@ for t in sorted(tasks, key=lambda x: x.get("task_key", "")):
     if state in ("scoped", "ready"):
         for next_s in (["ready", "in_progress"] if state == "scoped" else ["in_progress"]):
             print(f"  -> {next_s}...")
-            result = do_mcp("hivemind/update_task_state", {"task_key": tk, "target_state": next_s})
+            result = do_mcp("hivemind-update_task_state", {"task_key": tk, "target_state": next_s})
             if result is False:
                 break
         state = "in_progress"
@@ -64,19 +64,19 @@ for t in sorted(tasks, key=lambda x: x.get("task_key", "")):
     # Submit result
     if state == "in_progress":
         print(f"  submit_result...")
-        do_mcp("hivemind/submit_result", {
+        do_mcp("hivemind-submit_result", {
             "task_key": tk,
             "result": f"{tk} completed - all definition of done criteria met.",
             "artifacts": []
         })
         print(f"  -> in_review...")
-        do_mcp("hivemind/update_task_state", {"task_key": tk, "target_state": "in_review"})
+        do_mcp("hivemind-update_task_state", {"task_key": tk, "target_state": "in_review"})
         state = "in_review"
 
     # Done
     if state == "in_review":
         print(f"  -> done...")
-        do_mcp("hivemind/update_task_state", {"task_key": tk, "target_state": "done"})
+        do_mcp("hivemind-update_task_state", {"task_key": tk, "target_state": "done"})
 
 print(f"\n{'='*50}")
 print("Fertig!")

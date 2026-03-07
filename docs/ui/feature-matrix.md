@@ -53,7 +53,7 @@ Vollständige Zuordnung aller System-Funktionen zu konkreten UI-Elementen und En
 | Epic Restructure Proposals | Triage Station | [RESTRUCTURE]-Cards mit Proposal-Text + Accept/Reject | 5 |
 | Dead-Letter-Queue | Triage Station | [DEAD LETTER]-Cards mit Requeue-Option (ruft `POST /api/triage/dead-letters/:id/requeue`) | 7 |
 | Eskalations-Queue | Triage Station | [ESCALATED]-Cards nach SLA-Risiko + resolve_escalation Button | 6 |
-| Bug→Epic manuell zuweisen | Triage Station → Tab "Unrouted" | [BUG ZUWEISEN]-Button auf Bug-Cards (Sentry-Events); öffnet Epic-Auswahl-Dropdown → ruft `hivemind/assign_bug` via REST-Alias `POST /api/triage/bugs/:id/assign` | 7 |
+| Bug→Epic manuell zuweisen | Triage Station → Tab "Unrouted" | [BUG ZUWEISEN]-Button auf Bug-Cards (Sentry-Events); öffnet Epic-Auswahl-Dropdown → ruft `hivemind-assign_bug` via REST-Alias `POST /api/triage/bugs/:id/assign` | 7 |
 
 ## Arsenal / Skill Lab
 

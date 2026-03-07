@@ -5,17 +5,14 @@ GET /api/search?q=<query>&type=tasks,epics&limit=20
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models.epic import Epic
-from app.models.project import ProjectMember
-from app.models.task import Task
 from app.routers.deps import get_current_actor
 from app.schemas.auth import CurrentActor
+from app.services import search_service
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -32,10 +29,7 @@ async def _accessible_project_ids(db: AsyncSession, actor: CurrentActor) -> list
     """Gibt Projekt-IDs zurück auf die der Actor Zugriff hat (Admin = alle)."""
     if actor.role == "admin":
         return []  # leere Liste = kein Filter nötig (Admin sieht alles)
-    result = await db.execute(
-        select(ProjectMember.project_id).where(ProjectMember.user_id == actor.id)
-    )
-    return [row[0] for row in result.all()]
+    return await search_service.get_accessible_project_ids(db, actor.id)
 
 
 @router.get("", response_model=dict)
@@ -52,14 +46,12 @@ async def spotlight_search(
     results: dict[str, list[SearchResult]] = {}
 
     if "epics" in types:
-        q_epics = select(Epic).where(Epic.title.ilike(f"%{q}%")).limit(limit)
         if not is_solo_or_admin:
             project_ids = await _accessible_project_ids(db, actor)
             if not project_ids:
                 results["epics"] = []
             else:
-                q_epics = q_epics.where(Epic.project_id.in_(project_ids))
-                epic_result = await db.execute(q_epics)
+                epics = await search_service.search_epics(db, q, limit, project_ids)
                 results["epics"] = [
                     SearchResult(
                         type="epic",
@@ -67,10 +59,10 @@ async def spotlight_search(
                         title=e.title,
                         url=f"/command-deck?epic={e.epic_key}",
                     )
-                    for e in epic_result.scalars().all()
+                    for e in epics
                 ]
         else:
-            epic_result = await db.execute(q_epics)
+            epics = await search_service.search_epics(db, q, limit)
             results["epics"] = [
                 SearchResult(
                     type="epic",
@@ -78,23 +70,16 @@ async def spotlight_search(
                     title=e.title,
                     url=f"/command-deck?epic={e.epic_key}",
                 )
-                for e in epic_result.scalars().all()
+                for e in epics
             ]
 
     if "tasks" in types:
-        q_tasks = (
-            select(Task, Epic.title.label("epic_title"), Epic.epic_key)
-            .join(Epic, Task.epic_id == Epic.id)
-            .where(Task.title.ilike(f"%{q}%"))
-            .limit(limit)
-        )
         if not is_solo_or_admin:
             project_ids = await _accessible_project_ids(db, actor)
             if not project_ids:
                 results["tasks"] = []
             else:
-                q_tasks = q_tasks.where(Epic.project_id.in_(project_ids))
-                task_result = await db.execute(q_tasks)
+                task_rows = await search_service.search_tasks(db, q, limit, project_ids)
                 results["tasks"] = [
                     SearchResult(
                         type="task",
@@ -103,10 +88,10 @@ async def spotlight_search(
                         subtitle=epic_title,
                         url=f"/command-deck?epic={epic_key}&task={t.task_key}",
                     )
-                    for t, epic_title, epic_key in task_result.all()
+                    for t, epic_title, epic_key in task_rows
                 ]
         else:
-            task_result = await db.execute(q_tasks)
+            task_rows = await search_service.search_tasks(db, q, limit)
             results["tasks"] = [
                 SearchResult(
                     type="task",
@@ -115,7 +100,7 @@ async def spotlight_search(
                     subtitle=epic_title,
                     url=f"/command-deck?epic={epic_key}&task={t.task_key}",
                 )
-                for t, epic_title, epic_key in task_result.all()
+                for t, epic_title, epic_key in task_rows
             ]
 
     return results

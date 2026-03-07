@@ -100,10 +100,10 @@ Identifiziere technische oder fachliche Risiken und nenne offene Fragen die vor 
 
 **Schritt 4 — MCP-Call (Phase 4+):**
 
-Falls `hivemind/propose_epic` verfügbar:
+Falls `hivemind-propose_epic` verfügbar:
 
 ```python
-hivemind/propose_epic {
+hivemind-propose_epic {
   "project_id": "{{ project_id }}",
   "title": "...",
   "description": "...",
@@ -127,8 +127,8 @@ Falls noch nicht verfügbar (Phase 1–3): Gib den Proposal als Markdown-Block a
 
 | Tool | Wann |
 | --- | --- |
-| `hivemind/list_epics` | Bestehende Epics laden |
-| `hivemind/get_epic` | Details zu einem Epic |
-| `hivemind/search_wiki` | Plan-Dokumente lesen |
-| `hivemind/propose_epic` | Neuen Proposal erstellen (Phase 4+) |
-| `hivemind/update_epic_proposal` | Proposal nachbessern |
+| `hivemind-list_epics` | Bestehende Epics laden |
+| `hivemind-get_epic` | Details zu einem Epic |
+| `hivemind-search_wiki` | Plan-Dokumente lesen |
+| `hivemind-propose_epic` | Neuen Proposal erstellen (Phase 4+) |
+| `hivemind-update_epic_proposal` | Proposal nachbessern |

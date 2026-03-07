@@ -33,7 +33,7 @@ Der Requirement-Capture-Flow reichert einen rohen User-Text schrittweise an — 
 
 ### Phase 1–2: Basis-Enrichment (manuell)
 
-Wenn `hivemind/draft_requirement` noch nicht verfügbar ist, assembliere den Stratege-Prompt so:
+Wenn `hivemind-draft_requirement` noch nicht verfügbar ist, assembliere den Stratege-Prompt so:
 
 ```
 Kontext für den Strategen:
@@ -52,7 +52,7 @@ suggested_phase, depends_on) — bereit für Triage.
 
 ---
 
-### Phase 3+: `hivemind/draft_requirement` Tool
+### Phase 3+: `hivemind-draft_requirement` Tool
 
 ```
 POST /api/requirements/draft
@@ -139,7 +139,7 @@ Du bist der Stratege im Hivemind-System.
    - **suggested_phase**: {nächste offene Phase-Nummer}
    - **depends_on**: {Epic-IDs die abgeschlossen sein müssen}
 3. Identifiziere Risiken oder offene Fragen (DoD-Rahmen).
-4. Rufe `hivemind/propose_epic` auf (Phase 4+) oder liste den Proposal als Markdown.
+4. Rufe `hivemind-propose_epic` auf (Phase 4+) oder liste den Proposal als Markdown.
 ```
 
 ---

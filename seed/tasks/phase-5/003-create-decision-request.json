@@ -2,7 +2,7 @@
   "external_id": "TASK-5-003",
   "epic_ref": "EPIC-PHASE-5",
   "title": "create_decision_request MCP-Tool",
-  "description": "hivemind/create_decision_request: Atomar in einer DB-Transaktion: (1) Erstellt decision_request mit state=open, blocker, options. (2) Setzt Task in_progress nach blocked. Falls Task nicht in_progress: 409. SLA: sla_due_at=created_at+72h.",
+  "description": "hivemind-create_decision_request: Atomar in einer DB-Transaktion: (1) Erstellt decision_request mit state=open, blocker, options. (2) Setzt Task in_progress nach blocked. Falls Task nicht in_progress: 409. SLA: sla_due_at=created_at+72h.",
   "state": "done",
   "priority": "high",
   "definition_of_done": {

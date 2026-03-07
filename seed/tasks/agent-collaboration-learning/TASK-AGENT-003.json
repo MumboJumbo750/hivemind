@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AGENT-003",
+  "epic_ref": "EPIC-AGENT-LOOP",
+  "title": "Dispatch-Policies pro Agent-Rolle härten",
+  "description": "Mache das agentische System robust gegen Stau, Wiederholungen und Provider-Unterschiede, indem pro Rolle belastbare Dispatch-Policies gelten.\n\n**Was zu implementieren ist:**\n\n1. **Per-Rolle Policies modellieren:**\n- bevorzugter Execution-Mode\n- Fallback-Kette\n- `rpm_limit` / Token-Budget\n- Parallelitätsgrenzen\n- Cooldown-Regeln\n\n2. **Runtime-Durchsetzung ergänzen:**\n- Provider-Limits und Queue-Verhalten nicht nur dokumentieren, sondern effektiv anwenden\n- klare Gründe für Skip, Retry, Backoff und Fallback speichern\n\n3. **Operator-Sichtbarkeit schaffen:**\n- warum wurde nicht dispatcht?\n- warum fiel ein Dispatch auf local/byoai zurück?\n- welche Rolle ist gerade am Limit?\n\n4. **Sichere Defaults definieren:**\n- konservative Defaults für neue Rollen und neue Projekte\n\n**Wichtig:** Ziel ist vorhersehbares Verhalten unter Last und bei partiellen Provider-Ausfällen.",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Jede Agent-Rolle hat eine explizite Dispatch-Policy",
+      "Limits und Fallbacks werden zur Laufzeit angewendet",
+      "Skip-, Retry- und Fallback-Gründe sind sichtbar",
+      "Neue Rollen erhalten sichere Defaults"
+    ]
+  },
+  "tags": ["backend", "conductor", "ai-provider", "rate-limit", "resilience"],
+  "subtasks": [],
+  "pinned_skills": ["ai-provider-service", "conductor-orchestrator", "worker-endpoint-pool"],
+  "linked_wiki": ["autonomy-loop"],
+  "source_doc": "docs/features/autonomy-loop.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-AGENT-002"]
+}

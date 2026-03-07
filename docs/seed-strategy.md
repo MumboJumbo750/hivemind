@@ -238,6 +238,11 @@ hivemind seed import --path ./seed/
 
 Der Import nutzt `external_id` bzw. `slug` als Deduplizierungsschlüssel — mehrfaches Ausführen überschreibt nicht, sondern skippt existierende Einträge (oder aktualisiert bei explizitem `--update`-Flag).
 
+> **Hinweis: Unified Key System (seit Migration 016)**
+> Seed-Dateien verwenden noch das historische Format (`TASK-1A-001`, `EPIC-PHASE-1A`), da diese als `external_id` importiert werden.
+> Zur Laufzeit werden alle **neuen** Keys via PostgreSQL Sequences generiert: `TASK-{n}`, `EPIC-{n}`, `SKILL-{n}`, `WIKI-{n}`, `GUARD-{n}`, `DOC-{n}`.
+> Zentrale Implementierung: `backend/app/services/key_generator.py`. Siehe auch [AGENTS.md — Unified Key System](../AGENTS.md#unified-key-system).
+
 ---
 
 ## Arbeitsprozess

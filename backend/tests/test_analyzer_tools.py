@@ -1,4 +1,4 @@
-"""Tests für hivemind/run_analyzer MCP-Tool — TASK-WFS-003.
+"""Tests für hivemind-run_analyzer MCP-Tool — TASK-WFS-003.
 
 Testet:
   1. Happy-Path: normaler Scan liefert JSON-Report

@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-CARDS-001",
+  "epic_ref": "EPIC-AGENT-CARDS",
+  "title": "Art Direction und Rollenästhetik für alle Agenten definieren",
+  "description": "Definiere die visuelle Gesamtwelt und die individuelle Ästhetik aller Hivemind-Agenten.\n\n**Was zu implementieren ist:**\n\n1. Gemeinsamen Stilrahmen für alle Agenten festlegen\n2. Pro Agent Farbwelt, Formgefühl und Silhouette definieren\n3. Stilregeln und Negativregeln dokumentieren\n4. Sichere UI-Kompatibilität für Dark-Themes und kleine Avatare sicherstellen\n\n**Wichtig:** Das Ziel ist Serienkonsistenz, nicht sieben komplett unabhängige Illustrationsstile.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Gemeinsame Art Direction ist dokumentiert",
+      "Jeder Agent hat eine eigene visuelle Identität",
+      "Stil- und Negativregeln sind definiert",
+      "Das System ist auf Dark-UI und kleine Avatare ausgelegt"
+    ]
+  },
+  "tags": ["ui", "design", "agents", "art-direction"],
+  "subtasks": [],
+  "pinned_skills": ["design-system-compliance", "design-token"],
+  "linked_wiki": ["progressive-disclosure"],
+  "source_doc": "docs/ui/agent-character-cards.md",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

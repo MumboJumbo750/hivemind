@@ -7,7 +7,6 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
@@ -19,9 +18,10 @@ ide_router = APIRouter(prefix="/conductor", tags=["conductor-ide"])
 
 class ManualDispatchRequest(BaseModel):
     agent_role: str
-    prompt: str
+    prompt: str | None = None
     task_key: str | None = None
     epic_id: str | None = None
+    project_id: str | None = None
 
 
 class CompleteDispatchRequest(BaseModel):
@@ -43,6 +43,45 @@ def _parse_dispatch_id(dispatch_id: str) -> uuid.UUID:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid dispatch_id") from exc
 
 
+def _prompt_type_for_agent_role(agent_role: str) -> str:
+    normalized = (agent_role or "").strip().lower()
+    if normalized == "reviewer":
+        return "review"
+    return normalized or "worker"
+
+
+async def _resolve_manual_prompt(
+    body: ManualDispatchRequest,
+    db: AsyncSession,
+) -> tuple[str, str]:
+    prompt_type = _prompt_type_for_agent_role(body.agent_role)
+    has_context = bool(body.task_key or body.epic_id or body.project_id)
+
+    if has_context:
+        from app.services.prompt_generator import PromptGenerator
+
+        try:
+            prompt = await PromptGenerator(db).generate(
+                prompt_type,
+                task_id=body.task_key,
+                epic_id=body.epic_id,
+                project_id=body.project_id,
+            )
+            return prompt, "generated"
+        except ValueError:
+            # Fall back to explicit prompt when the selected role cannot be generated
+            # from the supplied entity context alone.
+            pass
+
+    if body.prompt:
+        return body.prompt, "provided"
+
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail="Prompt oder passende Entity-Referenz erforderlich.",
+    )
+
+
 @router.post("/dispatch")
 async def manual_dispatch(
     body: ManualDispatchRequest,
@@ -50,7 +89,8 @@ async def manual_dispatch(
     current_user=Depends(get_current_user),
 ):
     del current_user
-    from app.services.ai_provider import NeedsManualMode, get_provider, send_with_retry
+    from app.services.ai_provider import NeedsManualMode, get_provider
+    from app.services.agentic_dispatch import agentic_dispatch
 
     try:
         provider = await get_provider(body.agent_role, db)
@@ -61,20 +101,33 @@ async def manual_dispatch(
         }
 
     try:
-        response = await send_with_retry(
+        prompt, prompt_source = await _resolve_manual_prompt(body, db)
+        result = await agentic_dispatch(
             provider=provider,
-            prompt=body.prompt,
+            prompt=prompt,
             agent_role=body.agent_role,
+            task_key=body.task_key,
+            epic_id=body.epic_id,
         )
+        status = "completed" if not result.error else "partial"
         return {
-            "status": "completed",
-            "content": response.content,
+            "status": status,
+            "content": result.content,
             "tool_calls": [
-                {"name": tc.name, "arguments": tc.arguments}
-                for tc in (response.tool_calls or [])
+                {
+                    "name": tc["tool"],
+                    "tool": tc["tool"],
+                    "arguments": tc["arguments"],
+                    "result_preview": tc.get("result_preview", ""),
+                }
+                for tc in result.tool_calls_executed
             ],
-            "input_tokens": response.input_tokens,
-            "output_tokens": response.output_tokens,
+            "iterations": result.iterations,
+            "input_tokens": result.total_input_tokens,
+            "output_tokens": result.total_output_tokens,
+            "model": result.model,
+            "error": result.error,
+            "prompt_source": prompt_source,
         }
     except Exception as exc:
         return {"status": "failed", "message": str(exc)}
@@ -88,16 +141,9 @@ async def list_dispatches(
     current_user=Depends(get_current_user),
 ):
     del current_user
-    from sqlalchemy import desc
+    from app.services.conductor import get_dispatches
 
-    from app.models.conductor import ConductorDispatch
-
-    query = select(ConductorDispatch).order_by(desc(ConductorDispatch.dispatched_at)).limit(limit)
-    if status:
-        query = query.where(ConductorDispatch.status == status)
-
-    result = await db.execute(query)
-    dispatches = result.scalars().all()
+    dispatches = await get_dispatches(db, limit=limit, status_filter=status)
 
     return [
         {
@@ -109,6 +155,8 @@ async def list_dispatches(
             "prompt_type": d.prompt_type,
             "execution_mode": d.execution_mode,
             "status": d.status,
+            "status_history": (d.result or {}).get("status_history") if isinstance(d.result, dict) else None,
+            "governance": (d.result or {}).get("governance") if isinstance(d.result, dict) else None,
             "dispatched_at": d.dispatched_at.isoformat() if d.dispatched_at else None,
             "completed_at": d.completed_at.isoformat() if d.completed_at else None,
         }
@@ -136,20 +184,9 @@ async def get_pending_ide_dispatches(
 ):
     """Return open IDE dispatches for the VS Code extension."""
     del current_user
-    from sqlalchemy import desc
+    from app.services.conductor import get_pending_ide_dispatches_from_db
 
-    from app.models.conductor import ConductorDispatch
-
-    result = await db.execute(
-        select(ConductorDispatch)
-        .where(
-            ConductorDispatch.execution_mode == "ide",
-            ConductorDispatch.status.in_(["dispatched", "acknowledged", "running"]),
-        )
-        .order_by(desc(ConductorDispatch.dispatched_at))
-        .limit(50)
-    )
-    dispatches = result.scalars().all()
+    dispatches = await get_pending_ide_dispatches_from_db(db)
     items = []
     for dispatch in dispatches:
         payload = dispatch.result if isinstance(dispatch.result, dict) else {}
@@ -160,7 +197,7 @@ async def get_pending_ide_dispatches(
                 "prompt_type": dispatch.prompt_type,
                 "trigger_id": dispatch.trigger_id,
                 "prompt": payload.get("prompt"),
-                "tools_needed": payload.get("tools_needed") or ["hivemind/*"],
+                "tools_needed": payload.get("tools_needed") or ["hivemind-*"],
                 "execution_mode": dispatch.execution_mode,
                 "status": dispatch.status,
                 "dispatched_at": dispatch.dispatched_at.isoformat() if dispatch.dispatched_at else None,
@@ -177,11 +214,10 @@ async def acknowledge_ide_dispatch(
 ):
     """Extension confirms receipt: dispatched -> acknowledged."""
     del current_user
-    from app.models.conductor import ConductorDispatch
+    from app.services.conductor import get_dispatch_by_id
 
     uid = _parse_dispatch_id(dispatch_id)
-    row = await db.execute(select(ConductorDispatch).where(ConductorDispatch.id == uid))
-    dispatch = row.scalar_one_or_none()
+    dispatch = await get_dispatch_by_id(db, uid)
     if dispatch is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch not found")
 
@@ -203,11 +239,10 @@ async def mark_ide_dispatch_running(
 ):
     """Extension reports execution start: acknowledged -> running."""
     del current_user
-    from app.models.conductor import ConductorDispatch
+    from app.services.conductor import get_dispatch_by_id
 
     uid = _parse_dispatch_id(dispatch_id)
-    row = await db.execute(select(ConductorDispatch).where(ConductorDispatch.id == uid))
-    dispatch = row.scalar_one_or_none()
+    dispatch = await get_dispatch_by_id(db, uid)
     if dispatch is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch not found")
 
@@ -230,11 +265,10 @@ async def complete_ide_dispatch(
 ):
     """Extension reports final result: running -> completed|failed."""
     del current_user
-    from app.models.conductor import ConductorDispatch
+    from app.services.conductor import get_dispatch_by_id
 
     uid = _parse_dispatch_id(dispatch_id)
-    row = await db.execute(select(ConductorDispatch).where(ConductorDispatch.id == uid))
-    dispatch = row.scalar_one_or_none()
+    dispatch = await get_dispatch_by_id(db, uid)
     if dispatch is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch not found")
 
@@ -264,11 +298,10 @@ async def report_ide_dispatch_progress(
 ):
     """Extension reports progress events while a dispatch is being executed in IDE."""
     del current_user
-    from app.models.conductor import ConductorDispatch
+    from app.services.conductor import get_dispatch_by_id
 
     uid = _parse_dispatch_id(dispatch_id)
-    row = await db.execute(select(ConductorDispatch).where(ConductorDispatch.id == uid))
-    dispatch = row.scalar_one_or_none()
+    dispatch = await get_dispatch_by_id(db, uid)
     if dispatch is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch not found")
 

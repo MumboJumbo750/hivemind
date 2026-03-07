@@ -93,11 +93,12 @@ async def test_list_nodes_excludes_self():
         call_count += 1
         r = MagicMock()
         if call_count == 1:
-            # Node list query
+            # get_own_identity — identity query (now called first)
+            r.scalar_one_or_none.return_value = ident
+        else:
+            # list_peer_nodes — node list query
             own_node = _make_node(node_id=own_id, name="alpha")
             r.scalars.return_value.all.return_value = [own_node, peer]
-        else:
-            r.scalar_one_or_none.return_value = ident
         return r
     db.execute = AsyncMock(side_effect=fake_execute)
 

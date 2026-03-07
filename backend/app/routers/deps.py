@@ -11,12 +11,11 @@ import uuid
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models.user import User
 from app.schemas.auth import CurrentActor
+from app.services import auth_service
 from app.services.auth_service import decode_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -47,10 +46,7 @@ async def _resolve_solo_actor(db: AsyncSession) -> CurrentActor:
     2) any existing user
     3) static fallback actor (legacy behavior)
     """
-    admin_result = await db.execute(
-        select(User).where(User.username == "admin").limit(1)
-    )
-    admin_user = admin_result.scalar_one_or_none()
+    admin_user = await auth_service.get_user_by_username(db, "admin")
     if admin_user:
         return CurrentActor(
             id=admin_user.id,
@@ -58,8 +54,7 @@ async def _resolve_solo_actor(db: AsyncSession) -> CurrentActor:
             role="admin",
         )
 
-    any_user_result = await db.execute(select(User).limit(1))
-    any_user = any_user_result.scalar_one_or_none()
+    any_user = await auth_service.get_any_user(db)
     if any_user:
         return CurrentActor(
             id=any_user.id,
@@ -99,7 +94,7 @@ async def get_current_actor(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user = await db.get(User, uuid.UUID(user_id))
+    user = await auth_service.get_user_by_id(db, uuid.UUID(user_id))
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -151,15 +146,9 @@ async def require_project_access(
     if actor.role == "admin":
         return actor
 
-    from app.models.project import ProjectMember
+    from app.services.project_service import ProjectService
 
-    result = await db.execute(
-        select(ProjectMember).where(
-            ProjectMember.project_id == project_id,
-            ProjectMember.user_id == actor.id,
-        )
-    )
-    if not result.scalar_one_or_none():
+    if not await ProjectService(db).get_member_or_none(project_id, actor.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Kein Zugriff auf dieses Projekt",
@@ -176,29 +165,18 @@ async def require_task_access(
     if actor.role == "admin":
         return actor
 
-    from app.models.task import Task
+    from app.services.epic_service import EpicService
+    from app.services.project_service import ProjectService
+    from app.services.task_service import TaskService
 
-    result = await db.execute(select(Task).where(Task.task_key == task_key))
-    task = result.scalar_one_or_none()
-    if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task nicht gefunden")
+    task = await TaskService(db).get_by_key(task_key)
 
     if task.assigned_to == actor.id:
         return actor  # assigned Developer darf eigenen Task bearbeiten
 
-    from app.models.epic import Epic
-    from app.models.project import ProjectMember
-
-    epic_result = await db.execute(select(Epic).where(Epic.id == task.epic_id))
-    epic = epic_result.scalar_one_or_none()
+    epic = await EpicService(db).get_by_id_or_none(task.epic_id)
     if epic:
-        member_result = await db.execute(
-            select(ProjectMember).where(
-                ProjectMember.project_id == epic.project_id,
-                ProjectMember.user_id == actor.id,
-            )
-        )
-        if member_result.scalar_one_or_none():
+        if await ProjectService(db).get_member_or_none(epic.project_id, actor.id):
             return actor
 
     raise HTTPException(

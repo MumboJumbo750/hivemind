@@ -180,6 +180,6 @@ async def check_epic_auto_transition(db: AsyncSession, epic_id: UUID) -> None:
 - Nach `done`: Prompt Station zeigt „Jetzt: Gaertner" (→ Gärtner-Prompt-Flow)
 
 ### Verfügbare Tools
-- `hivemind/approve_review` — Task von `in_review` auf `done`
-- `hivemind/reject_review` — Task von `in_review` auf `qa_failed`
-- `hivemind/update_task_state` — Worker Re-Entry (`qa_failed → in_progress`)
+- `hivemind-approve_review` — Task von `in_review` auf `done`
+- `hivemind-reject_review` — Task von `in_review` auf `qa_failed`
+- `hivemind-update_task_state` — Worker Re-Entry (`qa_failed → in_progress`)

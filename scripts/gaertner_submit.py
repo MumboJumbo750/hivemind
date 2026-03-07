@@ -14,12 +14,12 @@ for s in drafts:
     print(f"\n  [{title}] ({sid[:8]}...)")
     
     # Submit for review: draft -> pending_merge
-    r1 = a.mcp_call('hivemind/submit_skill_proposal', {'skill_id': sid})
+    r1 = a.mcp_call('hivemind-submit_skill_proposal', {'skill_id': sid})
     r1_text = json.dumps(r1)[:150]
     print(f"    submit: {r1_text}")
     
     # Merge: pending_merge -> active
-    r2 = a.mcp_call('hivemind/merge_skill', {'skill_id': sid})
+    r2 = a.mcp_call('hivemind-merge_skill', {'skill_id': sid})
     r2_text = json.dumps(r2)[:150]
     print(f"    merge:  {r2_text}")
 

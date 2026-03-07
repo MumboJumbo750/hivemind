@@ -63,8 +63,8 @@ async def create_item(body: ItemCreate, db: AsyncSession = Depends(get_db)):
 
 ### Verfügbare Tools
 
-- `hivemind/get_task` — Task-Details laden
-- `hivemind/submit_result` — Ergebnis schreiben
+- `hivemind-get_task` — Task-Details laden
+- `hivemind-submit_result` — Ergebnis schreiben
 
 ```text
 (Ende des Skill-Dokuments)

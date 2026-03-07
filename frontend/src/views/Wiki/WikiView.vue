@@ -66,7 +66,7 @@ async function doSearch(q: string) {
   loading.value = true
   error.value = null
   try {
-    const result = await api.callMcpTool('hivemind/search_wiki', {
+    const result = await api.callMcpTool('hivemind-search_wiki', {
       query: q || '',
       fulltext: !!q,
       limit: 50,
@@ -94,7 +94,7 @@ async function loadHistory() {
   if (!selectedArticle.value) return
   showHistory.value = true
   try {
-    const result = await api.callMcpTool('hivemind/get_wiki_article', {
+    const result = await api.callMcpTool('hivemind-get_wiki_article', {
       slug: selectedArticle.value.slug,
     })
     const parsed = JSON.parse(result[0]?.text || '{}')
@@ -110,7 +110,7 @@ async function loadHistory() {
 async function linkToEpic() {
   if (!selectedArticle.value || !epicKeyInput.value.trim()) return
   try {
-    await api.callMcpTool('hivemind/link_wiki_to_epic', {
+    await api.callMcpTool('hivemind-link_wiki_to_epic', {
       article_slug: selectedArticle.value.slug,
       epic_key: epicKeyInput.value.trim(),
     })

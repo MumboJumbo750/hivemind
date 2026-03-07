@@ -140,5 +140,5 @@ PATCH /api/tasks/:task_key/state { "state": "in_progress", "actor_role": "admin"
 Admin setzt Task manuell von `blocked` zurück auf `in_progress`.
 
 ### Verfügbare Tools
-- `hivemind/create_decision_request` — Decision Request erstellen + Task blockieren
-- `hivemind/get_task` — Task-Details laden (zeigt `blocked`-State + offene Decision Requests)
+- `hivemind-create_decision_request` — Decision Request erstellen + Task blockieren
+- `hivemind-get_task` — Task-Details laden (zeigt `blocked`-State + offene Decision Requests)

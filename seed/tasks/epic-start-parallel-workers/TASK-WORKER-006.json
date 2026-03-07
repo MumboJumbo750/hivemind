@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-WORKER-006",
+  "epic_ref": "EPIC-WORKER-ORCH",
+  "title": "Thread-Policy pro Agent-Rolle einführbar machen",
+  "description": "Mache steuerbar, welche Agenten stateful Sessions verwenden dürfen und welche bewusst stateless pro Attempt arbeiten.\n\n**Was zu implementieren ist:**\n\n1. Rollenmodell für Thread-Policy definieren (`stateful`, `stateless`, `attempt_stateful` o. ä.)\n2. Konfigurierbarkeit pro Agent-Rolle und ggf. pro Projekt ergänzen\n3. Worker und Reviewer standardmäßig attempt-basiert halten\n4. Stratege, Architekt, Triage und Kartograph optional stateful unterstützen\n5. Auswirkungen auf Prompt-, Dispatch- und Resume-Verhalten dokumentieren\n\n**Wichtig:** Thread-Persistenz ist ein Rolleneigenschafts-Thema und sollte nicht global erzwungen werden.",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Thread-Policy ist pro Agent-Rolle konfigurierbar",
+      "Worker/Reviewer können bewusst stateless betrieben werden",
+      "Stateful Rollen können Sitzungen kontrolliert wiederverwenden",
+      "Resume-Logik und Thread-Policy greifen konsistent zusammen"
+    ]
+  },
+  "tags": ["agents", "threads", "context", "configuration"],
+  "subtasks": [],
+  "pinned_skills": ["ai-provider-service", "prompt-generator", "governance-level"],
+  "linked_wiki": ["autonomy-loop"],
+  "source_doc": "docs/features/epic-start-parallel-workers.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-WORKER-005"]
+}

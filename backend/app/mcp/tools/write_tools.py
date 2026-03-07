@@ -1,13 +1,13 @@
 """MCP Planer Write-Tools — TASK-4-002.
 
 Architect/Stratege write tools for epic decomposition and task management:
-- hivemind/decompose_epic
-- hivemind/create_task
-- hivemind/create_subtask
-- hivemind/link_skill
-- hivemind/set_context_boundary
-- hivemind/assign_task
-- hivemind/update_task_state
+- hivemind-decompose_epic
+- hivemind-create_task
+- hivemind-create_subtask
+- hivemind-link_skill
+- hivemind-set_context_boundary
+- hivemind-assign_task
+- hivemind-update_task_state
 """
 from __future__ import annotations
 
@@ -19,56 +19,11 @@ from mcp.types import TextContent, Tool
 
 from app.db import AsyncSessionLocal
 from app.mcp.server import register_tool
+from app.services.guard_materialization import materialize_task_guards
 
 logger = logging.getLogger(__name__)
 
 ADMIN_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
-
-
-def _epic_prefix(epic_key: str) -> str:
-    """Derive a short task-key prefix from an epic_key.
-
-    Examples:
-        EPIC-PHASE-5   → "5"
-        EPIC-PHASE-1A  → "1A"
-        EPIC-PHASE-F   → "F"
-        EPIC-42        → "42"
-
-    Falls back to the raw number after 'EPIC-' if no PHASE pattern.
-    """
-    import re
-    m = re.match(r"EPIC-PHASE-(.+)", epic_key, re.IGNORECASE)
-    if m:
-        return m.group(1).upper()
-    m = re.match(r"EPIC-(\S+)", epic_key, re.IGNORECASE)
-    if m:
-        return m.group(1).upper()
-    return epic_key
-
-
-async def _next_epic_task_key(
-    db,
-    epic_id: uuid.UUID,
-    prefix: str,
-) -> str:
-    """Generate the next task key for an epic using its prefix.
-
-    Counts existing tasks whose task_key matches TASK-{prefix}-NNN
-    and returns the next number, e.g. TASK-5-023.
-    """
-    from sqlalchemy import func as sa_func, select, text  # noqa: F811
-    from app.models.task import Task
-
-    pattern = f"TASK-{prefix}-%"
-    result = await db.execute(
-        select(sa_func.count()).select_from(Task).where(
-            Task.epic_id == epic_id,
-            Task.task_key.like(pattern),
-        )
-    )
-    existing_count = result.scalar_one()
-    seq = existing_count + 1
-    return f"TASK-{prefix}-{seq:03d}"
 
 
 def _ok(data: dict) -> list[TextContent]:
@@ -115,12 +70,12 @@ def normalize_args(args: dict, *, only: set[str] | None = None) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/decompose_epic  — split an epic into tasks atomically
+# hivemind-decompose_epic  — split an epic into tasks atomically
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/decompose_epic",
+        name="hivemind-decompose_epic",
         description=(
             "Decompose an epic into multiple tasks in a single atomic transaction. "
             "All tasks are created with state='incoming' (NOT scoped!). "
@@ -181,11 +136,11 @@ async def _handle_decompose_epic(args: dict) -> list[TextContent]:
                     return _err("ENTITY_NOT_FOUND", f"Epic '{epic_key}' not found", 404)
 
                 created_tasks: list[Task] = []
-                prefix = _epic_prefix(epic_key)
 
                 for i, td in enumerate(task_defs):
-                    # Generate phase-specific task key (TASK-5-001 etc.)
-                    task_key = await _next_epic_task_key(db, epic.id, prefix)
+                    # Generate unique task key via sequence
+                    from app.services.key_generator import next_task_key
+                    task_key = await next_task_key(db)
 
                     parent_id = None
                     parent_index = td.get("parent_index")
@@ -227,12 +182,12 @@ async def _handle_decompose_epic(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/create_task  — create a single task in an epic
+# hivemind-create_task  — create a single task in an epic
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/create_task",
+        name="hivemind-create_task",
         description=(
             "Create a single task within an epic. The task starts with state='incoming'."
         ),
@@ -268,8 +223,8 @@ async def _handle_create_task(args: dict) -> list[TextContent]:
                 if not epic:
                     return _err("ENTITY_NOT_FOUND", f"Epic '{epic_key}' not found", 404)
 
-                prefix = _epic_prefix(epic_key)
-                task_key = await _next_epic_task_key(db, epic.id, prefix)
+                from app.services.key_generator import next_task_key
+                task_key = await next_task_key(db)
 
                 assigned_to = None
                 if args.get("assigned_to"):
@@ -305,12 +260,12 @@ async def _handle_create_task(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/create_subtask  — create a subtask with parent_task_id
+# hivemind-create_subtask  — create a subtask with parent_task_id
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/create_subtask",
+        name="hivemind-create_subtask",
         description="Create a subtask linked to a parent task.",
         inputSchema={
             "type": "object",
@@ -342,11 +297,8 @@ async def _handle_create_subtask(args: dict) -> list[TextContent]:
                 if not parent:
                     return _err("ENTITY_NOT_FOUND", f"Parent task '{parent_key}' not found", 404)
 
-                # Resolve epic to get prefix
-                epic_result = await db.execute(select(Epic).where(Epic.id == parent.epic_id))
-                epic = epic_result.scalar_one()
-                prefix = _epic_prefix(epic.epic_key)
-                task_key = await _next_epic_task_key(db, parent.epic_id, prefix)
+                from app.services.key_generator import next_task_key
+                task_key = await next_task_key(db)
 
                 subtask = Task(
                     task_key=task_key,
@@ -378,12 +330,12 @@ async def _handle_create_subtask(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/link_skill  — pin a skill version to a task
+# hivemind-link_skill  — pin a skill version to a task
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/link_skill",
+        name="hivemind-link_skill",
         description=(
             "Pin a skill (and optionally a specific version) to a task. "
             "Creates a task_skills entry."
@@ -392,7 +344,7 @@ register_tool(
             "type": "object",
             "properties": {
                 "task_key": {"type": "string"},
-                "skill_id": {"type": "string", "description": "Skill UUID"},
+                "skill_id": {"type": "string", "description": "Skill-Identifier (UUID oder Key, z.B. 'SKILL-7')"},
                 "pinned_version_id": {
                     "type": "string",
                     "description": "Optional skill_version UUID to pin",
@@ -412,9 +364,9 @@ async def _handle_link_skill(args: dict) -> list[TextContent]:
     from app.models.context_boundary import TaskSkill
     from app.models.skill import Skill
     from app.models.task import Task
+    from app.services.key_generator import resolve_skill
 
     task_key = args["task_key"]
-    skill_id = uuid.UUID(args["skill_id"])
     pinned = uuid.UUID(args["pinned_version_id"]) if args.get("pinned_version_id") else None
 
     try:
@@ -426,10 +378,11 @@ async def _handle_link_skill(args: dict) -> list[TextContent]:
                 if not task:
                     return _err("ENTITY_NOT_FOUND", f"Task '{task_key}' not found", 404)
 
-                # Verify skill
-                s_result = await db.execute(select(Skill).where(Skill.id == skill_id))
-                if not s_result.scalar_one_or_none():
-                    return _err("ENTITY_NOT_FOUND", f"Skill '{skill_id}' not found", 404)
+                # Resolve skill by UUID or key
+                skill = await resolve_skill(db, args.get("skill_id", ""))
+                if not skill:
+                    return _err("ENTITY_NOT_FOUND", f"Skill '{args.get('skill_id')}' not found", 404)
+                skill_id = skill.id
 
                 # Upsert task_skill
                 stmt = insert(TaskSkill).values(
@@ -442,6 +395,8 @@ async def _handle_link_skill(args: dict) -> list[TextContent]:
                     set_={"pinned_version_id": pinned},
                 )
                 await db.execute(stmt)
+                await db.flush()
+                await materialize_task_guards(db, task)
 
                 return _ok({
                     "data": {
@@ -456,12 +411,12 @@ async def _handle_link_skill(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/set_context_boundary  — set context boundary for a task
+# hivemind-set_context_boundary  — set context boundary for a task
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/set_context_boundary",
+        name="hivemind-set_context_boundary",
         description=(
             "Set the context boundary for a task. Defines allowed skills, "
             "allowed docs, and max token budget. Overwrites any previous boundary."
@@ -473,12 +428,12 @@ register_tool(
                 "allowed_skills": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Skill UUIDs the agent is allowed to use",
+                    "description": "Skill-Identifier (UUID oder Key, z.B. 'SKILL-7') die der Agent nutzen darf",
                 },
                 "allowed_docs": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Wiki/Doc UUIDs the agent may reference",
+                    "description": "Doc-Identifier (UUID oder Key, z.B. 'DOC-8') die der Agent referenzieren darf",
                 },
                 "max_token_budget": {
                     "type": "integer",
@@ -498,6 +453,7 @@ async def _handle_set_context_boundary(args: dict) -> list[TextContent]:
 
     from app.models.context_boundary import ContextBoundary
     from app.models.task import Task
+    from app.services.key_generator import resolve_doc, resolve_skill
 
     task_key = args["task_key"]
 
@@ -509,8 +465,22 @@ async def _handle_set_context_boundary(args: dict) -> list[TextContent]:
                 if not task:
                     return _err("ENTITY_NOT_FOUND", f"Task '{task_key}' not found", 404)
 
-                allowed_skills = [uuid.UUID(s) for s in args.get("allowed_skills", [])]
-                allowed_docs = [uuid.UUID(d) for d in args.get("allowed_docs", [])]
+                # Resolve skill identifiers to UUIDs
+                allowed_skills = []
+                for s in args.get("allowed_skills", []):
+                    skill = await resolve_skill(db, s)
+                    if not skill:
+                        return _err("ENTITY_NOT_FOUND", f"Skill '{s}' not found", 404)
+                    allowed_skills.append(skill.id)
+
+                # Resolve doc identifiers to UUIDs
+                allowed_docs = []
+                for d in args.get("allowed_docs", []):
+                    doc = await resolve_doc(db, d)
+                    if not doc:
+                        return _err("ENTITY_NOT_FOUND", f"Doc '{d}' not found", 404)
+                    allowed_docs.append(doc.id)
+
                 max_tokens = args.get("max_token_budget")
 
                 # Upsert (task_id is unique)
@@ -546,12 +516,12 @@ async def _handle_set_context_boundary(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/assign_task  — assign task to a user
+# hivemind-assign_task  — assign task to a user
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/assign_task",
+        name="hivemind-assign_task",
         description=(
             "Assign a task to a user. Sets assigned_to (required before scoped→ready). "
             "Triggers a task_assigned notification. "
@@ -628,12 +598,12 @@ async def _handle_assign_task(args: dict) -> list[TextContent]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# hivemind/update_task_state  — architect state transition
+# hivemind-update_task_state  — architect state transition
 # ═══════════════════════════════════════════════════════════════════════════════
 
 register_tool(
     Tool(
-        name="hivemind/update_task_state",
+        name="hivemind-update_task_state",
         description=(
             "Transition a task to a new state. "
             "Param is 'target_state' (NOT 'state'!). Param is 'task_key' (NOT 'task_id'!). "
@@ -692,7 +662,7 @@ async def _handle_update_task_state(args: dict) -> list[TextContent]:
                     return _err(
                         "INVALID_STATE_TRANSITION",
                         "scoped → ready requires assigned_to. "
-                        f"Call hivemind/assign_task first with "
+                        f"Call hivemind-assign_task first with "
                         f"{{\"task_key\": \"{task_key}\", \"user_id\": \"<uuid>\"}}",
                         422,
                     )
@@ -706,10 +676,12 @@ async def _handle_update_task_state(args: dict) -> list[TextContent]:
                             return _err(
                                 "REVIEW_GATE_FAILED",
                                 "result must be set before in_review. "
-                                f"Call hivemind/submit_result first with "
+                                f"Call hivemind-submit_result first with "
                                 f"{{\"task_key\": \"{task_key}\", \"result\": \"<your result text>\"}}",
                                 422,
                             )
+
+                        await materialize_task_guards(db, task)
 
                         # Check all task_guards are passed or skipped
                         tg_result = await db.execute(
@@ -770,6 +742,23 @@ async def _handle_update_task_state(args: dict) -> list[TextContent]:
                     )
 
                 await db.flush()
+                try:
+                    from app.services.conductor import conductor
+
+                    await conductor.on_task_state_change(
+                        task.task_key,
+                        str(task.id),
+                        old_state,
+                        target_state,
+                        db,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Conductor hook failed for update_task_state %s (%s -> %s)",
+                        task.task_key,
+                        old_state,
+                        target_state,
+                    )
 
                 return _ok({
                     "data": {

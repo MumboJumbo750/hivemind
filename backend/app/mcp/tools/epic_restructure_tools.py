@@ -1,6 +1,6 @@
 """MCP Epic Restructure Tool — TASK-5-012.
 
-- hivemind/propose_epic_restructure — Propose split/merge/task_move of epics
+- hivemind-propose_epic_restructure — Propose split/merge/task_move of epics
 """
 from __future__ import annotations
 
@@ -29,12 +29,19 @@ def _ok(data: dict) -> list[TextContent]:
 def _err(code: str, message: str, status: int = 400) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps({
         "error": {"code": code, "message": message, "status": status}
-    }))]
+    }))] 
+
+
+def _actor_uuid(args: dict) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(args.get("_actor_id") or ADMIN_ID))
+    except ValueError:
+        return ADMIN_ID
 
 
 register_tool(
     Tool(
-        name="hivemind/propose_epic_restructure",
+        name="hivemind-propose_epic_restructure",
         description=(
             "Propose an epic restructure (split, merge, or task_move). "
             "Creates a proposal record with state=proposed. "
@@ -98,6 +105,7 @@ async def _handle_propose_epic_restructure(args: dict) -> list[TextContent]:
 
     if proposal_type == "task_move" and not args.get("task_keys"):
         return _err("VALIDATION_ERROR", "task_keys ist Pflicht für task_move", 422)
+    actor_id = _actor_uuid(args)
 
     try:
         async with AsyncSessionLocal() as db:
@@ -138,13 +146,19 @@ async def _handle_propose_epic_restructure(args: dict) -> list[TextContent]:
                 dr = DecisionRequest(
                     task_id=None,  # Epic-level, not task-level
                     epic_id=epic.id,
-                    owner_id=epic.owner_id or ADMIN_ID,
+                    owner_id=epic.owner_id or actor_id,
                     state="open",
                     payload=payload,
                 )
                 db.add(dr)
                 await db.flush()
                 await db.refresh(dr)
+                try:
+                    from app.services.conductor import conductor
+
+                    await conductor.on_epic_restructure_proposed(str(dr.id), db)
+                except Exception:
+                    logger.exception("Conductor hook failed for epic restructure %s", dr.id)
 
                 # Notify admins
                 publish(

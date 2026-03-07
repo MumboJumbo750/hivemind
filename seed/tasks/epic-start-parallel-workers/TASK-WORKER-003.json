@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-WORKER-003",
+  "epic_ref": "EPIC-WORKER-ORCH",
+  "title": "Parallel-Worker-Scheduler mit Slot- und Konfliktsteuerung bauen",
+  "description": "Implementiere den eigentlichen Scheduler für mehrere Worker pro Epic.\n\n**Was zu implementieren ist:**\n\n1. Slot-basierte Parallelität pro Epic-Run einführen\n2. `max_parallel_workers` und per-Rolle/per-Projekt Limits anwenden\n3. Worker nur für tatsächlich runnable Tasks dispatchen\n4. Nach Task-Abschluss oder Review-Signal neue runnable Tasks automatisch nachziehen\n5. Konfliktschutz und Cooldowns sauber in die Planung integrieren\n\n**Wichtig:** Ziel ist kontrollierte Parallelität, nicht maximale Parallelität.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Mehrere Worker können kontrolliert parallel für ein Epic laufen",
+      "Slots und Limits werden effektiv angewendet",
+      "Neue runnable Tasks werden nachgezogen, wenn Kapazität frei wird",
+      "Konflikte verhindern unzulässige Parallel-Dispatches"
+    ]
+  },
+  "tags": ["backend", "workers", "parallelism", "scheduler"],
+  "subtasks": [],
+  "pinned_skills": ["conductor-orchestrator", "worker-endpoint-pool", "ai-provider-service"],
+  "linked_wiki": ["autonomy-loop"],
+  "source_doc": "docs/features/epic-start-parallel-workers.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-WORKER-002"]
+}

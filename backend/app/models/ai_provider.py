@@ -32,6 +32,7 @@ class AIProviderConfig(Base):
     rpm_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tpm_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     token_budget_daily: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    thread_policy: Mapped[str | None] = mapped_column(String(50), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)

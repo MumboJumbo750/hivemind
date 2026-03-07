@@ -10,14 +10,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.models.audit import McpInvocation
-from app.models.user import User
 from app.routers.deps import get_current_actor
 from app.schemas.auth import CurrentActor
+from app.services.audit import query_invocations, resolve_usernames
 
 router = APIRouter(prefix="/audit", tags=["audit"])
 
@@ -86,43 +84,21 @@ async def list_audit_entries(
 
     RBAC: admin sees all, developer sees only own entries.
     """
-    base = select(McpInvocation)
-
-    # RBAC: developer can only see own entries
-    if actor.role not in ("admin", "triage"):
-        base = base.where(McpInvocation.actor_id == actor.id)
-
-    # Filters
-    if actor_id:
-        base = base.where(McpInvocation.actor_id == actor_id)
-    if tool_name:
-        base = base.where(McpInvocation.tool_name == tool_name)
-    if target_id:
-        base = base.where(McpInvocation.target_id == target_id)
-    if entity_type:
-        # entity_type maps to tool_name patterns (e.g., "task" → tools containing "task")
-        base = base.where(McpInvocation.tool_name.ilike(f"%{entity_type}%"))
-    if from_date:
-        base = base.where(McpInvocation.created_at >= from_date)
-    if to_date:
-        base = base.where(McpInvocation.created_at <= to_date)
-
-    # Total count
-    count_q = select(func.count()).select_from(base.subquery())
-    total = (await db.execute(count_q)).scalar() or 0
-
-    # Paginated results (newest first)
+    entries, total = await query_invocations(
+        db,
+        own_actor_id=actor.id,
+        actor_role=actor.role,
+        actor_id_filter=actor_id,
+        tool_name=tool_name,
+        entity_type=entity_type,
+        target_id=target_id,
+        from_date=from_date,
+        to_date=to_date,
+        page=page,
+        page_size=page_size,
+    )
+    umap = await resolve_usernames(db, {e.actor_id for e in entries})
     offset = (page - 1) * page_size
-    query = base.order_by(McpInvocation.created_at.desc()).limit(page_size).offset(offset)
-    result = await db.execute(query)
-    entries = list(result.scalars().all())
-
-    # Resolve usernames
-    user_ids = {e.actor_id for e in entries}
-    umap: dict[uuid.UUID, str] = {}
-    if user_ids:
-        u_result = await db.execute(select(User).where(User.id.in_(user_ids)))
-        umap = {u.id: u.username for u in u_result.scalars().all()}
 
     # Build response with truncation
     data = []

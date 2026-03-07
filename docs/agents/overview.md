@@ -17,7 +17,7 @@ Hivemind kennt **7 Rollen/Agenten** (6 ab Phase 1, Reviewer ab Phase 8). In Phas
 | **Prompt-Typ** | Initial-Kartograph, Follow-up | Strategie-Prompt | Architektur-Prompt | Worker-Prompt | Gaertner-Prompt | Triage-Prompt | Reviewer-Prompt |
 | **Schreibrechte** | Wiki, Epic-Docs, Restructure-Proposals | Epic-Proposals, Wiki (Roadmap) | Tasks, Subtasks, Context Boundaries | submit_result, Statuswechsel, Decision Request | Skill-Proposals, Doc-Updates, Decision Records | — | submit_review_recommendation |
 
-> ¹ Reviewer ist erst ab Phase 8 verfügbar und wird nur dispatcht wenn `governance.review ≠ 'manual'`.
+> ¹ Reviewer ist erst ab Phase 8 verfügbar und wird nur dispatcht wenn `governance.review ≠ 'manual'`. Der eigentliche Unterschied zwischen `assisted` und `auto` ist derzeit beim Reviewer auch produktiv umgesetzt; andere Governance-Typen teilen sich aktuell noch denselben Dispatch-Gate.
 
 ---
 

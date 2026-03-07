@@ -33,7 +33,7 @@ lexikalische Treffer (tsvector) mit semantischer Ähnlichkeit (pgvector).
 - **Tag-Filterung** als Pre-Filter vor der Textsuche (Array-Overlap `&&`)
 - **Hybrid-Ranking:** `0.6 * ts_rank + 0.4 * (1 - cosine_distance)` wenn Embedding vorhanden
 - Suche über REST: `GET /api/wiki/search?q=...&tags=...`
-- Suche über MCP: `hivemind/search_wiki { "query": "...", "tags": [...] }`
+- Suche über MCP: `hivemind-search_wiki { "query": "...", "tags": [...] }`
 - Beide Endpoints nutzen denselben `WikiSearchService`
 
 ### Alembic-Migration
@@ -150,5 +150,5 @@ async def search_wiki(
 | `SEARCH_ERROR` | 500 | DB-Fehler bei Suche |
 
 ### Verfügbare Tools
-- `hivemind/search_wiki` — Wiki-Suche (Volltextsuche + Tags)
-- `hivemind/get_wiki_article` — Einzelnen Artikel laden (per ID oder Slug)
+- `hivemind-search_wiki` — Wiki-Suche (Volltextsuche + Tags)
+- `hivemind-get_wiki_article` — Einzelnen Artikel laden (per ID oder Slug)

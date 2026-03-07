@@ -12,14 +12,17 @@ from typing import Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.skill import Skill, SkillVersion
+from app.models.federation import NodeIdentity
+from app.models.skill import Skill, SkillParent, SkillVersion
 from app.models.user import User
 from app.schemas.auth import CurrentActor
 from app.schemas.skill import SkillCreate, SkillReject, SkillUpdate
+from app.services.embedding_service import EmbeddingPriority, get_embedding_service
 from app.services.event_bus import publish
 from app.services.locking import check_version
 
 logger = logging.getLogger(__name__)
+EMBEDDING_SVC = get_embedding_service()
 
 # ── Skill Lifecycle State Machine ─────────────────────────────────────────────
 
@@ -222,6 +225,7 @@ class SkillService:
         skill.version += 1
         await self.db.flush()
         await self.db.refresh(skill)
+        await self._trigger_conductor_skill_proposal(skill)
         return skill
 
     # ── Merge (pending_merge → active) ────────────────────────────────────
@@ -250,6 +254,12 @@ class SkillService:
         self.db.add(sv)
         await self.db.flush()
         await self.db.refresh(skill)
+        await EMBEDDING_SVC.enqueue(
+            "skills",
+            str(skill.id),
+            _build_skill_embedding_text(skill),
+            priority=EmbeddingPriority.ON_WRITE,
+        )
 
         # Notify proposer
         if skill.proposed_by:
@@ -323,6 +333,14 @@ class SkillService:
         except Exception:
             logger.exception("Failed to publish %s notification", event_type)
 
+    async def _trigger_conductor_skill_proposal(self, skill: Skill) -> None:
+        try:
+            from app.services.conductor import conductor
+
+            await conductor.on_skill_proposal(str(skill.id), self.db)
+        except Exception:
+            logger.exception("Conductor hook failed for skill proposal %s", skill.id)
+
     async def resolve_usernames(self, skills: list[Skill]) -> dict[uuid.UUID, str]:
         """Resolve user UUIDs → usernames for owner_id / proposed_by."""
         ids: set[uuid.UUID] = set()
@@ -335,3 +353,67 @@ class SkillService:
             return {}
         result = await self.db.execute(select(User).where(User.id.in_(ids)))
         return {u.id: u.username for u in result.scalars().all()}
+
+    async def resolve_version_usernames(self, versions: list[SkillVersion]) -> dict[uuid.UUID, str]:
+        """Resolve user UUIDs → usernames for SkillVersion.changed_by."""
+        ids: set[uuid.UUID] = {v.changed_by for v in versions if v.changed_by}
+        if not ids:
+            return {}
+        result = await self.db.execute(select(User).where(User.id.in_(ids)))
+        return {u.id: u.username for u in result.scalars().all()}
+
+    async def fork(self, skill_id: uuid.UUID) -> Skill:
+        """Fork a federated skill as a local draft (TASK-F-007 logic)."""
+        from fastapi import HTTPException, status
+
+        source = await self.get_by_id(skill_id)
+        if source is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill nicht gefunden.")
+
+        if source.federation_scope != "federated":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Nur federierte Skills können geforkt werden.",
+            )
+
+        existing_fork = await self.db.execute(
+            select(SkillParent).where(SkillParent.parent_id == skill_id)
+        )
+        if existing_fork.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Skill bereits als lokaler Draft vorhanden.",
+            )
+
+        identity_result = await self.db.execute(select(NodeIdentity))
+        identity = identity_result.scalar_one_or_none()
+        own_node_id = identity.node_id if identity else None
+
+        forked = Skill(
+            title=f"{source.title} (Fork)",
+            content=source.content,
+            service_scope=source.service_scope,
+            stack=source.stack,
+            skill_type=source.skill_type,
+            lifecycle="draft",
+            federation_scope="local",
+            origin_node_id=own_node_id,
+            version=1,
+        )
+        self.db.add(forked)
+        await self.db.flush()
+
+        parent_link = SkillParent(child_id=forked.id, parent_id=source.id)
+        self.db.add(parent_link)
+        await self.db.flush()
+        await self.db.refresh(forked)
+        return forked
+
+
+def _build_skill_embedding_text(skill: Skill) -> str:
+    parts = [skill.title.strip(), skill.content.strip()]
+    if skill.service_scope:
+        parts.append("service_scope: " + ", ".join(skill.service_scope))
+    if skill.stack:
+        parts.append("stack: " + ", ".join(skill.stack))
+    return "\n\n".join(part for part in parts if part).strip()

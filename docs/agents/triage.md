@@ -50,7 +50,7 @@ Triage erfordert die **`admin`-Rolle**:
 | `[GUARD PROPOSAL]` | Kartograph via `submit_guard_proposal` | Mergen (`merge_guard`), ablehnen mit Begründung (`reject_guard`) |
 | `[GUARD CHANGE]` | Kartograph via `propose_guard_change` | Annehmen (`accept_guard_change`), ablehnen mit Begründung (`reject_guard_change`) |
 | `[RESTRUCTURE]` | Kartograph via `propose_epic_restructure` | Annehmen (`accept_epic_restructure`), ablehnen mit Begründung (`reject_epic_restructure`) |
-| `[DEAD LETTER]` | Outbox nach max Retries | Requeue (`hivemind/requeue_dead_letter`), verwerfen (`hivemind/discard_dead_letter`) |
+| `[DEAD LETTER]` | Outbox nach max Retries | Requeue (`hivemind-requeue_dead_letter`), verwerfen (`hivemind-discard_dead_letter`) |
 | `[ESCALATED]` | Tasks mit 3x qa_failed oder Decision-SLA > 72h | Auflösen, Owner wechseln |
 
 ---
@@ -106,8 +106,8 @@ Für jedes [UNROUTED]-Item:
 3. Begründe deine Entscheidung kurz
 
 ### Verfügbare Tools
-- hivemind/get_epic       — Epic-Details laden
-- hivemind/get_triage     — Aktuelle Triage-Items laden
+- hivemind-get_epic       — Epic-Details laden
+- hivemind-get_triage     — Aktuelle Triage-Items laden
 ```
 
 > Der Triage-Prompt erfordert `triage`-Permission (admin only).
@@ -118,66 +118,66 @@ Für jedes [UNROUTED]-Item:
 
 ```text
 -- Lesen
-hivemind/get_triage              { "state": "unrouted|escalated|dead|quarantined|all" }
+hivemind-get_triage              { "state": "unrouted|escalated|dead|quarantined|all" }
 
 -- UNROUTED Routing
-hivemind/route_event             { "outbox_id": "uuid", "epic_id": "EPIC-12",
+hivemind-route_event             { "outbox_id": "uuid", "epic_id": "EPIC-12",
                                    "create_as": "task|bug" }
                                    -- routing_state: unrouted → routed
-hivemind/ignore_event            { "outbox_id": "uuid" }
+hivemind-ignore_event            { "outbox_id": "uuid" }
                                    -- routing_state: unrouted → ignored
-hivemind/assign_bug              { "bug_id": "uuid", "epic_id": "EPIC-12" }
+hivemind-assign_bug              { "bug_id": "uuid", "epic_id": "EPIC-12" }
 
 -- Dead Letter
-hivemind/requeue_dead_letter     { "id": "uuid" }
+hivemind-requeue_dead_letter     { "id": "uuid" }
                                    -- Requeue eines DLQ-Eintrags:
                                    --   sync_outbox.state -> pending
                                    --   attempts -> 0, next_retry_at -> now()
                                    --   sync_dead_letter.requeued_by/requeued_at setzen
-hivemind/discard_dead_letter     { "id": "uuid" }
+hivemind-discard_dead_letter     { "id": "uuid" }
                                    -- Verwirft einen Dead-Letter-Eintrag endgültig:
                                    --   sync_outbox.state bleibt 'dead' (kein Requeue möglich)
                                    --   sync_dead_letter: discarded_by + discarded_at wird gesetzt
                                    --   Audit-Trail bleibt erhalten (kein physisches Löschen)
 
 -- Quarantined (Federation Key-Kompromittierung, → federation.md#key-kompromittierung--notfallprozedur)
-hivemind/approve_quarantined     { "outbox_id": "uuid" }
+hivemind-approve_quarantined     { "outbox_id": "uuid" }
                                    -- sync_outbox.state: quarantined → pending (wird normal verarbeitet)
                                    -- Admin hat Eintrag manuell geprüft und für vertrauenswürdig befunden
-hivemind/discard_quarantined     { "outbox_id": "uuid", "reason": "..." }
+hivemind-discard_quarantined     { "outbox_id": "uuid", "reason": "..." }
                                    -- sync_outbox.state: quarantined → cancelled
                                    -- Eintrag wird nicht verarbeitet; Audit-Trail bleibt erhalten
 
 -- Skill/Guard Proposals (neue Entitäten)
-hivemind/merge_skill             { "skill_id": "uuid" }
-hivemind/reject_skill            { "skill_id": "uuid", "reason": "..." }
-hivemind/merge_guard             { "guard_id": "uuid" }
-hivemind/reject_guard            { "guard_id": "uuid", "reason": "..." }
+hivemind-merge_skill             { "skill_id": "uuid" }
+hivemind-reject_skill            { "skill_id": "uuid", "reason": "..." }
+hivemind-merge_guard             { "guard_id": "uuid" }
+hivemind-reject_guard            { "guard_id": "uuid", "reason": "..." }
 
 -- Epic Proposals (Stratege)
-hivemind/accept_epic_proposal    { "proposal_id": "uuid" }
+hivemind-accept_epic_proposal    { "proposal_id": "uuid" }
                                    -- Epic-Proposal → Epic (state: incoming)
                                    -- depends_on-Referenzen auf Proposal-UUIDs werden
                                    -- auf echte Epic-UUIDs aufgelöst
-hivemind/reject_epic_proposal    { "proposal_id": "uuid", "reason": "..." }
+hivemind-reject_epic_proposal    { "proposal_id": "uuid", "reason": "..." }
                                    -- Notification an Strategen mit Begründung
                                    -- Abhängige Proposals erhalten Warnung
 
 -- Skill/Guard Change Proposals (Änderungen an bestehenden Entitäten)
-hivemind/accept_skill_change     { "proposal_id": "uuid" }
-hivemind/reject_skill_change     { "proposal_id": "uuid", "reason": "..." }
-hivemind/accept_guard_change     { "proposal_id": "uuid" }
-hivemind/reject_guard_change     { "proposal_id": "uuid", "reason": "..." }
+hivemind-accept_skill_change     { "proposal_id": "uuid" }
+hivemind-reject_skill_change     { "proposal_id": "uuid", "reason": "..." }
+hivemind-accept_guard_change     { "proposal_id": "uuid" }
+hivemind-reject_guard_change     { "proposal_id": "uuid", "reason": "..." }
 
 -- Epic Restructure
-hivemind/accept_epic_restructure { "proposal_id": "uuid" }
-hivemind/reject_epic_restructure { "proposal_id": "uuid", "reason": "..." }
+hivemind-accept_epic_restructure { "proposal_id": "uuid" }
+hivemind-reject_epic_restructure { "proposal_id": "uuid", "reason": "..." }
 
 -- Eskalation
-hivemind/resolve_escalation      { "task_id": "TASK-88", "comment": "..." }
+hivemind-resolve_escalation      { "task_id": "TASK-88", "comment": "..." }
                                    -- escalated → in_progress (Admin only)
-hivemind/reassign_epic_owner     { "epic_id": "EPIC-12", "new_owner_id": "uuid" }
-hivemind/cancel_task             { "task_id": "TASK-88", "reason": "..." }
+hivemind-reassign_epic_owner     { "epic_id": "EPIC-12", "new_owner_id": "uuid" }
+hivemind-cancel_task             { "task_id": "TASK-88", "reason": "..." }
 ```
 
 ---

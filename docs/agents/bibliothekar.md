@@ -52,6 +52,8 @@ Ab Phase 3 (Ollama verfügbar) übernimmt der Bibliothekar als echte Backend-Kom
 7. Kontext-Package zusammenstellen bis `max_token_budget` — Wiki-Artikel werden zuletzt hinzugefügt und als erstes gestrichen wenn Budget erschöpft
 8. Token-Count pro Element zurückgeben (→ Token Radar im UI)
 
+> **Fallback-Verhalten:** Wenn fuer eine Entitaetsklasse noch keine Embeddings vorliegen oder Ollama temporaer degradiert ist, faellt der Bibliothekar fuer diese Klasse auf eine deterministische Kandidatenliste zurueck, statt den Prompt leer werden zu lassen.
+
 ### Lade-Prioritäten
 
 ```

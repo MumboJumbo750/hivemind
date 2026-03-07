@@ -16,7 +16,7 @@ SEED = ROOT / "seed"
 
 def mcp_call(tool: str, args: dict = None) -> dict:
     url = f"{BASE}/api/mcp/call"
-    body = json.dumps({"tool": f"hivemind/{tool}", "arguments": args or {}}).encode("utf-8")
+    body = json.dumps({"tool": f"hivemind-{tool}", "arguments": args or {}}).encode("utf-8")
     req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
     with urllib.request.urlopen(req, timeout=30) as r:
         resp = json.loads(r.read().decode("utf-8"))

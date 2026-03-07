@@ -9,7 +9,7 @@ EPIC_KEY = "EPIC-PHASE-8"
 
 
 def approve_task(tk):
-    r = mcp_call("hivemind/approve_review", {"task_key": tk, "comment": "Phase 8 review: implementation meets DoD criteria. Approved."})
+    r = mcp_call("hivemind-approve_review", {"task_key": tk, "comment": "Phase 8 review: implementation meets DoD criteria. Approved."})
     txt = r.get("result", [{}])[0].get("text", "") if "result" in r else str(r)
     ok = "done" in txt.lower() or "approved" in txt.lower()
     status = "OK" if ok else txt[:100]

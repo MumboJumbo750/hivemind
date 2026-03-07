@@ -133,6 +133,16 @@ async def _notification_retention_job() -> None:
             )
 
 
+async def _embedding_backfill_job() -> None:
+    """Enqueue missing embeddings for background regeneration."""
+    from app.services.embedding_service import get_embedding_service
+
+    counts = await get_embedding_service().enqueue_missing_embeddings()
+    queued_total = sum(counts.values())
+    if queued_total:
+        logger.info("Embedding backfill queued %d jobs: %s", queued_total, counts)
+
+
 def start_scheduler() -> None:
     """Scheduler mit täglichem Audit-Retention-Job und PromptHistory-Retention-Job registrieren und starten."""
     scheduler.add_job(
@@ -161,6 +171,18 @@ def start_scheduler() -> None:
         minute=10,
         id="notification_retention",
         replace_existing=True,
+    )
+
+    scheduler.add_job(
+        _embedding_backfill_job,
+        trigger="interval",
+        seconds=settings.hivemind_embedding_backfill_interval,
+        id="embedding_backfill",
+        replace_existing=True,
+    )
+    logger.info(
+        "Embedding backfill job registriert — alle %ds",
+        settings.hivemind_embedding_backfill_interval,
     )
 
     # SLA Cron Job — checks epic deadlines and triggers notifications
@@ -294,6 +316,17 @@ def start_scheduler() -> None:
             replace_existing=True,
         )
         logger.info("Auto-Review job registriert — alle 60s")
+
+        from app.services.epic_run_scheduler import epic_run_scheduler_job
+
+        scheduler.add_job(
+            epic_run_scheduler_job,
+            trigger="interval",
+            seconds=15,
+            id="epic_run_scheduler",
+            replace_existing=True,
+        )
+        logger.info("Epic-Run scheduler registriert — alle 15s")
 
     scheduler.start()
     logger.info(

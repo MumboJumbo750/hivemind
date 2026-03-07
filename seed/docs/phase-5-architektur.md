@@ -22,41 +22,41 @@ Phase 5 liefert den vollständigen Worker-Flow (Task bearbeiten → Review → d
 
 ### Decision Request Gap
 
-`hivemind/resolve_decision_request` wird erst in Phase 6 implementiert. In Phase 5 kann ein `blocked` Task nur durch Admin-Direkt-Intervention wieder freigegeben werden: `PATCH /api/tasks/:task_key/state { "state": "in_progress", "actor_role": "admin" }`.
+`hivemind-resolve_decision_request` wird erst in Phase 6 implementiert. In Phase 5 kann ein `blocked` Task nur durch Admin-Direkt-Intervention wieder freigegeben werden: `PATCH /api/tasks/:task_key/state { "state": "in_progress", "actor_role": "admin" }`.
 
 ## Backend-Deliverables
 
 ### Worker-Write-Tools
-- `hivemind/submit_result` — Ergebnis + Artefakte an Task (State bleibt `in_progress`)
-- `hivemind/update_task_state` — State-Transitions; `→ in_review` prüft Guards + Result
-- `hivemind/create_decision_request` — Blocker eskalieren (atomar: erstellt Decision Request + setzt Task `blocked`)
-- `hivemind/report_guard_result` — Guard-Ergebnis melden (passed|failed|skipped)
+- `hivemind-submit_result` — Ergebnis + Artefakte an Task (State bleibt `in_progress`)
+- `hivemind-update_task_state` — State-Transitions; `→ in_review` prüft Guards + Result
+- `hivemind-create_decision_request` — Blocker eskalieren (atomar: erstellt Decision Request + setzt Task `blocked`)
+- `hivemind-report_guard_result` — Guard-Ergebnis melden (passed|failed|skipped)
 
 ### Gaertner-Write-Tools
-- `hivemind/propose_skill` — neuen Skill vorschlagen
-- `hivemind/propose_skill_change` — bestehenden Skill ändern
-- `hivemind/submit_skill_proposal` — Skill-Proposal einreichen (`draft → pending_merge`)
-- `hivemind/create_decision_record` — Entscheidung dokumentieren
-- `hivemind/update_doc` — Epic-Doc aktualisieren
+- `hivemind-propose_skill` — neuen Skill vorschlagen
+- `hivemind-propose_skill_change` — bestehenden Skill ändern
+- `hivemind-submit_skill_proposal` — Skill-Proposal einreichen (`draft → pending_merge`)
+- `hivemind-create_decision_record` — Entscheidung dokumentieren
+- `hivemind-update_doc` — Epic-Doc aktualisieren
 
 ### Kartograph-Write-Tools
-- `hivemind/create_wiki_article`
-- `hivemind/update_wiki_article`
-- `hivemind/create_epic_doc`
-- `hivemind/link_wiki_to_epic`
-- `hivemind/propose_epic_restructure`
-- `hivemind/propose_guard` / `propose_guard_change` / `submit_guard_proposal`
+- `hivemind-create_wiki_article`
+- `hivemind-update_wiki_article`
+- `hivemind-create_epic_doc`
+- `hivemind-link_wiki_to_epic`
+- `hivemind-propose_epic_restructure`
+- `hivemind-propose_guard` / `propose_guard_change` / `submit_guard_proposal`
 
 ### Review-Write-Tools
-- `hivemind/approve_review` — Task `in_review → done` (Review-Gate bestanden)
-- `hivemind/reject_review` — Task `in_review → qa_failed` + Kommentar
+- `hivemind-approve_review` — Task `in_review → done` (Review-Gate bestanden)
+- `hivemind-reject_review` — Task `in_review → qa_failed` + Kommentar
 
 ### Admin-Write-Tools (Erweiterung)
-- `hivemind/merge_guard` / `reject_guard`
-- `hivemind/accept_skill_change` / `reject_skill_change`
-- `hivemind/accept_guard_change` / `reject_guard_change`
-- `hivemind/accept_epic_restructure` / `reject_epic_restructure`
-- `hivemind/cancel_task`
+- `hivemind-merge_guard` / `reject_guard`
+- `hivemind-accept_skill_change` / `reject_skill_change`
+- `hivemind-accept_guard_change` / `reject_guard_change`
+- `hivemind-accept_epic_restructure` / `reject_epic_restructure`
+- `hivemind-cancel_task`
 
 ### Weitere Backend-Aufgaben
 - Prompt-Generatoren: Worker-Prompt, Gaertner-Prompt, Initial-Kartograph-Prompt

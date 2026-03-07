@@ -22,7 +22,7 @@ Du implementierst DLQ-Verwaltung für fehlgeschlagene Outbox-Einträge im Hivemi
 - Felder: `outbox_id`, `system`, `entity_type`, `entity_id`, `payload`, `error`, `created_at`
 - Requeue: Dead Letter → zurück in `sync_outbox` mit `state='pending'`, `attempts=0`
 - Discard: Dead Letter → `state='discarded'` (soft-delete, bleibt für Audit)
-- MCP-Tools: `hivemind/requeue_dead_letter`, `hivemind/discard_dead_letter`
+- MCP-Tools: `hivemind-requeue_dead_letter`, `hivemind-discard_dead_letter`
 - REST-Alias: `POST /api/triage/dead-letters/{id}/requeue`, `POST /api/triage/dead-letters/{id}/discard`
 - Permission: `admin` oder `triage` Rolle
 - Jede DLQ-Aktion wird in `mcp_invocations` geloggt (Audit)

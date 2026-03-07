@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AGENT-007",
+  "epic_ref": "EPIC-AGENT-LOOP",
+  "title": "Deterministische End-to-End-Orchestrierungstests ergänzen",
+  "description": "Sichere den Gesamtfluss des agentischen Systems mit reproduzierbaren End-to-End-Tests ab.\n\n**Was zu implementieren ist:**\n\n1. **Stub-Provider / kontrollierte Dispatches verwenden:**\n- keine flakey externen Modellabhängigkeiten\n- reproduzierbare Rückgaben für Kartograph, Stratege, Architekt, Worker, Reviewer, Gaertner, Triage\n\n2. **Mindestens einen vollständigen Fluss testen:**\n- Requirement oder Webhook kommt rein\n- Triage/Routing findet statt\n- Proposal/Epic/Task-Pfad wird ausgelöst\n- Worker/Reviewer/Gaertner-Folgepfad wird geprüft\n- Lernartefakte werden erzeugt oder vorgeschlagen\n\n3. **Fehlerpfade testen:**\n- Fallback-Kette\n- Cooldown/Skip\n- Reject/QA-Loop\n- unklare Learnings werden nicht blind übernommen\n\n4. **Runbook ergänzen:**\n- wie der Flow lokal reproduziert wird\n- welche Prüfpunkte für Debugging relevant sind\n\n**Wichtig:** Erst ein stabiler Volltest macht Aussagen über das Zusammenspiel der Agenten wirklich belastbar.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Es gibt mindestens einen deterministischen Full-Loop-Test über mehrere Agentenrollen",
+      "Fehler- und Fallback-Pfade sind mit abgedeckt",
+      "Der Lern-Loop ist im Testfall sichtbar oder explizit verifiziert",
+      "Ein lokales Runbook beschreibt Reproduktion und Debugging"
+    ]
+  },
+  "tags": ["tests", "integration", "conductor", "learning", "runbook"],
+  "subtasks": [],
+  "pinned_skills": ["api-test", "conductor-orchestrator", "runtime-environment"],
+  "linked_wiki": ["autonomy-loop"],
+  "source_doc": "docs/features/autonomy-loop.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-AGENT-001", "TASK-AGENT-002", "TASK-AGENT-003", "TASK-AGENT-004", "TASK-AGENT-005", "TASK-AGENT-006"]
+}

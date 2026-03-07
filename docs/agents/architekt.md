@@ -40,12 +40,12 @@ Der Architekt arbeitet als `developer` (eigene Epics) oder `admin` (alle Epics):
    → Prompt Station zeigt: "Jetzt: Architekt"
 
 2. User fügt Architektur-Prompt in AI-Client ein
-   → AI liest Epic via hivemind/get_epic
-   → AI liest vorhandene Skills via hivemind/get_skills
-   → AI liest Epic-Docs via hivemind/get_doc
+   → AI liest Epic via hivemind-get_epic
+   → AI liest vorhandene Skills via hivemind-get_skills
+   → AI liest Epic-Docs via hivemind-get_doc
 
 3. AI zerlegt Epic:
-   hivemind/decompose_epic {
+   hivemind-decompose_epic {
      "epic_key": "EPIC-12",
      "tasks": [
        { "title": "Auth-Endpoint", "description": "...", "definition_of_done": {...} },
@@ -53,13 +53,13 @@ Der Architekt arbeitet als `developer` (eigene Epics) oder `admin` (alle Epics):
      ]
    }
    → Tasks werden mit state='incoming' erstellt!
-   → Task-Keys werden automatisch phasen-spezifisch generiert:
-     EPIC-PHASE-5 → TASK-5-001, TASK-5-002, …
-     EPIC-PHASE-1A → TASK-1A-001, TASK-1A-002, …
+   → Task-Keys werden automatisch via PostgreSQL Sequence generiert:
+     Jeder Task bekommt einen eindeutigen Key: TASK-1, TASK-2, TASK-3, …
+     (fortlaufend über alle Epics hinweg, nicht mehr phasen-spezifisch)
    → external_id = task_key (idempotent mit Seed-Import)
 
 4. AI setzt Context Boundaries:
-   hivemind/set_context_boundary {
+   hivemind-set_context_boundary {
      "task_key": "TASK-88",
      "allowed_skills": ["uuid-1", "uuid-2"],
      "allowed_docs": ["uuid-doc-1"],
@@ -67,14 +67,14 @@ Der Architekt arbeitet als `developer` (eigene Epics) oder `admin` (alle Epics):
    }
 
 5. AI verknüpft Skills:
-   hivemind/link_skill { "task_key": "TASK-88", "skill_id": "uuid-1" }
+   hivemind-link_skill { "task_key": "TASK-88", "skill_id": "uuid-1" }
 
 6. AI weist zu:
-   hivemind/assign_task { "task_key": "TASK-88", "user_id": "uuid" }
+   hivemind-assign_task { "task_key": "TASK-88", "user_id": "uuid" }
 
 7. AI transitioniert Tasks: incoming → scoped → ready (2 Schritte!):
-   hivemind/update_task_state { "task_key": "TASK-88", "target_state": "scoped" }
-   hivemind/update_task_state { "task_key": "TASK-88", "target_state": "ready" }
+   hivemind-update_task_state { "task_key": "TASK-88", "target_state": "scoped" }
+   hivemind-update_task_state { "task_key": "TASK-88", "target_state": "ready" }
    → Voraussetzung für scoped→ready: assigned_to gesetzt (sonst 422)
    → Prompt Station zeigt nächsten Schritt: "Jetzt: Bibliothekar/Worker"
 ```
@@ -84,15 +84,15 @@ Der Architekt arbeitet als `developer` (eigene Epics) oder `admin` (alle Epics):
 ## MCP-Tools
 
 ```text
-hivemind/decompose_epic       { "epic_key": "EPIC-12", "tasks": [...] }
+hivemind-decompose_epic       { "epic_key": "EPIC-12", "tasks": [...] }
                                 -- Erstellt Tasks mit state='incoming'
-hivemind/create_task          { "epic_key": "EPIC-12", "title": "...", "description": "..." }
-hivemind/create_subtask       { "parent_task_key": "TASK-88", "title": "..." }
-hivemind/link_skill           { "task_key": "TASK-88", "skill_id": "uuid" }
-hivemind/set_context_boundary { "task_key": "TASK-88", "allowed_skills": [...], ... }
-hivemind/assign_task          { "task_key": "TASK-88", "user_id": "uuid" }
-hivemind/update_task_state    { "task_key": "TASK-88", "target_state": "scoped" }
-hivemind/update_task_state    { "task_key": "TASK-88", "target_state": "ready" }
+hivemind-create_task          { "epic_key": "EPIC-12", "title": "...", "description": "..." }
+hivemind-create_subtask       { "parent_task_key": "TASK-88", "title": "..." }
+hivemind-link_skill           { "task_key": "TASK-88", "skill_id": "uuid" }
+hivemind-set_context_boundary { "task_key": "TASK-88", "allowed_skills": [...], ... }
+hivemind-assign_task          { "task_key": "TASK-88", "user_id": "uuid" }
+hivemind-update_task_state    { "task_key": "TASK-88", "target_state": "scoped" }
+hivemind-update_task_state    { "task_key": "TASK-88", "target_state": "ready" }
                                 -- Zwei Schritte: incoming → scoped → ready
                                 -- scoped→ready Voraussetzung: assigned_to gesetzt (sonst 422)
                                 -- Signalisiert dem Worker: Task ist bereit zur Bearbeitung

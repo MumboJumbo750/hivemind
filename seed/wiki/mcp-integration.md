@@ -7,7 +7,7 @@ linked_epics: [EPIC-PHASE-3, EPIC-PHASE-4, EPIC-PHASE-5, EPIC-PHASE-8]
 
 # MCP-Integration — Wie Agents kommunizieren
 
-MCP (Model Context Protocol) ist die Brücke zwischen AI-Agents und dem Hivemind-System. Alle Agent-Aktionen laufen über MCP-Tools im `hivemind/`-Namespace.
+MCP (Model Context Protocol) ist die Brücke zwischen AI-Agents und dem Hivemind-System. Alle Agent-Aktionen laufen über MCP-Tools im `hivemind-`-Namespace.
 
 ## Architektur
 
@@ -35,7 +35,7 @@ Der MCP-Server ist Teil der FastAPI-App und läuft im Backend-Container auf Port
 
 ## MCP Bridge / Gateway (Phase 8)
 
-Ab Phase 8 wird Hivemind zum **Meta-MCP**: gleichzeitig MCP-Server (für Agents) und MCP-Client (zu externen MCP-Servern wie GitHub MCP, GitLab MCP). Namespace-Isolation: `hivemind/*` (lokal), `github/*` (proxied), `gitlab/*` (proxied).
+Ab Phase 8 wird Hivemind zum **Meta-MCP**: gleichzeitig MCP-Server (für Agents) und MCP-Client (zu externen MCP-Servern wie GitHub MCP, GitLab MCP). Namespace-Isolation: `hivemind-*` (lokal), `github/*` (proxied), `gitlab/*` (proxied).
 
 ## Audit
 

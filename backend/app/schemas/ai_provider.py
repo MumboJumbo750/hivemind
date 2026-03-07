@@ -1,5 +1,9 @@
 """Pydantic schemas for AI Provider Config — Phase 8."""
 from pydantic import BaseModel
+from typing import Literal
+
+
+ThreadPolicy = Literal["stateless", "attempt_stateful", "epic_stateful", "project_stateful"]
 
 
 class AIProviderConfigIn(BaseModel):
@@ -11,6 +15,7 @@ class AIProviderConfigIn(BaseModel):
     rpm_limit: int | None = None
     tpm_limit: int | None = None
     token_budget_daily: int | None = None
+    thread_policy: ThreadPolicy | None = None
     enabled: bool = True
 
 
@@ -22,6 +27,8 @@ class AIProviderConfigOut(BaseModel):
     rpm_limit: int | None
     tpm_limit: int | None
     token_budget_daily: int | None
+    thread_policy: ThreadPolicy
+    configured_thread_policy: ThreadPolicy | None = None
     enabled: bool
     has_api_key: bool  # True if inline encrypted key is stored
     credential_id: str | None = None

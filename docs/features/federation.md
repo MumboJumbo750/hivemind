@@ -400,13 +400,13 @@ Ben öffnet seinen AI-Client, kopiert den Prompt → Worker bekommt exaktes Arse
 
 4. Ben möchte den Skill anpassen:
    Option A: Lokaler Fork via MCP:
-             hivemind/fork_federated_skill {
+             hivemind-fork_federated_skill {
                "source_skill_id": "<uuid-origin-skill>",
                "target_project_id": "uuid|null"
              }
              → erstellt lokalen Draft-Skill mit extends=[origin_skill_id]
    Option B: Skill-Change-Proposal an Origin-Node weiterleiten
-             → hivemind/propose_skill_change { "skill_id": "<federated-skill-uuid>", ... }
+             → hivemind-propose_skill_change { "skill_id": "<federated-skill-uuid>", ... }
              → Backend erkennt: skill.origin_node_id ≠ eigene node_id
              → Erzeugt sync_outbox-Eintrag:
                  direction = 'peer_outbound'
@@ -423,7 +423,7 @@ Ben öffnet seinen AI-Client, kopiert den Prompt → Worker bekommt exaktes Arse
    → Peers aktualisieren lokale Kopie
 ```
 
-UI-Hinweis: Der Button `[ÜBERNEHMEN]` in Gilde/Arsenal ruft `hivemind/fork_federated_skill` auf.
+UI-Hinweis: Der Button `[ÜBERNEHMEN]` in Gilde/Arsenal ruft `hivemind-fork_federated_skill` auf.
 
 ### Federated Skill Confidence — Wessen Confidence wird aktualisiert?
 

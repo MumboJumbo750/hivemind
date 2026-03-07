@@ -37,10 +37,15 @@ Schreibe das Ergebnis als Markdown.
 4. Prüfe alle Guards vor Submission
 5. Schreibe `submit_result` mit dem fertigen Ergebnis
 
+### Dispatch-Hinweis
+- Dieser Text ist der kanonische Worker-Prompt.
+- Wenn die Prompt Station `Ausführen` für den Worker nutzt, muss genau dieser generierte Prompt an den Provider gesendet werden.
+- Die rohe `task_description` alleine ist kein ausreichender Ersatz für diesen Prompt.
+
 ### ⚠️ Operative Hinweise (häufige Fehler)
 
 **MCP-Tool-Aufrufe:**
-- Alle MCP-Tools laufen über `POST /api/mcp/call` mit Body: `{"tool": "hivemind/TOOLNAME", "arguments": {...}}`
+- Alle MCP-Tools laufen über `POST /api/mcp/call` mit Body: `{"tool": "hivemind-TOOLNAME", "arguments": {...}}`
 - Es gibt **keine** Einzel-Endpoints wie `/api/mcp/submit_result` — das sind 404er!
 - Zwei-Schritt-Abschluss: Erst `submit_result`, **dann** `update_task_state` mit `target_state: "in_review"`
 

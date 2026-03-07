@@ -231,11 +231,11 @@ async function callMcpTool<T>(tool: string, args: Record<string, unknown>): Prom
 /** Fetch tasks that need attention: incoming, scoped, ready (startable), in_progress, in_review */
 export async function fetchActiveTasks(): Promise<HivemindTask[]> {
   const [incomingResult, scopedResult, readyResult, inProgressResult, inReviewResult] = await Promise.all([
-    callMcpTool<ListTaskRow[]>('hivemind/list_tasks', { state: 'incoming', limit: 20, offset: 0 }),
-    callMcpTool<ListTaskRow[]>('hivemind/list_tasks', { state: 'scoped',   limit: 20, offset: 0 }),
-    callMcpTool<ListTaskRow[]>('hivemind/list_tasks', { state: 'ready',    limit: 50, offset: 0 }),
-    callMcpTool<ListTaskRow[]>('hivemind/list_tasks', { state: 'in_progress', limit: 50, offset: 0 }),
-    callMcpTool<ListTaskRow[]>('hivemind/list_tasks', { state: 'in_review',   limit: 50, offset: 0 }),
+    callMcpTool<ListTaskRow[]>('hivemind-list_tasks', { state: 'incoming', limit: 20, offset: 0 }),
+    callMcpTool<ListTaskRow[]>('hivemind-list_tasks', { state: 'scoped',   limit: 20, offset: 0 }),
+    callMcpTool<ListTaskRow[]>('hivemind-list_tasks', { state: 'ready',    limit: 50, offset: 0 }),
+    callMcpTool<ListTaskRow[]>('hivemind-list_tasks', { state: 'in_progress', limit: 50, offset: 0 }),
+    callMcpTool<ListTaskRow[]>('hivemind-list_tasks', { state: 'in_review',   limit: 50, offset: 0 }),
   ]);
 
   const tasks: ListTaskRow[] = [
@@ -250,7 +250,7 @@ export async function fetchActiveTasks(): Promise<HivemindTask[]> {
     return [];
   }
 
-  const epicResult = await callMcpTool<ListEpicRow[]>('hivemind/list_epics', {
+  const epicResult = await callMcpTool<ListEpicRow[]>('hivemind-list_epics', {
     limit: 200,
     offset: 0,
   });
@@ -280,7 +280,7 @@ export async function transitionTaskState(
   taskKey: string,
   targetState: string
 ): Promise<McpParsed<Record<string, unknown>>> {
-  return callMcpTool<Record<string, unknown>>('hivemind/update_task_state', {
+  return callMcpTool<Record<string, unknown>>('hivemind-update_task_state', {
     task_key: taskKey,
     target_state: targetState,
   });
@@ -298,7 +298,7 @@ export async function fetchPendingDispatches(): Promise<HivemindDispatch[]> {
 
 /** Generate the next prompt */
 export async function fetchNextPrompt(): Promise<HivemindPromptResponse> {
-  return callMcpTool<HivemindPromptResponse['data']>('hivemind/get_prompt', { type: 'worker' });
+  return callMcpTool<HivemindPromptResponse['data']>('hivemind-get_prompt', { type: 'worker' });
 }
 
 /** Generate prompt for a specific task and type */
@@ -311,17 +311,17 @@ export async function fetchPromptForTask(
     args.task_key = taskKey;
     args.task_id = taskKey; // backward-compatible with current backend prompt tool
   }
-  return callMcpTool<HivemindPromptResponse['data']>('hivemind/get_prompt', args);
+  return callMcpTool<HivemindPromptResponse['data']>('hivemind-get_prompt', args);
 }
 
 /** Fetch task details (state, DoD, guards) */
 export async function fetchTask(taskKey: string): Promise<McpParsed<HivemindTaskDetails>> {
-  return callMcpTool<HivemindTaskDetails>('hivemind/get_task', { task_key: taskKey });
+  return callMcpTool<HivemindTaskDetails>('hivemind-get_task', { task_key: taskKey });
 }
 
 /** Fetch full guard list for task */
 export async function fetchGuards(taskKey: string): Promise<McpParsed<HivemindGuardsResponse>> {
-  return callMcpTool<HivemindGuardsResponse>('hivemind/get_guards', { task_key: taskKey });
+  return callMcpTool<HivemindGuardsResponse>('hivemind-get_guards', { task_key: taskKey });
 }
 
 /** Report guard result */
@@ -331,7 +331,7 @@ export async function reportGuardResult(
   status: 'passed' | 'failed' | 'skipped',
   result: string
 ): Promise<McpParsed<Record<string, unknown>>> {
-  return callMcpTool<Record<string, unknown>>('hivemind/report_guard_result', {
+  return callMcpTool<Record<string, unknown>>('hivemind-report_guard_result', {
     task_key: taskKey,
     guard_id: guardId,
     status,
@@ -345,7 +345,7 @@ export async function submitTaskResult(
   result: string,
   artifacts: Array<Record<string, unknown>> = []
 ): Promise<McpParsed<Record<string, unknown>>> {
-  return callMcpTool<Record<string, unknown>>('hivemind/submit_result', {
+  return callMcpTool<Record<string, unknown>>('hivemind-submit_result', {
     task_key: taskKey,
     result,
     artifacts,
@@ -357,7 +357,7 @@ export async function approveTask(
   taskKey: string,
   comment = ''
 ): Promise<McpParsed<Record<string, unknown>>> {
-  return callMcpTool<Record<string, unknown>>('hivemind/approve_review', {
+  return callMcpTool<Record<string, unknown>>('hivemind-approve_review', {
     task_key: taskKey,
     comment,
   });
@@ -368,7 +368,7 @@ export async function rejectTask(
   taskKey: string,
   comment: string
 ): Promise<McpParsed<Record<string, unknown>>> {
-  return callMcpTool<Record<string, unknown>>('hivemind/reject_review', {
+  return callMcpTool<Record<string, unknown>>('hivemind-reject_review', {
     task_key: taskKey,
     comment,
   });

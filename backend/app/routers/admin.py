@@ -10,15 +10,21 @@ from typing import Literal
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
-from sqlalchemy import and_, func, select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db import AsyncSessionLocal, get_db
-from app.models.sync import SyncDeadLetter, SyncOutbox
 from app.routers.deps import require_role
 from app.schemas.auth import CurrentActor
 from app.services import event_bus
+from app.services.dlq_service import (
+    get_admin_dead_letter_rows,
+    get_admin_delivered_rows,
+    get_admin_retry_rows,
+    get_queue_stats,
+)
+from app.services.embedding_service import EMBEDDING_TEXT_COLS
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -77,54 +83,11 @@ async def get_sync_status(
     now = datetime.now(UTC)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    pending_outbound = await _count(
-        db,
-        select(func.count())
-        .select_from(SyncOutbox)
-        .where(SyncOutbox.direction == "outbound", SyncOutbox.state == "pending"),
-    )
-    pending_inbound = await _count(
-        db,
-        select(func.count())
-        .select_from(SyncOutbox)
-        .where(
-            SyncOutbox.direction == "inbound",
-            SyncOutbox.state == "pending",
-            SyncOutbox.routing_state == "unrouted",
-        ),
-    )
-    dead_letters = await _count(
-        db,
-        select(func.count())
-        .select_from(SyncDeadLetter)
-        .where(SyncDeadLetter.discarded_at.is_(None)),
-    )
+    stats = await get_queue_stats(db, today_start)
+    delivered_rows = await get_admin_delivered_rows(db, limit=10)
+    dead_letter_rows = await get_admin_dead_letter_rows(db, limit=5)
+    retry_rows = await get_admin_retry_rows(db, limit=5)
 
-    delivered_filter = and_(
-        SyncOutbox.direction == "inbound",
-        SyncOutbox.routing_state == "routed",
-    )
-
-    delivered_today = await _count(
-        db,
-        select(func.count())
-        .select_from(SyncOutbox)
-        .where(delivered_filter, SyncOutbox.created_at >= today_start),
-    )
-
-    delivered_rows = (
-        await db.execute(
-            select(
-                SyncOutbox.id,
-                SyncOutbox.created_at,
-                SyncOutbox.direction,
-                SyncOutbox.entity_type,
-            )
-            .where(delivered_filter)
-            .order_by(SyncOutbox.created_at.desc())
-            .limit(10)
-        )
-    ).all()
     recent_delivered = [
         DeliveredSyncItem(
             id=str(row.id),
@@ -135,37 +98,6 @@ async def get_sync_status(
         )
         for row in delivered_rows
     ]
-
-    dead_letter_rows = (
-        await db.execute(
-            select(
-                SyncDeadLetter.id,
-                SyncDeadLetter.failed_at,
-                SyncDeadLetter.error,
-                SyncOutbox.attempts,
-            )
-            .join(SyncOutbox, SyncOutbox.id == SyncDeadLetter.outbox_id, isouter=True)
-            .where(SyncDeadLetter.discarded_at.is_(None))
-            .order_by(SyncDeadLetter.failed_at.desc())
-            .limit(5)
-        )
-    ).all()
-
-    retry_rows = (
-        await db.execute(
-            select(
-                SyncOutbox.id,
-                SyncOutbox.created_at,
-                SyncOutbox.attempts,
-            )
-            .where(
-                SyncOutbox.state == "pending",
-                SyncOutbox.attempts > 0,
-            )
-            .order_by(SyncOutbox.created_at.desc())
-            .limit(5)
-        )
-    ).all()
 
     failed_candidates = [
         FailedSyncItem(
@@ -200,10 +132,10 @@ async def get_sync_status(
 
     return SyncStatusResponse(
         queue=QueueOverview(
-            pending_outbound=pending_outbound,
-            pending_inbound=pending_inbound,
-            dead_letters=dead_letters,
-            delivered_today=delivered_today,
+            pending_outbound=stats["pending_outbound"],
+            pending_inbound=stats["pending_inbound"],
+            dead_letters=stats["dead_letters"],
+            delivered_today=stats["delivered_today"],
         ),
         recent_delivered=recent_delivered,
         recent_failed=recent_failed,
@@ -213,11 +145,6 @@ async def get_sync_status(
         ),
         checked_at=now,
     )
-
-
-async def _count(db: AsyncSession, stmt: object) -> int:
-    result = await db.execute(stmt)
-    return int(result.scalar_one() or 0)
 
 
 def _preview_error(error: str | None, max_length: int = 160) -> str:
@@ -308,13 +235,7 @@ async def _check_youtrack_status() -> ProviderStatus:
 
 # ── Embedding Recompute (TASK-7-012) ─────────────────────────────────────────
 
-EMBEDDABLE_ENTITIES = ("epics", "skills", "wiki_articles")
-
-_TABLE_TEXT_COLS: dict[str, tuple[str, str]] = {
-    "epics": ("epics", "COALESCE(title, '') || ' ' || COALESCE(description, '')"),
-    "skills": ("skills", "COALESCE(title, '') || ' ' || COALESCE(content, '')"),
-    "wiki_articles": ("wiki_articles", "COALESCE(title, '') || ' ' || COALESCE(content, '')"),
-}
+EMBEDDABLE_ENTITIES = tuple(EMBEDDING_TEXT_COLS.keys())
 
 
 class EmbeddingStatusItem(BaseModel):
@@ -350,7 +271,8 @@ async def get_embedding_status(
     now = datetime.now(UTC)
     entities: list[EmbeddingStatusItem] = []
 
-    for entity_type, (table, _) in _TABLE_TEXT_COLS.items():
+    for entity_type, text_expr in EMBEDDING_TEXT_COLS.items():
+        table = entity_type
         total_row = await db.execute(text(f"SELECT COUNT(*) FROM {table}"))  # noqa: S608
         total = int(total_row.scalar_one() or 0)
         with_emb_row = await db.execute(
@@ -404,7 +326,8 @@ async def _run_reembedding(entity_types: list[str], force: bool, job_id: str) ->
     svc = EmbeddingService()
 
     for entity_type in entity_types:
-        table, text_expr = _TABLE_TEXT_COLS[entity_type]
+        table = entity_type
+        text_expr = EMBEDDING_TEXT_COLS[entity_type]
         async with AsyncSessionLocal() as db:
             if force:
                 rows = (
@@ -431,7 +354,7 @@ async def _run_reembedding(entity_types: list[str], force: bool, job_id: str) ->
                             vec_str = "[" + ",".join(str(v) for v in vec) + "]"
                             await db.execute(
                                 text(
-                                    f"UPDATE {table} SET embedding = :vec::vector, "  # noqa: S608
+                                    f"UPDATE {table} SET embedding = CAST(:vec AS vector), "  # noqa: S608
                                     "embedding_model = :model WHERE id = :id"
                                 ),
                                 {

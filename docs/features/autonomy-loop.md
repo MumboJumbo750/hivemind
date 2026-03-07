@@ -2,7 +2,7 @@
 
 ← [Agent Skills](./agent-skills.md) | [Phase 8](../phases/phase-8.md) | [Index](../../masterplan.md)
 
-In Phase 8 können alle 6 Agenten automatisiert via AI-Provider laufen. Aber **automatisierte Agenten ≠ autarkes System**. Ohne zusätzliche Mechanismen bricht der Loop an 5 Human-Gates — das System automatisiert die Arbeit, kann sie aber nicht eigenständig orchestrieren und freigeben.
+In Phase 8 können alle 7 Agenten automatisiert via AI-Provider laufen. Aber **automatisierte Agenten ≠ autarkes System**. Erst Conductor, Reviewer und die Proposal-/Governance-Pfade schließen den Loop zwischen Ausführung, Review und Selbstverbesserung.
 
 Dieses Dokument schließt die Lücke: **Conductor**, **Reviewer-Skill** und **Governance-Levels** machen aus automatisierten Agenten einen selbststeuernden Kreislauf.
 
@@ -69,14 +69,19 @@ Beispiel:
 | Epic `incoming` (neu) | `governance.epic_scoping = 'auto'` | Conductor auto-scopes | — (kein Agent, interner Transition) |
 | Task `scoped → ready` | — | Worker (nach Bibliothekar-Assembly) | `worker` |
 | Task `in_review` | `governance.review = 'assisted'\|'auto'` | Reviewer | `review` |
-| Task `done` | — | Gaertner | `gaertner` |
+| Task `done` | — | Gaertner | `gaertner_harvest` |
+| Task `qa_failed` | — | Gaertner | `gaertner_review_feedback` |
 | `[UNROUTED]` Event eingetroffen | — | Triage | `triage` |
-| `[EPIC PROPOSAL]` eingereicht | `governance.epic_proposals = 'auto'` | Triage (auto-accept) | `triage` |
-| `[SKILL PROPOSAL]` eingereicht | `governance.skill_merge = 'auto'` | Auto-Merge-Check | — |
+| `[EPIC PROPOSAL]` eingereicht | `governance.epic_proposals != 'manual'` | Triage | `triage_epic_proposal` |
+| `[SKILL PROPOSAL]` eingereicht | `governance.skill_merge != 'manual'` | Triage | `triage_skill_proposal` |
+| `[GUARD PROPOSAL]` eingereicht | `governance.guard_merge != 'manual'` | Triage | `triage_guard_proposal` |
+| `[EPIC RESTRUCTURE]` vorgeschlagen | — | Triage | `triage_epic_restructure` |
 | Projekt erstellt + Repo vorhanden | — | Kartograph | `kartograph` |
 | Kartograph-Session beendet + Plan vorhanden | — | Stratege | `stratege` |
 | GitLab `push`-Event (Phase 8) | Kartograph follow-up nötig | Kartograph | `kartograph` |
-| `decision_request` erstellt | `governance.decisions = 'assisted'\|'auto'` | Decision-Resolver | — |
+| `decision_request` erstellt | `governance.decisions = 'assisted'\|'auto'` | Triage | `triage_decision_request` |
+
+> Ist-Stand im Code: Task-State-Changes, Epic-Proposals, Epic-Creation, Epic-Scoping, Skill-Proposals, Guard-Proposals, Decision-Requests und Epic-Restructure-Proposals sind ueber REST- und MCP-Pfade verdrahtet. `execution_mode='local'` nutzt die agentische Tool-Loop. `guard_merge` startet keinen eigenen Folge-Agenten, materialisiert aktive Guards aber sofort auf passende Tasks.
 
 ### Implementierung
 
@@ -88,11 +93,13 @@ class Conductor:
 
     async def on_task_state_changed(self, event: TaskStateChanged):
         match event.new_state:
-            case "ready":
+            case "in_progress" if event.old_state == "scoped":
                 await self.dispatch_agent("worker", task_id=event.task_key)
             case "in_review":
                 await self.dispatch_review(event.task_key)
             case "done":
+                await self.dispatch_agent("gaertner", task_id=event.task_key)
+            case "qa_failed":
                 await self.dispatch_agent("gaertner", task_id=event.task_key)
 
     async def on_epic_state_changed(self, event: EpicStateChanged):
@@ -232,11 +239,11 @@ Definition of Done, Guard-Ergebnisse und Skill-Instruktionen.
 
 ## Workflow
 1. Task-Kontext laden:
-   hivemind/get_task { "id": "TASK-88" }
+   hivemind-get_task { "id": "TASK-88" }
    → result, artifacts, definition_of_done studieren
 
 2. Guard-Ergebnisse prüfen:
-   hivemind/get_guards { "task_id": "TASK-88" }
+   hivemind-get_guards { "task_id": "TASK-88" }
    → Alle Guards passed/skipped? Begründungen bei skipped plausibel?
 
 3. Definition of Done abgleichen:
@@ -244,7 +251,7 @@ Definition of Done, Guard-Ergebnisse und Skill-Instruktionen.
    → Fehlende Kriterien explizit benennen
 
 4. Skill-Konformität prüfen:
-   hivemind/get_skills { "task_id": "TASK-88" }
+   hivemind-get_skills { "task_id": "TASK-88" }
    → Folgt die Implementierung den Skill-Instruktionen?
    → Gibt es Abweichungen die begründet sind?
 
@@ -256,7 +263,7 @@ Definition of Done, Guard-Ergebnisse und Skill-Instruktionen.
    Confidence: 0.0–1.0
 
    Bei Confidence ≥ 0.85:
-     hivemind/submit_review_recommendation {
+     hivemind-submit_review_recommendation {
        "task_id": "TASK-88",
        "recommendation": "approve",
        "confidence": 0.92,
@@ -268,7 +275,7 @@ Definition of Done, Guard-Ergebnisse und Skill-Instruktionen.
      }
 
    Bei Confidence < 0.85:
-     hivemind/submit_review_recommendation {
+     hivemind-submit_review_recommendation {
        "task_id": "TASK-88",
        "recommendation": "needs_human_review",
        "confidence": 0.62,
@@ -277,7 +284,7 @@ Definition of Done, Guard-Ergebnisse und Skill-Instruktionen.
      }
 
    Bei klarem Fehler:
-     hivemind/submit_review_recommendation {
+     hivemind-submit_review_recommendation {
        "task_id": "TASK-88",
        "recommendation": "reject",
        "confidence": 0.95,
@@ -319,7 +326,7 @@ Governance: "auto"
     → Conductor dispatcht Reviewer
     → AI: submit_review_recommendation { recommendation: "approve", confidence: 0.92 }
     → Confidence ≥ auto_review_threshold (Default: 0.90)?
-      → Ja: Backend führt automatisch approve_review aus
+      → Ja: Backend führt automatisch den kanonischen approve_review-Workflow aus
         → Owner wird notifiziert: "TASK-88 auto-approved (AI: 92% Confidence)"
         → Grace Period: Owner kann innerhalb von HIVEMIND_AUTO_REVIEW_GRACE_MINUTES
           (Default: 30) widersprechen → revert auf in_review
@@ -331,12 +338,12 @@ Governance: "auto"
 
 ```text
 -- Lesen (geteilt)
-hivemind/get_task            { "id": "TASK-88" }
-hivemind/get_guards          { "task_id": "TASK-88" }
-hivemind/get_skills          { "task_id": "TASK-88" }
+hivemind-get_task            { "id": "TASK-88" }
+hivemind-get_guards          { "task_id": "TASK-88" }
+hivemind-get_skills          { "task_id": "TASK-88" }
 
 -- Schreiben (Reviewer-spezifisch)
-hivemind/submit_review_recommendation  { "task_id": "TASK-88",
+hivemind-submit_review_recommendation  { "task_id": "TASK-88",
                                          "recommendation": "approve|reject|needs_human_review",
                                          "confidence": 0.92,
                                          "summary": "...",
@@ -371,6 +378,8 @@ Nicht alle Entscheidungen sind gleich kritisch. Ein Skill-Merge nach 3 erfolgrei
 | `manual` | Mensch entscheidet. System unterstützt mit Kontext (wie Phase 1–7) | Voll |
 | `assisted` | AI analysiert + empfiehlt. Mensch bestätigt mit 1-Click | Niedrig |
 | `auto` | AI entscheidet + führt aus. Mensch wird notifiziert + kann widersprechen | Minimal |
+
+> Aktueller Runtime-Stand: Der Unterschied zwischen `assisted` und `auto` wird jetzt auch fuer `epic_proposal`, `epic_scoping`, `skill_merge`, `guard_merge`, `decision_request` und `escalation` serverseitig getrennt. `assisted` blockiert die entscheidenden Write-Tools und persistiert stattdessen eine `governance_recommendation`. `auto` darf die entscheidenden Tools ausfuehren; wenn kein belastbarer Abschluss zustande kommt, wird derselbe Fall als `auto_fallback` fuer einen Human-Confirm-Schritt gespeichert.
 
 ### Governance-Matrix
 
@@ -447,6 +456,22 @@ Governance-Levels werden in `app_settings` gespeichert als JSON:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### Persistierte Gate-Artefakte
+
+- `governance_recommendations`: AI-Empfehlungen fuer Assisted-Gates und Auto-Fallbacks
+- `learning_artifacts`: strukturierte Learnings aus Dispatches, Reviews und Governance-Empfehlungen
+- `conductor_dispatches.result.status_history`: Handoff-Timeline fuer `queued`, `dispatched`, `running`, `completed`, `failed`, `byoai`, ...
+
+### Agent-Loop-Metriken
+
+`GET /api/kpis/agent-loop` liefert eine kompakte Laufzeitsicht auf:
+
+- Dispatch-Erfolgsquote
+- durchschnittliche Handoff-Latenz
+- Auto-Approve-Quote des Reviewers
+- offene Governance-Empfehlungen
+- erzeugte und unterdrueckte Lernartefakte
+
 ---
 
 ## Resultierender Autonomie-Loop (Phase 8 + Governance Auto)
@@ -464,7 +489,7 @@ Externer Input (Plan, Code, Event)
   → Reviewer pre-reviewed, auto-approved               ✓ AI (Safeguard: Confidence ≥ 0.90)
   → Owner notifiziert (Grace Period 30 Min)            ◐ Mensch optional
   → Gaertner destilliert                               ✓ AI (Conductor dispatcht)
-  → Governance "auto": Skill auto-merged               ✓ AI (Safeguard: ≥ 3 erfolgreiche Einsätze)
+  → Skill-/Guard-/Restructure-Proposals gehen an Triage ◐ Mensch oder AI-Assist je Governance
 ```
 
 **Ergebnis:** Der Loop schließt sich. Das System läuft autark mit **optionalem menschlichen Veto** statt mandatorischem menschlichen Handeln.
@@ -501,7 +526,7 @@ Phase 8:    ████████░░░░░░░░░░░░  AI mac
 ## Sicherheitsprinzipien
 
 1. **Review-Gate wird nie entfernt** — `auto`-Level delegiert die Entscheidung an AI, aber der Review-Schritt existiert immer. Kein Task wird `done` ohne dass jemand (Mensch oder AI) reviewed hat.
-2. **Auto-Reject gibt es nicht** — AI kann `reject` empfehlen, aber nie autonom rejekten. Rejects gehen immer an den Owner (Safeguard gegen falsche Ablehnungen).
+2. **Auto-Reject gibt es nicht** — AI kann `reject` empfehlen, aber nie autonom rejekten. Rejects gehen immer an den Owner; der kanonische Reject-Pfad erzeugt `task_qa_failed` und damit einen Lerntrigger fuer den Gaertner.
 3. **Grace Period bei Auto-Actens** — Owner hat immer ein Zeitfenster zum Widersprechen.
 4. **Audit-Trail vollständig** — Jede AI-Entscheidung wird mit Confidence, Rationale und Governance-Level geloggt.
 5. **Fallback auf `assisted`** — Wenn Auto-Bedingungen nicht erfüllt → nie stillschweigend blockieren, sondern Mensch einbeziehen.

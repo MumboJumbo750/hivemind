@@ -96,7 +96,7 @@ Mono:      "JetBrains Mono"  (Code, IDs, Prompts)
 ⚔  Skill / Arsenal-Item
 ```
 
-> **Symbol-Abgrenzung:** `◈` (offenes Rautsymbol) wird ausschließlich für Hivemind/Node/Peer-Kontexte verwendet. `◆` (gefülltes Rautsymbol) markiert den Worker-Agent, um visuelle Ambiguität zu vermeiden. `⊘` markiert Triage, `⊙` markiert den Bibliothekar.
+> **Symbol-Abgrenzung:** `◈` (offenes Rautsymbol) wird ausschließlich für hivemind-Node/Peer-Kontexte verwendet. `◆` (gefülltes Rautsymbol) markiert den Worker-Agent, um visuelle Ambiguität zu vermeiden. `⊘` markiert Triage, `⊙` markiert den Bibliothekar.
 
 ---
 

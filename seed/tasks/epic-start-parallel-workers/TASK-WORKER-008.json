@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-WORKER-008",
+  "epic_ref": "EPIC-WORKER-ORCH",
+  "title": "Epic-Start-UI, Operator-Sicht und Full-Loop-Tests ergänzen",
+  "description": "Mache den neuen Epic-Run für Nutzer und Operatoren ausführbar und nachvollziehbar.\n\n**Was zu implementieren ist:**\n\n1. UI für `Epic Start` mit Dry-Run, Parallelitätslimit und Resume-Optionen bauen\n2. Sichtbarkeit für Run-Status, Worker-Slots, Review-Folgepfade, Konflikte und Retry-Zyklen ergänzen\n3. Deterministische Full-Loop-Tests für einen kompletten Epic-Run mit mehreren Workern ergänzen\n4. Fehlerpfade, Konflikte, QA-Loop und Resume-Fälle abdecken\n5. Lokales Runbook für Debugging und Betrieb dokumentieren\n\n**Wichtig:** Erst mit UI, Sichtbarkeit und reproduzierbaren Tests ist der Orchestrierungsansatz belastbar bedienbar.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Operator kann einen Epic-Run aus der UI starten und dry-run analysieren",
+      "Run-Status und Worker-/Review-Folgepfade sind sichtbar",
+      "Ein deterministischer Full-Loop-Test deckt den Mehr-Worker-Fall ab",
+      "Ein Runbook beschreibt Betrieb und Debugging"
+    ]
+  },
+  "tags": ["frontend", "ui", "tests", "runbook", "epic"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "api-test", "runtime-environment"],
+  "linked_wiki": ["autonomy-loop"],
+  "source_doc": "docs/features/epic-start-parallel-workers.md",
+  "estimated_complexity": "large",
+  "depends_on": ["TASK-WORKER-001", "TASK-WORKER-002", "TASK-WORKER-003", "TASK-WORKER-004", "TASK-WORKER-005", "TASK-WORKER-006", "TASK-WORKER-007"]
+}

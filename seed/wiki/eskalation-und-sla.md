@@ -30,7 +30,7 @@ Kein automatischer Beschluss — ein Admin muss manuell auflösen.
 
 ## 3x qa_failed → Eskalation
 
-Nach dreimaligem Review-Reject (`qa_failed_count >= 3`) wird der Task automatisch auf `escalated` gesetzt. Nur ein Admin kann `escalated → in_progress` auflösen via `hivemind/resolve_escalation`.
+Nach dreimaligem Review-Reject (`qa_failed_count >= 3`) wird der Task automatisch auf `escalated` gesetzt. Nur ein Admin kann `escalated → in_progress` auflösen via `hivemind-resolve_escalation`.
 
 ## Notification-Modi
 

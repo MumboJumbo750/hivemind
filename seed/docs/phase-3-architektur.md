@@ -12,7 +12,7 @@ Phase 3 bringt die erste echte MCP-Integration: Der AI-Client kann Hivemind-Date
 ## Architektur-Entscheidungen
 
 ### MCP 1.0 Standard
-FastAPI-basierter MCP-Server mit SSE/JSON-RPC 2.0 + Convenience-REST + stdio-Transport. Namespace: `hivemind/` für alle lokalen Tools.
+FastAPI-basierter MCP-Server mit SSE/JSON-RPC 2.0 + Convenience-REST + stdio-Transport. Namespace: `hivemind-` für alle lokalen Tools.
 
 ### Embedding-Provider-Abstraktion
 Ollama mit `nomic-embed-text` als Default. Provider-Switch möglich ohne Datenmigration — Embedding-Spalten werden per ALTER TABLE angepasst + Recompute bei Provider-Wechsel.
@@ -29,11 +29,11 @@ Wiki-Artikel, Guards, Code-Nodes und Epic-Docs erhalten REST-Endpoints als techn
 ## Backend-Deliverables
 
 ### MCP Read-Tools
-- `hivemind/get_epic`, `hivemind/get_task`, `hivemind/get_skills`
-- `hivemind/get_skill_versions`, `hivemind/get_guards`, `hivemind/get_doc`
-- `hivemind/get_triage`, `hivemind/get_audit_log`
-- `hivemind/get_wiki_article`, `hivemind/search_wiki`
-- `hivemind/get_prompt` (Prompt-Generator-Endpunkt)
+- `hivemind-get_epic`, `hivemind-get_task`, `hivemind-get_skills`
+- `hivemind-get_skill_versions`, `hivemind-get_guards`, `hivemind-get_doc`
+- `hivemind-get_triage`, `hivemind-get_audit_log`
+- `hivemind-get_wiki_article`, `hivemind-search_wiki`
+- `hivemind-get_prompt` (Prompt-Generator-Endpunkt)
 
 ### SSE-Infrastruktur
 - Kanäle: `/events/notifications`, `/events/tasks`, `/events/triage`

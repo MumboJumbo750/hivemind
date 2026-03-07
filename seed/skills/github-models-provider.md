@@ -117,7 +117,7 @@ class GitHubModelsProvider(AIProvider):
             {
                 "type": "function",
                 "function": {
-                    "name": tool["name"].replace("/", "_"),  # hivemind/get_task → hivemind_get_task
+                    "name": tool["name"].replace("-", "_", 1),  # hivemind-get_task → hivemind_get_task
                     "description": tool.get("description", ""),
                     "parameters": tool.get("inputSchema", {}),
                 },
@@ -134,7 +134,7 @@ class GitHubModelsProvider(AIProvider):
                 func = tc.get("function", {})
                 calls.append({
                     "id": tc.get("id"),
-                    "name": func.get("name", "").replace("_", "/", 1),  # hivemind_get_task → hivemind/get_task
+                    "name": func.get("name", "").replace("_", "-", 1),  # hivemind_get_task → hivemind-get_task
                     "arguments": func.get("arguments", "{}"),
                 })
         return calls
@@ -222,7 +222,7 @@ Der AI-Provider-Service nutzt seine bestehende Rate-Limiting-Infrastruktur (`rpm
 
 ### Wichtige Regeln
 - GitHub PAT braucht `models:read` Scope für Models API
-- Tool-Name-Konvertierung: `hivemind/tool` ↔ `hivemind_tool` (Slash nicht erlaubt in OpenAI-Format)
+- Tool-Name-Konvertierung: `hivemind-tool` ↔ `hivemind_tool` (Slash nicht erlaubt in OpenAI-Format)
 - Modell-Verfügbarkeit kann sich ändern — Katalog-API immer dynamisch abfragen
 - Copilot CLI ist **kein** vollwertiger Provider (kein Tool-Calling) — nur für einfache Aufgaben
 - Ein GitHub-Token für alles: Webhooks, Models API, GitHub API → weniger Key-Management

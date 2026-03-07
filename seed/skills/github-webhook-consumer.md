@@ -193,13 +193,13 @@ def normalize_github_event(event: str, action: str, raw: dict) -> dict | None:
 ### MCP-Tool-Wrapper (Read-only, für Agenten-Kontext)
 
 ```text
-hivemind/get_github_pr        { "repo": "owner/repo", "number": 42 }
+hivemind-get_github_pr        { "repo": "owner/repo", "number": 42 }
                                 — PR-Details inkl. Diff-Stats, Review-Status, Checks
-hivemind/get_github_issue      { "repo": "owner/repo", "number": 123 }
+hivemind-get_github_issue      { "repo": "owner/repo", "number": 123 }
                                 — Issue-Details inkl. Labels, Assignees, Kommentare
-hivemind/get_github_workflow   { "repo": "owner/repo", "run_id": 456 }
+hivemind-get_github_workflow   { "repo": "owner/repo", "run_id": 456 }
                                 — Workflow-Run-Details inkl. Jobs, Steps, Logs-URL
-hivemind/search_github_issues  { "repo": "owner/repo", "query": "bug label:critical" }
+hivemind-search_github_issues  { "repo": "owner/repo", "query": "bug label:critical" }
                                 — Issue-Suche via GitHub Search API
 ```
 

@@ -43,6 +43,13 @@ Governance-Levels schließen die 5 Human-Gates im Autonomy Loop:
 | `assisted` | AI analysiert + empfiehlt. Mensch bestätigt mit 1-Click | Niedrig |
 | `auto` | AI entscheidet + führt aus. Mensch wird notifiziert + kann widersprechen | Minimal |
 
+### Ist-Stand der Umsetzung
+
+- `review` hat einen echten `assisted`/`auto`-Unterschied: `auto` setzt Grace Period + spaeteren Auto-Approve, `assisted` nicht.
+- Bei `epic_proposal`, `epic_scoping`, `skill_merge`, `decision_request` und `escalation` sind `assisted` und `auto` aktuell beide ein Dispatch-Gate: der Agent wird gestartet, aber der nachgelagerte Abschluss-Flow ist noch nicht separat ausdifferenziert.
+- `guard_merge` hat derzeit noch keinen eigenen Conductor-Entscheidungs-Flow; ein aktivierter Guard wird aber sofort auf passende Tasks in `task_guards` materialisiert und ist damit unmittelbar wirksam.
+- `manual` bleibt fuer alle Typen der harte Stop fuer AI-Dispatch.
+
 ### Die 7 Entscheidungstypen
 
 | Typ | `manual` | `assisted` | `auto` | Default | Risiko |
@@ -183,3 +190,4 @@ async def update_governance(
 - Governance-Änderungen sind Audit-pflichtig (Admin-only)
 - Kein globaler "Full Auto"-Button — jeder Typ einzeln konfigurierbar
 - Auto-Level erfordert immer: Notification an Owner + Grace Period
+- Wenn der Code diese letzte Zeile fuer einen Governance-Typ noch nicht einloest, muss die Skill-/Doku-Beschreibung den Ist-Stand klar benennen statt ein bereits fertiges Auto-Verhalten zu behaupten

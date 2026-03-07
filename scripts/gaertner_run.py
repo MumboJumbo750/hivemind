@@ -27,7 +27,7 @@ def mcp(tool, args):
 def propose_and_submit(title, content, scope, stack, confidence):
     """Propose a skill and submit it for merge."""
     print(f"\n--- Proposing: {title} ---")
-    r = mcp('hivemind/propose_skill', {
+    r = mcp('hivemind-propose_skill', {
         'title': title,
         'content': content,
         'service_scope': scope,
@@ -39,10 +39,10 @@ def propose_and_submit(title, content, scope, stack, confidence):
         skill_id = r['data'].get('id')
         if skill_id:
             # Submit for merge
-            r2 = mcp('hivemind/submit_skill_proposal', {'skill_id': skill_id})
+            r2 = mcp('hivemind-submit_skill_proposal', {'skill_id': skill_id})
             print(f"  submit -> {json.dumps(r2)[:200]}")
             # Merge directly (we're admin in solo mode)
-            r3 = mcp('hivemind/merge_skill', {'skill_id': skill_id})
+            r3 = mcp('hivemind-merge_skill', {'skill_id': skill_id})
             print(f"  merge -> {json.dumps(r3)[:200]}")
             return skill_id
     return None
@@ -65,7 +65,7 @@ Du implementierst DLQ-Verwaltung für fehlgeschlagene Outbox-Einträge im Hivemi
 - Felder: `outbox_id`, `system`, `entity_type`, `entity_id`, `payload`, `error`, `created_at`
 - Requeue: Dead Letter → zurück in `sync_outbox` mit `state='pending'`, `attempts=0`
 - Discard: Dead Letter → `state='discarded'` (soft-delete, bleibt für Audit)
-- MCP-Tools: `hivemind/requeue_dead_letter`, `hivemind/discard_dead_letter`
+- MCP-Tools: `hivemind-requeue_dead_letter`, `hivemind-discard_dead_letter`
 - REST-Alias: `POST /api/triage/dead-letters/{id}/requeue`, `POST /api/triage/dead-letters/{id}/discard`
 - Permission: `admin` oder `triage` Rolle
 - Jede DLQ-Aktion wird in `mcp_invocations` geloggt (Audit)
@@ -345,7 +345,7 @@ async def aggregate_bug_report(db: AsyncSession, sentry_event: dict):
 ### Wichtig
 - `node_bug_reports.count` steuert Knotengröße und -farbe in der Bug Heatmap
 - Hover im Nexus Grid zeigt Bug-Details (Severity, Count, letzte Issue-IDs)
-- MCP-Tool: `hivemind/assign_bug` für manuelles Bug→Epic Routing
+- MCP-Tool: `hivemind-assign_bug` für manuelles Bug→Epic Routing
 - Stack-Trace-Pfade sind relativ — Fuzzy-Matching gegen `code_nodes.path` nötig""",
     scope=["backend"],
     stack=["python", "sqlalchemy", "postgresql"],

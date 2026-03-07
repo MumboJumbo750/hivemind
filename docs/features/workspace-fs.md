@@ -2,7 +2,7 @@
 
 > **Implementiert in:** `backend/app/mcp/tools/fs_tools.py`
 > **Task-Serie:** TASK-WFS-001 bis TASK-WFS-006
-> **API-Endpoint:** `POST /api/mcp/call` mit `{"tool": "hivemind/fs_*", ...}`
+> **API-Endpoint:** `POST /api/mcp/call` mit `{"tool": "hivemind-fs_*", ...}`
 
 ---
 
@@ -14,7 +14,7 @@ Die Workspace-FS-Tools ermöglichen KI-Agents (Copilot, Claude, Cursor) direkten
 AI-Agent (IDE)
     │
     │  POST /api/mcp/call
-    │  {"tool": "hivemind/fs_read", "arguments": {"path": "src/main.py"}}
+    │  {"tool": "hivemind-fs_read", "arguments": {"path": "src/main.py"}}
     ▼
 ┌─────────────────────────────────────────────────────────┐
 │  FastAPI / MCP-Router  (backend-Container :8000)        │
@@ -48,12 +48,12 @@ AI-Agent (IDE)
 
 | Tool | Beschreibung | Pflichtfelder |
 |------|--------------|---------------|
-| `hivemind/fs_read` | Datei lesen (optionaler Zeilenbereich) | `path` |
-| `hivemind/fs_write` | Datei schreiben/erstellen (atomisch) | `path`, `content` |
-| `hivemind/fs_list` | Verzeichnis auflisten (rekursiv optional) | — |
-| `hivemind/fs_search` | Grep/Regex-Suche über Workspace | `pattern` |
-| `hivemind/fs_stat` | Metadaten abfragen (Größe, mtime, Typ) | `path` |
-| `hivemind/run_analyzer` | Repo Health Scan → JSON-Report | — |
+| `hivemind-fs_read` | Datei lesen (optionaler Zeilenbereich) | `path` |
+| `hivemind-fs_write` | Datei schreiben/erstellen (atomisch) | `path`, `content` |
+| `hivemind-fs_list` | Verzeichnis auflisten (rekursiv optional) | — |
+| `hivemind-fs_search` | Grep/Regex-Suche über Workspace | `pattern` |
+| `hivemind-fs_stat` | Metadaten abfragen (Größe, mtime, Typ) | `path` |
+| `hivemind-run_analyzer` | Repo Health Scan → JSON-Report | — |
 
 ---
 
@@ -114,7 +114,7 @@ write → tmp_XXX.tmp (same directory) → os.replace(tmp, target)
 ```bash
 curl -X POST http://localhost:8000/api/mcp/call \
   -H "Content-Type: application/json" \
-  -d '{"tool": "hivemind/fs_read", "arguments": {"path": "src/main.py", "start_line": 1, "end_line": 30}}'
+  -d '{"tool": "hivemind-fs_read", "arguments": {"path": "src/main.py", "start_line": 1, "end_line": 30}}'
 ```
 
 Response:
@@ -132,7 +132,7 @@ Response:
 ```bash
 curl -X POST http://localhost:8000/api/mcp/call \
   -H "Content-Type: application/json" \
-  -d '{"tool": "hivemind/fs_write", "arguments": {"path": "docs/notes.md", "content": "# Notes\n"}}'
+  -d '{"tool": "hivemind-fs_write", "arguments": {"path": "docs/notes.md", "content": "# Notes\n"}}'
 ```
 
 ### fs_search
@@ -140,7 +140,7 @@ curl -X POST http://localhost:8000/api/mcp/call \
 ```bash
 curl -X POST http://localhost:8000/api/mcp/call \
   -H "Content-Type: application/json" \
-  -d '{"tool": "hivemind/fs_search", "arguments": {"pattern": "TODO", "glob": "**/*.py", "context_lines": 2}}'
+  -d '{"tool": "hivemind-fs_search", "arguments": {"pattern": "TODO", "glob": "**/*.py", "context_lines": 2}}'
 ```
 
 ### run_analyzer
@@ -148,7 +148,7 @@ curl -X POST http://localhost:8000/api/mcp/call \
 ```bash
 curl -X POST http://localhost:8000/api/mcp/call \
   -H "Content-Type: application/json" \
-  -d '{"tool": "hivemind/run_analyzer", "arguments": {"min_severity": "warning"}}'
+  -d '{"tool": "hivemind-run_analyzer", "arguments": {"min_severity": "warning"}}'
 ```
 
 ---

@@ -6,24 +6,19 @@ POST /api/triage/dead-letters/{id}/discard   - alias for MCP discard_dead_letter
 """
 from __future__ import annotations
 
-import base64
-import binascii
-import json
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.db import get_db
-from app.models.sync import SyncDeadLetter, SyncOutbox
 from app.routers.deps import require_role
 from app.schemas.auth import CurrentActor
 from app.services.dlq_service import DlqError, discard_dead_letter, requeue_dead_letter
+from app.services.triage_service import list_dead_letters_page
 
 router = APIRouter(prefix="/triage", tags=["triage"])
 
@@ -82,77 +77,20 @@ async def list_dead_letters(
 ) -> DeadLetterListResponse:
     del actor
 
-    stmt = (
-        select(SyncDeadLetter)
-        .options(selectinload(SyncDeadLetter.outbox_entry))
-        .where(
-            SyncDeadLetter.discarded_at.is_(None),
-            SyncDeadLetter.requeued_at.is_(None),
-        )
-    )
-    count_stmt = (
-        select(func.count())
-        .select_from(SyncDeadLetter)
-        .where(
-            SyncDeadLetter.discarded_at.is_(None),
-            SyncDeadLetter.requeued_at.is_(None),
-        )
-    )
-
-    if direction:
-        stmt = stmt.join(SyncDeadLetter.outbox_entry)
-        count_stmt = count_stmt.join(SyncDeadLetter.outbox_entry)
-        stmt = stmt.where(SyncOutbox.direction == direction)
-        count_stmt = count_stmt.where(SyncOutbox.direction == direction)
-
-    if system:
-        stmt = stmt.where(SyncDeadLetter.system == system)
-        count_stmt = count_stmt.where(SyncDeadLetter.system == system)
-
-    if cursor:
-        cursor_failed_at, cursor_id = _decode_cursor(cursor)
-        stmt = _apply_cursor(stmt, cursor_failed_at, cursor_id)
-
-    count_result = await db.execute(count_stmt)
-    total = int(count_result.scalar_one() or 0)
-
-    rows_result = await db.execute(
-        stmt.order_by(
-            SyncDeadLetter.failed_at.desc().nullslast(),
-            SyncDeadLetter.id.desc(),
-        ).limit(limit + 1)
-    )
-    rows = rows_result.scalars().all()
-    has_more = len(rows) > limit
-    page_rows = rows[:limit]
-
-    items = [
-        DeadLetterItem(
-            id=str(row.id),
-            system=row.system,
-            entity_type=row.entity_type,
-            attempts=int(getattr(getattr(row, "outbox_entry", None), "attempts", 0) or 0),
-            last_error=row.error,
-            error=row.error,
-            failed_at=row.failed_at,
-            requeued_at=row.requeued_at,
-            payload_preview=_payload_preview(row.payload),
-        )
-        for row in page_rows
-    ]
-
-    next_cursor = (
-        _encode_cursor(page_rows[-1].failed_at, page_rows[-1].id)
-        if has_more and page_rows
-        else None
+    page = await list_dead_letters_page(
+        db,
+        system=system,
+        direction=direction,
+        cursor=cursor,
+        limit=limit,
     )
 
     return DeadLetterListResponse(
-        items=items,
-        next_cursor=next_cursor,
-        has_more=has_more,
-        total=total,
-        limit=limit,
+        items=[DeadLetterItem(**item) for item in page["items"]],
+        next_cursor=page["next_cursor"],
+        has_more=page["has_more"],
+        total=page["total"],
+        limit=page["limit"],
     )
 
 
@@ -188,74 +126,3 @@ async def discard_dead_letter_endpoint(
         return DiscardDeadLetterResponse(data=DiscardDeadLetterData.model_validate(result))
     except DlqError as exc:
         raise HTTPException(status_code=exc.status, detail=str(exc)) from exc
-
-
-def _payload_preview(payload: dict | None, max_length: int = 200) -> Optional[str]:
-    if not payload:
-        return None
-    try:
-        text = json.dumps(payload)
-    except (TypeError, ValueError):
-        text = str(payload)
-    return text[:max_length] if len(text) <= max_length else f"{text[:max_length]}..."
-
-
-def _encode_cursor(failed_at: Optional[datetime], dead_letter_id: uuid.UUID) -> str:
-    payload = {
-        "failed_at": failed_at.astimezone(UTC).isoformat() if failed_at else None,
-        "id": str(dead_letter_id),
-    }
-    token = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    return base64.urlsafe_b64encode(token).decode("ascii").rstrip("=")
-
-
-def _decode_cursor(cursor: str) -> tuple[Optional[datetime], uuid.UUID]:
-    try:
-        padding = "=" * (-len(cursor) % 4)
-        raw = base64.urlsafe_b64decode(f"{cursor}{padding}".encode("ascii"))
-        payload = json.loads(raw.decode("utf-8"))
-        dead_letter_id = uuid.UUID(str(payload["id"]))
-
-        failed_at_raw = payload.get("failed_at")
-        if failed_at_raw is None:
-            return None, dead_letter_id
-
-        failed_at = datetime.fromisoformat(str(failed_at_raw).replace("Z", "+00:00"))
-        if failed_at.tzinfo is None:
-            failed_at = failed_at.replace(tzinfo=UTC)
-
-        return failed_at, dead_letter_id
-    except (
-        KeyError,
-        TypeError,
-        ValueError,
-        UnicodeDecodeError,
-        json.JSONDecodeError,
-        binascii.Error,
-    ) as exc:
-        raise HTTPException(status_code=422, detail="Invalid cursor") from exc
-
-
-def _apply_cursor(
-    stmt,
-    cursor_failed_at: Optional[datetime],
-    cursor_id: uuid.UUID,
-):
-    if cursor_failed_at is None:
-        return stmt.where(
-            and_(
-                SyncDeadLetter.failed_at.is_(None),
-                SyncDeadLetter.id < cursor_id,
-            )
-        )
-
-    return stmt.where(
-        or_(
-            SyncDeadLetter.failed_at.is_(None),
-            SyncDeadLetter.failed_at < cursor_failed_at,
-            and_(
-                SyncDeadLetter.failed_at == cursor_failed_at,
-                SyncDeadLetter.id < cursor_id,
-            ),
-        )
-    )

@@ -59,6 +59,7 @@ from app.routers import (
 )
 from app.routers import settings as settings_router
 from app.services.federation_auth import FederationSignatureMiddleware
+from app.services.embedding_service import get_embedding_service
 from app.services.node_bootstrap import bootstrap_node
 from app.services.peers_loader import load_peers
 from app.services.scheduler import start_scheduler, stop_scheduler
@@ -76,9 +77,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 await hive_station.register(db)
                 await hive_station.fetch_peers(db)
             await db.commit()
+        await get_embedding_service().start_worker()
         start_scheduler()
     yield
     if not settings.testing:
+        await get_embedding_service().stop_worker()
         stop_scheduler()
 
 

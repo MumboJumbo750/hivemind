@@ -108,9 +108,16 @@ async def test_happy_path_inbound_routing_state_set_to_routed() -> None:
 
     routed_epic_id = uuid.uuid4()
 
-    async def _fake_dispatch_inbound(e: SyncOutbox) -> None:
+    async def _fake_dispatch_inbound(e: SyncOutbox, db) -> dict:
         # Simuliert SentryAggregationService + RoutingService: epic_id wird gesetzt
         e.payload["_epic_id"] = str(routed_epic_id)
+        return {
+            "routing_state": "routed",
+            "intake_stage": "materialized",
+            "materialization": "bug_report",
+            "context_refs": {"task_keys": [], "epic_keys": []},
+            "reason": None,
+        }
 
     with patch("app.services.outbox_consumer.AsyncSessionLocal", return_value=db):
         with patch("app.services.outbox_consumer._dispatch_inbound", side_effect=_fake_dispatch_inbound):

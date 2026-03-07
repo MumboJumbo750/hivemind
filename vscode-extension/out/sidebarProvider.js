@@ -3,8 +3,8 @@
  * Hivemind Sidebar TreeView Provider — TASK-IDE-003
  *
  * Provides four tree views:
- *   hivemind.activeTasks   — Tasks in in_progress with epic + priority
- *   hivemind.nextPrompts   — Pending conductor dispatches
+ *   hivemind.activeTasks   — All tasks (incoming → in_review) with inline actions
+ *   hivemind.nextPrompts   — Aufgaben-Queue: dispatches + ready/review tasks
  *   hivemind.guardStatus   — Guard results for the selected task
  *   hivemind.agentActivity — Recent dispatch/event activity
  */

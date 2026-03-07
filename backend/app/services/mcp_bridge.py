@@ -1,7 +1,7 @@
 """MCP Bridge / Gateway Service — Phase 8 (TASK-8-014 + TASK-8-015).
 
 Hivemind as Meta-MCP: MCP server for agents AND MCP client to external MCP servers.
-- Namespace isolation: hivemind/* (local), github/* (proxied), etc.
+- Namespace isolation: hivemind-* (local), github/* (proxied), etc.
 - RBAC: every tool call checks actor permissions
 - Audit: all proxied calls logged
 - Security: agents never see credentials
@@ -15,6 +15,7 @@ import json
 import logging
 import subprocess
 import time
+import uuid
 from typing import Any
 
 from sqlalchemy import select
@@ -262,3 +263,54 @@ async def load_bridges_from_db(db: AsyncSession) -> None:
         await bridge_registry.register_bridge(config.namespace, client)
 
     logger.info("MCP Bridge: loaded %d bridge(s) from DB", len(configs))
+
+
+# ---------------------------------------------------------------------------
+# Public CRUD helpers (used by routers — keep models out of routers)
+# ---------------------------------------------------------------------------
+
+
+async def list_bridge_configs(db: AsyncSession) -> list:
+    """Return all MCPBridgeConfig rows ordered by name."""
+    from app.models.mcp_bridge import MCPBridgeConfig
+
+    result = await db.execute(select(MCPBridgeConfig).order_by(MCPBridgeConfig.name))
+    return result.scalars().all()
+
+
+async def get_bridge_config_by_id(db: AsyncSession, bridge_id: "uuid.UUID") -> Any:
+    """Return a single MCPBridgeConfig by UUID, or None."""
+    from app.models.mcp_bridge import MCPBridgeConfig
+
+    result = await db.execute(
+        select(MCPBridgeConfig).where(MCPBridgeConfig.id == bridge_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_bridge_config_by_namespace(db: AsyncSession, namespace: str) -> Any:
+    """Return a single MCPBridgeConfig by namespace, or None."""
+    from app.models.mcp_bridge import MCPBridgeConfig
+
+    result = await db.execute(
+        select(MCPBridgeConfig).where(MCPBridgeConfig.namespace == namespace)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_bridge_config(db: AsyncSession, **kwargs: Any) -> Any:
+    """Instantiate, persist, and return a new MCPBridgeConfig."""
+    from app.models.mcp_bridge import MCPBridgeConfig
+
+    config = MCPBridgeConfig(**kwargs)
+    db.add(config)
+    await db.commit()
+    await db.refresh(config)
+    return config
+
+
+async def delete_bridge_config(db: AsyncSession, config: Any) -> None:
+    """Unregister from the live registry, delete from DB, and commit."""
+    await bridge_registry.unregister_bridge(config.namespace)
+    await db.delete(config)
+    await db.commit()

@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-CARDS-004",
+  "epic_ref": "EPIC-AGENT-CARDS",
+  "title": "Große und kompakte Character-Card-Komponenten im Frontend bauen",
+  "description": "Baue die UI-Komponenten, mit denen Agenten als große Detailkarten und kleine Übersichts-Karten gerendert werden.\n\n**Was zu implementieren ist:**\n\n1. Hero/Detail-Card-Komponente erstellen\n2. Compact-Card-Komponente für Listen und Panels erstellen\n3. Statusdarstellung für idle, active, blocked, reviewing, warning ergänzen\n4. Token- und Theme-konforme Umsetzung sicherstellen\n\n**Wichtig:** Die Komponenten müssen sowohl atmosphärisch als auch informationsdicht funktionieren.",
+  "state": "open",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Es gibt eine große und eine kompakte Character-Card-Komponente",
+      "Statusvarianten sind sichtbar darstellbar",
+      "Die Komponenten folgen dem Theme- und Token-System",
+      "Die Cards können operative Agenteninformationen anzeigen"
+    ]
+  },
+  "tags": ["frontend", "ui", "cards", "components"],
+  "subtasks": [],
+  "pinned_skills": ["vue-component", "design-system-compliance", "design-token"],
+  "linked_wiki": ["frontend-component-architektur"],
+  "source_doc": "docs/ui/agent-character-cards.md",
+  "estimated_complexity": "medium",
+  "depends_on": ["TASK-CARDS-003"]
+}

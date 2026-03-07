@@ -20,7 +20,7 @@ guards:
 Du implementierst MCP-Write-Tools im Hivemind-Backend. Write-Tools sind zustandsverändernde Operationen (CREATE, UPDATE, STATE-TRANSITION) die besondere Anforderungen an Idempotenz, Optimistic Locking, RBAC und Audit-Logging stellen.
 
 ### Konventionen
-- Tool-Namespace: `hivemind/<tool_name>` — Write-Tools enden semantisch auf `create_*`, `update_*`, `propose_*`, `accept_*`, `reject_*`, `link_*`, `assign_*`
+- Tool-Namespace: `hivemind-<tool_name>` — Write-Tools enden semantisch auf `create_*`, `update_*`, `propose_*`, `accept_*`, `reject_*`, `link_*`, `assign_*`
 - Handler in `app/mcp/tools/write_tools.py` (planer: propose/decompose), `skill_write_tools.py` (skill lifecycle)
 - Jeder Write-Call **muss** einen Audit-Log-Eintrag schreiben (tool_name, actor_id, input_snapshot, output_snapshot, timestamp)
 - **Optimistic Locking:** alle mutierbaren Entitäten haben ein `version`-Feld (INT). PATCH/UPDATE prüft: `WHERE id = :id AND version = :expected_version`. Bei Mismatch → 409 Conflict mit `{"code": "VERSION_CONFLICT", "message": "..."}`
@@ -35,7 +35,7 @@ Du implementierst MCP-Write-Tools im Hivemind-Backend. Write-Tools sind zustands
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     match name:
-        case "hivemind/create_task":
+        case "hivemind-create_task":
             return await handle_create_task(arguments)
         # ...
 
@@ -87,12 +87,12 @@ async def update_task(db: AsyncSession, task_key: str, update: TaskUpdate, expec
 
 ### ⚠️ Zwei-Schritt-Abschluss (häufiger Fehler!)
 
-`hivemind/submit_result` **speichert nur** Ergebnis + Artifacts — der Task bleibt in `in_progress`.
+`hivemind-submit_result` **speichert nur** Ergebnis + Artifacts — der Task bleibt in `in_progress`.
 Der State-Wechsel ist **bewusst getrennt** und muss separat ausgelöst werden:
 
 ```
-1. hivemind/submit_result     → result/artifacts speichern (State: in_progress → in_progress)
-2. hivemind/update_task_state → target_state: "in_review"  (State: in_progress → in_review)
+1. hivemind-submit_result     → result/artifacts speichern (State: in_progress → in_progress)
+2. hivemind-update_task_state → target_state: "in_review"  (State: in_progress → in_review)
 ```
 
 Warum getrennt? Damit der Worker das Ergebnis mehrfach überschreiben kann (Idempotenz) bevor
@@ -112,16 +112,17 @@ er den Review-Prozess startet. `submit_result` ist idempotent, der State-Wechsel
 
 | Tool | Required Params | Typ-Hinweise |
 |------|----------------|----|
-| `hivemind/decompose_epic` | `epic_key`, `tasks[]` | epic_key ist String (z.B. "EPIC-PHASE-5"), NICHT epic_id |
-| `hivemind/create_task` | `epic_key`, `title` | Optional: `description`, `definition_of_done` |
-| `hivemind/link_skill` | `task_key`, `skill_id` | task_key ist String (z.B. "TASK-6"), NICHT task_id |
-| `hivemind/set_context_boundary` | `task_key` | Optional: `allowed_skills[]`, `allowed_docs[]`, `max_token_budget` |
-| `hivemind/assign_task` | `task_key`, `user_id` | user_id als UUID-String, NICHT assigned_to |
-| `hivemind/update_task_state` | `task_key`, `target_state` | target_state ist String, NICHT state |
+| `hivemind-decompose_epic` | `epic_key`, `tasks[]` | epic_key ist String (z.B. "EPIC-PHASE-5"), NICHT epic_id |
+| `hivemind-create_task` | `epic_key`, `title` | Optional: `description`, `definition_of_done` |
+| `hivemind-link_skill` | `task_key`, `skill_id` | task_key ist String (z.B. "TASK-6"), NICHT task_id |
+| `hivemind-set_context_boundary` | `task_key` | Optional: `allowed_skills[]`, `allowed_docs[]`, `max_token_budget` |
+| `hivemind-assign_task` | `task_key`, `user_id` | user_id als UUID-String, NICHT assigned_to |
+| `hivemind-update_task_state` | `task_key`, `target_state` | target_state ist String, NICHT state |
 
-> **Achtung Namens-Konvention:** Tools verwenden `task_key` / `epic_key` (den menschenlesbaren Key wie "TASK-6"),
-> nicht `task_id` / `epic_id` (die interne UUID). Viele Docs nutzen fälschlicherweise `_id` — die tatsächlichen
-> Parameter in `write_tools.py` sind `_key`-basiert.
+> **Achtung Namens-Konvention:** Tools verwenden `task_key` / `epic_key` (den menschenlesbaren Key wie "TASK-42"),
+> nicht `task_id` / `epic_id` (die interne UUID). Seit dem Unified Key System haben auch Skills (`skill_key`),
+> Guards (`guard_key`), Wiki-Artikel (`wiki_key`) und Docs (`doc_key`) menschenlesbare Keys.
+> Alle Keys werden über PostgreSQL Sequences im Format `{PREFIX}-{n}` generiert (immutable, kollisionsfrei).
 
 ### Decision Record
 `mcp-write-tool` ist eine Spezialisierung von `mcp-tool` für mutierende Operationen. Der Hauptunterschied ist die verpflichtende Kombination aus Optimistic Locking + RBAC + Audit vor jeder Mutation. Read-Tools benötigen nur RBAC + Audit.

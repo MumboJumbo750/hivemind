@@ -46,8 +46,8 @@ Wiki-Artikel werden per pgvector-Similarity gegen das Task-Embedding ausgewählt
 
 | Tool | Wer | Beschreibung |
 | --- | --- | --- |
-| `hivemind/get_wiki_article` | developer + admin + kartograph | Artikel per ID oder Slug laden |
-| `hivemind/search_wiki` | developer + admin + kartograph | Semantische Suche über alle Artikel |
+| `hivemind-get_wiki_article` | developer + admin + kartograph | Artikel per ID oder Slug laden |
+| `hivemind-search_wiki` | developer + admin + kartograph | Semantische Suche über alle Artikel |
 
 ### Such-Semantik per Phase
 
@@ -62,9 +62,9 @@ Tag-Filterung ist in allen Phasen aktiv und wird **vor** der Text-/Similarity-Su
 
 | Tool | Wer | Beschreibung |
 | --- | --- | --- |
-| `hivemind/create_wiki_article` | Kartograph + Admin | Neuen Artikel erstellen |
-| `hivemind/update_wiki_article` | Kartograph + Admin | Artikel updaten (neue Version) |
-| `hivemind/link_wiki_to_epic` | Kartograph + Admin | Artikel mit Epic verknüpfen |
+| `hivemind-create_wiki_article` | Kartograph + Admin | Neuen Artikel erstellen |
+| `hivemind-update_wiki_article` | Kartograph + Admin | Artikel updaten (neue Version) |
+| `hivemind-link_wiki_to_epic` | Kartograph + Admin | Artikel mit Epic verknüpfen |
 
 ---
 
@@ -75,6 +75,7 @@ Tag-Filterung ist in allen Phasen aktiv und wird **vor** der Text-/Similarity-Su
 ```sql
 CREATE TABLE wiki_articles (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  wiki_key      TEXT UNIQUE,                -- WIKI-{n} via wiki_key_seq (immutable)
   title         TEXT NOT NULL,
   slug          TEXT NOT NULL UNIQUE,        -- URL-freundlicher Identifier
   content       TEXT NOT NULL,              -- Markdown

@@ -3,7 +3,50 @@ export interface Project {
   name: string
   slug: string
   description?: string
+  repo_host_path?: string | null
+  workspace_root?: string | null
+  workspace_mode?: 'read_only' | 'read_write' | null
+  onboarding_status?: 'pending' | 'ready' | 'error' | null
+  default_branch?: string | null
+  remote_url?: string | null
+  detected_stack?: string[] | null
+  created_by?: string
   created_at: string
+}
+
+export type ProjectIntegrationProvider = 'youtrack' | 'sentry' | 'in_app' | 'github_projects'
+export type ProjectIntegrationStatus = 'active' | 'incomplete' | 'error' | 'disabled'
+
+export interface ProjectIntegration {
+  id: string
+  project_id: string
+  provider: ProjectIntegrationProvider
+  display_name?: string | null
+  integration_key?: string | null
+  base_url?: string | null
+  external_project_key?: string | null
+  project_selector?: Record<string, unknown> | null
+  status_mapping?: Record<string, unknown> | null
+  routing_hints?: Record<string, unknown> | null
+  config?: Record<string, unknown> | null
+  sync_enabled: boolean
+  sync_direction: string
+  github_repo?: string | null
+  github_project_id?: string | null
+  status_field_id?: string | null
+  priority_field_id?: string | null
+  has_webhook_secret: boolean
+  has_access_token: boolean
+  status: ProjectIntegrationStatus
+  status_detail: string
+  last_health_state?: string | null
+  last_health_detail?: string | null
+  health_checked_at?: string | null
+  last_event_at?: string | null
+  last_error_at?: string | null
+  last_error_detail?: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Epic {
@@ -18,6 +61,48 @@ export interface Epic {
   version: number
   owner_id?: string | null
   backup_owner_id?: string | null
+}
+
+export interface EpicRun {
+  id: string
+  epic_id: string
+  started_by: string
+  status: 'dry_run' | 'blocked' | 'started' | 'running' | 'waiting' | 'completed'
+  dry_run: boolean
+  config: Record<string, unknown>
+  analysis: Record<string, unknown>
+  started_at: string
+  completed_at?: string | null
+}
+
+export interface EpicStartResponse {
+  run_id: string
+  epic_key: string
+  status: string
+  dry_run: boolean
+  startable: boolean
+  epic_state: string
+  config: Record<string, unknown>
+  blockers: { code: string; message: string }[]
+  analysis: Record<string, unknown>
+}
+
+export interface EpicRunArtifact {
+  id: string
+  epic_run_id: string
+  epic_id: string
+  task_id?: string | null
+  task_key?: string | null
+  artifact_type: string
+  state: string
+  source_role?: string | null
+  target_role?: string | null
+  title: string
+  summary?: string | null
+  payload: Record<string, unknown>
+  created_at: string
+  updated_at: string
+  released_at?: string | null
 }
 
 export interface Task {
@@ -134,6 +219,18 @@ export interface RequirementDraftResponse {
     priority_hint: string | null
     tags: string[]
   }
+  intake: {
+    stage: string
+    source_kind: string
+    materialization: string
+    project_id: string
+    triage_required: boolean
+    context_refs: {
+      task_keys: string[]
+      epic_keys: string[]
+    }
+    existing_proposal_id?: string
+  }
 }
 
 // ─── Federation ────────────────────────────────────────────────────────────
@@ -170,10 +267,13 @@ export interface TriageItem {
   id: string
   direction: string
   system: string
+  project_id?: string | null
+  integration_id?: string | null
   entity_type: string
   entity_id: string
   payload: Record<string, unknown>
   routing_state: 'unrouted' | 'routed' | 'ignored' | 'escalated' | 'dead'
+  routing_detail?: Record<string, unknown> | null
   created_at: string
 }
 

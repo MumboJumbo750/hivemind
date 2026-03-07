@@ -2,17 +2,18 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db import get_db
-from app.models.user import User
 from app.schemas.auth import AuthLogin, AuthRegister, TokenResponse
 from app.services.auth_service import (
     create_access_token,
     create_refresh_token,
+    create_user,
     decode_token,
+    get_user_by_id,
+    get_user_by_username,
     hash_password,
     verify_password,
 )
@@ -35,22 +36,20 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(body: AuthRegister, db: AsyncSession = Depends(get_db)) -> dict:
-    existing = await db.execute(select(User).where(User.username == body.username))
-    if existing.scalar_one_or_none():
+    if await get_user_by_username(db, body.username):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Username bereits vergeben"
         )
 
-    user = User(
-        id=uuid.uuid4(),
+    user = await create_user(
+        db,
+        user_id=uuid.uuid4(),
         username=body.username,
         display_name=body.display_name,
         email=body.email,
         password_hash=hash_password(body.password),
         role=body.role,
     )
-    db.add(user)
-    await db.flush()
     return {"id": str(user.id), "username": user.username, "role": user.role}
 
 
@@ -60,8 +59,7 @@ async def login(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
-    result = await db.execute(select(User).where(User.username == body.username))
-    user = result.scalar_one_or_none()
+    user = await get_user_by_username(db, body.username)
 
     if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
         raise HTTPException(
@@ -105,7 +103,7 @@ async def refresh(
         )
 
     user_id = payload.get("sub")
-    user = await db.get(User, uuid.UUID(user_id))
+    user = await get_user_by_id(db, uuid.UUID(user_id))
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User nicht gefunden"

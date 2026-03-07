@@ -1,24 +1,29 @@
-import json
 import time
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.db import get_db
-from app.models.doc import Doc
-from app.models.federation import Node
-from app.models.sync import SyncOutbox
-from app.models.task import Task
 from app.routers.deps import get_current_actor, require_role
 from app.schemas.auth import CurrentActor
 from app.schemas.crud import DocCreate, DocResponse
-from app.schemas.epic import EpicCreate, EpicResponse, EpicShareRequest, EpicShareResponse, EpicUpdate
+from app.schemas.epic import (
+    EpicCreate,
+    EpicRunResponse,
+    EpicRunArtifactResponse,
+    EpicResponse,
+    EpicShareRequest,
+    EpicShareResponse,
+    EpicStartRequest,
+    EpicStartResponse,
+    EpicUpdate,
+)
 from app.schemas.task import TaskCreate, TaskResponse
 from app.services.audit import write_audit
+from app.services.epic_run_context import EpicRunContextService
+from app.services.epic_run_service import EpicRunService
 from app.services.epic_service import EpicService
 from app.services.task_service import TaskService
 
@@ -101,6 +106,77 @@ async def update_epic(
     return epic  # type: ignore[return-value]
 
 
+@router.post("/epics/{epic_key}/start", response_model=EpicStartResponse)
+async def start_epic(
+    epic_key: str,
+    body: EpicStartRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(get_current_actor),
+) -> EpicStartResponse:
+    t0 = time.perf_counter()
+    svc = EpicRunService(db)
+    result = await svc.start(epic_key, body, actor)
+    duration = int((time.perf_counter() - t0) * 1000)
+    await write_audit(
+        tool_name="start_epic",
+        actor_id=actor.id,
+        actor_role=actor.role,
+        input_payload=body.model_dump(mode="json"),
+        output_payload={
+            "run_id": str(result.run_id),
+            "status": result.status,
+            "startable": result.startable,
+            "blockers": [blocker.model_dump() for blocker in result.blockers],
+        },
+        target_id=epic_key,
+        duration_ms=duration,
+    )
+    return result
+
+
+@router.get("/epics/{epic_key}/runs", response_model=list[EpicRunResponse])
+async def list_epic_runs(
+    epic_key: str,
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(get_current_actor),
+) -> list[EpicRunResponse]:
+    svc = EpicRunService(db)
+    runs = await svc.list_runs(epic_key, actor, limit=limit)
+    return [EpicRunResponse.model_validate(run) for run in runs]
+
+
+@router.get("/epic-runs/{run_id}", response_model=EpicRunResponse)
+async def get_epic_run(
+    run_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(get_current_actor),
+) -> EpicRunResponse:
+    svc = EpicRunService(db)
+    run = await svc.get_run(run_id, actor)
+    return EpicRunResponse.model_validate(run)
+
+
+@router.get("/epic-runs/{run_id}/artifacts", response_model=list[EpicRunArtifactResponse])
+async def list_epic_run_artifacts(
+    run_id: uuid.UUID,
+    artifact_type: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
+    task_key: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    actor: CurrentActor = Depends(get_current_actor),
+) -> list[EpicRunArtifactResponse]:
+    svc = EpicRunContextService(db)
+    await svc.verify_run_access(run_id, actor)
+    artifacts = await svc.list_artifacts(
+        run_id,
+        artifact_type=artifact_type,
+        state=state,
+        task_key=task_key,
+    )
+    return [EpicRunArtifactResponse.model_validate(item) for item in artifacts]
+
+
 # ─── Tasks under epics ───────────────────────────────────────────────────────
 
 @router.get("/epics/{epic_key}/tasks", response_model=list[TaskResponse])
@@ -121,9 +197,8 @@ async def list_tasks(
     node_ids = {t.assigned_node_id for t in tasks if t.assigned_node_id}
     node_map: dict[uuid.UUID, str] = {}
     if node_ids:
-        node_result = await db.execute(select(Node).where(Node.id.in_(node_ids)))
-        for n in node_result.scalars().all():
-            node_map[n.id] = n.node_name
+        svc_epic = EpicService(db)
+        node_map = await svc_epic.resolve_node_names(node_ids)
 
     return [
         TaskResponse(
@@ -195,17 +270,7 @@ async def create_epic_doc(
     """Create a new doc attached to an epic (admin only)."""
     t0 = time.perf_counter()
     svc = EpicService(db)
-    epic = await svc.get_by_key(epic_key)  # raises 404
-    doc = Doc(
-        title=body.title,
-        content=body.content,
-        epic_id=epic.id,
-        version=1,
-        updated_by=actor.id,
-    )
-    db.add(doc)
-    await db.flush()
-    await db.refresh(doc)
+    doc = await svc.create_doc(epic_key, body.title, body.content, actor.id)
     duration = int((time.perf_counter() - t0) * 1000)
     await write_audit(
         tool_name="create_epic_doc",
@@ -213,7 +278,7 @@ async def create_epic_doc(
         actor_role=actor.role,
         input_payload=body.model_dump(mode="json"),
         target_id=str(doc.id),
-        epic_id=epic.id,
+        epic_id=doc.epic_id,
         duration_ms=duration,
     )
     return doc  # type: ignore[return-value]
@@ -233,82 +298,13 @@ async def share_epic(
     actor: CurrentActor = Depends(get_current_actor),
 ) -> EpicShareResponse:
     """Share an epic (with its tasks) to a peer node via outbox."""
-    # 1. Load & validate epic
     svc = EpicService(db)
-    epic = await svc.get_by_key(epic_key)  # raises 404 internally
-    if epic.state not in ("scoped", "active"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Epic state must be 'scoped' or 'active', got '{epic.state}'",
-        )
-
-    # 2. Load & validate peer node
-    result = await db.execute(
-        select(Node).where(Node.id == body.peer_node_id, Node.deleted_at.is_(None))
-    )
-    peer = result.scalar_one_or_none()
-    if peer is None:
-        raise HTTPException(status_code=404, detail="Peer node not found")
-    if peer.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Peer node is not active (status='{peer.status}')",
-        )
-
-    # 3. Load tasks for the epic
-    task_result = await db.execute(
-        select(Task).where(Task.epic_id == epic.id)
-    )
-    all_tasks = list(task_result.scalars().all())
-
-    # 4. Optionally assign tasks to peer
-    if body.task_ids:
-        task_ids_set = set(body.task_ids)
-        for task in all_tasks:
-            if task.id in task_ids_set:
-                task.assigned_node_id = body.peer_node_id
-        await db.flush()
-
-    # 5. Serialize epic + tasks
-    tasks_payload = []
-    for t in all_tasks:
-        tasks_payload.append({
-            "external_id": t.external_id or t.task_key,
-            "title": t.title,
-            "description": t.description,
-            "state": t.state,
-            "definition_of_done": t.definition_of_done,
-            "pinned_skills": t.pinned_skills or [],
-            "assigned_node_id": str(t.assigned_node_id) if t.assigned_node_id else None,
-        })
-
-    payload = {
-        "external_id": epic.external_id or epic.epic_key,
-        "title": epic.title,
-        "description": epic.description,
-        "priority": epic.priority or "medium",
-        "definition_of_done": epic.dod_framework,
-        "tasks": tasks_payload,
-    }
-
-    # 6. Create outbox entry
-    outbox_entry = SyncOutbox(
-        dedup_key=f"epic_share:{epic.id}:{body.peer_node_id}",
-        direction="peer_outbound",
-        system="federation",
-        target_node_id=body.peer_node_id,
-        entity_type="epic_shared",
-        entity_id=str(epic.id),
-        payload=payload,
-    )
-    db.add(outbox_entry)
-    await db.flush()
-    await db.refresh(outbox_entry)
+    outbox_entry, task_count = await svc.share(epic_key, body)
     await db.commit()
 
     return EpicShareResponse(
         outbox_id=outbox_entry.id,
-        epic_key=epic.epic_key,
+        epic_key=epic_key,
         peer_node_id=body.peer_node_id,
-        task_count=len(all_tasks),
+        task_count=task_count,
     )

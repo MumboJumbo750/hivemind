@@ -83,6 +83,15 @@ class AutoExecuteManager {
     getPollIntervalMs() {
         return Math.max(1000, vscode.workspace.getConfiguration('hivemind').get('progressPollIntervalMs', 4000));
     }
+    getNoMcpActivityTimeoutSeconds() {
+        const configured = vscode.workspace
+            .getConfiguration('hivemind')
+            .get('noMcpActivityTimeoutSeconds', 90);
+        if (!Number.isFinite(configured ?? NaN) || (configured ?? 0) < 0) {
+            return 90;
+        }
+        return Math.floor(configured ?? 90);
+    }
     shouldAutoExecute(level, dispatch) {
         if (level === 'full-auto')
             return true;
@@ -175,7 +184,7 @@ class AutoExecuteManager {
         }
         this.activityProvider.addEvent(`${status.toUpperCase()}: [${run.dispatch.agent_role}] ${run.dispatch.trigger_id}`);
     }
-    dispatchPrompt(dispatch) {
+    fallbackPrompt(dispatch) {
         if (dispatch.trigger_id.toUpperCase().startsWith('TASK-')) {
             return `@hivemind task ${dispatch.trigger_id}`;
         }
@@ -184,9 +193,37 @@ class AutoExecuteManager {
         }
         return `@hivemind status\n#hivemind:task=${dispatch.trigger_id}`;
     }
+    dispatchPrompt(dispatch) {
+        // Use the dispatch prompt directly if the backend provided one — this is the
+        // full agent prompt that should be sent to Copilot Agent Mode.  Routing through
+        // the @hivemind participant only displays static info and never starts execution.
+        if (dispatch.prompt) {
+            return dispatch.prompt;
+        }
+        return this.fallbackPrompt(dispatch);
+    }
     async openCopilotChat(dispatch) {
-        const query = this.dispatchPrompt(dispatch);
-        await vscode.commands.executeCommand('workbench.action.chat.open', { query });
+        let query = dispatch.prompt;
+        // If the dispatch has no inline prompt, fetch the full worker/role prompt
+        // from the backend so Agent Mode receives the actual instructions.
+        if (!query) {
+            const triggerKey = dispatch.trigger_id;
+            const role = dispatch.agent_role ?? 'worker';
+            try {
+                const result = await (0, api_1.fetchPromptForTask)(role, triggerKey);
+                if (result.data?.prompt) {
+                    query = result.data.prompt;
+                }
+            }
+            catch {
+                // If fetch fails, fall through to the participant-based fallback.
+            }
+        }
+        query = query || this.fallbackPrompt(dispatch);
+        await vscode.commands.executeCommand('workbench.action.chat.open', {
+            query,
+            mode: 'agent',
+        });
     }
     async writeCliTaskfile(dispatch) {
         const folder = vscode.workspace.workspaceFolders?.[0];
@@ -209,7 +246,7 @@ class AutoExecuteManager {
             '',
             '## Completion Rule',
             '',
-            "Run `hivemind/submit_result` for this task, then `hivemind/update_task_state` to `in_review`.",
+            "Run `hivemind-submit_result` for this task, then `hivemind-update_task_state` to `in_review`.",
             '',
         ].join('\n');
         await vscode.workspace.fs.writeFile(file, new TextEncoder().encode(content));
@@ -242,7 +279,7 @@ class AutoExecuteManager {
         return typeof raw === 'string' ? raw.toUpperCase() : undefined;
     }
     isSubmitResultForDispatch(dispatch, entry) {
-        if (entry.tool_name !== 'hivemind/submit_result') {
+        if (entry.tool_name !== 'hivemind-submit_result') {
             return false;
         }
         const trigger = dispatch.trigger_id.toUpperCase();
@@ -253,7 +290,7 @@ class AutoExecuteManager {
         return JSON.stringify(entry.input_snapshot ?? {}).toUpperCase().includes(trigger);
     }
     isUpdateStateCompletionForDispatch(dispatch, entry) {
-        if (entry.tool_name !== 'hivemind/update_task_state') {
+        if (entry.tool_name !== 'hivemind-update_task_state') {
             return false;
         }
         const trigger = dispatch.trigger_id.toUpperCase();
@@ -271,6 +308,7 @@ class AutoExecuteManager {
     async monitorExecution(run) {
         const timeoutAt = run.startedAtMs + this.getTimeoutSeconds() * 1000;
         const pollIntervalMs = this.getPollIntervalMs();
+        const noMcpTimeoutSeconds = this.getNoMcpActivityTimeoutSeconds();
         while (!run.finished) {
             if (run.cancelRequested) {
                 await this.finalizeDispatch(run, 'cancelled', 'Dispatch vom User abgebrochen');
@@ -282,6 +320,17 @@ class AutoExecuteManager {
                 void vscode.window.showWarningMessage(`Hivemind: Dispatch ${run.dispatch.trigger_id} ist in Timeout gelaufen. Fallback prüfen.`);
                 return;
             }
+            if (noMcpTimeoutSeconds > 0 &&
+                run.firstMcpSeenAtMs === undefined &&
+                Date.now() - run.startedAtMs >= noMcpTimeoutSeconds * 1000) {
+                const msg = `Kein MCP-Tool-Call innerhalb von ${noMcpTimeoutSeconds}s erkannt`;
+                await this.safeProgress(run.dispatch, 'no_mcp_activity', msg, {
+                    hint: 'Copilot hat vermutlich nur Text geantwortet oder MCP-Tools sind nicht verbunden.',
+                });
+                await this.finalizeDispatch(run, 'failed', `${msg}. Prüfe Copilot Agent Mode, MCP-Verbindung und Ausführungsziel (chat/cli).`);
+                void vscode.window.showWarningMessage(`Hivemind: ${run.dispatch.trigger_id} ohne MCP-Aktivität abgebrochen (${noMcpTimeoutSeconds}s).`);
+                return;
+            }
             const entries = await (0, api_1.fetchAuditEntries)(run.startedAtIso, 100);
             const sorted = [...entries].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
             for (const entry of sorted) {
@@ -289,7 +338,10 @@ class AutoExecuteManager {
                     continue;
                 }
                 run.seenAuditIds.add(entry.id);
-                if (entry.tool_name.startsWith('hivemind/')) {
+                if (entry.tool_name.startsWith('hivemind-')) {
+                    if (run.firstMcpSeenAtMs === undefined) {
+                        run.firstMcpSeenAtMs = Date.now();
+                    }
                     await this.safeProgress(run.dispatch, 'mcp_call', entry.tool_name, {
                         audit_id: entry.id,
                         created_at: entry.created_at,
@@ -320,6 +372,7 @@ class AutoExecuteManager {
             startedAtIso: new Date().toISOString(),
             startedAtMs: Date.now(),
             seenAuditIds: new Set(),
+            firstMcpSeenAtMs: undefined,
             finished: false,
             cancelRequested: false,
         };
@@ -388,6 +441,7 @@ class AutoExecuteManager {
                     startedAtIso: new Date().toISOString(),
                     startedAtMs: Date.now(),
                     seenAuditIds: new Set(),
+                    firstMcpSeenAtMs: undefined,
                     finished: false,
                     cancelRequested: false,
                 };

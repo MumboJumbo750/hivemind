@@ -36,7 +36,7 @@ def _err(msg: str) -> list[TextContent]:
 
 TOOLS = [
     {
-        "name": "hivemind/submit_review_recommendation",
+        "name": "hivemind-submit_review_recommendation",
         "description": (
             "Submit an AI review recommendation for a task. "
             "Does NOT change task state directly. "
@@ -88,7 +88,7 @@ TOOLS = [
         },
     },
     {
-        "name": "hivemind/veto_auto_review",
+        "name": "hivemind-veto_auto_review",
         "description": "Veto a pending auto-review recommendation during the grace period.",
         "inputSchema": {
             "type": "object",
@@ -102,7 +102,7 @@ TOOLS = [
         },
     },
     {
-        "name": "hivemind/get_review_recommendations",
+        "name": "hivemind-get_review_recommendations",
         "description": "Get review recommendations for a task.",
         "inputSchema": {
             "type": "object",
@@ -132,6 +132,10 @@ async def handle_submit_review_recommendation(
     from app.models.review import ReviewRecommendation
     from app.config import settings
     from app.services.governance import get_governance_level
+    from app.services.learning_artifacts import (
+        create_execution_learning_artifacts,
+        create_learning_artifact,
+    )
 
     # Resolve task
     result = await db.execute(select(Task).where(Task.task_key == task_key))
@@ -172,6 +176,40 @@ async def handle_submit_review_recommendation(
     db.add(rec)
     await db.flush()
     await db.refresh(rec)
+    await create_learning_artifact(
+        db,
+        artifact_type="review_feedback",
+        source_type="review_recommendation",
+        source_ref=str(rec.id),
+        source_dispatch_id=reviewer_dispatch_id,
+        agent_role="reviewer",
+        project_id=None,
+        epic_id=str(task.epic_id) if task.epic_id else None,
+        task_id=str(task.id),
+        summary=reasoning[:1200],
+        detail={
+            "task_key": task.task_key,
+            "recommendation": recommendation,
+            "checklist": checklist or [],
+            "governance_level": review_level,
+        },
+        confidence=confidence,
+    )
+    await create_execution_learning_artifacts(
+        db,
+        source_type="review_recommendation",
+        source_ref=str(rec.id),
+        summary=reasoning[:1200],
+        detail={
+            "task_key": task.task_key,
+            "recommendation": recommendation,
+            "checklist": checklist or [],
+            "governance_level": review_level,
+        },
+        agent_role="reviewer",
+        epic_id=str(task.epic_id) if task.epic_id else None,
+        task_id=str(task.id),
+    )
     await db.commit()
 
     logger.info(
@@ -310,7 +348,7 @@ async def _get_reviews_handler(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/submit_review_recommendation",
+        name="hivemind-submit_review_recommendation",
         description=(
             "Submit an AI review recommendation for a task. "
             "NEVER changes task state directly. "
@@ -335,7 +373,7 @@ register_tool(
 
 register_tool(
     Tool(
-        name="hivemind/veto_auto_review",
+        name="hivemind-veto_auto_review",
         description="Veto a pending auto-review recommendation during the grace period.",
         inputSchema={
             "type": "object",
@@ -350,7 +388,7 @@ register_tool(
 
 register_tool(
     Tool(
-        name="hivemind/get_review_recommendations",
+        name="hivemind-get_review_recommendations",
         description="Get AI review recommendations for a task (read-only).",
         inputSchema={
             "type": "object",

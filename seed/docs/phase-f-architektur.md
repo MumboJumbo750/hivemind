@@ -25,7 +25,7 @@ Jede Hivemind-Instanz ist ein eigenständiger Node mit eigener UUID + Ed25519-Ke
 `sync_outbox` mit `direction='peer_outbound'`. Bei Skill-Merge + `federation_scope='federated'` → automatische Outbox-Einträge für alle bekannten Peers. Ed25519-Signierung aller Federation-Requests.
 
 ### Fork statt Kopie
-Federated Skills werden nicht überschrieben — `hivemind/fork_federated_skill` erstellt einen lokalen Draft-Fork mit `extends`-Link zum Origin. Änderungen am Origin propagieren als Vorschlag, nicht als Overwrite.
+Federated Skills werden nicht überschrieben — `hivemind-fork_federated_skill` erstellt einen lokalen Draft-Fork mit `extends`-Link zum Origin. Änderungen am Origin propagieren als Vorschlag, nicht als Overwrite.
 
 ### Epic-Share & Task-Delegation
 `assigned_node_id` auf Tasks → Epic-Spec + Task-Spec wird an Peer-Node gesendet. Task-State-Updates vom Peer werden zurück-gespiegelt. Origin-Node bleibt Autoritiy.

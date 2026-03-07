@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-CARDS-006",
+  "epic_ref": "EPIC-AGENT-CARDS",
+  "title": "Asset-Pipeline und Ablagestruktur für Agentenbilder festlegen",
+  "description": "Schaffe eine belastbare Struktur für Speicherung, Versionierung und Nutzung der Agentenbilder.\n\n**Was zu implementieren ist:**\n\n1. Asset-Verzeichnisstruktur festlegen\n2. WebP/PNG-Strategie, Größen und Exportkonventionen definieren\n3. Optionalen späteren Austausch/Versionierungspfad berücksichtigen\n4. Build- und Frontend-Nutzung dokumentieren\n\n**Wichtig:** Assets müssen wartbar sein und dürfen nicht chaotisch im Frontend landen.",
+  "state": "open",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Die Ablagestruktur für Agentenbilder ist definiert",
+      "Format- und Exportregeln sind dokumentiert",
+      "Der Frontend-Nutzungspfad ist klar",
+      "Eine spätere Asset-Versionierung ist mitgedacht"
+    ]
+  },
+  "tags": ["assets", "frontend", "pipeline", "design"],
+  "subtasks": [],
+  "pinned_skills": ["design-token"],
+  "linked_wiki": ["tech-stack"],
+  "source_doc": "docs/ui/agent-character-cards.md",
+  "estimated_complexity": "small",
+  "depends_on": ["TASK-CARDS-002"]
+}

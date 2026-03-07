@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { api } from '../../api'
-import type { Epic, Task, PeerNode, ContextBoundary } from '../../api/types'
+import type { Epic, EpicRun, EpicRunArtifact, EpicStartResponse, Task, PeerNode, ContextBoundary } from '../../api/types'
 import EpicScopingModal from '../../components/domain/EpicScopingModal.vue'
 import RequirementCaptureModal from '../../components/domain/RequirementCaptureModal.vue'
 import TaskReviewPanel from '../../components/domain/TaskReviewPanel.vue'
@@ -28,6 +28,11 @@ onMounted(async () => {
 const epics = ref<Epic[]>([])
 const epicsLoading = ref(false)
 const epicsError = ref<string | null>(null)
+const epicRunsByEpic = ref<Record<string, EpicRun[]>>({})
+const epicRunsLoading = ref<Record<string, boolean>>({})
+const epicRunsError = ref<Record<string, string | null>>({})
+const epicRunArtifactsByRun = ref<Record<string, EpicRunArtifact[]>>({})
+const epicRunArtifactsLoading = ref<Record<string, boolean>>({})
 
 async function loadEpics() {
   if (!selectedProjectId.value) return
@@ -43,6 +48,103 @@ async function loadEpics() {
 }
 
 watch(selectedProjectId, loadEpics, { immediate: true })
+watch(selectedProjectId, () => {
+  tasksByEpic.value = {}
+  epicRunsByEpic.value = {}
+  epicRunArtifactsByRun.value = {}
+})
+
+async function loadEpicRuns(epicKey: string, force = false) {
+  if (epicRunsByEpic.value[epicKey] && !force) return
+  epicRunsLoading.value = { ...epicRunsLoading.value, [epicKey]: true }
+  epicRunsError.value = { ...epicRunsError.value, [epicKey]: null }
+  try {
+    const runs = await api.getEpicRuns(epicKey, 8)
+    epicRunsByEpic.value = { ...epicRunsByEpic.value, [epicKey]: runs }
+    if (runs[0]) await loadEpicRunArtifacts(runs[0].id, force)
+  } catch (e: unknown) {
+    epicRunsError.value = {
+      ...epicRunsError.value,
+      [epicKey]: e instanceof Error ? e.message : String(e),
+    }
+  } finally {
+    epicRunsLoading.value = { ...epicRunsLoading.value, [epicKey]: false }
+  }
+}
+
+async function loadEpicRunArtifacts(runId: string, force = false) {
+  if (epicRunArtifactsByRun.value[runId] && !force) return
+  epicRunArtifactsLoading.value = { ...epicRunArtifactsLoading.value, [runId]: true }
+  try {
+    const artifacts = await api.getEpicRunArtifacts(runId)
+    epicRunArtifactsByRun.value = { ...epicRunArtifactsByRun.value, [runId]: artifacts }
+  } catch {
+    epicRunArtifactsByRun.value = { ...epicRunArtifactsByRun.value, [runId]: [] }
+  } finally {
+    epicRunArtifactsLoading.value = { ...epicRunArtifactsLoading.value, [runId]: false }
+  }
+}
+
+function latestEpicRun(epicKey: string): EpicRun | null {
+  return epicRunsByEpic.value[epicKey]?.[0] ?? null
+}
+
+function runAnalysis(run: EpicRun | null | undefined): Record<string, any> {
+  return (run?.analysis ?? {}) as Record<string, any>
+}
+
+function runExecution(run: EpicRun | null | undefined): Record<string, any> {
+  return (runAnalysis(run).execution_analysis ?? {}) as Record<string, any>
+}
+
+function runSlotPlan(run: EpicRun | null | undefined): Record<string, any> {
+  return (runExecution(run).slot_plan ?? {}) as Record<string, any>
+}
+
+function runScheduler(run: EpicRun | null | undefined): Record<string, any> {
+  return (runAnalysis(run).scheduler ?? {}) as Record<string, any>
+}
+
+function runItems(run: EpicRun | null | undefined, section: string): Record<string, any>[] {
+  const value = runExecution(run)[section]
+  return Array.isArray(value) ? value : []
+}
+
+function runSummaryCount(run: EpicRun | null | undefined, key: string): number {
+  const value = runExecution(run).summary?.[key]
+  return typeof value === 'number' ? value : 0
+}
+
+function runArtifacts(runId: string | null | undefined): EpicRunArtifact[] {
+  if (!runId) return []
+  return epicRunArtifactsByRun.value[runId] ?? []
+}
+
+function runArtifactKinds(runId: string | null | undefined): string[] {
+  const kinds = new Set<string>()
+  for (const artifact of runArtifacts(runId)) kinds.add(artifact.artifact_type)
+  return [...kinds]
+}
+
+function formatRunTimestamp(value: string | null | undefined): string {
+  if (!value) return '–'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString()
+}
+
+function formatReason(item: Record<string, any>): string {
+  const firstReason = Array.isArray(item.reasons) ? item.reasons[0] : null
+  return firstReason?.message || 'Keine Details'
+}
+
+function artifactSummary(artifact: EpicRunArtifact): string {
+  if (artifact.summary) return artifact.summary
+  const payload = artifact.payload as Record<string, unknown>
+  if (typeof payload.summary === 'string') return payload.summary
+  if (typeof payload.note === 'string') return payload.note
+  return 'Ohne Kurzbeschreibung'
+}
 
 // ── Tasks per epic ──────────────────────────────────────────────────────────
 const tasksByEpic = ref<Record<string, Task[]>>({})
@@ -58,6 +160,7 @@ async function toggleEpic(epicKey: string) {
         tasksByEpic.value[epicKey] = await api.getTasks(epicKey)
       } catch { /* ignore */ }
     }
+    await loadEpicRuns(epicKey)
   }
 }
 
@@ -65,6 +168,15 @@ async function refreshEpicTasks(epicKey: string) {
   try {
     tasksByEpic.value[epicKey] = await api.getTasks(epicKey)
   } catch { /* ignore */ }
+}
+
+async function refreshEpicRunData(epicKey: string) {
+  await loadEpicRuns(epicKey, true)
+  const latest = latestEpicRun(epicKey)
+  if (latest) {
+    selectedEpicRunId.value = latest.id
+    await loadEpicRunArtifacts(latest.id, true)
+  }
 }
 
 // ── Scoping ─────────────────────────────────────────────────────────────────
@@ -142,6 +254,7 @@ async function onReviewDone() {
   const epicKey = epics.value.find(e => e.id === reviewTask.value?.epic_id)?.epic_key
   reviewTask.value = null
   if (epicKey) await refreshEpicTasks(epicKey)
+  if (epicKey) await refreshEpicRunData(epicKey)
   await loadEpics()
 }
 
@@ -228,7 +341,7 @@ async function saveBackupOwner(epic: Epic) {
   if (!userId) return
   backupOwnerSaving.value[epic.epic_key] = true
   try {
-    await api.callMcpTool('hivemind/reassign_epic_owner', {
+    await api.callMcpTool('hivemind-reassign_epic_owner', {
       epic_key: epic.epic_key,
       backup_owner_id: userId,
     })
@@ -292,6 +405,56 @@ function openRequirementModal() { showRequirementModal.value = true }
 function onProposalSaved() {
   showRequirementModal.value = false
 }
+
+// ── Epic Run Operator View ──────────────────────────────────────────────────
+const showEpicRunModal = ref(false)
+const epicRunEpic = ref<Epic | null>(null)
+const epicRunSubmitting = ref(false)
+const epicRunResult = ref<EpicStartResponse | null>(null)
+const selectedEpicRunId = ref<string | null>(null)
+const epicRunMaxParallelWorkers = ref(2)
+const epicRunExecutionMode = ref<'local' | 'ide' | 'github_actions' | 'byoai' | ''>('byoai')
+const epicRunRespectFileClaims = ref(true)
+const epicRunAutoResume = ref(true)
+
+async function openEpicRunModal(epic: Epic) {
+  epicRunEpic.value = epic
+  epicRunResult.value = null
+  selectedEpicRunId.value = latestEpicRun(epic.epic_key)?.id ?? null
+  showEpicRunModal.value = true
+  await refreshEpicRunData(epic.epic_key)
+  selectedEpicRunId.value = latestEpicRun(epic.epic_key)?.id ?? selectedEpicRunId.value
+}
+
+async function runEpicStart(dryRun: boolean) {
+  if (!epicRunEpic.value) return
+  epicRunSubmitting.value = true
+  epicsError.value = null
+  try {
+    const response = await api.startEpic(epicRunEpic.value.epic_key, {
+      dry_run: dryRun,
+      max_parallel_workers: epicRunMaxParallelWorkers.value,
+      execution_mode_preference: epicRunExecutionMode.value || undefined,
+      respect_file_claims: epicRunRespectFileClaims.value,
+      auto_resume_on_qa_failed: epicRunAutoResume.value,
+    })
+    epicRunResult.value = response
+    selectedEpicRunId.value = response.run_id
+    await loadEpics()
+    await refreshEpicTasks(epicRunEpic.value.epic_key)
+    await refreshEpicRunData(epicRunEpic.value.epic_key)
+  } catch (e: unknown) {
+    epicsError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    epicRunSubmitting.value = false
+  }
+}
+
+const selectedEpicRun = computed(() => {
+  const runId = selectedEpicRunId.value
+  if (!runId || !epicRunEpic.value) return null
+  return epicRunsByEpic.value[epicRunEpic.value.epic_key]?.find(run => run.id === runId) ?? null
+})
 
 // ── Task Creation Dialog (TASK-4-009) ────────────────────────────────────────
 const showTaskDialog = ref(false)
@@ -443,12 +606,44 @@ function closeTaskDetail() {
             >
               {{ architektLoading === epic.epic_key ? '…' : 'Architekt starten ▶' }}
             </button>
+            <button
+              v-if="epic.state === 'scoped' || epic.state === 'in_progress'"
+              class="btn-epic-run"
+              @click.stop="openEpicRunModal(epic)"
+            >
+              {{ epic.state === 'scoped' ? 'Epic Start' : 'Run Monitor' }}
+            </button>
             <span class="expand-icon">{{ expandedEpics.has(epic.epic_key) ? '▲' : '▼' }}</span>
           </div>
         </div>
 
         <!-- Task list (expanded) -->
         <div v-if="expandedEpics.has(epic.epic_key)" class="task-list">
+          <div class="epic-run-strip">
+            <div class="epic-run-strip__header">
+              <span class="epic-run-strip__label">Epic Run</span>
+              <button class="btn-inline" @click.stop="refreshEpicRunData(epic.epic_key)">Aktualisieren</button>
+            </div>
+            <div v-if="epicRunsLoading[epic.epic_key]" class="epic-run-strip__empty">Lade Run-Daten…</div>
+            <div v-else-if="epicRunsError[epic.epic_key]" class="epic-run-strip__empty epic-run-strip__empty--error">
+              {{ epicRunsError[epic.epic_key] }}
+            </div>
+            <div v-else-if="latestEpicRun(epic.epic_key)" class="epic-run-strip__summary">
+              <span class="badge badge--sm" :class="`badge--run-${latestEpicRun(epic.epic_key)?.status}`">
+                {{ latestEpicRun(epic.epic_key)?.status }}
+              </span>
+              <span class="epic-run-chip">{{ latestEpicRun(epic.epic_key)?.dry_run ? 'Dry-Run' : 'Live' }}</span>
+              <span class="epic-run-chip">
+                Slots {{ runSlotPlan(latestEpicRun(epic.epic_key)).occupied_slots ?? 0 }}/{{ runSlotPlan(latestEpicRun(epic.epic_key)).max_parallel_workers ?? 0 }}
+              </span>
+              <span class="epic-run-chip">Queued {{ (runSlotPlan(latestEpicRun(epic.epic_key)).queued_runnable ?? []).length }}</span>
+              <span class="epic-run-chip">Konflikte {{ runSummaryCount(latestEpicRun(epic.epic_key), 'conflicting') }}</span>
+              <span class="epic-run-chip">Blocked {{ runSummaryCount(latestEpicRun(epic.epic_key), 'blocked') }}</span>
+              <span class="epic-run-chip">Artefakte {{ runArtifacts(latestEpicRun(epic.epic_key)?.id).length }}</span>
+              <span class="epic-run-timestamp">{{ formatRunTimestamp(latestEpicRun(epic.epic_key)?.started_at) }}</span>
+            </div>
+            <div v-else class="epic-run-strip__empty">Noch kein Epic-Run gestartet.</div>
+          </div>
           <div
             v-if="!tasksByEpic[epic.epic_key]"
             class="task-loading"
@@ -599,6 +794,167 @@ function closeTaskDetail() {
       <pre class="architekt-prompt-content">{{ architektPrompt }}</pre>
       <template #footer>
         <button class="btn-close-modal" @click="showArchitektModal = false">Schließen</button>
+      </template>
+    </HivemindModal>
+
+    <!-- Epic Run Modal -->
+    <HivemindModal v-model:model-value="showEpicRunModal" title="Epic Run Control" size="lg">
+      <div v-if="epicRunEpic" class="epic-run-modal">
+        <div class="epic-run-modal__hero">
+          <div>
+            <div class="epic-run-modal__key">{{ epicRunEpic.epic_key }}</div>
+            <h3 class="epic-run-modal__title">{{ epicRunEpic.title }}</h3>
+          </div>
+          <span class="badge" :class="EPIC_STATE_CLASS[epicRunEpic.state] ?? 'badge--muted'">{{ epicRunEpic.state }}</span>
+        </div>
+
+        <div class="epic-run-form">
+          <label class="form-label">
+            Max Parallel Workers
+            <input v-model.number="epicRunMaxParallelWorkers" type="number" min="1" max="32" class="form-input" />
+          </label>
+          <label class="form-label">
+            Execution Mode
+            <select v-model="epicRunExecutionMode" class="form-select">
+              <option value="">Default</option>
+              <option value="byoai">BYOAI</option>
+              <option value="local">Local</option>
+              <option value="ide">IDE</option>
+              <option value="github_actions">GitHub Actions</option>
+            </select>
+          </label>
+          <label class="run-toggle">
+            <input v-model="epicRunRespectFileClaims" type="checkbox" />
+            <span>Datei-Claims respektieren</span>
+          </label>
+          <label class="run-toggle">
+            <input v-model="epicRunAutoResume" type="checkbox" />
+            <span>QA-Resume automatisch ziehen</span>
+          </label>
+        </div>
+
+        <div class="epic-run-actions">
+          <button class="btn-close-modal" :disabled="epicRunSubmitting" @click="runEpicStart(true)">
+            {{ epicRunSubmitting ? 'Läuft…' : 'Dry-Run analysieren' }}
+          </button>
+          <button class="btn-create-task" :disabled="epicRunSubmitting" @click="runEpicStart(false)">
+            {{ epicRunSubmitting ? 'Starte…' : 'Run starten' }}
+          </button>
+        </div>
+
+        <div v-if="epicRunResult" class="epic-run-result">
+          <div class="epic-run-result__header">
+            <span class="badge" :class="`badge--run-${epicRunResult.status}`">{{ epicRunResult.status }}</span>
+            <span class="epic-run-chip">{{ epicRunResult.dry_run ? 'Dry-Run' : 'Live-Run' }}</span>
+            <span class="epic-run-chip">Startbar: {{ epicRunResult.startable ? 'ja' : 'nein' }}</span>
+          </div>
+          <div v-if="epicRunResult.blockers.length" class="epic-run-blockers">
+            <div v-for="blocker in epicRunResult.blockers" :key="blocker.code" class="epic-run-blocker">
+              <strong>{{ blocker.code }}</strong>
+              <span>{{ blocker.message }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="epicRunsByEpic[epicRunEpic.epic_key]?.length" class="epic-run-history">
+          <div class="epic-run-history__header">
+            <h4>Run-Historie</h4>
+            <button class="btn-inline" @click="refreshEpicRunData(epicRunEpic.epic_key)">Refresh</button>
+          </div>
+          <div class="epic-run-history__list">
+            <button
+              v-for="run in epicRunsByEpic[epicRunEpic.epic_key]"
+              :key="run.id"
+              class="epic-run-history__item"
+              :class="{ 'epic-run-history__item--active': selectedEpicRunId === run.id }"
+              @click="selectedEpicRunId = run.id; loadEpicRunArtifacts(run.id)"
+            >
+              <span class="badge badge--sm" :class="`badge--run-${run.status}`">{{ run.status }}</span>
+              <span>{{ run.dry_run ? 'Dry' : 'Live' }}</span>
+              <span>{{ formatRunTimestamp(run.started_at) }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div v-if="selectedEpicRun" class="epic-run-analysis">
+          <div class="epic-run-grid">
+            <div class="epic-run-panel">
+              <h4>Worker Slots</h4>
+              <div class="epic-run-statline">
+                <span>Belegt {{ runSlotPlan(selectedEpicRun).occupied_slots ?? 0 }}</span>
+                <span>Frei {{ runSlotPlan(selectedEpicRun).available_slots_now ?? 0 }}</span>
+                <span>Max {{ runSlotPlan(selectedEpicRun).max_parallel_workers ?? 0 }}</span>
+              </div>
+              <div class="epic-run-statline">
+                <span>Dispatch now: {{ (runSlotPlan(selectedEpicRun).dispatch_now ?? []).join(', ') || '–' }}</span>
+              </div>
+              <div class="epic-run-statline">
+                <span>Queued: {{ (runSlotPlan(selectedEpicRun).queued_runnable ?? []).join(', ') || '–' }}</span>
+              </div>
+            </div>
+
+            <div class="epic-run-panel">
+              <h4>Scheduler</h4>
+              <div class="epic-run-statline">
+                <span>Effektiv {{ runScheduler(selectedEpicRun).effective_max_parallel_workers ?? '–' }}</span>
+                <span>Resumes {{ (runScheduler(selectedEpicRun).resumed_task_keys ?? []).length }}</span>
+                <span>Dispatches {{ (runScheduler(selectedEpicRun).dispatched_task_keys ?? []).length }}</span>
+              </div>
+              <div class="epic-run-statline">
+                <span>Auto-Resume: {{ runScheduler(selectedEpicRun).auto_resume_on_qa_failed ? 'aktiv' : 'aus' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="epic-run-grid epic-run-grid--lists">
+            <div class="epic-run-panel">
+              <h4>Runnable / Waiting</h4>
+              <div class="epic-run-list">
+                <div v-for="item in runItems(selectedEpicRun, 'runnable')" :key="`r-${item.task_key}`" class="epic-run-list__item">
+                  <strong>{{ item.task_key }}</strong>
+                  <span>bereit</span>
+                </div>
+                <div v-for="item in runItems(selectedEpicRun, 'waiting')" :key="`w-${item.task_key}`" class="epic-run-list__item">
+                  <strong>{{ item.task_key }}</strong>
+                  <span>{{ formatReason(item) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="epic-run-panel">
+              <h4>Blocked / Konflikte</h4>
+              <div class="epic-run-list">
+                <div v-for="item in runItems(selectedEpicRun, 'blocked')" :key="`b-${item.task_key}`" class="epic-run-list__item">
+                  <strong>{{ item.task_key }}</strong>
+                  <span>{{ formatReason(item) }}</span>
+                </div>
+                <div v-for="item in runItems(selectedEpicRun, 'conflicting')" :key="`c-${item.task_key}`" class="epic-run-list__item">
+                  <strong>{{ item.task_key }}</strong>
+                  <span>{{ formatReason(item) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="epic-run-panel">
+            <div class="epic-run-history__header">
+              <h4>Artefakte / Folgepfade</h4>
+              <span class="epic-run-chip">Kinds: {{ runArtifactKinds(selectedEpicRun.id).join(', ') || '–' }}</span>
+            </div>
+            <div v-if="epicRunArtifactsLoading[selectedEpicRun.id]" class="epic-run-strip__empty">Lade Artefakte…</div>
+            <div v-else class="epic-run-list">
+              <div v-for="artifact in runArtifacts(selectedEpicRun.id)" :key="artifact.id" class="epic-run-list__item">
+                <strong>{{ artifact.artifact_type }}</strong>
+                <span>{{ artifact.task_key || artifact.title }}</span>
+                <span>{{ artifactSummary(artifact) }}</span>
+              </div>
+              <div v-if="!runArtifacts(selectedEpicRun.id).length" class="epic-run-strip__empty">Keine Artefakte für diesen Run.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <button class="btn-close-modal" @click="showEpicRunModal = false">Schließen</button>
       </template>
     </HivemindModal>
 
@@ -878,6 +1234,12 @@ function closeTaskDetail() {
 .badge--done     { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
 .badge--danger   { background: color-mix(in srgb, var(--color-danger) 15%, transparent); color: var(--color-danger); }
 .badge--muted    { background: var(--color-surface-alt); color: var(--color-text-muted); }
+.badge--run-dry_run,
+.badge--run-waiting { background: color-mix(in srgb, var(--color-warning) 18%, transparent); color: var(--color-warning); }
+.badge--run-started,
+.badge--run-running { background: color-mix(in srgb, var(--color-accent) 18%, transparent); color: var(--color-accent); }
+.badge--run-completed { background: color-mix(in srgb, var(--color-success) 18%, transparent); color: var(--color-success); }
+.badge--run-blocked { background: color-mix(in srgb, var(--color-danger) 18%, transparent); color: var(--color-danger); }
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 .btn-scope {
@@ -1055,6 +1417,212 @@ function closeTaskDetail() {
 }
 .btn-architekt:hover { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
 .btn-architekt:disabled { opacity: 0.5; cursor: wait; }
+
+.btn-epic-run {
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  color: var(--color-success);
+  border: 1px solid color-mix(in srgb, var(--color-success) 35%, transparent);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xs);
+  padding: 2px var(--space-2);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+.btn-epic-run:hover { background: color-mix(in srgb, var(--color-success) 24%, transparent); }
+
+.epic-run-strip {
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 8%, transparent), transparent 45%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-success) 6%, transparent), transparent 90%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.epic-run-strip__header,
+.epic-run-history__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.epic-run-strip__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.epic-run-strip__summary,
+.epic-run-statline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.epic-run-strip__empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.epic-run-strip__empty--error {
+  color: var(--color-danger);
+}
+
+.epic-run-chip {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-surface-alt) 85%, transparent);
+}
+
+.epic-run-timestamp {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.epic-run-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.epic-run-modal__hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.epic-run-modal__key {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.epic-run-modal__title {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-heading);
+}
+
+.epic-run-form,
+.epic-run-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.epic-run-grid--lists {
+  align-items: start;
+}
+
+.run-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+.epic-run-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.epic-run-result,
+.epic-run-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface-alt);
+  padding: var(--space-4);
+}
+
+.epic-run-result__header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.epic-run-blockers,
+.epic-run-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.epic-run-blocker,
+.epic-run-list__item {
+  display: grid;
+  grid-template-columns: minmax(90px, 130px) minmax(80px, 140px) minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: start;
+  font-size: var(--font-size-sm);
+}
+
+.epic-run-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.epic-run-history__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.epic-run-history__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.epic-run-history__item--active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+@media (max-width: 820px) {
+  .epic-run-form,
+  .epic-run-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .epic-run-timestamp {
+    margin-left: 0;
+  }
+
+  .epic-run-actions {
+    flex-direction: column;
+  }
+}
 
 .architekt-prompt-header {
   display: flex;

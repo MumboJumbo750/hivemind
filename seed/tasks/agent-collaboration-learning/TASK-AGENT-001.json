@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AGENT-001",
+  "epic_ref": "EPIC-AGENT-LOOP",
+  "title": "Governance-Verhalten pro Gate fachlich auseinanderziehen",
+  "description": "Sorge dafür, dass `manual`, `assisted` und `auto` für alle relevanten Entscheidungsarten nicht nur denselben Dispatch-Gate teilen, sondern fachlich unterschiedliches Verhalten auslösen.\n\n**Was zu implementieren ist:**\n\n1. **Gates inventarisieren:**\n- Epic-Proposals\n- Epic-Scoping\n- Skill-Merge\n- Guard-Merge\n- Decision Requests\n- Escalations\n- Review\n\n2. **Semantik pro Level definieren:**\n- `manual`: kein Auto-Folgepfad, nur Sichtbarkeit/Queue/Prompt-Bereitstellung\n- `assisted`: AI erstellt Empfehlung/Vorarbeit, Mensch bestätigt oder korrigiert\n- `auto`: AI darf unter klaren Bedingungen entscheiden oder weitertriggern\n\n3. **Conductor- und Workflow-Logik anpassen:**\n- Dispatches, Auto-Transitions, Pending-Queues und Notify-Verhalten trennen\n- Unterschiede serverseitig erzwingen statt nur im UI zu dokumentieren\n\n4. **Dokumentation und Tests aktualisieren:**\n- Architektur-/Autonomy-Doku angleichen\n- pro Gate Tests für alle drei Levels ergänzen\n\n**Wichtig:** Ziel ist nicht mehr Automatisierung um jeden Preis, sondern sauber unterscheidbares Verhalten pro Governance-Level.",
+  "state": "done",
+  "priority": "high",
+  "definition_of_done": {
+    "criteria": [
+      "Jedes relevante Gate hat eine definierte Semantik für manual, assisted und auto",
+      "Conductor und Workflows setzen diese Unterschiede serverseitig um",
+      "Die Unterschiede sind durch Tests abgedeckt",
+      "Doku und Runtime-Verhalten stimmen überein"
+    ]
+  },
+  "tags": ["backend", "governance", "conductor", "review"],
+  "subtasks": [],
+  "pinned_skills": ["governance-level", "conductor-orchestrator", "review-workflow"],
+  "linked_wiki": ["autonomy-loop"],
+  "source_doc": "docs/features/autonomy-loop.md",
+  "estimated_complexity": "large",
+  "depends_on": []
+}

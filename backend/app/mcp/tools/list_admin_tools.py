@@ -1,15 +1,15 @@
 """MCP Read-Tools: Lists & Admin — TASK-3-004.
 
 List-Tools (developer role):
-  hivemind/list_projects       — Paginated project list
-  hivemind/list_epics          — Epics with state filter
-  hivemind/list_tasks          — Tasks with multi-filter
-  hivemind/get_project_members — Project members with roles
-  hivemind/list_peers          — Federation peer nodes
+  hivemind-list_projects       — Paginated project list
+  hivemind-list_epics          — Epics with state filter
+  hivemind-list_tasks          — Tasks with multi-filter
+  hivemind-get_project_members — Project members with roles
+  hivemind-list_peers          — Federation peer nodes
 
 Admin-only Tools:
-  hivemind/get_triage          — Unrouted/escalated/dead events
-  hivemind/get_audit_log       — MCP invocations with filters
+  hivemind-get_triage          — Unrouted/escalated/dead events
+  hivemind-get_audit_log       — MCP invocations with filters
 """
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ async def _handle_list_projects(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/list_projects",
+        name="hivemind-list_projects",
         description="Paginierte Liste aller Projekte.",
         inputSchema={
             "type": "object",
@@ -122,7 +122,7 @@ async def _handle_list_epics(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/list_epics",
+        name="hivemind-list_epics",
         description="Epics auflisten mit optionalem State- und Projekt-Filter.",
         inputSchema={
             "type": "object",
@@ -185,7 +185,7 @@ async def _handle_list_tasks(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/list_tasks",
+        name="hivemind-list_tasks",
         description="Tasks auflisten mit Filtern (epic_id, state, assigned_to).",
         inputSchema={
             "type": "object",
@@ -231,7 +231,7 @@ async def _handle_get_project_members(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_project_members",
+        name="hivemind-get_project_members",
         description="Projekt-Mitglieder mit Rollen.",
         inputSchema={
             "type": "object",
@@ -270,7 +270,7 @@ async def _handle_list_peers(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/list_peers",
+        name="hivemind-list_peers",
         description="Federation Peer-Nodes auflisten.",
         inputSchema={
             "type": "object",
@@ -326,7 +326,7 @@ async def _handle_get_triage(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_triage",
+        name="hivemind-get_triage",
         description="Triage: Unrouted/Escalated/Dead Events anzeigen (Admin only).",
         inputSchema={
             "type": "object",
@@ -392,7 +392,7 @@ async def _handle_get_audit_log(args: dict) -> list[TextContent]:
 
 register_tool(
     Tool(
-        name="hivemind/get_audit_log",
+        name="hivemind-get_audit_log",
         description="Audit-Log durchsuchen mit Filtern (Admin only).",
         inputSchema={
             "type": "object",

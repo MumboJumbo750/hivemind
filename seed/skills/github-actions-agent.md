@@ -44,7 +44,7 @@ Hivemind Conductor
   │    → Input: { task_key, guard_commands, hivemind_url }
   │    → Action führt Guards im Repo-Kontext aus
   │    → Action reportet via: POST {hivemind_url}/api/mcp/call
-  │       → hivemind/report_guard_result { task_key, guard_id, status, result }
+  │       → hivemind-report_guard_result { task_key, guard_id, status, result }
   │
   └─ dispatch_agent_in_ci("worker", task_key="TASK-88")
        ↓
@@ -164,7 +164,7 @@ jobs:
 
               # Report zurück an Hivemind
               client.post(f"{url}/api/mcp/call", json={
-                  "name": "hivemind/report_guard_result",
+                  "name": "hivemind-report_guard_result",
                   "arguments": {
                       "task_key": task_key,
                       "guard_id": guard["id"],
@@ -271,7 +271,7 @@ async def create_commit_status(self, repo: str, sha: str, task_key: str, state: 
             "state": github_state,
             "target_url": f"{settings.external_url}/tasks/{task_key}",
             "description": f"Hivemind: {task_key} ({state})",
-            "context": "hivemind/task-status",
+            "context": "hivemind-task-status",
         },
     )
 ```

@@ -23,22 +23,22 @@ Skills durchlaufen: `draft → pending_merge → active` (oder `rejected`). Merg
 ## Backend-Deliverables
 
 ### Planer-Write-Tools
-- `hivemind/propose_epic` — Epic-Proposal (Stratege)
-- `hivemind/accept_epic_proposal` / `reject_epic_proposal` — Triage/Admin
-- `hivemind/create_epic` — Direktes Erstellen (Developer/Admin)
-- `hivemind/decompose_epic` — Epic → Tasks/Subtasks (Architekt)
-- `hivemind/create_task` / `create_subtask`
-- `hivemind/link_skill` — Skill mit Task verknüpfen
-- `hivemind/set_context_boundary` — Context Boundary setzen
-- `hivemind/assign_task` — Task zuweisen
+- `hivemind-propose_epic` — Epic-Proposal (Stratege)
+- `hivemind-accept_epic_proposal` / `reject_epic_proposal` — Triage/Admin
+- `hivemind-create_epic` — Direktes Erstellen (Developer/Admin)
+- `hivemind-decompose_epic` — Epic → Tasks/Subtasks (Architekt)
+- `hivemind-create_task` / `create_subtask`
+- `hivemind-link_skill` — Skill mit Task verknüpfen
+- `hivemind-set_context_boundary` — Context Boundary setzen
+- `hivemind-assign_task` — Task zuweisen
 
 ### Prompt-Generatoren
 - `stratege` (project_id als Pflicht-Parameter)
 - `architekt` (epic_id als Pflicht-Parameter)
 
 ### Skill-Management
-- `hivemind/submit_skill_proposal` (draft → pending_merge)
-- `hivemind/merge_skill` / `reject_skill` (Admin)
+- `hivemind-submit_skill_proposal` (draft → pending_merge)
+- `hivemind-merge_skill` / `reject_skill` (Admin)
 - Skill-Lab-Backend mit CRUD + Lifecycle-Transitions
 
 ## Frontend-Deliverables

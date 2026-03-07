@@ -31,10 +31,10 @@ draft  ──→  pending_merge  ──→  active
 
 | Transition | Trigger | Wer | MCP-Tool |
 | --- | --- | --- | --- |
-| `draft → pending_merge` | Proposer reicht ein | developer (eigener Skill) | `hivemind/submit_skill_proposal` |
-| `pending_merge → active` | Admin mergt | admin | `hivemind/merge_skill` |
-| `pending_merge → rejected` | Admin lehnt ab | admin | `hivemind/reject_skill` |
-| `active → draft` | Change-Proposal | developer | `hivemind/propose_skill_change` |
+| `draft → pending_merge` | Proposer reicht ein | developer (eigener Skill) | `hivemind-submit_skill_proposal` |
+| `pending_merge → active` | Admin mergt | admin | `hivemind-merge_skill` |
+| `pending_merge → rejected` | Admin lehnt ab | admin | `hivemind-reject_skill` |
+| `active → draft` | Change-Proposal | developer | `hivemind-propose_skill_change` |
 
 ### Backend — State-Machine-Enforcement
 

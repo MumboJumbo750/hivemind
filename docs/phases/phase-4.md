@@ -13,24 +13,24 @@
 ### Backend
 
 - [ ] Planer-Write-Tools implementiert:
-  - `hivemind/create_epic` — Epic direkt erstellen mit state='incoming' (developer in eigenen Projekten, admin überall)
-  - `hivemind/propose_epic` — Epic-Proposal erstellen (Stratege)
-  - `hivemind/update_epic_proposal` — Proposal nachbessern (Stratege)
-  - `hivemind/accept_epic_proposal` — Proposal akzeptieren → Epic (incoming) (Triage/Admin)
-  - `hivemind/reject_epic_proposal` — Proposal ablehnen mit Begründung (Triage/Admin)
-  - `hivemind/decompose_epic` — Epic → Tasks/Subtasks
-  - `hivemind/create_task` — einzelnen Task anlegen
-  - `hivemind/create_subtask` — Subtask mit Parent
-  - `hivemind/link_skill` — Skill mit Task verknüpfen
-  - `hivemind/set_context_boundary` — Context Boundary für Task setzen
-  - `hivemind/assign_task` — Task einem User zuweisen (löst `task_assigned`-Notification aus)
-- [ ] Strategie-Prompt-Generator (`hivemind/get_prompt { "type": "stratege", "project_id": "uuid" }`) — für Stratege ist `project_id` der Pflicht-Parameter
-- [ ] Architektur-Prompt-Generator (`hivemind/get_prompt { "type": "architekt", "epic_id": "uuid" }`) — für Architekt ist `epic_id` der Pflicht-Parameter statt `task_id`
+  - `hivemind-create_epic` — Epic direkt erstellen mit state='incoming' (developer in eigenen Projekten, admin überall)
+  - `hivemind-propose_epic` — Epic-Proposal erstellen (Stratege)
+  - `hivemind-update_epic_proposal` — Proposal nachbessern (Stratege)
+  - `hivemind-accept_epic_proposal` — Proposal akzeptieren → Epic (incoming) (Triage/Admin)
+  - `hivemind-reject_epic_proposal` — Proposal ablehnen mit Begründung (Triage/Admin)
+  - `hivemind-decompose_epic` — Epic → Tasks/Subtasks
+  - `hivemind-create_task` — einzelnen Task anlegen
+  - `hivemind-create_subtask` — Subtask mit Parent
+  - `hivemind-link_skill` — Skill mit Task verknüpfen
+  - `hivemind-set_context_boundary` — Context Boundary für Task setzen
+  - `hivemind-assign_task` — Task einem User zuweisen (löst `task_assigned`-Notification aus)
+- [ ] Strategie-Prompt-Generator (`hivemind-get_prompt { "type": "stratege", "project_id": "uuid" }`) — für Stratege ist `project_id` der Pflicht-Parameter
+- [ ] Architektur-Prompt-Generator (`hivemind-get_prompt { "type": "architekt", "epic_id": "uuid" }`) — für Architekt ist `epic_id` der Pflicht-Parameter statt `task_id`
 - [ ] `epic_proposals`-Tabelle + CRUD-Endpoints
 - [ ] Triage Station: `[EPIC PROPOSAL]`-Kategorie mit Accept/Reject-UI
 - [ ] Skill Lab Backend: Skills CRUD, Lifecycle-Transitions
-- [ ] Proposer-Submit-Tool: `hivemind/submit_skill_proposal` (`draft → pending_merge`)
-- [ ] Admin-Write-Tools (Subset): `hivemind/merge_skill`, `hivemind/reject_skill`
+- [ ] Proposer-Submit-Tool: `hivemind-submit_skill_proposal` (`draft → pending_merge`)
+- [ ] Admin-Write-Tools (Subset): `hivemind-merge_skill`, `hivemind-reject_skill`
 - [ ] Audit-Log-Viewer-Endpoint: `GET /api/audit` mit Filterung
 
 ### Frontend
@@ -51,17 +51,17 @@
 
 ## Acceptance Criteria
 
-- [ ] `hivemind/propose_epic` erstellt Epic-Proposal mit korrektem State (`proposed`)
-- [ ] `hivemind/accept_epic_proposal` erstellt Epic (state: `incoming`) und setzt `resulting_epic_id`
-- [ ] `hivemind/reject_epic_proposal` setzt `state = rejected` und sendet Notification an Proposer
+- [ ] `hivemind-propose_epic` erstellt Epic-Proposal mit korrektem State (`proposed`)
+- [ ] `hivemind-accept_epic_proposal` erstellt Epic (state: `incoming`) und setzt `resulting_epic_id`
+- [ ] `hivemind-reject_epic_proposal` setzt `state = rejected` und sendet Notification an Proposer
 - [ ] Abhängige Proposals (`depends_on`) erhalten Warnung wenn referenziertes Proposal abgelehnt wird
-- [ ] `hivemind/decompose_epic` erstellt Tasks in korrekter Reihenfolge
+- [ ] `hivemind-decompose_epic` erstellt Tasks in korrekter Reihenfolge
 - [ ] Subtasks sind korrekt mit Parent verknüpft
-- [ ] `hivemind/set_context_boundary` wird in `context_boundaries` gespeichert
-- [ ] `hivemind/link_skill` pinnt Skill-Version auf Task
-- [ ] Skill-Lifecycle-Transition `draft → pending_merge` via `hivemind/submit_skill_proposal`
-- [ ] `hivemind/merge_skill` setzt `lifecycle = active`
-- [ ] `hivemind/reject_skill` setzt `lifecycle = rejected` und liefert Begründung an Proposer
+- [ ] `hivemind-set_context_boundary` wird in `context_boundaries` gespeichert
+- [ ] `hivemind-link_skill` pinnt Skill-Version auf Task
+- [ ] Skill-Lifecycle-Transition `draft → pending_merge` via `hivemind-submit_skill_proposal`
+- [ ] `hivemind-merge_skill` setzt `lifecycle = active`
+- [ ] `hivemind-reject_skill` setzt `lifecycle = rejected` und liefert Begründung an Proposer
 - [ ] Skill Lab zeigt alle Skills mit korrekten Lifecycle-Badges (inkl. `rejected`)
 - [ ] Diff-Ansicht für Skill-Proposals funktioniert
 - [ ] Audit-Log-Ansicht zeigt letzte 50 MCP-Invocations
