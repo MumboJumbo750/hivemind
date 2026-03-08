@@ -346,6 +346,7 @@ class PromptGenerator:
         generators = {
             "bibliothekar": self._bibliothekar,
             "worker": self._worker,
+            "agentic_worker": self._agentic_worker,
             "review": self._review,
             "gaertner": self._gaertner,
             "architekt": self._architekt,
@@ -658,6 +659,62 @@ Task-Resource: `{task_resource_uri}`
 Führe die Aufgabe gemäß der Beschreibung und DoD aus.
 Beachte alle Guards — sie müssen vor Abschluss bestanden werden.
 Schreibe das Ergebnis als Markdown und nutze `hivemind-submit_result`."""
+
+    async def _agentic_worker(self, *, task_id: str | None, **_) -> str:
+        """Minimaler Prompt für autonome AI-Worker-Dispatches.
+
+        Kein Skill-Content, keine Docs — AI zieht Kontext selbst via MCP-Tools.
+        Progressive Disclosure: AI liest Task, Skills und Dateien nach Bedarf.
+        """
+        if not task_id:
+            raise ValueError("agentic_worker benötigt task_id")
+        task = await self._load_task(task_id)
+        if not task:
+            raise ValueError(f"Task '{task_id}' nicht gefunden")
+
+        guards = await self._get_task_guards(task)
+        guards_text = self._format_guards(guards)
+        dod = task.definition_of_done or {}
+        criteria = dod.get("criteria", [])
+
+        review_hint = ""
+        if task.qa_failed_count and task.qa_failed_count > 0 and task.review_comment:
+            review_hint = f"\n### Vorheriger Review-Kommentar (QA #{task.qa_failed_count})\n{task.review_comment[:600]}\n"
+
+        linked_skills = await self._get_task_linked_skills(task)
+        skill_slugs = [s.source_slug for s in linked_skills if s.source_slug]
+
+        return f"""## Rolle: Worker — Task-Ausführung (Agentic Mode)
+
+**Task:** {task.task_key} — {task.title}
+**Status:** {task.state} (QA-Failed: {task.qa_failed_count or 0})
+**Beschreibung:** {task.description or 'Keine Beschreibung'}
+{review_hint}
+### Verfügbare MCP-Tools
+
+Nutze diese Tools um Kontext zu laden — **hol dir alles selbst:**
+
+- `hivemind-get_task` mit `task_key="{task.task_key}"` — Task-Details, DoD, Epic-Kontext
+- `hivemind-get_skills` — Skills abrufen (Slugs: {', '.join(f'`{s}`' for s in skill_slugs) or 'keine verlinkt'})
+- `hivemind-fs_list` / `hivemind-fs_read` / `hivemind-fs_search` — Workspace-Dateien lesen
+- `hivemind-fs_write` — Dateien schreiben
+- `hivemind-get_epic` — Epic-Kontext abrufen
+
+### Definition of Done
+{chr(10).join(f'- [ ] {c}' for c in criteria) if criteria else '- Keine DoD definiert — lies Task via MCP für Details'}
+
+### Guards
+{guards_text}
+> Alle Guards müssen `passed` oder `skipped` sein vor `in_review`. Nutze `hivemind-report_guard_result`.
+
+### Abschluss
+1. Lies zuerst den Task: `hivemind-get_task("{task.task_key}")`
+2. Lies relevante Skills und Dateien
+3. Implementiere die Änderungen
+4. Nutze `hivemind-submit_result` für das Ergebnis
+5. Danach `hivemind-update_task_state` mit `target_state="in_review"`
+
+Bei Blockern: `hivemind-create_decision_request` statt still scheitern."""
 
     async def _review(self, *, task_id: str | None, token_budget: int | None = None, **_) -> str:
         if not task_id:

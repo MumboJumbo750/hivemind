@@ -36,6 +36,7 @@ from app.routers import (
     auth,
     code_nodes,
     conductor,
+    dispatch_policies,
     epic_proposals,
     epics,
     events,
@@ -43,6 +44,7 @@ from app.routers import (
     guards,
     health,
     kpis,
+    learning,
     mcp_bridges,
     members,
     nexus,
@@ -129,9 +131,11 @@ def create_app() -> FastAPI:
     app.include_router(notifications.router, prefix="/api")
     app.include_router(triage.router, prefix="/api")
     app.include_router(kpis.router, prefix="/api")
+    app.include_router(learning.router, prefix="/api")
     app.include_router(mcp_bridges.router, prefix="/api")
     app.include_router(conductor.router, prefix="/api")
     app.include_router(conductor.ide_router, prefix="/api")
+    app.include_router(dispatch_policies.router, prefix="/api")
     app.include_router(federation.router)
     app.include_router(mcp_router, prefix="/api")
 

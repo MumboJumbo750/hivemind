@@ -15,6 +15,14 @@ from app.models.prompt_history import PromptHistory
 from app.models.task import Task
 
 
+from app.services.learning_quality import (
+    assess_risk_level,
+    classify_review_path,
+    should_flag_conflict,
+    validate_learning_quality,
+)
+
+
 MIN_CONFIDENCE_BY_TYPE: dict[str, float] = {
     "agent_output": 0.55,
     "review_feedback": 0.65,
@@ -40,9 +48,33 @@ def normalize_learning_status(
     artifact_type: str,
     confidence: float | None,
     requested_status: str | None = None,
+    source_type: str | None = None,
+    risk_level: str | None = None,
 ) -> str:
+    """Bestimmt den Status eines Lernartefakts.
+
+    Wenn source_type und risk_level angegeben, wird classify_review_path()
+    für eine qualitätsbewusste Pfadentscheidung genutzt.
+    Hochrisiko-Artefakte werden nie direkt auf 'accepted' gesetzt, auch wenn
+    requested_status dies anfordert.
+    """
+    # Explizit angeforderter Status wird respektiert, aber Sicherheits-Override
+    # verhindert, dass high-risk Artefakte direkt 'accepted' werden.
     if requested_status:
+        if risk_level == "high" and requested_status == "accepted":
+            return "proposal"
         return requested_status
+
+    # Neue qualitätsbewusste Pfadentscheidung wenn Kontext vorhanden
+    if source_type is not None and risk_level is not None:
+        return classify_review_path(
+            artifact_type=artifact_type,
+            source_type=source_type,
+            confidence=confidence,
+            risk_level=risk_level,
+        )
+
+    # Fallback: bisherige Logik (Rückwärtskompatibilität)
     threshold = MIN_CONFIDENCE_BY_TYPE.get(artifact_type, 0.55)
     if confidence is not None and confidence < threshold:
         return "suppressed"
@@ -146,6 +178,26 @@ async def create_learning_artifact(
     if len(cleaned) < 24:
         return None
 
+    # Qualitätsvalidierung: Source-Attribution und Injection-Schutz
+    is_valid, rejection_reason = validate_learning_quality(
+        cleaned, source_type, source_ref, confidence, detail
+    )
+    if not is_valid:
+        return None
+
+    # Risikobewertung für qualitätsbewussten Review-Pfad
+    risk_level = assess_risk_level(
+        artifact_type=artifact_type,
+        source_type=source_type,
+        confidence=confidence,
+        agent_role=agent_role,
+    )
+
+    # risk_level im Detail speichern (ohne bestehende Werte zu überschreiben)
+    enriched_detail: dict[str, Any] = dict(detail or {})
+    if "risk_level" not in enriched_detail:
+        enriched_detail["risk_level"] = risk_level
+
     fingerprint = build_learning_fingerprint(
         artifact_type=artifact_type,
         source_type=source_type,
@@ -161,13 +213,24 @@ async def create_learning_artifact(
         ).scalar_one_or_none()
         if existing is not None:
             if merge_on_duplicate:
-                existing.detail = _merge_learning_details(existing.detail, detail)
+                # Konflikt markieren statt blind mergen, wenn "accepted" durch
+                # Low-Trust-Quelle herausgefordert wird
+                merge_payload = dict(enriched_detail)
+                if should_flag_conflict(existing.status, source_type):
+                    merge_payload["has_conflict"] = True
+                    merge_payload["conflict_source"] = source_ref
+
+                existing.detail = _merge_learning_details(existing.detail, merge_payload)
                 if confidence is not None:
                     existing.confidence = max(float(existing.confidence or 0.0), float(confidence))
+                # Konflikts-Override: accepted + Konflikt → zurück auf proposal
+                forced_status = "proposal" if merge_payload.get("has_conflict") else (status or existing.status)
                 existing.status = normalize_learning_status(
                     artifact_type=artifact_type,
                     confidence=existing.confidence,
-                    requested_status=status or existing.status,
+                    requested_status=forced_status,
+                    source_type=source_type,
+                    risk_level=risk_level,
                 )
                 await db.flush()
             return existing
@@ -179,6 +242,8 @@ async def create_learning_artifact(
                 artifact_type=artifact_type,
                 confidence=confidence,
                 requested_status=status,
+                source_type=source_type,
+                risk_level=risk_level,
             ),
             source_type=source_type,
             source_ref=source_ref,
@@ -188,7 +253,7 @@ async def create_learning_artifact(
             epic_id=uuid.UUID(epic_id) if epic_id else None,
             task_id=uuid.UUID(task_id) if task_id else None,
             summary=cleaned,
-            detail=detail,
+            detail=enriched_detail,
             confidence=confidence,
             fingerprint=fingerprint,
         )

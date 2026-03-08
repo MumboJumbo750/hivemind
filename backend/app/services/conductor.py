@@ -91,7 +91,10 @@ def _remaining_fallbacks(fallback_chain: list[str], current_mode: str) -> list[s
 
 
 def _prompt_kind(agent_role: str, prompt_type: str) -> str:
-    prefix = (prompt_type or "").split("_", 1)[0].strip().lower()
+    pt = (prompt_type or "").strip().lower()
+    if pt == "agentic_worker":
+        return "agentic_worker"
+    prefix = pt.split("_", 1)[0]
     if prefix == "reviewer":
         return "review"
     if prefix in {"worker", "gaertner", "kartograph", "stratege", "architekt", "triage"}:
@@ -115,7 +118,7 @@ def _prompt_context_for_dispatch(
     """Map a dispatch trigger to PromptGenerator kwargs when possible."""
     kind = _prompt_kind(agent_role, prompt_type)
 
-    if kind in {"worker", "review"}:
+    if kind in {"worker", "review", "agentic_worker"}:
         return {"task_id": trigger_id}
 
     if kind == "gaertner":
@@ -149,6 +152,7 @@ class ConductorService:
 
     def __init__(self):
         self._semaphore: asyncio.Semaphore | None = None
+        self._role_semaphores: dict[str, asyncio.Semaphore] = {}
 
     def _get_semaphore(self) -> asyncio.Semaphore:
         from app.config import settings
@@ -156,6 +160,13 @@ class ConductorService:
         if self._semaphore is None:
             self._semaphore = asyncio.Semaphore(settings.hivemind_conductor_parallel)
         return self._semaphore
+
+    def _get_role_semaphore(self, agent_role: str, max_parallel: int) -> asyncio.Semaphore:
+        """Return a per-role semaphore keyed by role + max_parallel limit."""
+        key = f"{agent_role}:{max(max_parallel, 1)}"
+        if key not in self._role_semaphores:
+            self._role_semaphores[key] = asyncio.Semaphore(max(max_parallel, 1))
+        return self._role_semaphores[key]
 
     @staticmethod
     def _merge_result(current: Any, updates: dict[str, Any]) -> dict[str, Any]:
@@ -548,17 +559,43 @@ class ConductorService:
     ) -> dict[str, Any]:
         """Dispatch a single agent and persist full lifecycle states."""
         from app.config import settings
+        from app.services.dispatch_policy import (
+            SkipReason,
+            count_active_dispatches,
+            get_effective_policy,
+        )
 
         if not settings.hivemind_conductor_enabled:
             return {"status": "conductor_disabled", "byoai": True}
 
-        normalized_mode = _normalize_execution_mode(execution_mode)
-        normalized_chain = _normalize_fallback_chain(
-            fallback_chain or _default_fallback_chain(normalized_mode),
-            normalized_mode,
-        )
+        # --- Load per-role dispatch policy (fail-safe: falls back to defaults) ---
+        policy = await get_effective_policy(agent_role, db)
 
-        cooldown_s = settings.hivemind_conductor_cooldown_seconds
+        # Hard gate: role is disabled by operator
+        if not policy.enabled:
+            logger.info("Conductor: policy disabled for role '%s' — skipping", agent_role)
+            return {
+                "status": "policy_disabled",
+                "agent_role": agent_role,
+                "skip_reason": SkipReason.POLICY_DISABLED,
+                "byoai": True,
+            }
+
+        # If no explicit execution_mode was provided (caller passed the default),
+        # the policy's preferred mode takes precedence for the fallback chain.
+        # Explicit mode always wins so existing callers are unaffected.
+        effective_mode = _normalize_execution_mode(execution_mode)
+        if fallback_chain is None:
+            # Use policy fallback_chain as base; execution_mode is kept as first entry.
+            effective_chain = _normalize_fallback_chain(policy.fallback_chain, effective_mode)
+        else:
+            effective_chain = _normalize_fallback_chain(fallback_chain, effective_mode)
+
+        normalized_mode = effective_mode
+        normalized_chain = effective_chain
+
+        # Use per-role cooldown (policy overrides global setting)
+        cooldown_s = policy.cooldown_seconds
         ck = _cooldown_key(agent_role, trigger_id, cooldown_s)
         dispatch_context = await self._resolve_dispatch_context(
             db,
@@ -594,9 +631,11 @@ class ConductorService:
                         "fallback_chain": normalized_chain,
                         "dispatch_context": dispatch_context,
                         "thread_context": self._serialize_thread_context(thread_context),
+                        "policy": policy.as_dict(),
                         "automation_decision": {
-                            "reason": "cooldown_active",
+                            "reason": SkipReason.COOLDOWN_ACTIVE,
                             "execution_mode": normalized_mode,
+                            "cooldown_seconds": cooldown_s,
                         },
                     },
                     "cooldown_skipped",
@@ -605,9 +644,54 @@ class ConductorService:
             await db.commit()
             return {
                 "status": "cooldown_skipped",
+                "skip_reason": SkipReason.COOLDOWN_ACTIVE,
                 "dispatch_id": str(dispatch.id),
                 "execution_mode": normalized_mode,
                 "fallback_chain": normalized_chain,
+            }
+
+        # --- Per-role parallelism gate ---
+        active_count = await count_active_dispatches(agent_role, db)
+        if active_count >= policy.max_parallel:
+            logger.info(
+                "Conductor: parallel limit for '%s' (%d/%d) — skipping",
+                agent_role, active_count, policy.max_parallel,
+            )
+            dispatch = await self._record_dispatch(
+                db,
+                trigger_type,
+                trigger_id,
+                trigger_detail,
+                agent_role,
+                prompt_type,
+                normalized_mode,
+                ck,
+                status="parallel_limit_exceeded",
+                result=self._append_status_history(
+                    {
+                        "fallback_chain": normalized_chain,
+                        "dispatch_context": dispatch_context,
+                        "thread_context": self._serialize_thread_context(thread_context),
+                        "policy": policy.as_dict(),
+                        "automation_decision": {
+                            "reason": SkipReason.PARALLEL_LIMIT_EXCEEDED,
+                            "execution_mode": normalized_mode,
+                            "active_dispatches": active_count,
+                            "max_parallel": policy.max_parallel,
+                        },
+                    },
+                    "parallel_limit_exceeded",
+                ),
+            )
+            await db.commit()
+            return {
+                "status": "parallel_limit_exceeded",
+                "skip_reason": SkipReason.PARALLEL_LIMIT_EXCEEDED,
+                "dispatch_id": str(dispatch.id),
+                "execution_mode": normalized_mode,
+                "fallback_chain": normalized_chain,
+                "active_dispatches": active_count,
+                "max_parallel": policy.max_parallel,
             }
 
         governance_payload = await self._resolve_governance_payload(db, prompt_type)
@@ -617,6 +701,7 @@ class ConductorService:
                     "fallback_chain": normalized_chain,
                     "dispatch_context": dispatch_context,
                     "thread_context": self._serialize_thread_context(thread_context),
+                    "policy": policy.as_dict(),
                     "automation_decision": {
                         "reason": trigger_detail,
                         "execution_mode": normalized_mode,
@@ -780,7 +865,11 @@ class ConductorService:
                         status="byoai",
                         result=self._merge_result(
                             dispatch.result,
-                            {"byoai": True, "reason": "no_provider_configured"},
+                            {
+                                "byoai": True,
+                                "reason": "no_provider_configured",
+                                "skip_reason": SkipReason.PROVIDER_UNAVAILABLE,
+                            },
                         ),
                         mark_completed=True,
                     )
@@ -795,6 +884,7 @@ class ConductorService:
                     logger.info("Conductor: no provider for %s → BYOAI", agent_role)
                     return {
                         "status": "byoai",
+                        "skip_reason": SkipReason.PROVIDER_UNAVAILABLE,
                         "dispatch_id": str(dispatch.id),
                         "execution_mode": normalized_mode,
                         "fallback_chain": normalized_chain,
@@ -830,6 +920,7 @@ class ConductorService:
                         task_key=prompt_kwargs.get("task_id"),
                         epic_id=prompt_kwargs.get("epic_id"),
                         allowed_tool_names=allowed_tool_names,
+                        token_budget=policy.token_budget,
                     )
                 except Exception as exc:
                     remaining = _remaining_fallbacks(normalized_chain, "local")
@@ -855,6 +946,7 @@ class ConductorService:
                         await db.commit()
                         return {
                             "status": "byoai",
+                            "skip_reason": SkipReason.LOCAL_ERROR_FALLBACK,
                             "dispatch_id": str(dispatch.id),
                             "execution_mode": normalized_mode,
                             "fallback_chain": normalized_chain,

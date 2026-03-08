@@ -145,7 +145,12 @@ class OpenAIProvider(AIProvider):
                 })
             kwargs["tools"] = openai_tools
 
-        response = await client.chat.completions.create(**kwargs)
+        try:
+            response = await client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            body = getattr(getattr(exc, "response", None), "text", None)
+            logger.error("OpenAI API error — model=%s body=%s", model_name, body)
+            raise
         choice = response.choices[0]
 
         tool_calls = []

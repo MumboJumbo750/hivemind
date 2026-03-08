@@ -25,6 +25,7 @@ from sqlalchemy.orm import selectinload
 from app.models.sync import SyncDeadLetter, SyncOutbox
 from app.services.audit import write_audit
 from app.services import event_bus
+from app.services.learning_artifacts import create_learning_artifact
 
 
 class TriageConflictError(Exception):
@@ -95,6 +96,30 @@ async def route_event(
         channel="triage",
     )
 
+    # Learning artifact: routing decision hint
+    await create_learning_artifact(
+        db,
+        artifact_type="execution_learning",
+        source_type="triage_decision",
+        source_ref=event_id,
+        summary=f"Routing-Hinweis: {event.entity_type} von {event.system} → Epic {epic_id}",
+        detail={
+            "kind": "routing_hint",
+            "audiences": ["triage"],
+            "decision": "routed",
+            "entity_type": event.entity_type,
+            "system": event.system,
+            "epic_id": epic_id,
+            "occurrence_count": 1,
+            "source_refs": [event_id],
+            "effectiveness": {},
+        },
+        agent_role=actor_role,
+        project_id=str(event.project_id) if event.project_id else None,
+        confidence=0.72,
+        merge_on_duplicate=True,
+    )
+
     await db.commit()
     return {
         "status": "routed",
@@ -146,6 +171,31 @@ async def ignore_event(
         {"event_id": event_id, "reason": reason, "actor": str(actor_id)},
         channel="triage",
     )
+
+    # Learning artifact: ignore decision as routing hint (negative signal)
+    if reason:
+        await create_learning_artifact(
+            db,
+            artifact_type="execution_learning",
+            source_type="triage_decision",
+            source_ref=event_id,
+            summary=f"Ignoriert: {event.entity_type} von {event.system} — {reason[:160]}",
+            detail={
+                "kind": "routing_hint",
+                "audiences": ["triage"],
+                "decision": "ignored",
+                "entity_type": event.entity_type,
+                "system": event.system,
+                "ignore_reason": reason,
+                "occurrence_count": 1,
+                "source_refs": [event_id],
+                "effectiveness": {},
+            },
+            agent_role=actor_role,
+            project_id=str(event.project_id) if event.project_id else None,
+            confidence=0.68,
+            merge_on_duplicate=True,
+        )
 
     await db.commit()
     return {

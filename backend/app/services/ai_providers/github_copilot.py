@@ -27,6 +27,19 @@ class GitHubCopilotProvider(OpenAIProvider):
         )
         self._github_token = github_token
 
+    def _get_client(self):
+        if self._client is None:
+            try:
+                from openai import AsyncOpenAI
+                self._client = AsyncOpenAI(
+                    api_key=self._github_token,
+                    base_url=GITHUB_COPILOT_BASE_URL,
+                    default_headers={"Copilot-Integration-Id": "hivemind"},
+                )
+            except ImportError:
+                raise RuntimeError("openai package not installed. Run: pip install openai")
+        return self._client
+
     def default_model(self) -> str:
         return self._default_model
 
