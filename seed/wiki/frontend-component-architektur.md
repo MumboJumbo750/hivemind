@@ -296,7 +296,7 @@ Epic (frontend-refactoring)
 | UI-Components in `components/ui/` | 8 | ~18 |
 | Durchschn. Scoped-CSS-Zeilen pro View | ~200 | <80 |
 
-## Aktueller Stand (Scan: 2026-03-02)
+## Aktueller Stand (Scan: 2026-03-07)
 
 > Automatisch generiert durch `scripts/kartograph_scan.py`
 
@@ -304,71 +304,73 @@ Epic (frontend-refactoring)
 
 | KPI | Wert | Ziel |
 | --- | --- | --- |
-| Vue-Dateien total | 41 | — |
+| Vue-Dateien total | 42 | — |
 | UI Components (`components/ui/`) | 8 | ~18 |
-| Domain Components (`components/domain/`) | 17 | ~10 |
+| Domain Components (`components/domain/`) | 18 | ~10 |
 | Views | 13 | — |
-| Hardcoded Hex-Farben in Styles | 69 | **0** |
+| Hardcoded Hex-Farben in Styles | 71 | **0** |
 | Hardcoded rgba()-Werte in Styles | 43 | **0** |
-| Hardcoded `padding`/`margin` in px | 86 | **0** |
-| Hardcoded `border-radius` in px | 85 | **0** |
-| Token-Referenzen `var(--)` (gesamt) | 2838 | ↑ maximieren |
-| Files mit eigener `.btn-*` Definition | 18 | **0** |
-| Files mit eigener `.badge-*` Definition | 4 | **0** |
+| Hardcoded `padding`/`margin` in px | 95 | **0** |
+| Hardcoded `border-radius` in px | 91 | **0** |
+| Token-Referenzen `var(--)` (gesamt) | 3049 | ↑ maximieren |
+| Files mit eigener `.btn-*` Definition | 19 | **0** |
+| Files mit eigener `.badge-*` Definition | 5 | **0** |
 
 ### UI Components (8)
 
 HivemindCard, HivemindDropdown, HivemindModal, McpStatusIndicator, QueueBadge, SlaCountdown, ToastContainer, TokenRadar
 
-### Domain Components (17)
+### Domain Components (18)
 
-ActorBadge, AiProviderConfigPanel, AiReviewPanel, DeadLetterList, DecisionRequestDialog, EpicScopingModal, FederationSettings, GamificationBar, GovernanceConfigPanel, KpiCard, McpBridgeConfigPanel, NexusGrid3D, NotificationTray, ProjectCreateDialog, RequirementCaptureModal, Spotlight, TaskReviewPanel
+ActorBadge, AiProviderConfigPanel, AiReviewPanel, DeadLetterList, DecisionRequestDialog, EpicScopingModal, FederationSettings, GamificationBar, GovernanceConfigPanel, KpiCard, McpBridgeConfigPanel, NexusGrid3D, NotificationTray, ProjectCreateDialog, ProjectIntegrationsPanel, RequirementCaptureModal, Spotlight, TaskReviewPanel
 
 ### Files mit `.btn-*` Definitionen
 
-  - `components\domain\AiProviderConfigPanel.vue`
-  - `components\domain\AiReviewPanel.vue`
-  - `components\domain\DecisionRequestDialog.vue`
-  - `components\domain\EpicScopingModal.vue`
-  - `components\domain\FederationSettings.vue`
-  - `components\domain\GovernanceConfigPanel.vue`
-  - `components\domain\McpBridgeConfigPanel.vue`
-  - `components\domain\ProjectCreateDialog.vue`
-  - `components\domain\RequirementCaptureModal.vue`
-  - `components\domain\TaskReviewPanel.vue`
-  - `views\CommandDeck\CommandDeckView.vue`
-  - `views\KartographBootstrap\KartographBootstrapView.vue`
-  - `views\NotificationTray\NotificationTrayView.vue`
-  - `views\PromptStation\PromptStationView.vue`
-  - `views\Settings\SettingsView.vue`
-  - `views\SkillLab\SkillLabView.vue`
-  - `views\Triage\TriageStationView.vue`
-  - `views\Wiki\WikiView.vue`
+  - `components/domain/AiProviderConfigPanel.vue`
+  - `components/domain/AiReviewPanel.vue`
+  - `components/domain/DecisionRequestDialog.vue`
+  - `components/domain/EpicScopingModal.vue`
+  - `components/domain/FederationSettings.vue`
+  - `components/domain/GovernanceConfigPanel.vue`
+  - `components/domain/McpBridgeConfigPanel.vue`
+  - `components/domain/ProjectCreateDialog.vue`
+  - `components/domain/ProjectIntegrationsPanel.vue`
+  - `components/domain/RequirementCaptureModal.vue`
+  - `components/domain/TaskReviewPanel.vue`
+  - `views/CommandDeck/CommandDeckView.vue`
+  - `views/KartographBootstrap/KartographBootstrapView.vue`
+  - `views/NotificationTray/NotificationTrayView.vue`
+  - `views/PromptStation/PromptStationView.vue`
+  - `views/Settings/SettingsView.vue`
+  - `views/SkillLab/SkillLabView.vue`
+  - `views/Triage/TriageStationView.vue`
+  - `views/Wiki/WikiView.vue`
 
 ### Files mit `.badge-*` Definitionen
 
-  - `components\ui\QueueBadge.vue`
-  - `views\Achievements\AchievementsView.vue`
-  - `views\CommandDeck\CommandDeckView.vue`
-  - `views\Triage\TriageStationView.vue`
+  - `components/domain/ProjectIntegrationsPanel.vue`
+  - `components/ui/QueueBadge.vue`
+  - `views/Achievements/AchievementsView.vue`
+  - `views/CommandDeck/CommandDeckView.vue`
+  - `views/Triage/TriageStationView.vue`
 
 ### Top-Verletzungen pro Datei
 
 | Datei | Hex-Farben | rgba() | Padding px | Radius px |
 | --- | --- | --- | --- | --- |
-| `views\Triage\TriageStationView.vue` | 3 | 10 | 14 | 15 |
-| `views\CommandDeck\CommandDeckView.vue` | 0 | 1 | 13 | 12 |
-| `views\SkillLab\SkillLabView.vue` | 0 | 7 | 3 | 12 |
-| `views\KartographBootstrap\KartographBootstrapView.vue` | 11 | 2 | 2 | 4 |
-| `views\PromptStation\PromptStationView.vue` | 10 | 0 | 6 | 2 |
-| `components\domain\AiProviderConfigPanel.vue` | 6 | 0 | 5 | 6 |
-| `components\domain\DecisionRequestDialog.vue` | 0 | 4 | 5 | 7 |
-| `components\domain\TaskReviewPanel.vue` | 7 | 2 | 3 | 3 |
-| `components\ui\SlaCountdown.vue` | 10 | 0 | 1 | 2 |
-| `components\domain\NotificationTray.vue` | 0 | 1 | 5 | 4 |
-| `components\ui\QueueBadge.vue` | 4 | 4 | 1 | 1 |
-| `views\NotificationTray\NotificationTrayView.vue` | 0 | 0 | 6 | 4 |
-| `components\domain\AiReviewPanel.vue` | 8 | 0 | 1 | 0 |
-| `views\Settings\SettingsView.vue` | 3 | 0 | 4 | 2 |
-| `views\NexusGrid\NexusGridView.vue` | 3 | 2 | 2 | 0 |
+| `views/Triage/TriageStationView.vue` | 3 | 10 | 15 | 16 |
+| `views/CommandDeck/CommandDeckView.vue` | 2 | 1 | 17 | 16 |
+| `views/SkillLab/SkillLabView.vue` | 0 | 7 | 3 | 12 |
+| `views/KartographBootstrap/KartographBootstrapView.vue` | 11 | 2 | 2 | 4 |
+| `views/PromptStation/PromptStationView.vue` | 10 | 0 | 7 | 2 |
+| `components/domain/AiProviderConfigPanel.vue` | 6 | 0 | 5 | 6 |
+| `components/domain/DecisionRequestDialog.vue` | 0 | 4 | 5 | 7 |
+| `components/domain/TaskReviewPanel.vue` | 7 | 2 | 3 | 3 |
+| `components/ui/SlaCountdown.vue` | 10 | 0 | 1 | 2 |
+| `components/domain/NotificationTray.vue` | 0 | 1 | 5 | 4 |
+| `components/ui/QueueBadge.vue` | 4 | 4 | 1 | 1 |
+| `views/NotificationTray/NotificationTrayView.vue` | 0 | 0 | 6 | 4 |
+| `components/domain/AiReviewPanel.vue` | 8 | 0 | 1 | 0 |
+| `views/Settings/SettingsView.vue` | 3 | 0 | 4 | 2 |
+| `views/NexusGrid/NexusGridView.vue` | 3 | 2 | 2 | 0 |
 
