@@ -1,8 +1,0 @@
-{
-  "result": [
-    {
-      "type": "text",
-      "text": "{\"data\": {\"id\": \"f8f27f95-7ead-4e80-bc13-f701671d5ab7\", \"task_key\": \"TASK-55\", \"epic_id\": \"2eb6d16d-fffa-4c4e-99ca-bd3fef1a4526\", \"title\": \"Executor-Integration dokumentieren\", \"description\": \"Nutzung des Memory Ledgers durch Executor, Resume-Flows und die Abgrenzung zu Learning Artifacts in Epos-/Produktdokumentation konsistent verankern.\", \"state\": \"in_review\", \"assigned_to\": \"34a71989-e59a-4719-b423-2111cbfa6298\", \"pinned_skills\": [], \"definition_of_done\": null, \"guards\": [], \"version\": 6, \"qa_failed_count\": 0, \"result\": \"Executor-Integration dokumentiert: Memory Ledger, Worker-Resume und Prompt-Pipeline konsistent verankert. docs/features/memory-ledger.md beschreibt jetzt Worker-/Resume-Flow und die explizite Abgrenzung zu Learning Artifacts. docs/agents/worker.md dokumentiert Multi-Session-Resume mit Memory Ledger vs. Execution-Learnings. docs/agents/prompt-pipeline.md beschreibt die Resume-Semantik des Worker-Prompts. docs/glossary.md korrigiert den Memory-Ledger-Begriff und erg\\u00e4nzt Learning Artifact als separaten Dom\\u00e4nenbegriff.\", \"artifacts\": [{\"path\": \"docs/features/memory-ledger.md\", \"type\": \"doc\"}, {\"path\": \"docs/agents/worker.md\", \"type\": \"doc\"}, {\"path\": \"docs/agents/prompt-pipeline.md\", \"type\": \"doc\"}, {\"path\": \"docs/glossary.md\", \"type\": \"doc\"}], \"created_at\": \"2026-03-10 08:51:44.545275+00:00\", \"updated_at\": \"2026-03-10 13:27:20.067837+00:00\"}}"
-    }
-  ]
-}

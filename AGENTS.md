@@ -82,8 +82,8 @@ make logs              # Backend-Logs live
 
 make health            # Repo Health Scan (text)
 make health-scan       # Alias für make health
-make health-json       # Repo Health Scan → health_report.json
-make health-md         # Repo Health Scan → health_report.md
+make health-json       # Repo Health Scan → tmp/health_report.json
+make health-md         # Repo Health Scan → tmp/health_report.md
 make health-test       # Analyzer-Unit-Tests im Container
 ```
 
@@ -198,6 +198,24 @@ Invoke-WebRequest -Uri "http://localhost:8000/api/mcp/call" `
 ```
 ---
 
+## Temporäre Dateien
+
+**Nie temporäre Dateien im Repo-Root ablegen!** Dafür gibt es `tmp/` (gitignored).
+
+```bash
+# ✅ RICHTIG — temporäre Outputs nach tmp/
+curl ... > tmp/api_response.json
+pg_dump ... > tmp/backup.sql
+
+# ❌ FALSCH — Junk im Root
+curl ... > _api_test.txt
+pg_dump ... > _orphan_ddl.sql
+```
+
+Patterns die per `.gitignore` geblockt werden: `_*.txt`, `_*.json`, `_*.sql`, `=*`, `health_report.*`, `tree.txt`, `test_output*.txt`
+
+---
+
 ## Projektstruktur
 
 ```
@@ -205,6 +223,7 @@ hivemind/
   AGENTS.md              ← Dieses File (universeller AI-Kontext)
   CLAUDE.md              ← Claude-spezifisch (@see AGENTS.md)
   docker-compose.yml     ← Podman Compose Stack
+  tmp/                   ← Temporäre Dateien (gitignored)
   backend/               ← FastAPI-App → läuft in `backend`-Container
     app/
       routers/           ← FastAPI Router (HTTP-Endpoints)

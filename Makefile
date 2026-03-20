@@ -50,8 +50,8 @@ help:
 	@echo ""
 	@echo "  Health & Analyzer:"
 	@echo "    make health          Repo Health Scan (text output)"
-	@echo "    make health-json     Repo Health Scan → health_report.json"
-	@echo "    make health-md       Repo Health Scan → health_report.md"
+	@echo "    make health-json     Repo Health Scan → tmp/health_report.json"
+	@echo "    make health-md       Repo Health Scan → tmp/health_report.md"
 	@echo "    make health-scan     Alias fuer make health"
 	@echo "    make health-test     Analyzer-Unit-Tests im Container"
 	@echo ""
@@ -191,17 +191,19 @@ health: ## Repo Health Scan (text output)
 		-v "$(CURDIR):/workspace:ro" -w /workspace backend \
 		/app/.venv/bin/python scripts/health_check.py --root .
 
-health-json: ## Repo Health Scan → health_report.json
+health-json: ## Repo Health Scan → tmp/health_report.json
 	@echo "→ Repo Health Scanner (JSON)..."
+	@mkdir -p tmp
 	podman compose run --rm --no-deps --entrypoint="" \
 		-v "$(CURDIR):/workspace" -w /workspace backend \
-		/app/.venv/bin/python scripts/health_check.py --root . --format json --output health_report.json
+		/app/.venv/bin/python scripts/health_check.py --root . --format json --output tmp/health_report.json
 
-health-md: ## Repo Health Scan → health_report.md
+health-md: ## Repo Health Scan → tmp/health_report.md
 	@echo "→ Repo Health Scanner (Markdown)..."
+	@mkdir -p tmp
 	podman compose run --rm --no-deps --entrypoint="" \
 		-v "$(CURDIR):/workspace" -w /workspace backend \
-		/app/.venv/bin/python scripts/health_check.py --root . --format markdown --output health_report.md
+		/app/.venv/bin/python scripts/health_check.py --root . --format markdown --output tmp/health_report.md
 
 # ── Analyzer Tests im Container ─────────────────────────────────────────────
 health-scan: health ## Alias: Repo Health Scan (text output)

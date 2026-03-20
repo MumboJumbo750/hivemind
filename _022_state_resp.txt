@@ -1,1 +1,0 @@
-{"result":[{"type":"text","text":"{\"error\": {\"code\": \"INVALID_STATE_TRANSITION\", \"message\": \"Transition 'in_review' \\u2192 'in_review' ist nicht erlaubt. Erlaubt: ['done', 'qa_failed'].\", \"status\": 422}}"}]}

@@ -102,3 +102,24 @@ logs/
 # Test outputs
 /htmlcov/
 /.tox/
+
+# Temp / scratch directory (use tmp/ for any temporary files)
+/tmp/*
+!/tmp/.gitkeep
+
+# Debug & test artifacts (never commit these)
+_*.txt
+_*.json
+_*.sql
+health_report.json
+health_report.md
+tree.txt
+epic_status.txt
+all_tasks.json
+test_output*.txt
+
+# Vite cache
+.vite/
+
+# Accidental version marker files (from bad npm/pip installs)
+=*
