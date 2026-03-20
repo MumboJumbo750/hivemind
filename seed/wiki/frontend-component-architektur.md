@@ -296,7 +296,7 @@ Epic (frontend-refactoring)
 | UI-Components in `components/ui/` | 8 | ~18 |
 | Durchschn. Scoped-CSS-Zeilen pro View | ~200 | <80 |
 
-## Aktueller Stand (Scan: 2026-03-07)
+## Aktueller Stand (Scan: 2026-03-20)
 
 > Automatisch generiert durch `scripts/kartograph_scan.py`
 
@@ -304,25 +304,25 @@ Epic (frontend-refactoring)
 
 | KPI | Wert | Ziel |
 | --- | --- | --- |
-| Vue-Dateien total | 42 | — |
+| Vue-Dateien total | 47 | — |
 | UI Components (`components/ui/`) | 8 | ~18 |
-| Domain Components (`components/domain/`) | 18 | ~10 |
-| Views | 13 | — |
-| Hardcoded Hex-Farben in Styles | 71 | **0** |
-| Hardcoded rgba()-Werte in Styles | 43 | **0** |
-| Hardcoded `padding`/`margin` in px | 95 | **0** |
-| Hardcoded `border-radius` in px | 91 | **0** |
-| Token-Referenzen `var(--)` (gesamt) | 3049 | ↑ maximieren |
+| Domain Components (`components/domain/`) | 19 | ~10 |
+| Views | 17 | — |
+| Hardcoded Hex-Farben in Styles | 67 | **0** |
+| Hardcoded rgba()-Werte in Styles | 18 | **0** |
+| Hardcoded `padding`/`margin` in px | 50 | **0** |
+| Hardcoded `border-radius` in px | 0 | **0** |
+| Token-Referenzen `var(--)` (gesamt) | 3911 | ↑ maximieren |
 | Files mit eigener `.btn-*` Definition | 19 | **0** |
-| Files mit eigener `.badge-*` Definition | 5 | **0** |
+| Files mit eigener `.badge-*` Definition | 6 | **0** |
 
 ### UI Components (8)
 
 HivemindCard, HivemindDropdown, HivemindModal, McpStatusIndicator, QueueBadge, SlaCountdown, ToastContainer, TokenRadar
 
-### Domain Components (18)
+### Domain Components (19)
 
-ActorBadge, AiProviderConfigPanel, AiReviewPanel, DeadLetterList, DecisionRequestDialog, EpicScopingModal, FederationSettings, GamificationBar, GovernanceConfigPanel, KpiCard, McpBridgeConfigPanel, NexusGrid3D, NotificationTray, ProjectCreateDialog, ProjectIntegrationsPanel, RequirementCaptureModal, Spotlight, TaskReviewPanel
+ActorBadge, AiProviderConfigPanel, AiReviewPanel, DeadLetterList, DecisionRequestDialog, DispatchPoliciesPanel, EpicScopingModal, FederationSettings, GamificationBar, GovernanceConfigPanel, KpiCard, McpBridgeConfigPanel, NexusGrid3D, NotificationTray, ProjectCreateDialog, ProjectIntegrationsPanel, RequirementCaptureModal, Spotlight, TaskReviewPanel
 
 ### Files mit `.btn-*` Definitionen
 
@@ -352,25 +352,26 @@ ActorBadge, AiProviderConfigPanel, AiReviewPanel, DeadLetterList, DecisionReques
   - `components/ui/QueueBadge.vue`
   - `views/Achievements/AchievementsView.vue`
   - `views/CommandDeck/CommandDeckView.vue`
+  - `views/LearningArtifacts/LearningArtifactsView.vue`
   - `views/Triage/TriageStationView.vue`
 
 ### Top-Verletzungen pro Datei
 
 | Datei | Hex-Farben | rgba() | Padding px | Radius px |
 | --- | --- | --- | --- | --- |
-| `views/Triage/TriageStationView.vue` | 3 | 10 | 15 | 16 |
-| `views/CommandDeck/CommandDeckView.vue` | 2 | 1 | 17 | 16 |
-| `views/SkillLab/SkillLabView.vue` | 0 | 7 | 3 | 12 |
-| `views/KartographBootstrap/KartographBootstrapView.vue` | 11 | 2 | 2 | 4 |
-| `views/PromptStation/PromptStationView.vue` | 10 | 0 | 7 | 2 |
-| `components/domain/AiProviderConfigPanel.vue` | 6 | 0 | 5 | 6 |
-| `components/domain/DecisionRequestDialog.vue` | 0 | 4 | 5 | 7 |
-| `components/domain/TaskReviewPanel.vue` | 7 | 2 | 3 | 3 |
-| `components/ui/SlaCountdown.vue` | 10 | 0 | 1 | 2 |
-| `components/domain/NotificationTray.vue` | 0 | 1 | 5 | 4 |
-| `components/ui/QueueBadge.vue` | 4 | 4 | 1 | 1 |
-| `views/NotificationTray/NotificationTrayView.vue` | 0 | 0 | 6 | 4 |
+| `views/CommandDeck/CommandDeckView.vue` | 4 | 0 | 9 | 0 |
+| `views/PromptStation/PromptStationView.vue` | 10 | 0 | 3 | 0 |
+| `views/KartographBootstrap/KartographBootstrapView.vue` | 11 | 0 | 0 | 0 |
+| `components/domain/AiProviderConfigPanel.vue` | 6 | 0 | 4 | 0 |
+| `components/domain/TaskReviewPanel.vue` | 7 | 0 | 3 | 0 |
+| `components/ui/SlaCountdown.vue` | 10 | 0 | 0 | 0 |
+| `views/Triage/TriageStationView.vue` | 1 | 1 | 8 | 0 |
 | `components/domain/AiReviewPanel.vue` | 8 | 0 | 1 | 0 |
-| `views/Settings/SettingsView.vue` | 3 | 0 | 4 | 2 |
 | `views/NexusGrid/NexusGridView.vue` | 3 | 2 | 2 | 0 |
+| `views/Settings/SettingsView.vue` | 3 | 0 | 2 | 0 |
+| `components/domain/DispatchPoliciesPanel.vue` | 0 | 1 | 3 | 0 |
+| `views/Wiki/WikiView.vue` | 0 | 1 | 3 | 0 |
+| `components/domain/RequirementCaptureModal.vue` | 0 | 2 | 1 | 0 |
+| `views/SkillLab/SkillLabView.vue` | 0 | 2 | 1 | 0 |
+| `components/domain/EpicScopingModal.vue` | 0 | 2 | 0 | 0 |
 
