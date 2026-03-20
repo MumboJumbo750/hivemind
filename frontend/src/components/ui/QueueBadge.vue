@@ -28,9 +28,9 @@ const badge = config[props.type]
 .queue-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 0.65rem;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-2xs);
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -43,22 +43,22 @@ const badge = config[props.type]
 }
 
 .badge-escalated {
-  background: rgba(255, 176, 32, 0.2);
-  color: var(--color-warning, #ffb020);
+  background: var(--color-warning-20);
+  color: var(--color-warning);
 }
 
 .badge-decision {
-  background: rgba(250, 204, 21, 0.2);
-  color: #facc15;
+  background: var(--color-warning-20);
+  color: var(--primitive-yellow-400);
 }
 
 .badge-sla {
-  background: rgba(255, 77, 109, 0.2);
-  color: var(--color-danger, #ff4d6d);
+  background: var(--color-danger-20);
+  color: var(--color-danger);
 }
 
 .badge-followup {
-  background: rgba(96, 165, 250, 0.2);
-  color: #60a5fa;
+  background: var(--color-info-20);
+  color: var(--primitive-blue-400);
 }
 </style>

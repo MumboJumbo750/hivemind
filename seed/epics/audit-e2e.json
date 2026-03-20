@@ -1,0 +1,12 @@
+{
+  "external_id": "EPIC-AUDIT-E2E",
+  "title": "Audit: Integration Tests & Konsistenz",
+  "description": "Mehrere Subsysteme sind vollständig implementiert aber nicht End-to-End getestet: IDE Dispatch Flow (dispatched→acknowledged→running→complete), Worker Endpoint Pool (Multi-Ollama), Prompt Minification Divergenz (History vs. AI), und optionale Federation-Schema-Ergänzung.\n\nQuelle: Workflow-Dispatch-Audit 2026-03-08 (Findings D-1, D-2, E-1, F-1)",
+  "state": "incoming",
+  "priority": "low",
+  "sla_deadline": null,
+  "definition_of_done": "IDE Dispatch Flow hat E2E-Test inkl. Timeout-Szenario, Worker Endpoint Pool hat Integration-Test mit 2 Endpoints, Prompt History speichert minified Token-Count, Skills-Schema-Entscheidung (assigned_node_id) ist dokumentiert.",
+  "tags": ["backend", "audit", "testing", "e2e", "integration", "federation"],
+  "depends_on": ["EPIC-PHASE-8"],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md"
+}

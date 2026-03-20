@@ -335,3 +335,59 @@ async def test_schedule_run_full_loop_handles_parallel_conflicts_and_resume() ->
     assert create_handoff.await_count == 5
     assert run.analysis["scheduler"]["resumed_task_keys"] == ["TASK-B"]
     assert run.analysis["execution_analysis"]["slot_plan"]["occupied_slots"] == 3
+
+
+@pytest.mark.asyncio
+async def test_dispatch_task_batch_skips_conductor_dispatch_when_governance_manual() -> None:
+    """TASK-ACO-002: With governance=manual, tasks transition but are NOT dispatched."""
+    db = AsyncMock()
+    db.flush = AsyncMock()
+    scheduler = EpicRunSchedulerService(db)
+
+    run = SimpleNamespace(
+        id=uuid.uuid4(),
+        dry_run=False,
+        epic_id=uuid.uuid4(),
+        config={
+            "max_parallel_workers": 2,
+            "resolved_execution_mode": "local",
+            "respect_file_claims": True,
+        },
+        status="started",
+        analysis={},
+        completed_at=None,
+    )
+    epic = SimpleNamespace(id=run.epic_id, project_id=uuid.uuid4())
+    project = SimpleNamespace(id=uuid.uuid4(), slug="hivemind", workspace_root=None)
+    tasks = [_task("TASK-M1", "ready"), _task("TASK-M2", "ready")]
+
+    async def fake_transition(task_key, body, *, skip_conductor=False):
+        for task in tasks:
+            if task.task_key == task_key:
+                task.state = "in_progress"
+                return task
+        raise AssertionError(f"unexpected task {task_key}")
+
+    fake_task_service = SimpleNamespace(transition_state=AsyncMock(side_effect=fake_transition))
+
+    scheduler._get_run = AsyncMock(return_value=run)
+    scheduler._get_epic = AsyncMock(return_value=epic)
+    # governance = manual → should NOT dispatch
+    scheduler._load_governance = AsyncMock(return_value={"review": "manual"})
+    scheduler._load_scheduler_policy = AsyncMock(return_value={})
+    scheduler.run_service._load_project = AsyncMock(return_value=project)
+    scheduler.run_service._load_tasks = AsyncMock(side_effect=lambda epic_id: tasks)
+    scheduler.run_service._load_open_decisions = AsyncMock(return_value=[])
+    scheduler.run_service._load_active_task_dispatches = AsyncMock(return_value=[])
+
+    with patch("app.services.epic_run_scheduler.TaskService", return_value=fake_task_service), \
+         patch("app.services.conductor.conductor.dispatch", AsyncMock(return_value={"status": "ok"})) as dispatch, \
+         patch("app.services.epic_run_context.EpicRunContextService.ensure_epic_scratchpad", AsyncMock()), \
+         patch("app.services.epic_run_context.EpicRunContextService.sync_file_claims", AsyncMock(return_value={"active": 2, "released": 0})), \
+         patch("app.services.epic_run_context.EpicRunContextService.create_worker_handoff", AsyncMock()):
+        result = await scheduler.schedule_run(run.id)
+
+    # Tasks should still be dispatched (state changed) but conductor.dispatch NOT called
+    assert result["dispatched_task_keys"] == ["TASK-M1", "TASK-M2"]
+    assert all(t.state == "in_progress" for t in tasks)
+    dispatch.assert_not_awaited()

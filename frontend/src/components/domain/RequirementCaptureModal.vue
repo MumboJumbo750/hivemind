@@ -323,7 +323,7 @@ async function _getToken(): Promise<string | null> {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 500;
+  z-index: var(--z-overlay);
 }
 
 .modal {
@@ -502,7 +502,7 @@ async function _getToken(): Promise<string | null> {
 
 .mono-xs {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
 }
 
 .badge {

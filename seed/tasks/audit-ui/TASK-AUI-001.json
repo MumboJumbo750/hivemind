@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-AUI-001",
+  "epic_ref": "EPIC-AUDIT-UI",
+  "title": "Learning Artifacts Dashboard View",
+  "description": "Neue Vue-View für Learning Artifacts erstellen. Die View soll die bestehenden API-Endpoints `GET /api/learning/artifacts` und `GET /api/learning/stats` nutzen.\n\n**Features:**\n- Tabellarische Übersicht aller Learning Artifacts mit Paginierung\n- Filter: agent_role, artifact_type, status, confidence (Slider), Datumsbereich\n- Statistik-Panel oben: Aggregate nach artifact_type und status (Balkendiagramm oder Cards)\n- Confidence-Anzeige als farbkodierter Badge (rot <0.5, gelb 0.5-0.8, grün >0.8)\n- Detail-Modal bei Klick auf Artifact (voller Content, verknüpfter Task/Epic)\n\n**Bestehende API-Referenz:**\n- `backend/app/routers/learning.py` — 12 Filter-Parameter, Paginierung\n- `backend/app/services/learning_artifacts.py` — Artifact-Management\n- `frontend/src/api/index.ts` — API-Client erweitern um getLearningArtifacts() + getLearningStats()",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "LearningArtifactsView.vue existiert und ist über Router erreichbar",
+      "Alle 4 Filter (role, type, status, confidence) funktionieren",
+      "Statistik-Panel zeigt Aggregat-Daten aus /api/learning/stats",
+      "Paginierung funktioniert (limit/offset)",
+      "Confidence-Badge ist farbkodiert",
+      "API-Client Methoden getLearningArtifacts() und getLearningStats() in api/index.ts"
+    ]
+  },
+  "tags": ["frontend", "audit", "learning"],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

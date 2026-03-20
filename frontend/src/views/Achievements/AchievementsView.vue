@@ -221,14 +221,14 @@ onMounted(() => loadAchievements())
   flex: 1;
   height: 10px;
   background: var(--color-surface-raised);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   background: var(--color-accent);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   transition: width 0.8s ease;
 }
 
@@ -310,7 +310,7 @@ onMounted(() => loadAchievements())
 }
 
 .badge-icon {
-  font-size: 28px;
+  font-size: var(--font-size-2xl);
 }
 
 .badge-title {
@@ -321,7 +321,7 @@ onMounted(() => loadAchievements())
 }
 
 .badge-desc {
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
 }
 
@@ -329,7 +329,7 @@ onMounted(() => loadAchievements())
   position: absolute;
   top: var(--space-1);
   right: var(--space-1);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
 }
 
 /* EXP Log */

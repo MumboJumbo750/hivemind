@@ -87,7 +87,7 @@ function dotClass(status: KpiStatus): string {
 
 .kpi-card__status {
   margin-left: auto;
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
   letter-spacing: 0.06em;
   color: var(--color-text-muted);

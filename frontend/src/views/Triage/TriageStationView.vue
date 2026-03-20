@@ -665,14 +665,14 @@ onUnmounted(() => {
 }
 
 .triage-header h1 {
-  font-size: 1.5rem;
+  font-size: var(--font-size-2xl);
   color: var(--color-text);
   margin: 0;
 }
 
 .triage-count {
   color: var(--color-text-muted);
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
 }
 
 .triage-tabs {
@@ -689,8 +689,8 @@ onUnmounted(() => {
   color: var(--color-text-muted);
   padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   cursor: pointer;
-  border-radius: 4px;
-  font-size: 0.875rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
   transition: all 150ms;
 }
 
@@ -723,16 +723,16 @@ onUnmounted(() => {
 }
 
 .source-badge {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-sm);
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.badge-youtrack { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-.badge-sentry { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.badge-youtrack { background: var(--color-info-20); color: var(--primitive-blue-400); }
+.badge-sentry { background: var(--color-danger-20); color: var(--primitive-red-400); }
 .badge-federation { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
 .badge-default { background: var(--color-surface-alt); color: var(--color-text-muted); }
 
@@ -748,36 +748,36 @@ onUnmounted(() => {
 
 .item-project {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: var(--font-size-2xs);
   color: var(--color-accent);
   border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
-  border-radius: 4px;
-  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-0-5) var(--space-1-5);
 }
 
 .item-entity {
   color: var(--color-text-muted);
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
 }
 
 .item-time {
   color: var(--color-text-muted);
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   white-space: nowrap;
 }
 
 .routing-badge {
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 3px;
+  font-size: var(--font-size-2xs);
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: var(--radius-xs);
   font-weight: 600;
   text-transform: uppercase;
 }
 
-.state-unrouted { background: rgba(255, 176, 32, 0.2); color: var(--color-warning); }
-.state-routed { background: rgba(60, 255, 154, 0.2); color: var(--color-success); }
+.state-unrouted { background: var(--color-warning-20); color: var(--color-warning); }
+.state-routed { background: var(--color-success-20); color: var(--color-success); }
 .state-ignored { background: var(--color-surface-alt); color: var(--color-text-muted); }
-.state-escalated { background: rgba(255, 77, 109, 0.2); color: var(--color-danger); }
+.state-escalated { background: var(--color-danger-20); color: var(--color-danger); }
 
 .item-actions {
   display: flex;
@@ -788,31 +788,31 @@ onUnmounted(() => {
   margin-top: var(--space-2, 0.5rem);
   padding: var(--space-2, 0.5rem);
   background: var(--color-bg);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .item-reason {
   margin-top: var(--space-2, 0.5rem);
   color: var(--color-warning);
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
 }
 
 .item-payload code {
-  font-size: 0.7rem;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
   white-space: pre-wrap;
   word-break: break-all;
 }
 
 .btn {
-  padding: 6px 12px;
+  padding: var(--space-1-5) var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   transition: all 150ms;
 }
 
@@ -823,7 +823,7 @@ onUnmounted(() => {
 .btn-ignore { border-color: var(--color-text-muted); color: var(--color-text-muted); }
 .btn-primary { background: var(--color-accent); color: var(--color-bg); border-color: var(--color-accent); }
 .btn-danger { background: var(--color-danger); color: white; border-color: var(--color-danger); }
-.btn-load-more { width: 100%; padding: 10px; text-align: center; }
+.btn-load-more { width: 100%; padding: var(--space-2-5); text-align: center; }
 
 .triage-loading, .triage-empty, .triage-error {
   text-align: center;
@@ -841,17 +841,17 @@ onUnmounted(() => {
 
 .field-label {
   color: var(--color-text);
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
   font-weight: 500;
 }
 
 .field-select, .field-textarea {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--color-text);
-  padding: 8px;
-  font-size: 0.875rem;
+  padding: var(--space-2);
+  font-size: var(--font-size-sm);
   width: 100%;
 }
 
@@ -877,10 +877,10 @@ onUnmounted(() => {
 .proposal-badge-count {
   background: var(--color-accent);
   color: var(--color-bg);
-  border-radius: 10px;
-  font-size: 10px;
-  padding: 1px 6px;
-  margin-left: 4px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-2xs);
+  padding: 1px var(--space-1-5);
+  margin-left: var(--space-1);
   font-weight: 700;
 }
 
@@ -933,15 +933,15 @@ onUnmounted(() => {
 }
 
 .proposal-state {
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-xs);
   text-transform: uppercase;
 }
-.badge-proposed { background: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
-.badge-accepted { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); }
-.badge-rejected { background: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
+.badge-proposed { background: var(--color-warning-20); color: var(--color-warning); }
+.badge-accepted { background: var(--color-success-20); color: var(--color-success); }
+.badge-rejected { background: var(--color-danger-20); color: var(--color-danger); }
 
 .proposal-rationale {
   font-size: var(--font-size-sm);
@@ -953,28 +953,28 @@ onUnmounted(() => {
 .proposal-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: flex-start;
 }
 
 .dep-tag {
   font-size: var(--font-size-xs);
   font-family: var(--font-mono);
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-10);
   color: var(--color-accent);
   white-space: nowrap;
 }
 .dep-tag--rejected {
-  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+  background: var(--color-danger-10);
   color: var(--color-danger);
 }
 
 .dep-warning {
-  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  background: var(--color-danger-10);
   border: 1px solid var(--color-danger);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   font-size: var(--font-size-xs);
   color: var(--color-danger);
@@ -1020,7 +1020,7 @@ onUnmounted(() => {
 }
 
 .dep-state {
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   opacity: 0.7;
 }
 
@@ -1072,11 +1072,11 @@ onUnmounted(() => {
 }
 
 .qa-badge {
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
-  padding: 1px 6px;
-  border-radius: 3px;
-  background: rgba(255, 77, 109, 0.15);
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-xs);
+  background: var(--color-danger-10);
   color: var(--color-danger);
 }
 
@@ -1109,45 +1109,45 @@ onUnmounted(() => {
 }
 
 .dr-state {
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-xs);
   text-transform: uppercase;
   font-weight: 600;
 }
-.dr-state--open { background: rgba(255, 176, 32, 0.2); color: var(--color-warning); }
-.dr-state--resolved { background: rgba(60, 255, 154, 0.2); color: var(--color-success); }
-.dr-state--expired { background: rgba(255, 77, 109, 0.2); color: var(--color-danger); }
+.dr-state--open { background: var(--color-warning-20); color: var(--color-warning); }
+.dr-state--resolved { background: var(--color-success-20); color: var(--color-success); }
+.dr-state--expired { background: var(--color-danger-20); color: var(--color-danger); }
 
 .escalated-badge-count {
   background: var(--color-danger);
   color: white;
-  border-radius: 10px;
-  font-size: 10px;
-  padding: 1px 6px;
-  margin-left: 4px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-2xs);
+  padding: 1px var(--space-1-5);
+  margin-left: var(--space-1);
   font-weight: 700;
 }
 
 .decision-badge-count {
   background: var(--color-warning);
   color: var(--color-bg);
-  border-radius: 10px;
-  font-size: 10px;
-  padding: 1px 6px;
-  margin-left: 4px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-2xs);
+  padding: 1px var(--space-1-5);
+  margin-left: var(--space-1);
   font-weight: 700;
 }
 
 .dlq-badge-count {
-  background: color-mix(in srgb, var(--color-success) 30%, transparent);
+  background: var(--color-success-20);
   color: var(--color-success);
   border: 1px solid color-mix(in srgb, var(--color-success) 55%, transparent);
-  border-radius: 10px;
-  font-size: 10px;
-  padding: 1px 6px;
-  margin-left: 4px;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-2xs);
+  padding: 1px var(--space-1-5);
+  margin-left: var(--space-1);
   font-weight: 700;
 }
 </style>

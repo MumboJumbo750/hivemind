@@ -127,6 +127,11 @@ make rebuild-fe        # rebuild frontend image (only needed after Dockerfile ch
 | `HIVEMIND_TOKEN_BUDGET` | `8000` | Max tokens per context assembly |
 | `HIVEMIND_ROUTING_THRESHOLD` | `0.85` | pgvector similarity threshold |
 | `HIVEMIND_DLQ_MAX_ATTEMPTS` | `5` | Dead letter queue retry limit |
+| `HIVEMIND_AUTO_REVIEW_GRACE_MINUTES` | `30` | Grace period before auto-approved reviews finalize |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_ENABLED` | `false` | Enables adaptive review governance promotion/demotion |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_MIN_CONSECUTIVE_APPROVES` | `10` | Required consecutive approve recommendations for promotion |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_MIN_CONFIDENCE` | `0.9` | Minimum confidence per recommendation for promotion |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_EVALUATION_WINDOW_DAYS` | `30` | Review history window used for promotion |
 | `AUDIT_RETENTION_DAYS` | `90` | Audit log retention in days |
 
 ---

@@ -9,6 +9,7 @@ import SyncStatusPanel from '../../components/SyncStatusPanel.vue'
 import AiProviderConfigPanel from '../../components/domain/AiProviderConfigPanel.vue'
 import GovernanceConfigPanel from '../../components/domain/GovernanceConfigPanel.vue'
 import McpBridgeConfigPanel from '../../components/domain/McpBridgeConfigPanel.vue'
+import DispatchPoliciesPanel from '../../components/domain/DispatchPoliciesPanel.vue'
 import { api } from '../../api'
 import type { AuditEntry } from '../../api/types'
 
@@ -16,7 +17,7 @@ const { currentTheme, availableThemes, setTheme } = useTheme()
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
 
-const activeTab = ref<'settings' | 'integrations' | 'sync' | 'audit' | 'ai-providers' | 'governance' | 'mcp-bridges'>('settings')
+const activeTab = ref<'settings' | 'integrations' | 'sync' | 'audit' | 'ai-providers' | 'governance' | 'mcp-bridges' | 'dispatch-policies'>('settings')
 const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 // ── Audit Log state ──────────────────────────────────────────────────────────
@@ -204,6 +205,11 @@ onMounted(() => {
         :class="{ 'settings-tab--active': activeTab === 'governance' }"
         @click="activeTab = 'governance'"
       >Governance</button>
+      <button
+        class="settings-tab"
+        :class="{ 'settings-tab--active': activeTab === 'dispatch-policies' }"
+        @click="activeTab = 'dispatch-policies'"
+      >Dispatch Policies</button>
       <button
         v-if="isAdmin"
         class="settings-tab"
@@ -441,6 +447,15 @@ onMounted(() => {
       </section>
     </template>
 
+    <!-- ═══ Dispatch Policies Tab ═══ -->
+    <template v-if="activeTab === 'dispatch-policies'">
+      <section class="settings-section">
+        <h2 class="section-title">Dispatch Policies</h2>
+        <p class="section-desc">Konfiguriere Rate Limits, Token-Budgets und Parallelitäts-Grenzen pro Agenten-Rolle.</p>
+        <DispatchPoliciesPanel />
+      </section>
+    </template>
+
     <!-- ═══ MCP Bridges Tab (Admin only) ═══ -->
     <template v-if="activeTab === 'mcp-bridges' && isAdmin">
       <section class="settings-section">
@@ -547,7 +562,7 @@ onMounted(() => {
 .mode-btn--active { border-color: var(--color-accent); }
 .mode-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.mode-btn__icon { font-size: 24px; }
+.mode-btn__icon { font-size: var(--font-size-2xl); }
 .mode-btn__label { font-size: var(--font-size-sm); color: var(--color-text); font-family: var(--font-mono); }
 
 /* Info row */
@@ -631,7 +646,7 @@ onMounted(() => {
 .audit-filter-group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .audit-filter-label {
@@ -667,7 +682,7 @@ onMounted(() => {
 .btn-filter-clear:hover { color: var(--color-danger); border-color: var(--color-danger); }
 
 .btn-export {
-  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  background: var(--color-accent-10);
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-sm);
   color: var(--color-accent);
@@ -676,7 +691,7 @@ onMounted(() => {
   padding: var(--space-1) var(--space-3);
   cursor: pointer;
 }
-.btn-export:hover { background: color-mix(in srgb, var(--color-accent) 25%, transparent); }
+.btn-export:hover { background: var(--color-accent-20); }
 
 .audit-loading {
   color: var(--color-text-muted);
@@ -714,7 +729,7 @@ onMounted(() => {
 .audit-table th {
   text-align: left;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   text-transform: uppercase;
   color: var(--color-text-muted);
   padding: var(--space-2) var(--space-2);
@@ -752,7 +767,7 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
 }
 
@@ -760,15 +775,15 @@ onMounted(() => {
   background: color-mix(in srgb, var(--color-accent-2) 15%, transparent);
   color: var(--color-accent-2);
   font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 3px;
+  font-size: var(--font-size-2xs);
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-xs);
   white-space: nowrap;
 }
 
 .audit-entity-type {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
   text-transform: uppercase;
 }
@@ -776,20 +791,20 @@ onMounted(() => {
 .audit-entity-key {
   display: block;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: var(--color-accent);
   cursor: pointer;
 }
 
 .audit-status {
   font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 3px;
+  font-size: var(--font-size-2xs);
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-xs);
 }
-.audit-status--success { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); }
-.audit-status--error { background: color-mix(in srgb, var(--color-danger) 20%, transparent); color: var(--color-danger); }
-.audit-status--pending { background: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
+.audit-status--success { background: var(--color-success-20); color: var(--color-success); }
+.audit-status--error { background: var(--color-danger-20); color: var(--color-danger); }
+.audit-status--pending { background: var(--color-warning-20); color: var(--color-warning); }
 
 /* Expand row */
 .audit-expand-row td {
@@ -827,7 +842,7 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text);
   overflow-x: auto;
   max-height: 200px;
@@ -854,7 +869,7 @@ onMounted(() => {
 
 .audit-pagination__btns {
   display: flex;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .btn-page {
@@ -878,6 +893,6 @@ onMounted(() => {
 @media (max-width: 768px) {
   .settings-view { max-width: 100%; }
   .audit-filters { flex-direction: column; }
-  .audit-table-wrap { font-size: 10px; }
+  .audit-table-wrap { font-size: var(--font-size-2xs); }
 }
 </style>

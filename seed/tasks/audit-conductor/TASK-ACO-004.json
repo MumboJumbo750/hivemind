@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-ACO-004",
+  "epic_ref": "EPIC-AUDIT-CONDUCTOR",
+  "title": "Optionale Governance Auto-Promotion (assisted→auto)",
+  "description": "Governance-Levels sind aktuell statisch konfiguriert. Adaptive Promotion von `assisted` zu `auto` bei konsistent guten Ergebnissen soll optional möglich sein.\n\n**Design:**\n- Neues AppSettings-Feld: `governance_auto_promotion_enabled` (default: false)\n- Promotion-Kriterien (konfigurierbar):\n  - `min_consecutive_approves`: 10 (konsekutive AI-Reviews ohne Veto)\n  - `min_confidence`: 0.9 (durchschnittliche Confidence)\n  - `evaluation_window`: 30 Tage\n- Bei Erfüllung: Governance-Level für betroffenen Type wird auf `auto` gesetzt\n- Logging: INFO-Level bei Promotion + Notification an Admin\n- Demotion: Bei einem Veto → zurück auf `assisted`\n\n**Dateien:**\n- `backend/app/services/conductor.py:968-975` — Governance Outcome Tracking\n- `backend/app/config.py` — Neue Settings\n- Neuer Service oder Funktion: `_evaluate_governance_promotion(governance_type, db)`",
+  "state": "incoming",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "governance_auto_promotion_enabled Setting existiert (default: false)",
+      "Promotion-Kriterien konfigurierbar (min_consecutive_approves, min_confidence, evaluation_window)",
+      "Bei Erfüllung wird Governance-Level automatisch auf auto gesetzt",
+      "Bei Veto wird Level auf assisted zurückgesetzt (Demotion)",
+      "Admin-Notification bei Promotion/Demotion",
+      "Feature ist per Default deaktiviert — kein Breaking Change"
+    ]
+  },
+  "tags": ["backend", "audit", "governance", "conductor", "adaptive"],
+  "pinned_skills": [],
+  "linked_wiki": ["autonomie-loop"],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

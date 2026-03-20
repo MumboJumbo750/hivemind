@@ -305,8 +305,8 @@ onUnmounted(() => {
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
   font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--color-danger) 15%, transparent);
   color: var(--color-danger);
   text-transform: uppercase;
@@ -361,7 +361,7 @@ onUnmounted(() => {
 }
 
 .dlq-btn {
-  padding: 4px 12px;
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
   font-family: var(--font-mono);

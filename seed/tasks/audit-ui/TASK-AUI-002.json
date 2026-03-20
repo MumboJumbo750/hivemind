@@ -1,0 +1,25 @@
+{
+  "external_id": "TASK-AUI-002",
+  "epic_ref": "EPIC-AUDIT-UI",
+  "title": "Dispatch Policies Konfiguration in Settings View",
+  "description": "Dispatch Policies CRUD-UI als Unterseite der Settings-View integrieren.\n\n**Features:**\n- Tabelle mit allen 7 Agent-Rollen und ihren aktuellen Policies\n- Inline-Editing für: preferred_execution_mode, rpm_limit, token_budget, max_parallel, cooldown_seconds, enabled\n- Fallback-Chain als sortierbare Chip-Liste\n- Live-Status pro Rolle: aktive Dispatches (aus GET /api/dispatch/policies/status)\n- Reset-Button pro Rolle (DELETE → zurück auf Defaults)\n- Visuelles Feedback bei Speichern (Toast)\n\n**Bestehende API-Referenz:**\n- `backend/app/routers/dispatch_policies.py` (176 LOC) — GET/PUT/DELETE pro Rolle\n- Defaults in `backend/app/services/dispatch_policy.py:72-136`",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Dispatch Policies Section in SettingsView.vue sichtbar",
+      "Alle 7 Rollen mit ihren Policies aufgelistet",
+      "Inline-Editing für rpm_limit, token_budget, max_parallel, cooldown_seconds",
+      "Execution Mode Dropdown (local/ide/github_actions/byoai)",
+      "Live-Status Badge (aktive Dispatches pro Rolle)",
+      "Reset-to-Defaults Button funktioniert",
+      "Toast bei erfolgreichem Speichern"
+    ]
+  },
+  "tags": ["frontend", "audit", "settings", "dispatch-policy"],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

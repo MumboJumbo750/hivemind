@@ -1023,7 +1023,7 @@ onUnmounted(() => {
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
-  padding: 2px var(--space-2);
+  padding: var(--space-0-5) var(--space-2);
   cursor: pointer;
   transition: all var(--transition-duration) ease;
 }
@@ -1096,7 +1096,7 @@ onUnmounted(() => {
 }
 
 .task-nav__hint-state {
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
   letter-spacing: 0.04em;
   opacity: 0.7;
@@ -1159,7 +1159,7 @@ onUnmounted(() => {
 .qa-failed-reason__label {
   display: block;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--color-danger);
@@ -1331,12 +1331,12 @@ onUnmounted(() => {
 .auto-stat {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .auto-stat__label {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--color-text-muted);
@@ -1355,7 +1355,7 @@ onUnmounted(() => {
 
 .auto-dispatches__label {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--color-text-muted);
@@ -1373,7 +1373,7 @@ onUnmounted(() => {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .dispatch-item {
@@ -1392,11 +1392,11 @@ onUnmounted(() => {
 }
 
 .dispatch-status {
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-xs);
 }
 .dispatch-status--success,
 .dispatch-status--done { background: var(--color-success); color: var(--color-bg); }
@@ -1485,8 +1485,8 @@ onUnmounted(() => {
   border: none;
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 16px;
-  padding: 2px 6px;
+  font-size: var(--font-size-base);
+  padding: var(--space-0-5) var(--space-1-5);
 }
 
 .execute-result__dismiss:hover {
@@ -1516,8 +1516,8 @@ onUnmounted(() => {
 .execute-result__tools code {
   font-family: var(--font-mono);
   background: color-mix(in srgb, var(--color-text) 8%, transparent);
-  padding: 1px 4px;
-  border-radius: 3px;
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-xs);
 }
 
 .execute-result__tokens {

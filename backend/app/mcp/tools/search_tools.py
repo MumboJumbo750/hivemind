@@ -1,6 +1,9 @@
 """MCP tools for semantic similarity search via pgvector."""
 from __future__ import annotations
 
+import json
+
+from mcp.types import TextContent
 from mcp.types import Tool
 
 from app.db import AsyncSessionLocal
@@ -10,11 +13,11 @@ from app.services.embedding_service import get_embedding_service
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-SEARCHABLE_TABLES = {"skills", "wiki_articles", "epics", "docs"}
+SEARCHABLE_TABLES = {"skills", "wiki_articles", "epics", "docs", "memory_entries", "memory_summaries"}
 
 
-def _json_response(data: list) -> list[dict]:
-    return [{"type": "text", "text": str(data)}]
+def _json_response(data: list) -> list[TextContent]:
+    return [TextContent(type="text", text=json.dumps(data, default=str))]
 
 
 # ── Tool: semantic_search ────────────────────────────────────────────────────
@@ -36,7 +39,7 @@ register_tool(
                 },
                 "table": {
                     "type": "string",
-                    "description": "Table to search: skills, wiki_articles, epics, docs",
+                    "description": "Table to search: skills, wiki_articles, epics, docs, memory_entries, memory_summaries",
                     "enum": list(SEARCHABLE_TABLES),
                 },
                 "limit": {
@@ -58,7 +61,7 @@ async def _handle_semantic_search(args: dict) -> list[dict]:
     limit = args.get("limit", 5)
 
     if table not in SEARCHABLE_TABLES:
-        return [{"type": "text", "text": f"Invalid table: {table}"}]
+        return [TextContent(type="text", text=f"Invalid table: {table}")]
 
     svc = get_embedding_service()
     async with AsyncSessionLocal() as db:
@@ -66,10 +69,10 @@ async def _handle_semantic_search(args: dict) -> list[dict]:
 
     if not results:
         return [
-            {
-                "type": "text",
-                "text": "No results — embeddings may be unavailable (Ollama down or circuit-breaker open)",
-            }
+            TextContent(
+                type="text",
+                text="No results — embeddings may be unavailable (Ollama down or circuit-breaker open)",
+            )
         ]
 
     return _json_response(results)

@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-ACO-003",
+  "epic_ref": "EPIC-AUDIT-CONDUCTOR",
+  "title": "Transient-Error Retry im Local Dispatch Mode",
+  "description": "Im Local Dispatch Mode führen einmalige Fehler (Timeout, Connection Reset) sofort zum Fallback auf BYOAI (`conductor.py:925-954`). Ein einziger Retry mit kurzem Backoff würde transiente Fehler abfangen.\n\n**Änderung:**\n- In `conductor.py:851-1016` (Local Mode Block):\n  - Ersten Versuch in try/except wrappen\n  - Bei transienten Exceptions (TimeoutError, ConnectionError, aiohttp.ClientError): 1x Retry nach 2s\n  - Bei permanenten Exceptions (AuthenticationError, ValueError): sofort Fallback\n  - Transient-Retry im dispatch_status dokumentieren: `\"retry_reason\": \"transient_error\"`\n\n**Abgrenzung:** AI Provider hat bereits eigenen Exponential Backoff für HTTP 429/503. Dieser Retry ist auf Conductor-Ebene für Infrastruktur-Fehler (DNS, Socket, etc.).",
+  "state": "incoming",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "Local Dispatch hat 1x Retry bei transienten Fehlern (Timeout, ConnectionError)",
+      "Retry-Backoff: 2 Sekunden",
+      "Permanente Fehler (Auth, ValueError) gehen direkt zum Fallback",
+      "Retry-Reason wird in dispatch_status dokumentiert",
+      "Unit-Test: TimeoutError → Retry → Success"
+    ]
+  },
+  "tags": ["backend", "audit", "conductor", "retry", "robustness"],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

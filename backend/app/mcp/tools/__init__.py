@@ -24,3 +24,5 @@ import app.mcp.tools.triage_tools  # noqa: F401
 import app.mcp.tools.worker_write_tools  # noqa: F401
 import app.mcp.tools.write_tools  # noqa: F401
 import app.mcp.tools.learning_tools  # noqa: F401
+import app.mcp.tools.memory_tools  # noqa: F401
+import app.mcp.tools.exec_tools  # noqa: F401

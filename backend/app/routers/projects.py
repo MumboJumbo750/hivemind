@@ -70,7 +70,7 @@ async def list_members(
     db: AsyncSession = Depends(get_db),
 ) -> list[ProjectMemberResponse]:
     svc = ProjectService(db)
-    return await svc.list_members(project_id)  # type: ignore[return-value]
+    return await svc.list_members(project_id)
 
 
 @router.post(

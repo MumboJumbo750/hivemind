@@ -12,7 +12,7 @@ from mcp.types import TextContent, Tool
 
 from app.db import AsyncSessionLocal
 from app.mcp.server import register_tool
-from app.services.prompt_generator import PromptGenerator, count_tokens
+from app.services.prompt_generator import PromptGenerator, count_tokens, minify_prompt
 
 
 async def _handle_get_prompt(args: dict) -> list[TextContent]:
@@ -59,6 +59,7 @@ async def _handle_get_prompt(args: dict) -> list[TextContent]:
             await db.commit()
 
             tokens = count_tokens(prompt)
+            minified_tokens = count_tokens(minify_prompt(prompt))
             return [TextContent(
                 type="text",
                 text=json.dumps({
@@ -66,6 +67,7 @@ async def _handle_get_prompt(args: dict) -> list[TextContent]:
                         "prompt_type": prompt_type,
                         "prompt": prompt,
                         "token_count": tokens,
+                        "token_count_minified": minified_tokens if minified_tokens < tokens else None,
                     }
                 }, default=str),
             )]

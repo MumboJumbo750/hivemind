@@ -27,3 +27,4 @@ from app.models.epic_run_artifact import EpicRunArtifact  # noqa: F401
 from app.models.review import ReviewRecommendation  # noqa: F401
 from app.models.governance_recommendation import GovernanceRecommendation  # noqa: F401
 from app.models.learning_artifact import LearningArtifact  # noqa: F401
+from app.models.memory import MemoryEntry, MemoryFact, MemorySession, MemorySummary  # noqa: F401

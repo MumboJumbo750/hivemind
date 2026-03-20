@@ -180,16 +180,16 @@ function close() {
 }
 
 .dr-state {
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
-  padding: 2px 8px;
-  border-radius: 3px;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-xs);
   text-transform: uppercase;
   font-weight: 600;
 }
-.dr-state--open { background: rgba(255, 176, 32, 0.2); color: var(--color-warning); }
-.dr-state--resolved { background: rgba(60, 255, 154, 0.2); color: var(--color-success); }
-.dr-state--expired { background: rgba(255, 77, 109, 0.2); color: var(--color-danger); }
+.dr-state--open { background: var(--color-warning-20); color: var(--color-warning); }
+.dr-state--resolved { background: var(--color-success-20); color: var(--color-success); }
+.dr-state--expired { background: var(--color-danger-20); color: var(--color-danger); }
 
 .dr-dialog__owners {
   display: flex;
@@ -199,19 +199,19 @@ function close() {
   color: var(--color-text-muted);
 }
 .dr-owner, .dr-backup-owner {
-  padding: 2px 6px;
-  background: var(--color-surface-alt, rgba(255,255,255,0.05));
-  border-radius: 3px;
+  padding: var(--space-0-5) var(--space-1-5);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-xs);
 }
 .dr-no-backup {
   color: var(--color-text-muted);
   font-style: italic;
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
 }
 
 .dr-dialog__question {
   font-family: var(--font-heading);
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
   color: var(--color-text);
   margin: 0;
 }
@@ -247,7 +247,7 @@ function close() {
   gap: var(--space-2, 0.5rem);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
   cursor: pointer;
   color: var(--color-text);
@@ -267,7 +267,7 @@ function close() {
 
 .dr-option__radio {
   color: var(--color-accent);
-  font-size: 14px;
+  font-size: var(--font-size-sm);
 }
 
 .dr-dialog__freetext {
@@ -285,20 +285,20 @@ function close() {
 .field-input {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--color-text);
-  padding: 8px;
-  font-size: 0.875rem;
+  padding: var(--space-2);
+  font-size: var(--font-size-sm);
   width: 100%;
 }
 
 .field-textarea {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--color-text);
-  padding: 8px;
-  font-size: 0.875rem;
+  padding: var(--space-2);
+  font-size: var(--font-size-sm);
   width: 100%;
   resize: vertical;
   font-family: inherit;
@@ -309,17 +309,17 @@ function close() {
   font-size: var(--font-size-sm);
   padding: var(--space-2, 0.5rem);
   background: color-mix(in srgb, var(--color-danger) 10%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .btn {
-  padding: 6px 12px;
+  padding: var(--space-1-5) var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   transition: all 150ms;
 }
 .btn:hover { background: var(--color-surface-alt); }

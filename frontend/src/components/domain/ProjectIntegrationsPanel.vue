@@ -364,13 +364,13 @@ onMounted(async () => {
 .meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .badge {
-  border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 10px;
+  border-radius: var(--radius-full);
+  padding: var(--space-0-5) var(--space-2);
+  font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
   text-transform: uppercase;
 }

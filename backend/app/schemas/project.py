@@ -69,6 +69,7 @@ class ProjectMemberResponse(BaseModel):
     project_id: uuid.UUID
     user_id: uuid.UUID
     role: str
+    username: str | None = None
 
     model_config = {"from_attributes": True}
 

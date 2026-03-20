@@ -84,7 +84,7 @@ async function handleLogout() {
 }
 
 .actor-badge__role {
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-family: var(--font-mono);
@@ -104,7 +104,7 @@ async function handleLogout() {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-  z-index: 100;
+  z-index: var(--z-tooltip);
   margin-top: var(--space-1);
 }
 

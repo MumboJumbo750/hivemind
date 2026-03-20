@@ -25,12 +25,14 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-EMBEDDABLE_TABLES = {"skills", "wiki_articles", "epics", "docs", "code_nodes", "sync_outbox"}
+EMBEDDABLE_TABLES = {"skills", "wiki_articles", "epics", "docs", "code_nodes", "sync_outbox", "memory_entries", "memory_summaries"}
 EMBEDDING_TEXT_COLS: dict[str, str] = {
     "epics": "COALESCE(title, '') || ' ' || COALESCE(description, '')",
     "skills": "COALESCE(title, '') || ' ' || COALESCE(content, '')",
     "wiki_articles": "COALESCE(title, '') || ' ' || COALESCE(content, '')",
     "docs": "COALESCE(title, '') || ' ' || COALESCE(content, '')",
+    "memory_entries": "COALESCE(content, '') || ' ' || COALESCE(array_to_string(tags, ' '), '')",
+    "memory_summaries": "COALESCE(content, '') || ' ' || COALESCE(array_to_string(open_questions, ' '), '')",
 }
 
 
@@ -392,24 +394,37 @@ class EmbeddingService:
         if query_embedding is None:
             return []
 
+        explicit_candidates = candidate_ids is not None
         candidate_ids = [str(candidate_id) for candidate_id in (candidate_ids or []) if str(candidate_id)]
-        stmt = text(f"""
-            SELECT id, 1 - (embedding <=> CAST(:query AS vector)) AS similarity
-            FROM {table}
-            WHERE embedding IS NOT NULL
-              AND (:candidate_filter = FALSE OR id::text IN :candidate_ids)
-            ORDER BY embedding <=> CAST(:query AS vector)
-            LIMIT :limit
-        """).bindparams(bindparam("candidate_ids", expanding=True))
-        result = await db.execute(
-            stmt,
-            {
+        if explicit_candidates and not candidate_ids:
+            return []
+        if candidate_ids:
+            stmt = text(f"""
+                SELECT id, 1 - (embedding <=> CAST(:query AS vector)) AS similarity
+                FROM {table}
+                WHERE embedding IS NOT NULL
+                  AND id::text IN :candidate_ids
+                ORDER BY embedding <=> CAST(:query AS vector)
+                LIMIT :limit
+            """).bindparams(bindparam("candidate_ids", expanding=True))
+            params = {
                 "query": str(query_embedding),
                 "limit": limit,
-                "candidate_filter": bool(candidate_ids),
                 "candidate_ids": candidate_ids,
-            },
-        )
+            }
+        else:
+            stmt = text(f"""
+                SELECT id, 1 - (embedding <=> CAST(:query AS vector)) AS similarity
+                FROM {table}
+                WHERE embedding IS NOT NULL
+                ORDER BY embedding <=> CAST(:query AS vector)
+                LIMIT :limit
+            """)
+            params = {
+                "query": str(query_embedding),
+                "limit": limit,
+            }
+        result = await db.execute(stmt, params)
         return [{"id": str(row.id), "similarity": float(row.similarity)} for row in result]
 
     async def embed_query(self, text_input: str) -> list[float] | None:

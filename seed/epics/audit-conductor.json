@@ -1,0 +1,12 @@
+{
+  "external_id": "EPIC-AUDIT-CONDUCTOR",
+  "title": "Audit: Conductor Orchestration Fixes",
+  "description": "Der Conductor-Orchestrator hat funktionale Lücken: fehlender merge_subtasks Prompt-Type, Governance-Bypass bei Epic Run Batch-Dispatches (skip_conductor), kein Retry bei transienten Fehlern im Local-Mode, und keine adaptive Governance-Promotion.\n\nQuelle: Workflow-Dispatch-Audit 2026-03-08 (Findings C-1 bis C-4)",
+  "state": "incoming",
+  "priority": "medium",
+  "sla_deadline": null,
+  "definition_of_done": "merge_subtasks implementiert oder explizit aus Design entfernt, Epic Run Scheduler prüft Governance trotz skip_conductor, Local Dispatch hat 1x Retry bei transienten Fehlern, Governance Auto-Promotion ist optional konfigurierbar.",
+  "tags": ["backend", "audit", "conductor", "governance", "orchestration"],
+  "depends_on": ["EPIC-PHASE-8"],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md"
+}

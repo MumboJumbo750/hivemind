@@ -1,4 +1,4 @@
-import type { Project, ProjectIntegration, Epic, EpicRun, EpicRunArtifact, EpicStartResponse, Task, Skill, SkillForkResponse, SkillListResponse, SkillVersion, ContextBoundary, EpicProposal, EpicProposalListResponse, RequirementDraftResponse, NodeIdentity, PeerNode, FederationSettings, TriageItem, McpToolResponse, AuditListResponse, HivemindNotification, SyncStatusResponse, NodeBugCountItem, KpiSummaryResponse, KpiHistoryResponse, NexusGraph3DResponse, DeadLetterListResponse, ReviewRecommendation, AiProviderConfig, AiModelInfo, AiCredential, GovernanceConfig, McpBridge, McpBridgeTool } from './types'
+import type { Project, ProjectIntegration, Epic, EpicRun, EpicRunArtifact, EpicStartResponse, Task, Skill, SkillForkResponse, SkillListResponse, SkillVersion, ContextBoundary, EpicProposal, EpicProposalListResponse, RequirementDraftResponse, NodeIdentity, PeerNode, FederationSettings, TriageItem, McpToolResponse, AuditListResponse, HivemindNotification, SyncStatusResponse, NodeBugCountItem, KpiSummaryResponse, KpiHistoryResponse, NexusGraph3DResponse, DeadLetterListResponse, ReviewRecommendation, AiProviderConfig, AiModelInfo, AiCredential, GovernanceConfig, McpBridge, McpBridgeTool, LearningListResponse, LearningStatsResponse, LearningArtifact, DispatchPolicyListResponse, DispatchPolicy, AgentSessionListResponse, GovernanceAuditListResponse, GovernanceAuditStats, MemorySessionListResponse, MemoryEntryListResponse, MemorySummaryListResponse, MemorySearchResponse } from './types'
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string) ?? 'http://localhost:8000'
 
@@ -41,6 +41,13 @@ async function request<T>(path: string, init?: RequestInit, _retry = true): Prom
     throw new Error(msg)
   }
   return res.json()
+}
+
+function parseMcpTextResult<T>(result: McpToolResponse[]): T {
+  const payload = JSON.parse(result[0]?.text ?? '{}') as { data?: T; error?: { message?: string } }
+  if (payload.error) throw new Error(payload.error.message ?? 'MCP-Tool-Fehler')
+  if (payload.data === undefined) throw new Error('MCP-Tool lieferte keine Daten zurück')
+  return payload.data
 }
 
 export interface TokenResponse {
@@ -249,6 +256,9 @@ export const api = {
 
   patchTask: (taskKey: string, patch: Partial<Task> & { expected_version?: number }) =>
     request<Task>(`/api/tasks/${taskKey}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+
+  transitionTaskState: (taskKey: string, state: string, comment?: string) =>
+    request<Task>(`/api/tasks/${taskKey}/state`, { method: 'PATCH', body: JSON.stringify({ state, comment }) }),
 
   approveTask: (taskKey: string) =>
     request<Task>(`/api/tasks/${taskKey}/review`, { method: 'POST', body: JSON.stringify({ action: 'approve' }) }),
@@ -544,6 +554,179 @@ export const api = {
 
   deleteMcpBridge: (id: string) =>
     request<void>(`/api/admin/mcp-bridges/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // ─── Learning Artifacts ─────────────────────────────────────────────────
+  getLearningArtifacts: (params?: {
+    artifact_type?: string
+    status?: string
+    agent_role?: string
+    min_confidence?: number
+    from?: string
+    to?: string
+    page?: number
+    page_size?: number
+  }) => {
+    const q = new URLSearchParams()
+    if (params?.artifact_type) q.set('artifact_type', params.artifact_type)
+    if (params?.status) q.set('status', params.status)
+    if (params?.agent_role) q.set('agent_role', params.agent_role)
+    if (params?.min_confidence !== undefined) q.set('min_confidence', String(params.min_confidence))
+    if (params?.from) q.set('from', params.from)
+    if (params?.to) q.set('to', params.to)
+    if (params?.page) q.set('page', String(params.page))
+    if (params?.page_size) q.set('page_size', String(params.page_size))
+    const qs = q.toString()
+    return request<LearningListResponse>(`/api/learning/artifacts${qs ? `?${qs}` : ''}`)
+  },
+
+  getLearningArtifact: (artifactId: string) =>
+    request<LearningArtifact>(`/api/learning/artifacts/${artifactId}`),
+
+  getLearningStats: () =>
+    request<LearningStatsResponse>('/api/learning/stats'),
+
+  // ─── Dispatch Policies ─────────────────────────────────────────────────
+  getDispatchPolicies: () =>
+    request<DispatchPolicyListResponse>('/api/dispatch/policies'),
+
+  getDispatchPoliciesStatus: () =>
+    request<DispatchPolicyListResponse>('/api/dispatch/policies/status'),
+
+  updateDispatchPolicy: (agentRole: string, data: {
+    preferred_execution_mode?: string
+    fallback_chain?: string[]
+    rpm_limit?: number
+    token_budget?: number
+    max_parallel?: number
+    cooldown_seconds?: number
+    enabled?: boolean
+  }) =>
+    request<DispatchPolicy>(`/api/dispatch/policies/${encodeURIComponent(agentRole)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  resetDispatchPolicy: (agentRole: string) =>
+    request<void>(`/api/dispatch/policies/${encodeURIComponent(agentRole)}`, { method: 'DELETE' }),
+
+  // ─── Agent Thread Sessions ─────────────────────────────────────────────
+  getAgentSessions: (params?: {
+    agent_role?: string
+    thread_policy?: string
+    status?: string
+    page?: number
+    page_size?: number
+  }) => {
+    const q = new URLSearchParams()
+    if (params?.agent_role) q.set('agent_role', params.agent_role)
+    if (params?.thread_policy) q.set('thread_policy', params.thread_policy)
+    if (params?.status) q.set('status', params.status)
+    if (params?.page) q.set('page', String(params.page))
+    if (params?.page_size) q.set('page_size', String(params.page_size))
+    const qs = q.toString()
+    return request<AgentSessionListResponse>(`/api/admin/agent-sessions${qs ? `?${qs}` : ''}`)
+  },
+
+  // ─── Governance Audit ──────────────────────────────────────────────────
+  getGovernanceAudit: (params?: {
+    governance_type?: string
+    governance_level?: string
+    status?: string
+    agent_role?: string
+    from?: string
+    to?: string
+    page?: number
+    page_size?: number
+  }) => {
+    const q = new URLSearchParams()
+    if (params?.governance_type) q.set('governance_type', params.governance_type)
+    if (params?.governance_level) q.set('governance_level', params.governance_level)
+    if (params?.status) q.set('status', params.status)
+    if (params?.agent_role) q.set('agent_role', params.agent_role)
+    if (params?.from) q.set('from', params.from)
+    if (params?.to) q.set('to', params.to)
+    if (params?.page) q.set('page', String(params.page))
+    if (params?.page_size) q.set('page_size', String(params.page_size))
+    const qs = q.toString()
+    return request<GovernanceAuditListResponse>(`/api/admin/governance/audit${qs ? `?${qs}` : ''}`)
+  },
+
+  getGovernanceAuditStats: () =>
+    request<GovernanceAuditStats>('/api/admin/governance/stats'),
+
+  // ─── Memory Ledger ─────────────────────────────────────────────────────
+  getMemorySessions: (params?: {
+    agent_role?: string
+    scope?: string
+    scope_id?: string
+    page?: number
+    page_size?: number
+  }) => {
+    const q = new URLSearchParams()
+    if (params?.agent_role) q.set('agent_role', params.agent_role)
+    if (params?.scope) q.set('scope', params.scope)
+    if (params?.scope_id) q.set('scope_id', params.scope_id)
+    if (params?.page) q.set('page', String(params.page))
+    if (params?.page_size) q.set('page_size', String(params.page_size))
+    const qs = q.toString()
+    return request<MemorySessionListResponse>(`/api/admin/memory/sessions${qs ? `?${qs}` : ''}`)
+  },
+
+  getMemoryEntries: (params?: {
+    agent_role?: string
+    scope?: string
+    scope_id?: string
+    uncovered_only?: boolean
+    page?: number
+    page_size?: number
+  }) => {
+    const q = new URLSearchParams()
+    if (params?.agent_role) q.set('agent_role', params.agent_role)
+    if (params?.scope) q.set('scope', params.scope)
+    if (params?.scope_id) q.set('scope_id', params.scope_id)
+    if (params?.uncovered_only !== undefined) q.set('uncovered_only', String(params.uncovered_only))
+    if (params?.page) q.set('page', String(params.page))
+    if (params?.page_size) q.set('page_size', String(params.page_size))
+    const qs = q.toString()
+    return request<MemoryEntryListResponse>(`/api/admin/memory/entries${qs ? `?${qs}` : ''}`)
+  },
+
+  getMemorySummaries: (params?: {
+    agent_role?: string
+    scope?: string
+    scope_id?: string
+    graduated?: boolean
+    page?: number
+    page_size?: number
+  }) => {
+    const q = new URLSearchParams()
+    if (params?.agent_role) q.set('agent_role', params.agent_role)
+    if (params?.scope) q.set('scope', params.scope)
+    if (params?.scope_id) q.set('scope_id', params.scope_id)
+    if (params?.graduated !== undefined) q.set('graduated', String(params.graduated))
+    if (params?.page) q.set('page', String(params.page))
+    if (params?.page_size) q.set('page_size', String(params.page_size))
+    const qs = q.toString()
+    return request<MemorySummaryListResponse>(`/api/admin/memory/summaries${qs ? `?${qs}` : ''}`)
+  },
+
+  searchMemories: async (params: {
+    query: string
+    scope?: string
+    scope_id?: string
+    level?: 'L0' | 'L1' | 'L2' | 'all'
+    tags?: string[]
+    limit?: number
+  }) => {
+    const res = await request<{ result: McpToolResponse[] }>('/api/mcp/call', {
+      method: 'POST',
+      body: JSON.stringify({
+        tool: 'hivemind-search_memories',
+        arguments: params,
+      }),
+    })
+    return parseMcpTextResult<MemorySearchResponse>(res.result)
+  },
 
   // ─── Prompt ──────────────────────────────────────────────────────────────
   getPrompt: async (type: string, taskId?: string, epicId?: string, projectId?: string) => {

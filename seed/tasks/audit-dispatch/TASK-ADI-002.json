@@ -1,0 +1,24 @@
+{
+  "external_id": "TASK-ADI-002",
+  "epic_ref": "EPIC-AUDIT-DISPATCH",
+  "title": "Circuit Breaker für AI Provider Service",
+  "description": "Circuit Breaker Pattern im AI Provider Service implementieren, um bei dauerhaften Provider-Ausfällen automatisch auf Fallback umzuschalten.\n\n**Design:**\n- Pro Provider (anthropic, openai, ollama, etc.) einen Circuit Breaker State: CLOSED → OPEN → HALF_OPEN\n- CLOSED: Normal operation\n- OPEN: Nach `failure_threshold` konsekutiven Fehlern (z.B. 5) — alle Requests werden sofort auf Fallback umgeleitet\n- HALF_OPEN: Nach `recovery_timeout` (z.B. 60s) — ein Probe-Request, bei Erfolg → CLOSED\n- Konfigurierbar via AppSettings: `circuit_breaker_failure_threshold`, `circuit_breaker_recovery_timeout`\n- Bei OPEN State: Log-Warning + automatischer Fallback auf nächsten Provider in Fallback-Chain\n\n**Dateien:**\n- `backend/app/services/ai_provider.py` — Circuit Breaker State + Logic\n- `backend/app/services/dispatch_policy.py` — Fallback-Chain Nutzung\n\n**Abgrenzung:** Bestehendes Exponential Backoff (1s→2s→4s) bleibt für einzelne Requests erhalten. Circuit Breaker wirkt auf Provider-Ebene über Requests hinweg.",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "CircuitBreaker Klasse mit States CLOSED/OPEN/HALF_OPEN implementiert",
+      "Provider wechselt nach N konsekutiven Fehlern automatisch auf Fallback",
+      "Recovery-Probe nach Timeout versucht ursprünglichen Provider",
+      "Thresholds konfigurierbar (failure_threshold, recovery_timeout)",
+      "Log-Warning bei State-Übergang CLOSED→OPEN",
+      "Unit-Tests für alle drei State-Übergänge"
+    ]
+  },
+  "tags": ["backend", "audit", "robustness", "ai-provider", "circuit-breaker"],
+  "pinned_skills": ["ai-provider-service"],
+  "linked_wiki": ["autonomie-loop"],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

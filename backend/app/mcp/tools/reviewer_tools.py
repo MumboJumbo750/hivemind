@@ -131,7 +131,10 @@ async def handle_submit_review_recommendation(
     from app.models.task import Task
     from app.models.review import ReviewRecommendation
     from app.config import settings
-    from app.services.governance import get_governance_level
+    from app.services.governance import (
+        get_governance_level,
+        maybe_auto_promote_review_governance,
+    )
     from app.services.learning_artifacts import (
         create_execution_learning_artifacts,
         create_learning_artifact,
@@ -210,6 +213,8 @@ async def handle_submit_review_recommendation(
         epic_id=str(task.epic_id) if task.epic_id else None,
         task_id=str(task.id),
     )
+    governance_promoted = await maybe_auto_promote_review_governance(db)
+    effective_governance_level = "auto" if governance_promoted and review_level == "assisted" else review_level
     await db.commit()
 
     logger.info(
@@ -222,13 +227,14 @@ async def handle_submit_review_recommendation(
         "task_key": task_key,
         "recommendation": recommendation,
         "confidence": confidence,
-        "governance_level": review_level,
+        "governance_level": effective_governance_level,
+        "governance_promoted": governance_promoted,
         "grace_period_until": grace_period_until.isoformat() if grace_period_until else None,
         "message": (
             "Auto-approve scheduled after grace period"
             if grace_period_until
             else "Awaiting human review"
-            if review_level == "manual"
+            if effective_governance_level == "manual"
             else "AI recommendation recorded — human confirmation required for reject"
         ),
     }
@@ -242,6 +248,7 @@ async def handle_veto_auto_review(
     """Veto an auto-review recommendation during grace period."""
     from sqlalchemy import select
     from app.models.review import ReviewRecommendation
+    from app.services.governance import maybe_auto_demote_review_governance
 
     result = await db.execute(
         select(ReviewRecommendation).where(
@@ -256,11 +263,14 @@ async def handle_veto_auto_review(
 
     rec.vetoed_by = uuid.UUID(actor_id) if actor_id else None
     rec.vetoed_at = datetime.now(UTC)
+    await db.flush()
+    governance_demoted = await maybe_auto_demote_review_governance(db)
     await db.commit()
 
     return {
         "recommendation_id": recommendation_id,
         "vetoed": True,
+        "governance_demoted": governance_demoted,
         "message": "Auto-review vetoed — awaiting manual decision",
     }
 

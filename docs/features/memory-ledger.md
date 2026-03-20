@@ -600,17 +600,84 @@ Das Memory Ledger wird als System-Skill in jeden Agenten-Prompt injiziert. Siehe
 
 ---
 
+## Worker- und Resume-Flow
+
+Der Worker nutzt das Memory Ledger nur selektiv, aber genau dort ist es wertvoll: bei **laengeren Implementierungen, Debugging ueber mehrere Sessions und QA-Schleifen**.
+
+```text
+Worker-Run 1:
+  → Implementiert Teil A
+  → save_memory: "Migration angelegt, API-Schema fertig, Testdaten fehlen noch"
+
+Worker-Run 2 (spaeter / anderer Client / qa_failed-Loop):
+  → get_memory_context: zuletzt kompaktierte L2-Summaries + L1-Facts laden
+  → review_comment + Guard-Status lesen
+  → search_memories: gezielt fruehere Beobachtungen zum Task durchsuchen
+  → Arbeit fortsetzen statt Chat-History rekonstruieren
+
+Session-Ende:
+  → compact_memories fuer Zwischenstand und offene Fragen
+```
+
+Wichtig ist die Reihenfolge im Prompt-Assembly:
+
+1. Memory-Kontext liefert den **task-/scope-spezifischen Zwischenstand** des Agenten.
+2. Skills und Docs liefern die **kanonische Anleitung und Produktanforderungen**.
+3. Execution-Learnings / Resume-Hinweise liefern **systemweit wiederverwendbare Muster aus frueheren Reviews, Guard-Failures und Resultaten**.
+
+Das bedeutet: Der Worker resumed **nicht** aus einem diffusen Chat-Thread, sondern aus drei getrennten Schichten mit klarer Semantik.
+
+---
+
+## Abgrenzung zu Learning Artifacts
+
+Memory Ledger und Learning Artifacts loesen unterschiedliche Probleme und duerfen nicht vermischt werden.
+
+**Memory Ledger** ist das persistente Arbeitsgedaechtnis eines Agenten oder Scopes waehrend laufender Analyse oder Umsetzung.
+
+**Learning Artifacts** sind normalisierte, systemweite Learnings aus abgeschlossenen oder fehlgeschlagenen Ausfuehrungen, Reviews, Resume-Paketen und Governance-Entscheidungen. Sie werden spaeteren Runs als kompakte Hinweise erneut zugespielt.
+
+Typische Learning-Artifact-Arten sind zum Beispiel:
+
+- `fix_pattern`
+- `review_checklist`
+- `reject_reason`
+- `resume_guidance`
+- `guard_failure`
+- `skill_candidate`
+
+Praxisregel:
+
+- `hivemind-save_memory`: "Was habe ich in diesem Scope beobachtet oder schon verstanden?"
+- Learning Artifact: "Welches Muster oder welche Fehlerursache soll das System kuenftigen Runs erneut zeigen?"
+
+Beispiel:
+
+```text
+Memory Ledger:
+  "TASK-88: Migration 0031 erzeugt, API-Route implementiert, Guard 'pytest auth' scheitert noch
+   wegen fehlender Seed-Daten. Vermutung: fixtures laden nicht im Test-Container."
+
+Learning Artifact:
+  "Resume-Fokus: Guard 'pytest auth' erneut pruefen; bei Auth-Tests zuerst Seed/Fixtures im
+   Container validieren."
+```
+
+Das erste ist lokaler Arbeitskontext. Das zweite ist ein wiederverwendbares Ausfuehrungs-Learning.
+
+---
+
 ## Abgrenzung
 
-| | Memory Ledger | Wiki | Skills | Docs |
-| --- | --- | --- | --- | --- |
-| **Zweck** | Arbeitsgedächtnis (intermediär) | Fertiges Wissen | Handlungsanweisung | Epic-Kontext |
-| **Autor** | Jeder Agent (eigene Memories) | Kartograph + Admin | Gaertner (via Proposal) | Gaertner + Kartograph |
-| **Lifecycle** | L0→L1→L2→L3 (Graduation) | Living Document | Draft→Active→Deprecated | Living Document |
-| **Persistenz** | Append-only, nie gelöscht | Versioniert | Versioniert | Versioniert |
-| **Token-Verbrauch** | 30% Budget (Memory-Ratio) | Niedrigste Priorität | Höchste Priorität | Mittlere Priorität |
-| **Zielgruppe** | Derselbe Agent (oder Cross-Agent) | Mensch + KI | KI-Agent | Mensch + KI |
-| **Reife** | Unreif → reift → graduiert | Reif | Reif | Reif |
+| | Memory Ledger | Learning Artifacts | Wiki | Skills | Docs |
+| --- | --- | --- | --- | --- | --- |
+| **Zweck** | Arbeitsgedaechtnis (intermediaer) | Wiederverwendbare Ausfuehrungs-Learnings | Fertiges Wissen | Handlungsanweisung | Epic-Kontext |
+| **Autor** | Jeder Agent (eigene Memories) | System aus Resultaten, Reviews, Resume-Loops, Governance | Kartograph + Admin | Gaertner (via Proposal) | Gaertner + Kartograph |
+| **Lifecycle** | L0→L1→L2→L3 (Graduation) | Capture → Reuse → ggf. Suppress/Aggregate | Living Document | Draft→Active→Deprecated | Living Document |
+| **Persistenz** | Append-only, nie geloescht | Strukturierte Datensaetze mit Dedupe/Suppression | Versioniert | Versioniert | Versioniert |
+| **Token-Verbrauch** | 30% Budget (Memory-Ratio) | Kleine Resume-/Execution-Hinweise | Niedrigste Prioritaet | Hoechste Prioritaet | Mittlere Prioritaet |
+| **Zielgruppe** | Derselbe Agent (oder Cross-Agent) | Zukuenftige Runs derselben Rolle | Mensch + KI | KI-Agent | Mensch + KI |
+| **Reife** | Unreif → reift → graduiert | Operationalisierte Erfahrung | Reif | Reif | Reif |
 
 ---
 

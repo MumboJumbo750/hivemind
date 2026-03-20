@@ -102,11 +102,20 @@ class Settings(BaseSettings):
     # Phase 8 — Governance & TLS
     hivemind_enforce_tls: bool = False
     hivemind_auto_review_grace_minutes: int = 30
+    hivemind_governance_auto_promotion_enabled: bool = False
+    hivemind_governance_auto_promotion_min_consecutive_approves: int = 10
+    hivemind_governance_auto_promotion_min_confidence: float = 0.9
+    hivemind_governance_auto_promotion_evaluation_window_days: int = 30
 
     # Filesystem Tools (TASK-WFS-002)
     hivemind_workspace_root: str = "/workspace"
     hivemind_fs_deny_list: str = ".git/objects,.env,.env.local,.env.production"
     hivemind_fs_rate_limit: int = 60  # max calls per tool per minute
+
+    # Guard / Command Execution
+    hivemind_guard_allowlist: str = "pytest*,ruff *,eslint*,npm run *,make *,cargo test*,go test*,python -m pytest*,npx *,tsc*,mypy*,flake8*,black --check*,isort --check*"
+    hivemind_guard_timeout: int = 120  # seconds per command
+    hivemind_guard_parallel: int = 2   # max concurrent executions
 
     @property
     def cors_origins(self) -> list[str]:

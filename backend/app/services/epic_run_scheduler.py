@@ -209,12 +209,26 @@ class EpicRunSchedulerService:
         task_service = TaskService(self.db)
         execution_mode = str(dict(run.config or {}).get("resolved_execution_mode") or "local")
 
+        # TASK-ACO-002: Check governance level before dispatching
+        governance = await self._load_governance()
+        governance_level = governance.get("review", "manual")
+
         for task_key in dispatch_task_keys:
             task = await task_service.transition_state(
                 task_key,
                 TaskStateTransition(state="in_progress"),
                 skip_conductor=True,
             )
+            if governance_level == "manual":
+                # Governance=manual: transition state but do NOT auto-dispatch.
+                # Task stays in in_progress for manual Prompt Station workflow.
+                logger.info(
+                    "Epic Run: skipping auto-dispatch for %s (governance=manual)",
+                    task_key,
+                )
+                dispatched.append(task.task_key)
+                continue
+
             await conductor.dispatch(
                 trigger_type="task_state",
                 trigger_id=task.task_key,

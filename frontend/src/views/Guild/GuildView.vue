@@ -269,7 +269,7 @@ onMounted(loadSkills)
 
 .skill-card__tag {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   padding: var(--space-1) var(--space-2);
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);

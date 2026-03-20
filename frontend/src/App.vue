@@ -46,6 +46,10 @@ onUnmounted(() => window.removeEventListener('keydown', _onKeydown))
         <RouterLink to="/guild" class="app-nav__link">Gilde</RouterLink>
         <RouterLink to="/achievements" class="app-nav__link">Achievements</RouterLink>
         <RouterLink to="/dashboard/kpi" class="app-nav__link">KPI Dashboard</RouterLink>
+        <RouterLink to="/learning-artifacts" class="app-nav__link">Learning Artifacts</RouterLink>
+        <RouterLink to="/agent-sessions" class="app-nav__link">Agent Sessions</RouterLink>
+        <RouterLink to="/governance-audit" class="app-nav__link">Governance Audit</RouterLink>
+        <RouterLink to="/memory-ledger" class="app-nav__link">Memory Ledger</RouterLink>
         <RouterLink to="/settings" class="app-nav__link">Settings</RouterLink>
       </nav>
     </template>

@@ -1,0 +1,22 @@
+{
+  "external_id": "TASK-ADI-003",
+  "epic_ref": "EPIC-AUDIT-DISPATCH",
+  "title": "Prompt-Truncation Warnung im System-Prompt",
+  "description": "Wenn der Prompt die MAX_PROMPT_CHARS Grenze (60.000) überschreitet und abgeschnitten wird, soll ein Hinweis in den System-Prompt eingefügt werden.\n\n**Änderung in `agentic_dispatch.py:347-352`:**\n```python\nif len(prompt) > MAX_PROMPT_CHARS:\n    truncated_chars = len(prompt) - MAX_PROMPT_CHARS\n    prompt = prompt[:MAX_PROMPT_CHARS]\n    # NEU: Warnung an System-Prompt anhängen\n    truncation_notice = (\n        f\"\\n\\n⚠ HINWEIS: Der Kontext wurde um {truncated_chars:,} Zeichen gekürzt. \"\n        \"Nutze die MCP-Tools (get_task, get_skill, get_doc, search_wiki) \"\n        \"um fehlende Details nachzuladen.\"\n    )\n    # truncation_notice wird an system_prompt angehängt (nicht an user prompt)\n```\n\n**Datei:** `backend/app/services/agentic_dispatch.py:347-352`",
+  "state": "incoming",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "Bei Prompt-Truncation wird Warnung an System-Prompt angehängt",
+      "Warnung enthält Anzahl gekürzter Zeichen und Hinweis auf MCP-Tools",
+      "Warnung wird NUR bei tatsächlicher Truncation eingefügt",
+      "Unit-Test: Prompt > 60K → System-Prompt enthält Truncation-Notice"
+    ]
+  },
+  "tags": ["backend", "audit", "agentic-dispatch", "prompt"],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

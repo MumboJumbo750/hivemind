@@ -13,10 +13,17 @@ const emit = defineEmits<{
   (e: 'cancel'): void
 }>()
 
+// Default SLA: +14 Tage ab heute
+function defaultSlaDate(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 14)
+  return d.toISOString().split('T')[0]
+}
+
 // Form state
-const ownerId = ref<string>('')
+const ownerId = ref<string>(props.epic.owner_id ?? '')
 const priority = ref<string>(props.epic.priority ?? 'medium')
-const slaDeadline = ref<string>(props.epic.sla_due_at ? props.epic.sla_due_at.split('T')[0] : '')
+const slaDeadline = ref<string>(props.epic.sla_due_at ? props.epic.sla_due_at.split('T')[0] : defaultSlaDate())
 const dodLines = ref<string[]>(props.epic.dod_framework?.criteria ?? [''])
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -27,9 +34,24 @@ const members = ref<Member[]>([])
 
 onMounted(async () => {
   try {
-    members.value = await api.getMembers(props.projectId) as Member[]
+    const result = await api.getMembers(props.projectId) as Member[]
+    if (result.length > 0) {
+      members.value = result
+    } else {
+      // Solo-Modus Fallback: Epic-Creator als einzige Option anbieten
+      const creatorId = props.epic.owner_id
+      if (creatorId) {
+        members.value = [{ project_id: props.projectId, user_id: creatorId, role: 'admin', username: 'admin' }]
+        if (!ownerId.value) ownerId.value = creatorId
+      }
+    }
   } catch {
-    // ignore
+    // Fallback bei Netzwerkfehler
+    const creatorId = props.epic.owner_id
+    if (creatorId) {
+      members.value = [{ project_id: props.projectId, user_id: creatorId, role: 'admin', username: 'admin' }]
+      if (!ownerId.value) ownerId.value = creatorId
+    }
   }
 })
 
@@ -154,7 +176,7 @@ async function handleSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 500;
+  z-index: var(--z-overlay);
 }
 
 .modal {

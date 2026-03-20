@@ -565,6 +565,225 @@ export interface McpBridgeTool {
   blocked: boolean
 }
 
+// ─── Dispatch Policies ──────────────────────────────────────────────────────
+
+export interface DispatchPolicy {
+  agent_role: string
+  preferred_execution_mode: string
+  fallback_chain: string[]
+  rpm_limit: number
+  token_budget: number
+  max_parallel: number
+  cooldown_seconds: number
+  enabled: boolean
+  source: 'db' | 'default'
+  active_dispatches: number | null
+  at_limit: boolean | null
+}
+
+export interface DispatchPolicyListResponse {
+  policies: DispatchPolicy[]
+}
+
+// ─── Agent Thread Sessions ──────────────────────────────────────────────────
+
+export interface AgentSession {
+  id: string
+  thread_key: string
+  agent_role: string
+  thread_policy: string
+  project_id: string | null
+  epic_id: string | null
+  task_id: string | null
+  status: string
+  dispatch_count: number
+  summary: string | null
+  session_metadata: Record<string, unknown> | null
+  started_at: string
+  last_activity_at: string
+}
+
+export interface AgentSessionListResponse {
+  data: AgentSession[]
+  total_count: number
+  has_more: boolean
+  page: number
+  page_size: number
+}
+
+// ─── Governance Audit ────────────────────────────────────────────────────────
+
+export interface GovernanceAuditEntry {
+  id: string
+  governance_type: string
+  governance_level: string
+  target_type: string
+  target_ref: string
+  status: string
+  agent_role: string
+  prompt_type: string | null
+  action: string | null
+  confidence: number | null
+  rationale: string | null
+  payload: Record<string, unknown> | null
+  dispatch_id: string | null
+  created_at: string
+  executed_at: string | null
+}
+
+export interface GovernanceAuditListResponse {
+  data: GovernanceAuditEntry[]
+  total_count: number
+  has_more: boolean
+  page: number
+  page_size: number
+}
+
+export interface GovernanceAuditStatsEntry {
+  governance_type: string
+  governance_level: string
+  count: number
+}
+
+export interface GovernanceAuditStats {
+  total: number
+  auto_approve_rate: number
+  veto_count: number
+  stats: GovernanceAuditStatsEntry[]
+}
+
+// ─── Learning Artifacts ─────────────────────────────────────────────────────
+
+export interface LearningArtifact {
+  id: string
+  artifact_type: string
+  status: string
+  source_type: string
+  source_ref: string
+  source_dispatch_id: string | null
+  agent_role: string | null
+  project_id: string | null
+  epic_id: string | null
+  task_id: string | null
+  summary: string
+  detail: Record<string, unknown> | null
+  confidence: number | null
+  created_at: string
+}
+
+export interface LearningListResponse {
+  data: LearningArtifact[]
+  total_count: number
+  has_more: boolean
+  page: number
+  page_size: number
+}
+
+export interface LearningStatsEntry {
+  artifact_type: string
+  status: string
+  count: number
+}
+
+export interface LearningStatsResponse {
+  stats: LearningStatsEntry[]
+  total: number
+  skill_candidates: number
+}
+
+// ─── Memory Ledger ─────────────────────────────────────────────────────────
+
+export interface MemorySession {
+  id: string
+  actor_id: string
+  agent_role: string
+  scope: string
+  scope_id: string | null
+  started_at: string
+  ended_at: string | null
+  entry_count: number
+  compacted: boolean
+}
+
+export interface MemoryEntry {
+  id: string
+  actor_id: string
+  agent_role: string
+  scope: string
+  scope_id: string | null
+  session_id: string
+  content: string
+  tags: string[]
+  covered_by: string | null
+  created_at: string
+}
+
+export interface MemorySummary {
+  id: string
+  actor_id: string
+  agent_role: string
+  scope: string
+  scope_id: string | null
+  session_id: string | null
+  content: string
+  source_entry_ids: string[]
+  source_fact_ids: string[]
+  source_count: number
+  open_questions: string[]
+  graduated: boolean
+  graduated_to: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface MemorySessionListResponse {
+  data: MemorySession[]
+  total_count: number
+  has_more: boolean
+  page: number
+  page_size: number
+}
+
+export interface MemoryEntryListResponse {
+  data: MemoryEntry[]
+  total_count: number
+  has_more: boolean
+  page: number
+  page_size: number
+}
+
+export interface MemorySummaryListResponse {
+  data: MemorySummary[]
+  total_count: number
+  has_more: boolean
+  page: number
+  page_size: number
+}
+
+export interface MemorySearchResult {
+  level: 'L0' | 'L1' | 'L2'
+  id: string
+  scope?: string
+  scope_id?: string | null
+  content?: string
+  tags?: string[]
+  created_at?: string
+  search_mode: 'text' | 'semantic' | 'hybrid'
+  similarity?: number
+  entry_id?: string
+  entity?: string
+  key?: string
+  value?: string
+  confidence?: number
+  source_tags?: string[]
+  open_questions?: string[]
+  graduated?: boolean
+}
+
+export interface MemorySearchResponse {
+  results: MemorySearchResult[]
+  count: number
+}
+
 // ─── Decision Requests ─────────────────────────────────────────────────────
 
 export interface DecisionRequest {

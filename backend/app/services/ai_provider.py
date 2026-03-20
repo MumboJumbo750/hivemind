@@ -12,8 +12,14 @@ Rate-Limiting & Retry (TASK-8-003):
   - Exponential backoff: 1s → 2s → 4s → max 60s, max 3 attempts on 429/503
   - RPM token-bucket: min_interval = 60.0 / rpm_limit
   - Token-count calibration via HIVEMIND_TOKEN_COUNT_CALIBRATION env var
+
+Circuit Breaker (TASK-ADI-002):
+  - Per-provider state tracking: CLOSED → OPEN → HALF_OPEN
+  - Configurable failure_threshold and recovery_timeout
+  - Auto-fallback when OPEN, recovery probe after timeout
 """
 import asyncio
+import enum
 import json
 import logging
 import time
@@ -28,6 +34,93 @@ logger = logging.getLogger(__name__)
 
 class NeedsManualMode(Exception):
     """Raised when no AI provider is configured — fall back to Prompt Station."""
+
+
+class CircuitBreakerState(enum.Enum):
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+
+class CircuitBreaker:
+    """Per-provider circuit breaker (TASK-ADI-002).
+
+    States:
+      CLOSED   — Normal operation. Failures are counted.
+      OPEN     — Provider is considered down. Requests fail fast.
+      HALF_OPEN — After recovery_timeout, one probe request is allowed.
+                  Success → CLOSED, Failure → OPEN.
+    """
+
+    def __init__(
+        self,
+        failure_threshold: int = 5,
+        recovery_timeout: float = 60.0,
+    ):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self._state = CircuitBreakerState.CLOSED
+        self._failure_count = 0
+        self._last_failure_time: float = 0.0
+
+    @property
+    def state(self) -> CircuitBreakerState:
+        if self._state == CircuitBreakerState.OPEN:
+            if time.monotonic() - self._last_failure_time >= self.recovery_timeout:
+                self._state = CircuitBreakerState.HALF_OPEN
+        return self._state
+
+    def record_success(self) -> None:
+        if self._state in (CircuitBreakerState.HALF_OPEN, CircuitBreakerState.OPEN):
+            logger.warning(
+                "Circuit breaker recovery: %s → CLOSED",
+                self._state.value,
+            )
+        self._failure_count = 0
+        self._state = CircuitBreakerState.CLOSED
+
+    def record_failure(self) -> None:
+        self._failure_count += 1
+        self._last_failure_time = time.monotonic()
+        if self._failure_count >= self.failure_threshold and self._state == CircuitBreakerState.CLOSED:
+            logger.warning(
+                "Circuit breaker OPEN: %d consecutive failures (threshold=%d)",
+                self._failure_count, self.failure_threshold,
+            )
+            self._state = CircuitBreakerState.OPEN
+        elif self._state == CircuitBreakerState.HALF_OPEN:
+            logger.warning("Circuit breaker probe failed, returning to OPEN")
+            self._state = CircuitBreakerState.OPEN
+
+    def allow_request(self) -> bool:
+        current = self.state  # triggers OPEN → HALF_OPEN check
+        if current == CircuitBreakerState.CLOSED:
+            return True
+        if current == CircuitBreakerState.HALF_OPEN:
+            return True  # allow one probe
+        return False  # OPEN — fail fast
+
+
+# Per-provider circuit breakers (keyed by agent_role)
+_circuit_breakers: dict[str, CircuitBreaker] = {}
+
+
+def _get_circuit_breaker(
+    agent_role: str,
+    failure_threshold: int = 5,
+    recovery_timeout: float = 60.0,
+) -> CircuitBreaker:
+    if agent_role not in _circuit_breakers:
+        _circuit_breakers[agent_role] = CircuitBreaker(failure_threshold, recovery_timeout)
+    return _circuit_breakers[agent_role]
+
+
+class CircuitBreakerOpen(Exception):
+    """Raised when the circuit breaker is open and requests are rejected."""
+
+    def __init__(self, agent_role: str):
+        self.agent_role = agent_role
+        super().__init__(f"Circuit breaker OPEN for role '{agent_role}' — provider unavailable")
 
 
 class RateLimiter:
@@ -229,10 +322,15 @@ async def send_with_retry(
     agent_role: str = "default",
     rpm_limit: int = 0,
 ) -> Any:
-    """Send prompt with exponential backoff retry (TASK-8-003).
+    """Send prompt with exponential backoff retry (TASK-8-003) and circuit breaker (TASK-ADI-002).
 
-    Retries on HTTP 429 and 503. Raises on other errors.
+    Retries on HTTP 429 and 503. Circuit breaker opens after repeated failures.
     """
+    # Circuit breaker check
+    cb = _get_circuit_breaker(agent_role)
+    if not cb.allow_request():
+        raise CircuitBreakerOpen(agent_role)
+
     # Rate-limit before sending
     limiter = _get_rate_limiter(agent_role, rpm_limit or settings.hivemind_ai_rpm_limit)
     await limiter.acquire()
@@ -241,7 +339,9 @@ async def send_with_retry(
     last_error = None
     for attempt in range(max_attempts):
         try:
-            return await provider.send_prompt(prompt, tools, model, system)
+            result = await provider.send_prompt(prompt, tools, model, system)
+            cb.record_success()
+            return result
         except Exception as e:
             # Check for rate-limit / server errors
             status = None
@@ -259,9 +359,12 @@ async def send_with_retry(
                 delay = min(delay * 2, 60.0)
                 last_error = e
                 continue
+            cb.record_failure()
             raise
 
-    raise last_error
+    if last_error:
+        cb.record_failure()
+    raise last_error  # type: ignore[misc]
 
 
 async def acquire_provider_capacity(agent_role: str, provider: Any) -> None:

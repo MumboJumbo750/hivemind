@@ -36,6 +36,8 @@ NOTIFICATION_TYPES: dict[str, dict] = {
     "guard_failed":               {"title": "Guard fehlgeschlagen",                   "priority": "soon"},
     "task_assigned":              {"title": "Task zugewiesen",                        "priority": "soon"},
     "review_requested":           {"title": "Review angefordert",                     "priority": "soon"},
+    "governance_promoted":        {"title": "Governance automatisch angehoben",       "priority": "soon"},
+    "governance_demoted":         {"title": "Governance automatisch gesenkt",         "priority": "action_now"},
 }
 
 # Dedup window: same (user, type, entity_id) within this timeframe is skipped

@@ -5,8 +5,15 @@ const props = withDefaults(defineProps<{
   current: number
   max: number
   size?: number
+  minified?: number | null
 }>(), {
   size: 120,
+  minified: null,
+})
+
+const savings = computed(() => {
+  if (!props.minified || props.minified >= props.current) return null
+  return props.current - props.minified
 })
 
 const percentage = computed(() => Math.min((props.current / props.max) * 100, 100))
@@ -65,6 +72,9 @@ const ariaLabel = computed(() =>
       <span class="token-current" :style="{ color }">{{ current.toLocaleString() }}</span>
       <span class="token-separator">/</span>
       <span class="token-max">{{ max.toLocaleString() }}</span>
+      <span v-if="savings" class="token-minified" :title="`Minified: ${minified!.toLocaleString()} tokens (-${savings.toLocaleString()})`">
+        -{{ savings.toLocaleString() }}
+      </span>
     </div>
   </div>
 </template>
@@ -91,19 +101,26 @@ const ariaLabel = computed(() =>
 }
 
 .token-current {
-  font-size: 1.1rem;
+  font-size: var(--font-size-lg);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .token-separator {
-  font-size: 0.65rem;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
 }
 
 .token-max {
-  font-size: 0.7rem;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.token-minified {
+  font-size: var(--font-size-2xs);
+  color: var(--color-success, #34d399);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
 }
 </style>

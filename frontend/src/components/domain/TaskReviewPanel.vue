@@ -391,11 +391,11 @@ onMounted(() => loadGuards())
 .gate-label { flex: 1; color: var(--color-text); }
 
 .gate-badge {
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-xs);
 }
 .gate-badge--passed { background: var(--color-success); color: var(--color-bg); }
 .gate-badge--failed { background: var(--color-danger); color: white; }
@@ -508,13 +508,13 @@ onMounted(() => loadGuards())
 .guard-summary {
   font-weight: 400;
   color: var(--color-text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   margin-left: var(--space-2);
 }
 
 .guard-warning {
-  background: rgba(249, 168, 37, 0.12);
-  border: 1px solid rgba(249, 168, 37, 0.3);
+  background: var(--color-warning-10);
+  border: 1px solid var(--color-warning-20);
   color: var(--color-warning, #f9a825);
   font-size: var(--font-size-xs);
   padding: var(--space-1) var(--space-2);
@@ -563,9 +563,9 @@ onMounted(() => loadGuards())
 }
 
 .source-badge {
-  font-size: 9px;
-  padding: 1px 5px;
-  border-radius: 3px;
+  font-size: var(--font-size-2xs);
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   flex-shrink: 0;
@@ -580,9 +580,9 @@ onMounted(() => loadGuards())
 }
 
 .guard-status-badge {
-  font-size: 9px;
-  padding: 1px 5px;
-  border-radius: 3px;
+  font-size: var(--font-size-2xs);
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-xs);
   text-transform: uppercase;
 }
 .guard-status-badge--passed { background: var(--color-success); color: var(--color-bg); }
@@ -593,7 +593,7 @@ onMounted(() => loadGuards())
 .guard-item__meta {
   display: flex;
   gap: var(--space-2);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
   padding-left: var(--space-4);
 }
@@ -603,14 +603,14 @@ onMounted(() => loadGuards())
 }
 
 .guard-output-warning {
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: var(--color-warning, #f9a825);
   padding-left: var(--space-4);
 }
 
 .guard-output {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);

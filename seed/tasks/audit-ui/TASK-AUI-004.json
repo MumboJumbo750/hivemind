@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AUI-004",
+  "epic_ref": "EPIC-AUDIT-UI",
+  "title": "Governance Audit Trail View",
+  "description": "Audit-Trail-View für Governance-Entscheidungen im Conductor.\n\n**Features:**\n- Chronologische Liste aller Governance-Entscheidungen\n- Pro Eintrag: Governance-Type (review, epic_proposal, skill_merge, etc.), Level (manual/assisted/auto), Agent-Rolle, Outcome\n- Filter: Governance-Type, Level, Zeitraum\n- Highlight: Fälle wo assisted-Recommendation überschrieben wurde (vetoed)\n- Statistik: Auto-Approve-Rate, Veto-Rate, durchschnittliche Confidence pro Type\n\n**Backend-Referenz:**\n- `backend/app/models/conductor.py` — ConductorDispatch.result enthält Governance-Payload\n- `backend/app/services/conductor.py:968-975` — Governance Outcome Storage\n- Ggf. neuen Endpoint `/api/admin/governance/audit` oder bestehende Dispatches filtern",
+  "state": "incoming",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "GovernanceAuditView.vue existiert und ist über Router erreichbar",
+      "Governance-Entscheidungen chronologisch aufgelistet",
+      "Filter nach Governance-Type und Level",
+      "Veto-Markierung sichtbar",
+      "Statistik-Panel mit Auto-Approve-Rate und Veto-Rate"
+    ]
+  },
+  "tags": ["frontend", "audit", "governance", "compliance"],
+  "pinned_skills": [],
+  "linked_wiki": ["autonomie-loop"],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

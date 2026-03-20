@@ -1,0 +1,12 @@
+{
+  "external_id": "EPIC-AUDIT-DISPATCH",
+  "title": "Audit: Agentic Dispatch Hardening",
+  "description": "Der Agentic Dispatch Loop (agentic_dispatch.py) und AI Provider Service (ai_provider.py) funktionieren, haben aber Robustness-Lücken: Silent Exception Swallowing bei Text-Tool-Call-Parsing, fehlendes Circuit Breaker Pattern, stumme Prompt-Truncation, und keine Schema-Validierung für Tool-Calls.\n\nQuelle: Workflow-Dispatch-Audit 2026-03-08 (Findings B-1 bis B-4)",
+  "state": "incoming",
+  "priority": "medium",
+  "sla_deadline": null,
+  "definition_of_done": "Text-Tool-Call Parsing loggt Fehler auf Debug-Level, Circuit Breaker schaltet nach N Failures auf Fallback, Prompt-Truncation fügt Hinweis in System-Prompt ein, unbekannte Tool-Names werden geloggt statt blind weitergereicht.",
+  "tags": ["backend", "audit", "robustness", "agentic-dispatch", "ai-provider"],
+  "depends_on": ["EPIC-PHASE-8"],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md"
+}

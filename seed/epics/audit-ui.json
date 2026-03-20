@@ -1,0 +1,12 @@
+{
+  "external_id": "EPIC-AUDIT-UI",
+  "title": "Audit: Fehlende Operator-UIs nachrüsten",
+  "description": "Backend-APIs für Learning Artifacts, Dispatch Policies, Agent Thread Sessions und Governance Audit existieren vollständig — es fehlen die zugehörigen Frontend-Views. Ohne diese UIs müssen Operatoren die APIs direkt ansprechen, was Monitoring und Konfiguration erschwert.\n\nQuelle: Workflow-Dispatch-Audit 2026-03-08 (Findings A-1 bis A-4)",
+  "state": "incoming",
+  "priority": "medium",
+  "sla_deadline": null,
+  "definition_of_done": "Alle vier Views sind im Frontend implementiert, über die Navigation erreichbar, und zeigen die Daten der bestehenden APIs korrekt an. Keine neuen Backend-Endpoints nötig.",
+  "tags": ["frontend", "audit", "operator-ui", "monitoring"],
+  "depends_on": ["EPIC-PHASE-8"],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md"
+}

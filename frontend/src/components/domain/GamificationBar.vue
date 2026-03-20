@@ -136,16 +136,16 @@ onBeforeUnmount(() => {
 
 .gam-progress-track {
   flex: 1;
-  height: 6px;
+  height: var(--space-1-5);
   background: var(--color-surface-raised);
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 
 .gam-progress-fill {
   height: 100%;
   background: var(--color-accent);
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   transition: width 0.5s ease;
 }
 
@@ -157,11 +157,11 @@ onBeforeUnmount(() => {
 
 .gam-badges {
   display: flex;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .gam-badge {
-  font-size: 14px;
+  font-size: var(--font-size-sm);
   cursor: default;
 }
 </style>

@@ -362,6 +362,10 @@ hivemind-submit_review_recommendation  { "task_id": "TASK-88",
 | `governance.review` | `manual` | Review-Level: `manual`, `assisted`, `auto` |
 | `auto_review_threshold` | `0.90` | Mindest-Confidence für Auto-Approve |
 | `HIVEMIND_AUTO_REVIEW_GRACE_MINUTES` | `30` | Grace Period nach Auto-Approve (Owner kann widersprechen) |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_ENABLED` | `false` | Aktiviert adaptive Promotion von `assisted` nach `auto` |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_MIN_CONSECUTIVE_APPROVES` | `10` | Benoetigte konsekutive Approve-Empfehlungen ohne Veto |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_MIN_CONFIDENCE` | `0.9` | Mindest-Confidence pro Empfehlung fuer Promotion |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_EVALUATION_WINDOW_DAYS` | `30` | Zeitfenster fuer die Bewertung der Empfehlungsserie |
 
 ---
 

@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AE2-002",
+  "epic_ref": "EPIC-AUDIT-E2E",
+  "title": "Integration-Test: Worker Endpoint Pool (Multi-Ollama)",
+  "description": "Pool-Strategien (round_robin, weighted, least_busy) im AI Provider sind implementiert, aber nicht End-to-End mit mehreren Endpoints getestet.\n\n**Test-Szenarien:**\n1. **Round Robin:** 2 Mock-Endpoints → Requests alternieren gleichmäßig\n2. **Weighted:** Endpoint A (weight=3) + Endpoint B (weight=1) → ~75%/25% Verteilung\n3. **Failover:** Endpoint A unhealthy → alle Requests an Endpoint B\n4. **Recovery:** Endpoint A recovered → Requests wieder verteilt\n5. **Least Busy:** 2 Endpoints → Request geht an den mit weniger aktiven Requests\n\n**Dateien:**\n- `backend/app/services/ai_provider.py` — Pool Logic\n- `backend/app/models/ai_provider.py` — Pool-Config (endpoints, pool_strategy)\n\n**Test-Typ:** Unit-Test mit mocked HTTP-Endpoints (aioresponses oder httpx mock)",
+  "state": "incoming",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "Round Robin Test: gleichmäßige Verteilung über 10+ Requests",
+      "Weighted Test: Verteilung entspricht Gewichtung ±10%",
+      "Failover Test: unhealthy Endpoint wird übersprungen",
+      "Recovery Test: recovered Endpoint wird wieder genutzt",
+      "Least Busy Test: Request geht an weniger ausgelasteten Endpoint"
+    ]
+  },
+  "tags": ["backend", "audit", "testing", "ai-provider", "pool"],
+  "pinned_skills": ["worker-endpoint-pool", "api-test"],
+  "linked_wiki": [],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

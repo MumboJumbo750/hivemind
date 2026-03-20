@@ -239,6 +239,11 @@ Alle Variablen haben Defaults in `docker-compose.yml`. Overrides via `.env` im P
 | `HIVEMIND_DLQ_MAX_ATTEMPTS` | `5` | Max Retry vor DLQ |
 | `HIVEMIND_OLLAMA_URL` | `http://ollama:11434` | Ollama-Endpoint (Phase 3+) |
 | `HIVEMIND_EMBEDDING_MODEL` | `nomic-embed-text` | Embedding-Modell |
+| `HIVEMIND_AUTO_REVIEW_GRACE_MINUTES` | `30` | Grace Period fuer Auto-Review |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_ENABLED` | `false` | Aktiviert adaptive Review-Governance Promotion/Demotion |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_MIN_CONSECUTIVE_APPROVES` | `10` | Benoetigte konsekutive Approve-Empfehlungen fuer Promotion |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_MIN_CONFIDENCE` | `0.9` | Mindest-Confidence pro Empfehlung fuer Promotion |
+| `HIVEMIND_GOVERNANCE_AUTO_PROMOTION_EVALUATION_WINDOW_DAYS` | `30` | Zeitfenster fuer die Review-Serie |
 | `AUDIT_RETENTION_DAYS` | `90` | Payload-Nullification nach N Tagen |
 
 ---

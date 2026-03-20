@@ -395,7 +395,7 @@ onMounted(loadBridges)
 .bridge-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
   flex: 1;
   min-width: 120px;
 }
@@ -422,11 +422,11 @@ onMounted(loadBridges)
   font-size: var(--font-size-xs);
   background: color-mix(in srgb, var(--color-accent-2) 15%, transparent);
   color: var(--color-accent-2);
-  padding: 2px 8px;
-  border-radius: 10px;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-full);
 }
 
-.status-dot { font-size: 10px; }
+.status-dot { font-size: var(--font-size-2xs); }
 
 .status-label {
   font-size: var(--font-size-xs);
@@ -542,7 +542,7 @@ onMounted(loadBridges)
 
 .form-label-hint {
   color: color-mix(in srgb, var(--color-text-muted) 70%, transparent);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
 }
 
 .form-actions {
@@ -565,7 +565,7 @@ onMounted(loadBridges)
   width: 36px;
   height: 20px;
   background: var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-full);
   position: relative;
   transition: background 0.2s;
 }

@@ -32,7 +32,9 @@ from app.mcp.transport import router as mcp_router
 from app.routers import (
     achievements,
     admin,
+    agent_sessions,
     audit,
+    governance_audit,
     auth,
     code_nodes,
     conductor,
@@ -45,6 +47,7 @@ from app.routers import (
     health,
     kpis,
     learning,
+    memory,
     mcp_bridges,
     members,
     nexus,
@@ -132,10 +135,13 @@ def create_app() -> FastAPI:
     app.include_router(triage.router, prefix="/api")
     app.include_router(kpis.router, prefix="/api")
     app.include_router(learning.router, prefix="/api")
+    app.include_router(memory.router, prefix="/api")
     app.include_router(mcp_bridges.router, prefix="/api")
     app.include_router(conductor.router, prefix="/api")
     app.include_router(conductor.ide_router, prefix="/api")
     app.include_router(dispatch_policies.router, prefix="/api")
+    app.include_router(agent_sessions.router, prefix="/api")
+    app.include_router(governance_audit.router, prefix="/api")
     app.include_router(federation.router)
     app.include_router(mcp_router, prefix="/api")
 

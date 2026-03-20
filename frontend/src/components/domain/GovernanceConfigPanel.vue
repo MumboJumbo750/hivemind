@@ -210,7 +210,7 @@ onMounted(loadGovernance)
   border-radius: 50%;
   border: 1px solid var(--color-warning);
   color: var(--color-warning);
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
   font-weight: bold;
   flex-shrink: 0;
   margin-top: 1px;
@@ -270,8 +270,8 @@ onMounted(loadGovernance)
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
   border: 1px solid;
-  border-radius: 10px;
-  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  padding: 1px var(--space-2);
   flex-shrink: 0;
 }
 

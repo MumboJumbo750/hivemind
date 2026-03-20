@@ -1,0 +1,6 @@
+{
+  "decision_key": "DR-004",
+  "epic_ref": "EPIC-AUDIT-CONDUCTOR",
+  "decision": "merge_subtasks Prompt-Type wird NICHT implementiert — Subtask-Results werden manuell im Parent-Task zusammengefuehrt",
+  "rationale": "Code-Analyse zeigt: Kein einziger Code-Pfad referenziert merge_subtasks. Subtasks existieren als Feature (create_subtask, open_subtasks-Check im EpicRunService), aber Ergebnis-Zusammenfuehrung geschieht manuell durch den Worker beim Parent-Task. Ein automatischer Merge-Prompt wuerde Komplexitaet ohne klaren Nutzen einfuehren: (1) Subtask-Results koennen heterogen sein (Code, Docs, Config), (2) Der Worker hat beim Parent-Task bereits alle Subtask-Results via MCP-Tools verfuegbar, (3) Ein generischer Merge-Prompt kann Kontext-spezifische Zusammenfuehrung nicht besser als der Worker selbst. Das Design ist bewusst: Subtasks sind Arbeitseinheiten, kein automatischer Pipeline-Schritt."
+}

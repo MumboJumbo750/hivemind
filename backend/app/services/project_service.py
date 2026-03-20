@@ -5,7 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.project import Project, ProjectMember
-from app.schemas.project import ProjectCreate, ProjectMemberAdd, ProjectUpdate
+from app.models.user import User
+from app.schemas.project import ProjectCreate, ProjectMemberAdd, ProjectMemberResponse, ProjectUpdate
 from app.services.agent_threading import normalize_thread_policy
 
 DEFAULT_WORKSPACE_ROOT = "/workspace"
@@ -66,11 +67,44 @@ class ProjectService:
         await self.db.refresh(project)
         return project
 
-    async def list_members(self, project_id: uuid.UUID) -> list[ProjectMember]:
+    async def list_members(self, project_id: uuid.UUID) -> list[ProjectMemberResponse]:
         result = await self.db.execute(
-            select(ProjectMember).where(ProjectMember.project_id == project_id)
+            select(ProjectMember, User.username)
+            .outerjoin(User, ProjectMember.user_id == User.id)
+            .where(ProjectMember.project_id == project_id)
         )
-        return list(result.scalars().all())
+        rows = result.all()
+        if not rows:
+            # Solo-Modus: Creator automatisch als Member eintragen
+            project = await self.get(project_id)
+            if project.created_by:
+                member = ProjectMember(
+                    project_id=project_id,
+                    user_id=project.created_by,
+                    role="admin",
+                )
+                self.db.add(member)
+                await self.db.flush()
+                # Username nachschlagen
+                user_result = await self.db.execute(
+                    select(User.username).where(User.id == project.created_by)
+                )
+                username = user_result.scalar_one_or_none()
+                return [ProjectMemberResponse(
+                    project_id=project_id,
+                    user_id=project.created_by,
+                    role="admin",
+                    username=username,
+                )]
+        return [
+            ProjectMemberResponse(
+                project_id=m.project_id,
+                user_id=m.user_id,
+                role=m.role,
+                username=username,
+            )
+            for m, username in rows
+        ]
 
     async def add_member(self, project_id: uuid.UUID, data: ProjectMemberAdd) -> ProjectMember:
         # Ensure project exists

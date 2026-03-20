@@ -7,8 +7,8 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_all_13_notification_types_defined() -> None:
-    """All 13 notification types from Phase 6 spec should be defined."""
+async def test_all_notification_types_defined() -> None:
+    """All supported notification types should be registered."""
     from app.services.notification_service import NOTIFICATION_TYPES
 
     expected_types = {
@@ -16,6 +16,7 @@ async def test_all_13_notification_types_defined() -> None:
         "decision_request", "decision_escalated_backup", "decision_escalated_admin",
         "escalation", "skill_proposal", "skill_merged", "task_done",
         "dead_letter", "guard_failed", "task_assigned", "review_requested",
+        "governance_promoted", "governance_demoted",
     }
     assert set(NOTIFICATION_TYPES.keys()) == expected_types
 
@@ -26,8 +27,8 @@ async def test_priority_classifications() -> None:
     from app.services.notification_service import NOTIFICATION_TYPES
 
     action_now_types = {"sla_breach", "sla_admin_fallback", "decision_escalated_backup",
-                        "decision_escalated_admin", "escalation", "dead_letter"}
-    soon_types = {"sla_warning", "decision_request", "guard_failed", "task_assigned", "review_requested"}
+                        "decision_escalated_admin", "escalation", "dead_letter", "governance_demoted"}
+    soon_types = {"sla_warning", "decision_request", "guard_failed", "task_assigned", "review_requested", "governance_promoted"}
     fyi_types = {"skill_proposal", "skill_merged", "task_done"}
 
     for t, info in NOTIFICATION_TYPES.items():

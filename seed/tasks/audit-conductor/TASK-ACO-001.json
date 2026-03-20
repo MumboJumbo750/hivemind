@@ -1,0 +1,22 @@
+{
+  "external_id": "TASK-ACO-001",
+  "epic_ref": "EPIC-AUDIT-CONDUCTOR",
+  "title": "merge_subtasks Prompt-Type implementieren oder entfernen",
+  "description": "Der Conductor referenziert konzeptionell ein Subtask-Merging, bei dem Ergebnisse von Subtasks zu einem Task-Result zusammengeführt werden. Es existiert jedoch kein `merge_subtasks` Prompt-Type in `prompt_generator.py`.\n\n**Option A (Implementieren):**\n- Neuen Prompt-Type `merge_subtasks` in PromptGenerator.generate() ergänzen\n- Prompt-Template: Subtask-Results + Parent-Task DoD → Merge-Anweisung\n- Conductor-Hook: Nach Abschluss aller Subtasks eines Tasks → dispatch merge_subtasks\n\n**Option B (Entfernen):**\n- Sicherstellen, dass kein Code-Pfad merge_subtasks referenziert\n- Design-Entscheidung dokumentieren: \"Subtask-Merging wird manuell gemacht\"\n\n**Dateien:**\n- `backend/app/services/prompt_generator.py` — Neuer Prompt-Type\n- `backend/app/services/conductor.py` — Hook für Subtask-Completion\n- `backend/app/services/task_service.py` — Subtask-Relationship Check",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Entscheidung (implementieren vs. entfernen) dokumentiert als Decision Record",
+      "Falls implementiert: Prompt-Type generiert sinnvollen Merge-Prompt",
+      "Falls implementiert: Conductor dispatcht automatisch bei Subtask-Completion",
+      "Falls entfernt: Kein Code referenziert merge_subtasks"
+    ]
+  },
+  "tags": ["backend", "audit", "conductor", "prompt-generator"],
+  "pinned_skills": ["prompt-template-gaertner"],
+  "linked_wiki": ["autonomie-loop"],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

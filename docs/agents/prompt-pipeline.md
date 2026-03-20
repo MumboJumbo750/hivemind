@@ -32,7 +32,7 @@ Ab Phase 8: AI-Client konsumiert Prompts direkt oder die Prompt Station dispatch
 | **Strategie-Prompt** | Plan-Dokument vorhanden / Kartograph-Bootstrap abgeschlossen | Plan-Kontext, bestehende Epics, Team-Roster, Zerlegungsauftrag |
 | **Architektur-Prompt** | Epic geht auf `scoped` | Epic-Kontext, DoD-Rahmen, Zerlegungsauftrag |
 | **Bibliothekar-Prompt** | Task soll bearbeitet werden (Phase 1–2) | Alle aktiven Skills + Task-Beschreibung |
-| **Worker-Prompt** | Task geht auf `ready` | Task + Skills + Docs + DoD |
+| **Worker-Prompt** | Task geht auf `ready` | Task + Memory-Kontext + Execution-Learnings + Skills + Docs + DoD |
 | **Gaertner-Prompt** | Task geht auf `done` | Abgeschlossener Task, Auftrag: Skills/Docs ableiten |
 | **Triage-Prompt** | `[UNROUTED]`-Item vorhanden | Unklares Event, Routing-Optionen, Entscheidungsauftrag |
 
@@ -68,6 +68,31 @@ Du arbeitest an TASK-88 im Rahmen von EPIC-12.
 - Kein Write außerhalb von TASK-88 und EPIC-12
 - Setze Status direkt auf in_review, nie auf done
 ```
+
+### Resume-Semantik des Worker-Prompts
+
+Der Worker-Prompt kombiniert absichtlich **zwei verschiedene Wiederaufnahmequellen**:
+
+1. **Memory Ledger**
+    Scope-spezifischer Arbeitskontext aus frueheren Sessions: Zwischenstaende, Hypothesen, offene Fragen, kompaktierte Beobachtungen.
+2. **Execution-Learnings / Resume-Guidance**
+    Systemweit wiederverwendbare Muster aus Reviews, Guard-Failures, Resultaten und Resume-Paketen.
+
+Die Quellen haben unterschiedliche Aufgaben:
+
+- Memory Ledger beantwortet: "Wo war ich in genau diesem Task oder Scope stehen geblieben?"
+- Execution-Learnings beantworten: "Welche bewaehrten Fixmuster oder bekannte Failure-Muster sollte ich bei diesem Run beruecksichtigen?"
+
+Bei `qa_failed` wird diese Trennung besonders wichtig:
+
+```text
+Review lehnt ab
+  → review_comment + Guard-Status werden Teil des naechsten Worker-Kontexts
+  → Resume-Guidance kann aus frueheren Reject-/Guard-Mustern injiziert werden
+  → Memory Ledger liefert den letzten konkreten Arbeitsstand des Workers
+```
+
+Dadurch resumed der naechste Run nicht aus unstrukturiertem Chat-Verlauf, sondern aus klar getrenntem Produkt-, Arbeits- und Ausfuehrungskontext.
 
 ---
 

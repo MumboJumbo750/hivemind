@@ -446,7 +446,7 @@ onUnmounted(() => {
 
 .sparkline-date {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
   opacity: 0.7;
 }

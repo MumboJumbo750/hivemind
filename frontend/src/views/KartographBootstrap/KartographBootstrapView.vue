@@ -138,7 +138,7 @@ async function copyPrompt() {
 
 .kb-subtitle {
   color: var(--color-text-muted);
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
   margin: 0;
 }
 
@@ -146,11 +146,11 @@ async function copyPrompt() {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2, 0.5rem);
-  background: rgba(255, 176, 32, 0.1);
-  border: 1px solid rgba(255, 176, 32, 0.3);
-  border-radius: 6px;
+  background: var(--color-warning-10);
+  border: 1px solid var(--color-warning-20);
+  border-radius: var(--radius-sm);
   padding: var(--space-3, 0.75rem);
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   color: var(--color-warning, #ffb020);
 }
 
@@ -177,7 +177,7 @@ async function copyPrompt() {
 
 .step-hint {
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   margin: 0 0 var(--space-3, 0.75rem);
 }
 
@@ -188,7 +188,7 @@ async function copyPrompt() {
 .field-label {
   display: block;
   color: var(--color-text);
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   font-weight: 500;
   margin-bottom: var(--space-1, 0.25rem);
 }
@@ -198,10 +198,10 @@ async function copyPrompt() {
   width: 100%;
   background: var(--color-bg, #070b14);
   border: 1px solid var(--color-border, #223a63);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--color-text);
-  padding: 8px 12px;
-  font-size: 0.875rem;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
   font-family: inherit;
 }
 
@@ -211,7 +211,7 @@ async function copyPrompt() {
 
 .prompt-preview {
   background: var(--color-bg, #070b14);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: var(--space-3, 0.75rem);
   margin-bottom: var(--space-3, 0.75rem);
   max-height: 200px;
@@ -222,7 +222,7 @@ async function copyPrompt() {
 .prompt-full pre {
   margin: 0;
   white-space: pre-wrap;
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
 
@@ -237,13 +237,13 @@ async function copyPrompt() {
 }
 
 .btn {
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--color-border, #223a63);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface, #101a2b);
   color: var(--color-text);
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   transition: all 150ms;
 }
 
@@ -254,7 +254,7 @@ async function copyPrompt() {
 
 .error-text {
   color: var(--color-danger, #ff4d6d);
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   margin-top: var(--space-2, 0.5rem);
 }
 

@@ -1,0 +1,22 @@
+{
+  "external_id": "TASK-ADI-004",
+  "epic_ref": "EPIC-AUDIT-DISPATCH",
+  "title": "Tool-Name Validierung in Text-Tool-Call Parser",
+  "description": "Im Text-Tool-Call Parser (`_parse_text_tool_calls`) werden Tool-Names nicht gegen die registrierten MCP-Tools validiert. Halluzinierte Tool-Names werden an den Handler weitergereicht und scheitern dort mit kryptischen Fehlern.\n\n**Änderung:**\n- Registrierte Tool-Names als Set übergeben: `_parse_text_tool_calls(text, known_tools: set[str])`\n- Unbekannte Tool-Names loggen und aus der Result-Liste filtern\n- Logging: `logger.warning(\"Agent hallucinated unknown tool: %s\", name)`\n\n**Datei:** `backend/app/services/agentic_dispatch.py:186-204`\n\n**Abgrenzung:** Keine Schema-Validierung der Arguments — nur Tool-Name Prüfung.",
+  "state": "incoming",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "_parse_text_tool_calls akzeptiert known_tools Parameter",
+      "Unbekannte Tool-Names werden mit WARNING geloggt",
+      "Unbekannte Tool-Calls werden aus Result gefiltert",
+      "Unit-Test: bekannter + unbekannter Tool-Name → nur bekannter wird returned"
+    ]
+  },
+  "tags": ["backend", "audit", "agentic-dispatch", "validation"],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

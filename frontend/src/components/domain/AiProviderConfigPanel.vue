@@ -672,7 +672,7 @@ onMounted(async () => {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  background: var(--color-accent-10);
   border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
@@ -689,7 +689,7 @@ onMounted(async () => {
   border-radius: 50%;
   border: 1px solid var(--color-accent);
   color: var(--color-accent);
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
   font-weight: bold;
   flex-shrink: 0;
   margin-top: 1px;
@@ -758,12 +758,12 @@ onMounted(async () => {
 .status-pill {
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
-  padding: 2px 8px;
-  border-radius: 10px;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-full);
 }
 
 .status-pill--enabled {
-  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  background: var(--color-success-10);
   color: var(--color-success);
 }
 
@@ -846,7 +846,7 @@ onMounted(async () => {
 
 .form-label-hint {
   color: color-mix(in srgb, var(--color-text-muted) 70%, transparent);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
 }
 
 .form-actions {
@@ -869,7 +869,7 @@ onMounted(async () => {
   width: 36px;
   height: 20px;
   background: var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-full);
   position: relative;
   transition: background 0.2s;
 }
@@ -1014,14 +1014,14 @@ onMounted(async () => {
 }
 
 .form-hint {
-  font-size: 11px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
-  margin-top: 2px;
+  margin-top: var(--space-0-5);
 }
 .form-hint code {
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  padding: 1px 4px;
-  border-radius: 3px;
+  background: var(--color-accent-10);
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-xs);
 }
 
 .model-loading {
@@ -1059,7 +1059,7 @@ onMounted(async () => {
 .model-option:hover { background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
 
 .model-option--selected {
-  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+  background: var(--color-accent-10);
   font-weight: 600;
 }
 
@@ -1080,16 +1080,16 @@ onMounted(async () => {
 
 .model-option__multiplier {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 8px;
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-md);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .multiplier--free {
-  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  background: var(--color-success-10);
   color: var(--color-success);
 }
 .multiplier--base {
@@ -1101,20 +1101,20 @@ onMounted(async () => {
   color: #f59e0b;
 }
 .multiplier--ultra {
-  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+  background: var(--color-danger-10);
   color: var(--color-danger);
 }
 
 .model-option__ctx {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .model-option__badge {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1;
   flex-shrink: 0;
   opacity: 0.7;
@@ -1188,8 +1188,8 @@ onMounted(async () => {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   background: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
-  padding: 1px 6px;
-  border-radius: 8px;
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-md);
 }
 
 .credential-card__usage {
@@ -1206,9 +1206,9 @@ onMounted(async () => {
 .credential-badge {
   font-size: var(--font-size-xs);
   color: var(--color-accent);
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  padding: 1px 8px;
-  border-radius: 8px;
+  background: var(--color-accent-10);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-md);
 }
 
 .credential-form {

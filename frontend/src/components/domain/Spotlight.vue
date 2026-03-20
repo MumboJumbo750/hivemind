@@ -148,7 +148,7 @@ onUnmounted(() => window.removeEventListener('keydown', _onKeydown))
   align-items: flex-start;
   justify-content: center;
   padding-top: 15vh;
-  z-index: 1000;
+  z-index: var(--z-toast);
 }
 
 .spotlight-modal {
@@ -170,7 +170,7 @@ onUnmounted(() => window.removeEventListener('keydown', _onKeydown))
 }
 
 .spotlight-icon {
-  font-size: 18px;
+  font-size: var(--font-size-lg);
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
@@ -209,7 +209,7 @@ onUnmounted(() => window.removeEventListener('keydown', _onKeydown))
 
 .spotlight-group-label {
   padding: var(--space-2) var(--space-4) var(--space-1);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   letter-spacing: 0.1em;
   color: var(--color-text-muted);
   font-family: var(--font-mono);
@@ -242,7 +242,7 @@ onUnmounted(() => window.removeEventListener('keydown', _onKeydown))
   gap: var(--space-4);
   padding: var(--space-2) var(--space-4);
   border-top: 1px solid var(--color-border);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
 }

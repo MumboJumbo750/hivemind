@@ -1,0 +1,32 @@
+{
+  "decision_key": "DR-005",
+  "epic_ref": "EPIC-AUDIT-E2E",
+  "task_ref": "TASK-AE2-004",
+  "title": "Skills benötigen KEIN assigned_node_id für Federation",
+  "decision": "Das Skills-Model erhält KEIN assigned_node_id Feld. Der bestehende Schema-Ansatz (origin_node_id + federation_scope) deckt alle Federation-Szenarien ab.",
+  "rationale": "1. Skills sind Wissensartefakte (read-only auf Peers), keine delegierbaren Arbeitseinheiten wie Tasks. 2. Kein Use-Case in federation.md beschreibt Skill-Delegation. 3. Fork-Pattern reicht: Peers forken federated Skills → neuer origin_node_id zeigt auf forkenden Node. 4. Audit-Finding F-1 (2026-03-08) ist explizit als INFO klassifiziert und fragt nur, ob Skill-Delegation geplant ist — kein festes Requirement.",
+  "alternatives_considered": [
+    {
+      "option": "assigned_node_id auf Skills hinzufügen",
+      "rejected_because": "Kein konkreter Use-Case. Würde semantische Verwirrung stiften (Skills sind Wissen, keine Tasks). Fork-Pattern deckt den einzigen relevanten Fall ab."
+    },
+    {
+      "option": "Generisches delegation_target Feld",
+      "rejected_because": "Over-Engineering ohne konkreten Bedarf. YAGNI-Prinzip."
+    }
+  ],
+  "implications": [
+    "Kein Schema-Change oder Migration nötig",
+    "Peer-Skill-Anpassung läuft über Fork-Pattern (fork_federated_skill)",
+    "Audit-Finding F-1 ist damit formal beantwortet",
+    "Bei zukünftigem Bedarf: eigenes Feature mit expliziter Re-Evaluation"
+  ],
+  "references": [
+    "docs/features/federation.md (Skills Federation Flow, Zeilen 387-424)",
+    "docs/audits/2026-03-08-workflow-dispatch-audit.md (Finding F-1)",
+    "backend/app/models/skill.py (origin_node_id, federation_scope)",
+    "backend/app/models/task.py (assigned_node_id als Vergleich)"
+  ],
+  "status": "accepted",
+  "created_at": "2026-03-09"
+}

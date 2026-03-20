@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AUI-003",
+  "epic_ref": "EPIC-AUDIT-UI",
+  "title": "Agent Thread Sessions Monitor View",
+  "description": "Debug-/Monitoring-View für Agent Thread Sessions erstellen.\n\n**Features:**\n- Liste laufender und abgeschlossener Agent Sessions\n- Filter: agent_role, thread_policy (stateless/attempt/epic/project), Status\n- Pro Session: Agent-Rolle, verknüpfter Task/Epic, Thread-Policy, Startzeit, Dauer\n- Message-History-Expansion (klappbar): System-Prompt, User-Messages, Tool-Calls\n- Token-Verbrauch pro Session (input/output)\n\n**Backend-Referenz:**\n- `backend/app/models/agent_thread_session.py`\n- `backend/app/services/agent_threading.py` (14KB) — Thread Policies\n- Ggf. neuen GET-Endpoint `/api/admin/agent-sessions` erstellen",
+  "state": "incoming",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "AgentSessionsView.vue existiert und ist über Router erreichbar",
+      "Sessions tabellarisch aufgelistet mit Filtern",
+      "Thread-Policy als Badge angezeigt",
+      "Token-Verbrauch pro Session sichtbar",
+      "Backend-Endpoint liefert Session-Daten (neuer Endpoint oder bestehender erweitert)"
+    ]
+  },
+  "tags": ["frontend", "backend", "audit", "monitoring", "agent-threading"],
+  "pinned_skills": [],
+  "linked_wiki": ["autonomie-loop"],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

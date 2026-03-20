@@ -435,9 +435,9 @@ onMounted(() => loadSkills())
 }
 
 .skill-lab__error {
-  background: rgba(255, 77, 109, 0.15);
+  background: var(--color-danger-10);
   border: 1px solid var(--color-danger);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: var(--space-3);
   margin-bottom: var(--space-4);
   color: var(--color-danger);
@@ -464,7 +464,7 @@ onMounted(() => loadSkills())
   color: var(--color-text-muted);
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
-  border-radius: 6px 6px 0 0;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   font-size: var(--font-size-sm);
   transition: all 0.15s ease;
 }
@@ -512,8 +512,8 @@ onMounted(() => loadSkills())
 
 .skill-card__badge {
   font-size: var(--font-size-xs);
-  padding: 2px 8px;
-  border-radius: 12px;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-lg);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -531,25 +531,25 @@ onMounted(() => loadSkills())
 
 .confidence-ring__text {
   fill: var(--color-text);
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
 }
 
 .skill-card__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .tag {
   font-size: var(--font-size-xs);
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-sm);
   font-family: var(--font-mono);
 }
 
 .tag--scope {
-  background: rgba(32, 227, 255, 0.15);
+  background: var(--color-accent-10);
   color: var(--color-accent);
 }
 
@@ -581,7 +581,7 @@ onMounted(() => loadSkills())
   border: 1px solid var(--color-border);
   color: var(--color-text);
   padding: var(--space-1) var(--space-3);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 
@@ -595,7 +595,7 @@ onMounted(() => loadSkills())
   position: fixed;
   inset: 0;
   background: rgba(7, 11, 20, 0.85);
-  z-index: 100;
+  z-index: var(--z-tooltip);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -606,7 +606,7 @@ onMounted(() => loadSkills())
 .skill-detail {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   width: min(800px, 90vw);
   max-height: 85vh;
   overflow-y: auto;
@@ -651,7 +651,7 @@ onMounted(() => loadSkills())
   border: 1px solid var(--color-border);
   color: var(--color-text);
   padding: var(--space-1) var(--space-2);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
 }
@@ -663,7 +663,7 @@ onMounted(() => loadSkills())
 .skill-content {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: var(--space-4);
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
@@ -691,7 +691,7 @@ onMounted(() => loadSkills())
 
 .btn {
   padding: var(--space-2) var(--space-4);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   cursor: pointer;
   font-size: var(--font-size-sm);
@@ -725,9 +725,9 @@ onMounted(() => loadSkills())
 }
 
 .skill-detail__rejection {
-  background: rgba(255, 77, 109, 0.1);
+  background: var(--color-danger-10);
   border: 1px solid var(--color-danger);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: var(--space-3);
   font-size: var(--font-size-sm);
   color: var(--color-danger);
@@ -747,7 +747,7 @@ onMounted(() => loadSkills())
 .skill-diff__code {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: var(--space-3);
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
@@ -757,13 +757,13 @@ onMounted(() => loadSkills())
 }
 
 .diff-added {
-  background: rgba(60, 255, 154, 0.12);
+  background: var(--color-success-10);
   color: var(--color-success);
   display: block;
 }
 
 .diff-removed {
-  background: rgba(255, 77, 109, 0.12);
+  background: var(--color-danger-10);
   color: var(--color-danger);
   text-decoration: line-through;
   display: block;
@@ -775,7 +775,7 @@ onMounted(() => loadSkills())
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
   color: var(--color-text);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: var(--space-3);
   font-family: var(--font-body);
   font-size: var(--font-size-sm);

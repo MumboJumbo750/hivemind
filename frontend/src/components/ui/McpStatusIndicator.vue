@@ -28,16 +28,16 @@ function formatLastCheck(iso: string | null) {
 .mcp-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  background: var(--color-surface-alt, #162238);
-  font-size: 0.75rem;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2-5);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  font-size: var(--font-size-xs);
   cursor: default;
 }
 
 .status-dot {
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
 }
 
 .connected {
@@ -55,6 +55,6 @@ function formatLastCheck(iso: string | null) {
 .status-tools {
   color: var(--color-text-muted);
   opacity: 0.7;
-  font-size: 0.65rem;
+  font-size: var(--font-size-2xs);
 }
 </style>

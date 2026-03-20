@@ -337,7 +337,7 @@ onMounted(loadData)
   border-radius: var(--radius-sm);
   padding: var(--space-1);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   line-height: 1;
 }
 .copy-btn:hover { border-color: var(--color-accent); }
@@ -364,7 +364,7 @@ onMounted(loadData)
   letter-spacing: 0.05em;
 }
 
-.status-badge { font-size: 10px; }
+.status-badge { font-size: var(--font-size-2xs); }
 
 .action-cell {
   display: flex;

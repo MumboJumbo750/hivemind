@@ -259,6 +259,25 @@ async def test_service_batch_failure_returns_nones():
 
 
 @pytest.mark.asyncio
+async def test_search_similar_returns_empty_for_explicit_empty_candidate_ids():
+    provider = FakeProvider()
+    svc = EmbeddingService(provider=provider)
+    svc.embed_query = AsyncMock(return_value=[0.1] * 768)
+    db = AsyncMock()
+
+    result = await svc.search_similar(
+        db,
+        'memory_entries',
+        'semantic query',
+        limit=5,
+        candidate_ids=[],
+    )
+
+    assert result == []
+    db.execute.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_service_null_embedding_feature_degradation():
     """NULL-embedding = feature degradation, not an error."""
     provider = FakeProvider()
@@ -341,7 +360,6 @@ async def test_search_similar_passes_candidate_filter() -> None:
     stmt = db.execute.await_args.args[0]
     params = db.execute.await_args.args[1]
     assert "id::text IN" in str(stmt)
-    assert params["candidate_filter"] is True
     assert params["candidate_ids"] == ["skill-1", "skill-2"]
 
 

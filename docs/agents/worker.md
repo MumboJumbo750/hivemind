@@ -132,6 +132,44 @@ Owner rejected TASK-88 (3. Mal):
 
 ---
 
+## Multi-Session-Tasks und Resume
+
+Der Worker soll sich bei laengeren Runs nicht auf Chat-History verlassen. Fuer Wiederaufnahme gibt es zwei getrennte Kontextquellen:
+
+1. **Memory Ledger** fuer task- oder scope-spezifischen Zwischenstand.
+2. **Execution-Learnings / Resume-Hinweise** fuer wiederverwendbare Muster aus frueheren Reviews, Guard-Failures und Resultaten.
+
+```text
+Erster Run:
+  → implementiert Teilmenge
+  → save_memory fuer Zwischenstand / Hypothesen / offene Fragen
+
+Spaeterer Run oder qa_failed:
+  → get_task + review_comment + guard status lesen
+  → get_memory_context / search_memories fuer den letzten Arbeitsstand nutzen
+  → vom Prompt injizierte Execution-Learnings beachten
+  → gezielt nacharbeiten
+
+Session-Ende:
+  → compact_memories, damit spaetere Resumes nicht auf rohen Einzeleintraegen starten
+```
+
+Praxisregel:
+
+- Memory Ledger speichert: "Was habe ich in diesem Task bereits beobachtet, ausprobiert oder verstanden?"
+- Execution-Learnings speichern: "Welche wiederkehrende Review-, Guard- oder Fix-Erkenntnis sollte der naechste Worker-Run sehen?"
+
+Typische Memory-Tool-Nutzung bei komplexen Tasks:
+
+```text
+hivemind-save_memory       -- Zwischenstand / Debugging-Notiz sichern
+hivemind-get_memory_context -- Resume-Kontext laden
+hivemind-search_memories    -- fruehere Beobachtung gezielt finden
+hivemind-compact_memories   -- Session verdichten
+```
+
+---
+
 ## ⚠️ Operative Hinweise für Worker-Agents
 
 ### MCP-Tool-Aufrufe

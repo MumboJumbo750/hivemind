@@ -75,8 +75,8 @@ const progressRatio = computed(() => {
   font-size: var(--font-size-xs);
   font-family: var(--font-mono);
   letter-spacing: 0.04em;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-sm);
   overflow: hidden;
   transition: color 0.3s ease;
 }
@@ -88,7 +88,7 @@ const progressRatio = computed(() => {
   height: 100%;
   opacity: 0.15;
   transition: width 1s linear, background-color 0.3s ease;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .sla-countdown__label {

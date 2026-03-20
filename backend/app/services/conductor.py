@@ -10,7 +10,7 @@ import json
 import logging
 import time
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -88,6 +88,14 @@ def _remaining_fallbacks(fallback_chain: list[str], current_mode: str) -> list[s
         return []
     idx = fallback_chain.index(mode)
     return fallback_chain[idx + 1 :]
+
+
+_TRANSIENT_ERROR_TYPES = (asyncio.TimeoutError, TimeoutError, ConnectionError)
+
+
+def _is_transient_error(exc: BaseException) -> bool:
+    """Return True for errors that may succeed on a second attempt."""
+    return isinstance(exc, _TRANSIENT_ERROR_TYPES)
 
 
 def _prompt_kind(agent_role: str, prompt_type: str) -> str:
@@ -190,6 +198,62 @@ class ConductorService:
         history.append(event)
         merged["status_history"] = history[-50:]
         return merged
+
+    async def _expire_stale_non_ide_dispatched(
+        self,
+        db: Any,
+        *,
+        agent_role: str,
+        timeout_seconds: int,
+    ) -> int:
+        """Expire stale non-IDE dispatches stuck in ``dispatched`` after a crash/restart window."""
+        if not hasattr(db, "execute"):
+            return 0
+
+        from sqlalchemy import select
+
+        from app.models.conductor import ConductorDispatch
+
+        cutoff = datetime.now(UTC) - timedelta(seconds=max(timeout_seconds, 1))
+        result = await db.execute(
+            select(ConductorDispatch).where(
+                ConductorDispatch.agent_role == agent_role,
+                ConductorDispatch.execution_mode != "ide",
+                ConductorDispatch.status == "dispatched",
+                ConductorDispatch.completed_at.is_(None),
+                ConductorDispatch.dispatched_at < cutoff,
+            )
+        )
+        stale_dispatches = result.scalars().all()
+        if not stale_dispatches:
+            return 0
+
+        now = datetime.now(UTC)
+        for stale in stale_dispatches:
+            existing = dict(stale.result) if isinstance(stale.result, dict) else {}
+            stale.status = "timed_out"
+            stale.completed_at = now
+            stale.result = self._append_status_history(
+                {
+                    **existing,
+                    "error": "Dispatch expired before execution started",
+                    "stale_dispatch_expired": True,
+                    "timeout_seconds": timeout_seconds,
+                },
+                "timed_out",
+                {
+                    "reason": "stale_dispatched_timeout",
+                    "execution_mode": stale.execution_mode,
+                },
+            )
+
+        await db.flush()
+        logger.warning(
+            "Conductor: expired %d stale non-IDE dispatch(es) for role '%s'",
+            len(stale_dispatches),
+            agent_role,
+        )
+        return len(stale_dispatches)
 
     async def _is_cooldown_active(self, cooldown_key: str, db: Any) -> bool:
         from sqlalchemy import select
@@ -650,6 +714,14 @@ class ConductorService:
                 "fallback_chain": normalized_chain,
             }
 
+        expired_dispatches = await self._expire_stale_non_ide_dispatched(
+            db,
+            agent_role=agent_role,
+            timeout_seconds=settings.conductor_ide_timeout_seconds,
+        )
+        if expired_dispatches:
+            await db.commit()
+
         # --- Per-role parallelism gate ---
         active_count = await count_active_dispatches(agent_role, db)
         if active_count >= policy.max_parallel:
@@ -912,46 +984,78 @@ class ConductorService:
                         get_allowed_tool_names_for_role(agent_role)
                         - set(governance_payload["decisive_tools"])
                     )
-                try:
-                    response = await agentic_dispatch(
-                        provider=provider,
-                        prompt=prompt,
-                        agent_role=agent_role,
-                        task_key=prompt_kwargs.get("task_id"),
-                        epic_id=prompt_kwargs.get("epic_id"),
-                        allowed_tool_names=allowed_tool_names,
-                        token_budget=policy.token_budget,
-                    )
-                except Exception as exc:
-                    remaining = _remaining_fallbacks(normalized_chain, "local")
-                    if remaining and remaining[0] == "byoai":
-                        await self._update_dispatch(
-                            db,
-                            dispatch,
-                            status="byoai",
-                            result=self._merge_result(
-                                dispatch.result,
-                                {"byoai": True, "local_error": str(exc)},
-                            ),
-                            mark_completed=True,
+                _retry_count = 0
+                _first_exc: Exception | None = None
+                while True:
+                    try:
+                        response = await agentic_dispatch(
+                            provider=provider,
+                            prompt=prompt,
+                            agent_role=agent_role,
+                            task_key=prompt_kwargs.get("task_id"),
+                            epic_id=prompt_kwargs.get("epic_id"),
+                            allowed_tool_names=allowed_tool_names,
+                            token_budget=policy.token_budget,
                         )
-                        await thread_service.record_dispatch_outcome(
-                            thread_context=thread_context,
-                            dispatch_id=str(dispatch.id),
-                            prompt_type=prompt_type,
-                            trigger_detail=trigger_detail,
-                            status="byoai",
-                            content=str(exc),
-                        )
-                        await db.commit()
-                        return {
-                            "status": "byoai",
-                            "skip_reason": SkipReason.LOCAL_ERROR_FALLBACK,
-                            "dispatch_id": str(dispatch.id),
-                            "execution_mode": normalized_mode,
-                            "fallback_chain": normalized_chain,
-                        }
-                    raise
+                        break  # success — exit retry loop
+                    except Exception as exc:
+                        if _is_transient_error(exc) and _retry_count == 0:
+                            _first_exc = exc
+                            _retry_count += 1
+                            logger.warning(
+                                "Conductor: transient error on local dispatch (%s), retrying in 2s",
+                                type(exc).__name__,
+                            )
+                            await self._update_dispatch(
+                                db,
+                                dispatch,
+                                status="running",
+                                result=self._merge_result(
+                                    dispatch.result,
+                                    {
+                                        "retry_attempt": 1,
+                                        "retry_reason": str(exc),
+                                        "retry_error_type": type(exc).__name__,
+                                    },
+                                ),
+                            )
+                            await db.commit()
+                            await asyncio.sleep(2)
+                            continue
+                        # permanent error or second transient failure → fallback
+                        remaining = _remaining_fallbacks(normalized_chain, "local")
+                        if remaining and remaining[0] == "byoai":
+                            byoai_extra: dict[str, Any] = {"byoai": True, "local_error": str(exc)}
+                            if _retry_count > 0:
+                                byoai_extra["retry_attempted"] = True
+                                byoai_extra["retry_first_error"] = str(_first_exc)
+                            await self._update_dispatch(
+                                db,
+                                dispatch,
+                                status="byoai",
+                                result=self._merge_result(
+                                    dispatch.result,
+                                    byoai_extra,
+                                ),
+                                mark_completed=True,
+                            )
+                            await thread_service.record_dispatch_outcome(
+                                thread_context=thread_context,
+                                dispatch_id=str(dispatch.id),
+                                prompt_type=prompt_type,
+                                trigger_detail=trigger_detail,
+                                status="byoai",
+                                content=str(exc),
+                            )
+                            await db.commit()
+                            return {
+                                "status": "byoai",
+                                "skip_reason": SkipReason.LOCAL_ERROR_FALLBACK,
+                                "dispatch_id": str(dispatch.id),
+                                "execution_mode": normalized_mode,
+                                "fallback_chain": normalized_chain,
+                            }
+                        raise
 
                 final_status = "completed" if not response.error else "partial"
                 result_payload = {

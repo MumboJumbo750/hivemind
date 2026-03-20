@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AE2-001",
+  "epic_ref": "EPIC-AUDIT-E2E",
+  "title": "E2E-Test: IDE Dispatch Flow (dispatched→acknowledged→running→complete)",
+  "description": "Der IDE Dispatch Flow hat alle Endpoints (`/conductor/dispatches/pending`, `/acknowledge`, `/running`, `/complete`) und einen Timeout-Job (`conductor_ide_timeout.py`), aber keinen E2E-Test.\n\n**Test-Szenarien:**\n1. **Happy Path:** Dispatch erstellen → Acknowledge → Running → Complete → Status=completed\n2. **Timeout Path:** Dispatch erstellen → KEIN Acknowledge → Timeout-Job feuert → Fallback auf nächsten Mode in Chain\n3. **Progress Updates:** Dispatch Running → Progress-Events via SSE empfangen\n4. **Concurrent Dispatches:** 2 IDE Dispatches gleichzeitig → Parallelism-Limit greift\n\n**Dateien:**\n- `backend/app/routers/conductor.py` — IDE Endpoints\n- `backend/app/services/conductor_ide_timeout.py` — Timeout Logic\n- `backend/app/services/conductor.py:741-785` — IDE Dispatch Mode\n\n**Test-Typ:** Integration-Test (pytest, httpx AsyncClient, DB-Fixture)",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Happy-Path Test: dispatched → acknowledged → running → completed",
+      "Timeout Test: dispatched → timeout → fallback mode triggered",
+      "Progress Test: SSE events während Running empfangen",
+      "Concurrent Test: Parallelism-Limit wird respektiert",
+      "Alle Tests in CI-Pipeline lauffähig"
+    ]
+  },
+  "tags": ["backend", "audit", "testing", "e2e", "ide", "conductor"],
+  "pinned_skills": ["api-test"],
+  "linked_wiki": [],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

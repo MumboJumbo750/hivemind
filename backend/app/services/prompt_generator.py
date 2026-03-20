@@ -119,6 +119,26 @@ def count_tokens(text: str) -> int:
     return int(len(text.split()) * 1.3)
 
 
+def minify_prompt(text: str) -> str:
+    """Minify prompt text by normalizing whitespace and removing redundancy.
+
+    Reduces token count by ~10-20% while preserving semantic content.
+    """
+    # Collapse runs of blank lines to single blank line
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    # Normalize trailing whitespace per line
+    text = re.sub(r"[ \t]+$", "", text, flags=re.MULTILINE)
+    # Collapse runs of spaces (not indentation)
+    text = re.sub(r"(?<=\S)  +", " ", text)
+    # Remove markdown horizontal rules (--- or ***)
+    text = re.sub(r"^[-*]{3,}\s*$", "", text, flags=re.MULTILINE)
+    # Remove empty markdown headers
+    text = re.sub(r"^#+\s*$", "", text, flags=re.MULTILINE)
+    # Final cleanup of resulting blank lines
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def _normalize_prompt_budget(token_budget: int | None) -> int:
     if token_budget is None:
         return _DEFAULT_TOKEN_BUDGET
@@ -412,6 +432,14 @@ class PromptGenerator:
             except ValueError:
                 pass
 
+        token_count = count_tokens(prompt)
+        token_count_minified = None
+        if self._settings.hivemind_prompt_minify:
+            minified = minify_prompt(prompt)
+            minified_count = count_tokens(minified)
+            if minified_count < token_count:
+                token_count_minified = minified_count
+
         entry = PromptHistory(
             task_id=task_uuid,
             epic_id=epic_uuid,
@@ -420,7 +448,8 @@ class PromptGenerator:
             prompt_type=prompt_type,
             prompt_text=prompt,
             context_refs=self._prompt_context_refs or [],
-            token_count=count_tokens(prompt),
+            token_count=token_count,
+            token_count_minified=token_count_minified,
             generated_by=actor_id,
         )
         self.db.add(entry)
@@ -654,6 +683,7 @@ Task-Resource: `{task_resource_uri}`
 - Danach `hivemind-update_task_state` mit `target_state="in_review"` ausführen.
 - Guards vorher mit `hivemind-report_guard_result` auf `passed` oder `skipped` bringen.
 - Bei Blockern `hivemind-create_decision_request` nutzen statt still zu scheitern.
+- Bei langen Multi-Session-Tasks: `hivemind-save_memory` für Zwischenstände, später `hivemind-compact_memories` für Verdichtung.
 
 ### Auftrag
 Führe die Aufgabe gemäß der Beschreibung und DoD aus.
@@ -699,6 +729,9 @@ Nutze diese Tools um Kontext zu laden — **hol dir alles selbst:**
 - `hivemind-fs_list` / `hivemind-fs_read` / `hivemind-fs_search` — Workspace-Dateien lesen
 - `hivemind-fs_write` — Dateien schreiben
 - `hivemind-get_epic` — Epic-Kontext abrufen
+- `hivemind-get_memory_context` / `hivemind-search_memories` — vorhandenes Arbeitsgedächtnis laden
+- `hivemind-save_memory` — Zwischenstände, Hypothesen und Blocker für mehrsitzige Arbeit sichern
+- `hivemind-extract_facts` / `hivemind-compact_memories` — Erkenntnisse strukturieren und verdichten
 
 ### Definition of Done
 {chr(10).join(f'- [ ] {c}' for c in criteria) if criteria else '- Keine DoD definiert — lies Task via MCP für Details'}
@@ -709,10 +742,11 @@ Nutze diese Tools um Kontext zu laden — **hol dir alles selbst:**
 
 ### Abschluss
 1. Lies zuerst den Task: `hivemind-get_task("{task.task_key}")`
-2. Lies relevante Skills und Dateien
+2. Lies relevante Skills, Dateien und ggf. vorhandenen Memory-Kontext
 3. Implementiere die Änderungen
-4. Nutze `hivemind-submit_result` für das Ergebnis
-5. Danach `hivemind-update_task_state` mit `target_state="in_review"`
+4. Bei langen Läufen sichere sinnvolle Zwischenstände im Memory Ledger
+5. Nutze `hivemind-submit_result` für das Ergebnis
+6. Danach `hivemind-update_task_state` mit `target_state="in_review"`
 
 Bei Blockern: `hivemind-create_decision_request` statt still scheitern."""
 

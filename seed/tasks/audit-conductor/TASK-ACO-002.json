@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-ACO-002",
+  "epic_ref": "EPIC-AUDIT-CONDUCTOR",
+  "title": "Governance-Check bei Epic Run Batch-Dispatches (skip_conductor Fix)",
+  "description": "Der Epic Run Scheduler setzt `skip_conductor=True` in `epic_run_scheduler.py:216,264`, um Double-Dispatch zu vermeiden. Dadurch wird aber auch der Governance-Check übersprungen.\n\n**Problem:**\n- Normale Task-Transitions (scoped→in_progress) durchlaufen `conductor.on_task_state_change()` → Governance-Gate\n- Epic Run Batch-Dispatches umgehen dieses Gate komplett\n- Tasks in Epic Runs laufen ohne assisted/auto Unterscheidung\n\n**Lösung:**\n- Governance-Check als separaten Service extrahieren: `governance_service.check_dispatch(agent_role, trigger_type, db)`\n- Epic Run Scheduler ruft `governance_service.check_dispatch()` direkt auf, bevor `conductor.dispatch()` aufgerufen wird\n- `skip_conductor=True` bleibt erhalten (verhindert Double-Dispatch), aber Governance wird separat geprüft\n\n**Dateien:**\n- `backend/app/services/epic_run_scheduler.py:197-230` — Batch-Dispatch\n- `backend/app/services/conductor.py:697` — Governance Resolution\n- Neuer Service: `backend/app/services/governance_service.py` (optional, oder Inline-Refactor)",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Epic Run Batch-Dispatches durchlaufen Governance-Check",
+      "Bei governance=manual werden Tasks NICHT automatisch dispatcht (Prompt Station stattdessen)",
+      "Bei governance=assisted wird Recommendation gespeichert",
+      "skip_conductor verhindert weiterhin Double-Dispatch",
+      "Unit-Test: Epic Run mit governance=manual → Tasks bleiben in ready state"
+    ]
+  },
+  "tags": ["backend", "audit", "conductor", "governance", "epic-run"],
+  "pinned_skills": [],
+  "linked_wiki": ["autonomie-loop"],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "medium",
+  "depends_on": []
+}

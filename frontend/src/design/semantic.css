@@ -10,4 +10,19 @@
   --color-success: #3cff9a;
   --color-warning: #ffb020;
   --color-danger: #ff4d6d;
+
+  /* Transparent color variants (for badges, backgrounds, hover states) */
+  --color-accent-10: rgba(32, 227, 255, 0.1);
+  --color-accent-20: rgba(32, 227, 255, 0.2);
+  --color-success-10: rgba(60, 255, 154, 0.1);
+  --color-success-20: rgba(60, 255, 154, 0.2);
+  --color-warning-10: rgba(255, 176, 32, 0.1);
+  --color-warning-20: rgba(255, 176, 32, 0.2);
+  --color-danger-10: rgba(255, 77, 109, 0.1);
+  --color-danger-20: rgba(255, 77, 109, 0.2);
+  --color-info-10: rgba(59, 130, 246, 0.1);
+  --color-info-20: rgba(59, 130, 246, 0.2);
+
+  /* Overlay */
+  --color-overlay: rgba(0, 0, 0, 0.55);
 }

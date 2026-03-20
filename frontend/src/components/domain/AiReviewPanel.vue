@@ -270,7 +270,7 @@ onUnmounted(() => {
 
 .ai-label {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--color-text-muted);

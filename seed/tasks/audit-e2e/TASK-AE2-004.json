@@ -1,0 +1,22 @@
+{
+  "external_id": "TASK-AE2-004",
+  "epic_ref": "EPIC-AUDIT-E2E",
+  "title": "Decision Record: Skills assigned_node_id für Federation",
+  "description": "Tasks und Epics haben `assigned_node_id` für Federation-Delegation. Skills haben nur `origin_node_id`. Die Frage ist, ob Skills auch delegiert werden können (ein Peer schreibt einen Skill im Auftrag eines anderen Nodes).\n\n**Entscheidung dokumentieren:**\n- Falls JA: Alembic Migration für `skills.assigned_node_id` FK auf `nodes.id`, nullable\n- Falls NEIN: Decision Record erstellen: \"Skills werden nicht delegiert — origin_node_id reicht\"\n\n**Kontext:**\n- Skills werden per `federation_scope='federated'` publiziert → read-only Kopien auf Peers\n- Delegation würde bedeuten: Peer schreibt aktiv einen Skill, der dem Origin zugeordnet wird\n- Bisheriges Pattern: Skills entstehen lokal, werden dann federated\n\n**Dateien:**\n- `backend/app/models/skill.py` — Aktuelles Schema\n- `docs/features/federation.md` — Federation Spec\n- `seed/decisions/` — Decision Record ablegen",
+  "state": "incoming",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "Decision Record in seed/decisions/ erstellt",
+      "Entscheidung (ja/nein) mit Begründung dokumentiert",
+      "Falls ja: Migration + Model-Update implementiert",
+      "Falls nein: Explizite Dokumentation in docs/features/federation.md"
+    ]
+  },
+  "tags": ["backend", "audit", "federation", "schema", "decision"],
+  "pinned_skills": [],
+  "linked_wiki": ["federation-konzept"],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

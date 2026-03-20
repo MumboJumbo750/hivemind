@@ -259,9 +259,12 @@ async function onReviewDone() {
 }
 
 // ── Task state transitions ──────────────────────────────────────────────────
-async function startTask(task: Task) {
+const transitioningTasks = ref(new Set<string>())
+
+async function transitionTask(task: Task, targetState: string) {
+  transitioningTasks.value.add(task.task_key)
   try {
-    const updated = await api.patchTask(task.task_key, { state: 'in_progress', expected_version: task.version })
+    const updated = await api.transitionTaskState(task.task_key, targetState)
     const epicKey = epics.value.find(e => e.id === task.epic_id)?.epic_key
     if (epicKey) {
       const tasks = tasksByEpic.value[epicKey]
@@ -272,7 +275,12 @@ async function startTask(task: Task) {
       await loadEpics()
     }
   } catch { /* ignore silent fail */ }
+  finally { transitioningTasks.value.delete(task.task_key) }
 }
+
+function scopeTask(task: Task) { transitionTask(task, 'scoped') }
+function readyTask(task: Task) { transitionTask(task, 'ready') }
+function startTask(task: Task) { transitionTask(task, 'in_progress') }
 
 // ── State badge helpers ──────────────────────────────────────────────────────
 const EPIC_STATE_CLASS: Record<string, string> = {
@@ -689,14 +697,31 @@ function closeTaskDetail() {
                   {{ reenteringTasks.has(task.task_key) ? '...' : '↩ ZURÜCK' }}
                 </button>
                 <button
-                  v-else-if="task.state === 'scoped' || task.state === 'ready'"
-                  class="btn-start"
-                  @click.stop="startTask(task)"
+                  v-else-if="task.state === 'incoming'"
+                  class="btn-scope"
+                  :disabled="transitioningTasks.has(task.task_key)"
+                  @click.stop="scopeTask(task)"
                 >
-                  START →
+                  {{ transitioningTasks.has(task.task_key) ? '...' : 'SCOPE →' }}
                 </button>
                 <button
-                  v-if="['in_progress','scoped','ready','qa_failed','in_review'].includes(task.state)"
+                  v-else-if="task.state === 'scoped'"
+                  class="btn-ready"
+                  :disabled="transitioningTasks.has(task.task_key)"
+                  @click.stop="readyTask(task)"
+                >
+                  {{ transitioningTasks.has(task.task_key) ? '...' : 'READY →' }}
+                </button>
+                <button
+                  v-else-if="task.state === 'ready'"
+                  class="btn-start"
+                  :disabled="transitioningTasks.has(task.task_key)"
+                  @click.stop="startTask(task)"
+                >
+                  {{ transitioningTasks.has(task.task_key) ? '...' : 'START →' }}
+                </button>
+                <button
+                  v-if="['incoming','in_progress','scoped','ready','qa_failed','in_review'].includes(task.state)"
                   class="btn-prompt"
                   :class="{ 'btn-prompt--active': promptExpanded.has(task.task_key) }"
                   @click.stop="togglePrompt(task)"
@@ -1220,13 +1245,13 @@ function closeTaskDetail() {
 .badge {
   font-size: var(--font-size-xs);
   font-family: var(--font-mono);
-  padding: 2px 7px;
-  border-radius: 3px;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-xs);
   white-space: nowrap;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-.badge--sm { font-size: 9px; padding: 1px 5px; }
+.badge--sm { font-size: var(--font-size-2xs); padding: 1px var(--space-1); }
 .badge--pending  { background: color-mix(in srgb, var(--color-warning) 15%, transparent); color: var(--color-warning); }
 .badge--info     { background: color-mix(in srgb, var(--color-accent) 15%, transparent); color: var(--color-accent); }
 .badge--active   { background: color-mix(in srgb, var(--color-accent) 25%, transparent); color: var(--color-accent); border: 1px solid var(--color-accent); }
@@ -1249,7 +1274,7 @@ function closeTaskDetail() {
   border-radius: var(--radius-sm);
   font-family: var(--font-heading);
   font-size: var(--font-size-xs);
-  padding: 2px var(--space-2);
+  padding: var(--space-0-5) var(--space-2);
   cursor: pointer;
   letter-spacing: 0.04em;
   transition: background var(--transition-duration) ease;
@@ -1262,7 +1287,7 @@ function closeTaskDetail() {
   border: 1px solid var(--color-warning);
   border-radius: var(--radius-sm);
   font-family: var(--font-heading);
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   padding: 1px var(--space-2);
   cursor: pointer;
   letter-spacing: 0.06em;
@@ -1276,7 +1301,7 @@ function closeTaskDetail() {
   border: 1px solid var(--color-danger);
   border-radius: var(--radius-sm);
   font-family: var(--font-heading);
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   padding: 1px var(--space-2);
   cursor: pointer;
   letter-spacing: 0.06em;
@@ -1287,17 +1312,17 @@ function closeTaskDetail() {
 
 .btn-prompt {
   background: none;
-  color: var(--color-muted, #888);
+  color: var(--color-text-muted);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: var(--font-heading);
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   padding: 1px var(--space-2);
   cursor: pointer;
   letter-spacing: 0.06em;
   transition: background var(--transition-duration) ease, color var(--transition-duration) ease;
 }
-.btn-prompt:hover { background: color-mix(in srgb, var(--color-accent) 10%, transparent); color: var(--color-accent); }
+.btn-prompt:hover { background: var(--color-accent-10); color: var(--color-accent); }
 .btn-prompt--active { color: var(--color-accent); border-color: var(--color-accent); }
 
 .task-prompt-panel {
@@ -1322,7 +1347,7 @@ function closeTaskDetail() {
 }
 
 .task-prompt-loading {
-  color: var(--color-muted, #888);
+  color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   font-style: italic;
 }
@@ -1333,7 +1358,7 @@ function closeTaskDetail() {
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 280px;
@@ -1348,23 +1373,54 @@ function closeTaskDetail() {
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-sm);
   font-family: var(--font-heading);
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   padding: 1px var(--space-2);
   cursor: pointer;
   letter-spacing: 0.06em;
   transition: background var(--transition-duration) ease;
 }
-.btn-start:hover { background: color-mix(in srgb, var(--color-accent) 15%, transparent); }
+.btn-start:hover:not(:disabled) { background: var(--color-accent-10); }
+.btn-start:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-scope {
+  background: none;
+  color: var(--color-info, #6cb4ee);
+  border: 1px solid var(--color-info, #6cb4ee);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-2xs);
+  padding: 1px var(--space-2);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: background var(--transition-duration) ease;
+}
+.btn-scope:hover:not(:disabled) { background: var(--color-info-10); }
+.btn-scope:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ready {
+  background: none;
+  color: var(--color-success, #66bb6a);
+  border: 1px solid var(--color-success, #66bb6a);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-2xs);
+  padding: 1px var(--space-2);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: background var(--transition-duration) ease;
+}
+.btn-ready:hover:not(:disabled) { background: var(--color-success-10); }
+.btn-ready:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Review overlay ─────────────────────────────────────────────────────── */
 .review-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 500;
+  z-index: var(--z-toast);
 }
 
 .review-panel-wrapper {
@@ -1387,7 +1443,7 @@ function closeTaskDetail() {
 
 .node-badge {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--font-size-2xs);
   padding: 1px var(--space-2);
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-accent) 15%, transparent);
@@ -1410,7 +1466,7 @@ function closeTaskDetail() {
   border-radius: var(--radius-sm);
   font-family: var(--font-heading);
   font-size: var(--font-size-xs);
-  padding: 2px var(--space-2);
+  padding: var(--space-0-5) var(--space-2);
   cursor: pointer;
   letter-spacing: 0.04em;
   transition: background var(--transition-duration) ease;
@@ -1425,7 +1481,7 @@ function closeTaskDetail() {
   border-radius: var(--radius-sm);
   font-family: var(--font-heading);
   font-size: var(--font-size-xs);
-  padding: 2px var(--space-2);
+  padding: var(--space-0-5) var(--space-2);
   cursor: pointer;
   letter-spacing: 0.04em;
 }
@@ -1452,7 +1508,7 @@ function closeTaskDetail() {
 
 .epic-run-strip__label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -1477,9 +1533,9 @@ function closeTaskDetail() {
 
 .epic-run-chip {
   border: 1px solid var(--color-border);
-  border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 10px;
+  border-radius: var(--radius-full);
+  padding: var(--space-0-5) var(--space-2-5);
+  font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
   color: var(--color-text-muted);
   background: color-mix(in srgb, var(--color-surface-alt) 85%, transparent);
@@ -1487,7 +1543,7 @@ function closeTaskDetail() {
 
 .epic-run-timestamp {
   margin-left: auto;
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
 }
@@ -1507,7 +1563,7 @@ function closeTaskDetail() {
 
 .epic-run-modal__key {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -1535,7 +1591,7 @@ function closeTaskDetail() {
   gap: var(--space-2);
   padding: var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--color-surface-alt);
   color: var(--color-text);
 }
@@ -1549,7 +1605,7 @@ function closeTaskDetail() {
 .epic-run-result,
 .epic-run-panel {
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: var(--color-surface-alt);
   padding: var(--space-4);
 }
@@ -1595,12 +1651,12 @@ function closeTaskDetail() {
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   border: 1px solid var(--color-border);
   background: var(--color-bg);
   color: var(--color-text);
   cursor: pointer;
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
 }
 
@@ -1636,14 +1692,14 @@ function closeTaskDetail() {
   color: var(--color-text-muted);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 999px;
-  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  padding: var(--space-0-5) var(--space-2-5);
 }
 .btn-copy {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
   font-size: var(--font-size-sm);
   color: var(--color-text);
   cursor: pointer;
@@ -1657,7 +1713,7 @@ function closeTaskDetail() {
 .architekt-prompt-content {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: var(--space-4);
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
@@ -1712,7 +1768,7 @@ function closeTaskDetail() {
 .form-select {
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--color-text);
   padding: var(--space-2);
   font-family: var(--font-body);
@@ -1724,7 +1780,7 @@ function closeTaskDetail() {
 .btn-close-modal {
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--color-text);
   padding: var(--space-2) var(--space-4);
   cursor: pointer;
@@ -1735,7 +1791,7 @@ function closeTaskDetail() {
   background: var(--color-accent);
   color: var(--color-bg);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-4);
   cursor: pointer;
   font-weight: 600;
@@ -1747,7 +1803,7 @@ function closeTaskDetail() {
 .task-detail-panel {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   width: 520px;
   max-width: calc(100vw - var(--space-8));
   max-height: 85vh;
@@ -1793,7 +1849,7 @@ function closeTaskDetail() {
 .context-boundary {
   background: color-mix(in srgb, var(--color-accent) 5%, transparent);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: var(--space-4);
 }
 
@@ -1822,7 +1878,7 @@ function closeTaskDetail() {
 .boundary-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-0-5);
 }
 
 .boundary-label {
@@ -1848,10 +1904,10 @@ function closeTaskDetail() {
 
 /* ── Backup Owner (TASK-6-014) ───────────────────────────────────────────── */
 .backup-owner-badge {
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   font-family: var(--font-mono);
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-xs);
   background: color-mix(in srgb, var(--color-accent) 15%, transparent);
   color: var(--color-accent);
 }
@@ -1868,7 +1924,7 @@ function closeTaskDetail() {
 .backup-owner-label {
   color: var(--color-text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-2xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -1895,10 +1951,10 @@ function closeTaskDetail() {
 .backup-owner-input {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   color: var(--color-text);
-  padding: 2px 6px;
-  font-size: 11px;
+  padding: var(--space-0-5) var(--space-1-5);
+  font-size: var(--font-size-xs);
   font-family: var(--font-mono);
   width: 200px;
 }
@@ -1908,9 +1964,9 @@ function closeTaskDetail() {
   border: none;
   cursor: pointer;
   color: var(--color-text-muted);
-  font-size: 12px;
-  padding: 2px 4px;
-  border-radius: 2px;
+  font-size: var(--font-size-xs);
+  padding: var(--space-0-5) var(--space-1);
+  border-radius: var(--space-0-5);
   transition: all 0.15s;
 }
 .btn-inline:hover { color: var(--color-text); background: var(--color-surface-alt); }

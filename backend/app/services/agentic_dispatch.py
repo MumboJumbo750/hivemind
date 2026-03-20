@@ -75,6 +75,14 @@ COMMON_TOOL_NAMES = {
     "hivemind-list_tasks",
     "hivemind-list_skills",
     "hivemind-semantic_search",
+    "hivemind-get_memory_context",
+    "hivemind-search_memories",
+    "hivemind-get_open_questions",
+    "hivemind-get_uncovered_entries",
+    "hivemind-save_memory",
+    "hivemind-extract_facts",
+    "hivemind-compact_memories",
+    "hivemind-graduate_memory",
 }
 
 ROLE_TOOL_NAMES: dict[str, set[str]] = {
@@ -83,6 +91,8 @@ ROLE_TOOL_NAMES: dict[str, set[str]] = {
         "hivemind-report_guard_result",
         "hivemind-create_decision_request",
         "hivemind-update_task_state",
+        "hivemind-execute_guard",
+        "hivemind-run_command",
     },
     "reviewer": {
         "hivemind-approve_review",
@@ -92,6 +102,8 @@ ROLE_TOOL_NAMES: dict[str, set[str]] = {
         "hivemind-submit_review_recommendation",
         "hivemind-veto_auto_review",
         "hivemind-get_review_recommendations",
+        "hivemind-run_command",
+        "hivemind-execute_guard",
     },
     "gaertner": {
         "hivemind-propose_skill",
@@ -183,12 +195,19 @@ def get_allowed_tool_names_for_role(agent_role: str) -> set[str]:
     return set(COMMON_TOOL_NAMES | ROLE_TOOL_NAMES[normalized_role])
 
 
-def _parse_text_tool_calls(content: str) -> list[ToolCall]:
+def _parse_text_tool_calls(
+    content: str,
+    known_tools: set[str] | None = None,
+) -> list[ToolCall]:
     """Parse tool calls written as XML in content (fallback for models with broken tool-call API).
 
     Some Claude models via Copilot REST proxy emit tool calls as text:
         <tool_call>{"name": "hivemind-get_task", "arguments": {...}}</tool_call>
     instead of returning them via the API tool_calls field.
+
+    Args:
+        content: The AI response content to parse.
+        known_tools: Optional set of valid tool names. Unknown tools are logged and filtered.
     """
     tool_calls: list[ToolCall] = []
     pattern = re.compile(r"<tool_call>\s*(.*?)\s*</tool_call>", re.DOTALL)
@@ -197,10 +216,22 @@ def _parse_text_tool_calls(content: str) -> list[ToolCall]:
             data = json.loads(match.group(1))
             name = data.get("name", "")
             args = data.get("arguments") or data.get("parameters") or {}
-            if name:
-                tool_calls.append(ToolCall(id=f"text_call_{i}", name=name, arguments=args))
-        except Exception:
-            pass
+            if not name:
+                continue
+            if known_tools is not None and name not in known_tools:
+                logger.warning(
+                    "Unknown tool name in text tool call (hallucinated?): '%s' — skipping",
+                    name,
+                )
+                continue
+            tool_calls.append(ToolCall(id=f"text_call_{i}", name=name, arguments=args))
+        except Exception as exc:
+            logger.debug(
+                "Text tool call parse failed for entry %d: %s — raw: %s",
+                i, exc, match.group(0)[:200],
+            )
+    if tool_calls:
+        logger.debug("Parsed %d text tool calls from response", len(tool_calls))
     return tool_calls
 
 
@@ -262,6 +293,7 @@ def _build_system_prompt(
     task_key: str | None = None,
     epic_id: str | None = None,
     tools: list[dict[str, Any]] | None = None,
+    truncation_info: dict[str, int] | None = None,
 ) -> str:
     """Build a system prompt that gives the AI worker context about its environment."""
     parts = [
@@ -282,11 +314,18 @@ def _build_system_prompt(
         "Du kannst mit `hivemind-fs_read`, `hivemind-fs_write`, `hivemind-fs_list`, `hivemind-fs_search`",
         "und `hivemind-fs_stat` auf Dateien im Workspace zugreifen.",
         "",
+        "## Memory Ledger",
+        "Für lange oder mehrsitzige Arbeit kannst du Arbeitsgedächtnis persistent halten.",
+        "Nutze `hivemind-save_memory` für Beobachtungen, `hivemind-get_memory_context` beim Resume,",
+        "`hivemind-extract_facts` vor Verdichtung und `hivemind-compact_memories` sobald ein Themenblock verstanden ist.",
+        "`hivemind-graduate_memory` ist nur für reifes Wissen gedacht, das in Wiki/Skill/Doc übergeht.",
+        "",
         "## Arbeitsweise",
         "1. Lies zuerst den Task und die zugehörigen Skills, um die Anforderungen zu verstehen.",
         "2. Nutze die Filesystem-Tools, um den relevanten Code zu finden und zu verstehen.",
         "3. Implementiere die Änderungen gemäß den DoD-Kriterien (Definition of Done).",
-        "4. Wenn du fertig bist, nutze `hivemind-submit_result` um dein Ergebnis abzuliefern.",
+        "4. Bei langen Debugging- oder Analysepfaden sichere Zwischenstände im Memory Ledger.",
+        "5. Wenn du fertig bist, nutze `hivemind-submit_result` um dein Ergebnis abzuliefern.",
         "",
         "## Regeln",
         "- Ändere nur Dateien, die für den Task relevant sind.",
@@ -306,6 +345,19 @@ def _build_system_prompt(
     if epic_id:
         parts.append(f"\n## Epic: {epic_id}")
         parts.append(f"Lies das Epic mit `hivemind-get_epic` (epic_key: '{epic_id}') für Kontext.")
+
+    if truncation_info:
+        chars_removed = truncation_info["original"] - truncation_info["truncated"]
+        parts.append("")
+        parts.append("## ⚠ WARNUNG: Prompt wurde gekürzt")
+        parts.append(
+            f"Der User-Prompt wurde von {truncation_info['original']:,} auf "
+            f"{truncation_info['truncated']:,} Zeichen gekürzt ({chars_removed:,} Zeichen entfernt)."
+        )
+        parts.append(
+            "Nutze MCP-Tools wie `hivemind-get_task`, `hivemind-get_skills`, "
+            "`hivemind-fs_read` um fehlenden Kontext nachzuladen."
+        )
 
     parts.append(f"\n## Rolle: {agent_role}")
 
@@ -344,12 +396,15 @@ async def agentic_dispatch(
     max_prompt_chars = MAX_PROMPT_CHARS
     if token_budget and token_budget > 0:
         max_prompt_chars = min(max_prompt_chars, token_budget * 3)
+    truncation_info: dict[str, int] | None = None
     if len(prompt) > max_prompt_chars:
+        original_len = len(prompt)
         logger.warning(
             "Prompt truncated from %d to %d chars for role '%s' (token_budget=%s)",
-            len(prompt), max_prompt_chars, agent_role, token_budget,
+            original_len, max_prompt_chars, agent_role, token_budget,
         )
         prompt = prompt[:max_prompt_chars] + "\n\n[... Prompt gekürzt — nutze MCP-Tools für weiteren Kontext ...]"
+        truncation_info = {"original": original_len, "truncated": max_prompt_chars}
 
     # 1. Collect and filter MCP tools
     all_tools = _get_mcp_tools_as_dicts()
@@ -362,7 +417,7 @@ async def agentic_dispatch(
     # 2. Build system prompt — include tool docs inline so the model knows what's available
     # We do NOT pass tools via native API (causes BadRequest with Copilot proxy for Claude models);
     # instead the model uses <tool_call> text format parsed by _parse_text_tool_calls.
-    system = _build_system_prompt(agent_role, task_key, epic_id, tools=tools)
+    system = _build_system_prompt(agent_role, task_key, epic_id, tools=tools, truncation_info=truncation_info)
 
     # 3. Initialize messages
     messages: list[dict[str, Any]] = [
@@ -403,7 +458,8 @@ async def agentic_dispatch(
         # Fallback: parse text-format tool calls (Claude via Copilot proxy has broken tool_calls)
         effective_tool_calls = list(response.tool_calls or [])
         if not effective_tool_calls and response.content:
-            effective_tool_calls = _parse_text_tool_calls(response.content)
+            known_tool_names = {t["name"] for t in tools}
+            effective_tool_calls = _parse_text_tool_calls(response.content, known_tools=known_tool_names)
             if effective_tool_calls:
                 logger.info(
                     "Parsed %d text-format tool call(s) from content (tool_calls API not supported)",

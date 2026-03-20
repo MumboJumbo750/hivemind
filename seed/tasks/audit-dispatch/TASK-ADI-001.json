@@ -1,0 +1,22 @@
+{
+  "external_id": "TASK-ADI-001",
+  "epic_ref": "EPIC-AUDIT-DISPATCH",
+  "title": "Debug-Logging für _parse_text_tool_calls Exception Handler",
+  "description": "In `agentic_dispatch.py:202-203` wird ein bare `except: pass` verwendet, das alle Parsing-Fehler schluckt. Debug-Level Logging einbauen.\n\n**Änderung:**\n```python\n# Vorher (Zeile 202-203)\nexcept:\n    pass\n\n# Nachher\nexcept Exception as exc:\n    logger.debug(\"Text tool call parse failed for entry %d: %s — raw: %s\", i, exc, match.group(0)[:200])\n```\n\n**Zusätzlich:**\n- Logging-Import prüfen (logger = logging.getLogger(__name__))\n- Summary-Log am Ende: `logger.debug(\"Parsed %d text tool calls from response\", len(calls))`\n\n**Datei:** `backend/app/services/agentic_dispatch.py:186-204`",
+  "state": "incoming",
+  "priority": "medium",
+  "definition_of_done": {
+    "criteria": [
+      "Exception in _parse_text_tool_calls wird auf DEBUG-Level geloggt",
+      "Log enthält Exception-Message und ersten 200 Chars des Raw-Matches",
+      "Bestehende Funktionalität bleibt unverändert (Fehler werden weiterhin toleriert)",
+      "Unit-Test für _parse_text_tool_calls mit fehlerhaftem JSON bestätigt Logging"
+    ]
+  },
+  "tags": ["backend", "audit", "logging", "agentic-dispatch"],
+  "pinned_skills": [],
+  "linked_wiki": [],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

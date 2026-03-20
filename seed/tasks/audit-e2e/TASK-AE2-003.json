@@ -1,0 +1,23 @@
+{
+  "external_id": "TASK-AE2-003",
+  "epic_ref": "EPIC-AUDIT-E2E",
+  "title": "Prompt History: Minified Token-Count speichern",
+  "description": "Prompt History speichert den Original-Prompt, AI bekommt den minifizierten Prompt. Der Token-Count in der History weicht deshalb um 10-20% vom tatsächlichen AI-Verbrauch ab.\n\n**Änderung:**\n- In `prompt_generator.py` bei History-Persist:\n  - Neues Feld `prompt_tokens_minified` auf PromptHistory Model ergänzen\n  - Beim Speichern: `prompt_tokens` = Original-Count, `prompt_tokens_minified` = Minified-Count\n- Alembic Migration: Neues nullable INT-Feld `prompt_tokens_minified` auf `prompt_history`\n- Frontend Token Radar: Minified Token-Count anzeigen wenn vorhanden\n\n**Dateien:**\n- `backend/app/services/prompt_generator.py` — History-Persist Logic\n- `backend/app/models/prompt_history.py` — Neues Feld\n- Neue Alembic Migration\n- `frontend/src/views/PromptStation/PromptStationView.vue` — Token Radar anpassen",
+  "state": "incoming",
+  "priority": "low",
+  "definition_of_done": {
+    "criteria": [
+      "prompt_tokens_minified Feld auf PromptHistory Model (nullable INT)",
+      "Alembic Migration erstellt und lauffähig",
+      "Prompt Generator speichert minified Token-Count wenn Minifikation aktiv",
+      "Token Radar zeigt minified Count als sekundären Wert",
+      "Bestehende History-Einträge bleiben kompatibel (Feld nullable)"
+    ]
+  },
+  "tags": ["backend", "frontend", "audit", "prompt", "migration"],
+  "pinned_skills": ["alembic-migration"],
+  "linked_wiki": [],
+  "source_doc": "docs/audits/2026-03-08-workflow-dispatch-audit.md",
+  "estimated_complexity": "small",
+  "depends_on": []
+}

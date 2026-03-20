@@ -244,7 +244,7 @@ watch(() => [props.nodes, props.edges], () => {
   position: absolute;
   top: var(--space-3);
   left: var(--space-3);
-  z-index: 10;
+  z-index: var(--z-sticky);
   pointer-events: none;
 }
 

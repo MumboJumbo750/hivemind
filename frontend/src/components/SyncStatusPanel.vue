@@ -306,7 +306,7 @@ onUnmounted(() => {
 .hud-dot {
   width: 10px;
   height: 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   box-shadow: 0 0 10px transparent;
 }
 
@@ -361,10 +361,10 @@ onUnmounted(() => {
 
 .provider-badge {
   font-family: var(--font-mono);
-  font-size: 10px;
-  border-radius: 999px;
+  font-size: var(--font-size-2xs);
+  border-radius: var(--radius-full);
   border: 1px solid var(--color-border);
-  padding: 2px 8px;
+  padding: var(--space-0-5) var(--space-2);
   text-transform: uppercase;
 }
 
