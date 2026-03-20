@@ -8,7 +8,7 @@ interface WikiArticle {
   id: string
   title: string
   slug: string
-  body: string
+  content: string
   tags: string[]
   version: number
   epic_id?: string | null
@@ -19,7 +19,7 @@ interface WikiArticle {
 
 interface WikiVersion {
   version: number
-  body: string
+  content: string
   changed_by?: string
   created_at: string
 }
@@ -87,6 +87,21 @@ async function selectArticle(article: WikiArticle) {
   selectedArticle.value = article
   showHistory.value = false
   versions.value = []
+
+  // Search liefert nur Metadaten — vollen Content nachladen
+  if (!article.content) {
+    try {
+      const result = await api.callMcpTool('hivemind-get_wiki_article', {
+        id: article.slug || article.id,
+      })
+      const parsed = JSON.parse(result[0]?.text || '{}')
+      if (parsed.data) {
+        selectedArticle.value = { ...article, ...parsed.data }
+      }
+    } catch {
+      // Content bleibt leer — Fehler wird nicht eskaliert
+    }
+  }
 }
 
 // ─── Version History via MCP ───────────────────────────────────────────────
@@ -272,7 +287,7 @@ onMounted(() => doSearch(''))
         </div>
 
         <!-- Rendered Body -->
-        <div class="wiki-article-body" v-html="renderMarkdown(selectedArticle.body)" />
+        <div class="wiki-article-body" v-html="renderMarkdown(selectedArticle.content)" />
       </template>
     </main>
   </div>
